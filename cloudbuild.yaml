@@ -1,0 +1,51 @@
+# Google Cloud Build configuration for Cloud Run deployment
+steps:
+  # Build the Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [
+      'build',
+      '-t', 'europe-central2-docker.pkg.dev/$PROJECT_ID/universe-mapmaker/app:$COMMIT_SHA',
+      '-t', 'europe-central2-docker.pkg.dev/$PROJECT_ID/universe-mapmaker/app:latest',
+      '.'
+    ]
+
+  # Push the Docker image to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'europe-central2-docker.pkg.dev/$PROJECT_ID/universe-mapmaker/app:$COMMIT_SHA']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'europe-central2-docker.pkg.dev/$PROJECT_ID/universe-mapmaker/app:latest']
+
+  # Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'gcloud'
+    args: [
+      'run', 'deploy', 'universe-mapmaker',
+      '--image', 'europe-central2-docker.pkg.dev/$PROJECT_ID/universe-mapmaker/app:$COMMIT_SHA',
+      '--region', 'europe-central2',
+      '--platform', 'managed',
+      '--allow-unauthenticated',
+      '--port', '8080',
+      '--memory', '2Gi',
+      '--cpu', '2',
+      '--min-instances', '0',
+      '--max-instances', '10',
+      '--concurrency', '80',
+      '--timeout', '300',
+      '--set-env-vars', 'NODE_ENV=production,NEXT_TELEMETRY_DISABLED=1',
+      '--set-secrets', 'GOOGLE_SHEETS_PRIVATE_KEY=google-sheets-private-key:latest,GOOGLE_SHEETS_SERVICE_ACCOUNT_EMAIL=google-sheets-service-account:latest,GOOGLE_SHEETS_SPREADSHEET_ID=google-sheets-spreadsheet-id:latest,GEOSERVER_URL=geoserver-url:latest,GEOSERVER_USERNAME=geoserver-username:latest,GEOSERVER_PASSWORD=geoserver-password:latest,MAPBOX_ACCESS_TOKEN=mapbox-access-token:latest'
+    ]
+
+# Store images in Artifact Registry
+images:
+  - 'europe-central2-docker.pkg.dev/$PROJECT_ID/universe-mapmaker/app:$COMMIT_SHA'
+  - 'europe-central2-docker.pkg.dev/$PROJECT_ID/universe-mapmaker/app:latest'
+
+# Build options
+options:
+  machineType: 'E2_HIGHCPU_8'
+  diskSizeGb: 100
+  logging: CLOUD_LOGGING_ONLY
+
+# Timeout for the entire build
+timeout: '1200s'
