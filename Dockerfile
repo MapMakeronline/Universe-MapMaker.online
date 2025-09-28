@@ -1,30 +1,37 @@
-# Multi-stage build for production
+# Multi-stage build for production using Node.js Alpine
 FROM node:20-alpine AS base
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
+# Dependencies stage
 FROM base AS deps
-# Copy only package files for better caching
+# Copy package files first for better caching
 COPY package.json package-lock.json* ./
-# Use exact dependency installation for production stability
-RUN npm ci --only=production --silent
+# Install only production dependencies
+RUN npm ci --only=production --silent && npm cache clean --force
 
+# Builder stage
 FROM base AS builder
 WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
+
+# Copy package files and install all dependencies (including dev)
+COPY package.json package-lock.json* ./
+RUN npm ci --silent
+
+# Copy source code
 COPY . .
 
 # Environment variables for build
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
-# Install all deps for build (including devDependencies)
-RUN npm ci --silent
+# Build the application
 RUN npm run build
 
 # Verify standalone build was created
 RUN ls -la .next/standalone/
 
+# Runner stage
 FROM node:20-alpine AS runner
 WORKDIR /app
 
@@ -38,13 +45,10 @@ RUN apk add --no-cache curl \
  && addgroup --system --gid 1001 nodejs \
  && adduser --system --uid 1001 nextjs
 
-# Copy standalone application
+# Copy standalone application and static files
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
-
-# Set proper permissions
-RUN chown -R nextjs:nodejs /app
 
 USER nextjs
 EXPOSE 8080

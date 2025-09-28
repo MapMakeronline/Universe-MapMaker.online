@@ -17,24 +17,22 @@ out/
 .env*
 !.env.example
 
+# Documentation
+README.md
+*.md
+docs/
+
 # IDE and editor files
 .vscode/
 .idea/
 *.swp
 *.swo
-.DS_Store
-Thumbs.db
 
 # Testing
 coverage/
 test-results/
 playwright-report/
 .nyc_output
-
-# Documentation
-README.md
-*.md
-docs/
 
 # Config files
 .eslintrc*
@@ -46,12 +44,18 @@ tailwind.config.*
 # Claude Code settings
 .claude/
 
-# Nested projects
-Universe-MapMaker.online/
-
 # Logs
 *.log
 
 # OS generated files
-Thumbs.db
 .DS_Store
+Thumbs.db
+
+# Cache directories
+.npm
+.yarn
+.pnpm-store
+
+# Lock files (only include package-lock.json)
+yarn.lock
+pnpm-lock.yaml
