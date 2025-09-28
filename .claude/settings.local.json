@@ -10,7 +10,9 @@
       "Bash(curl:*)",
       "Bash(npm run build:*)",
       "Bash(git checkout:*)",
-      "Bash(git fetch:*)"
+      "Bash(git fetch:*)",
+      "Bash(npm install)",
+      "Bash(docker build:*)"
     ],
     "deny": [],
     "ask": []
