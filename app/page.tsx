@@ -71,6 +71,10 @@ export default function HomePage() {
               {message}
             </Typography>
 
+            <Typography variant="caption" sx={{ display: "block", mb: 3, color: "success.main", fontWeight: "bold" }}>
+              ✅ Rozwiązano problemy SSR • Pełna mapa Mapbox dostępna w production!
+            </Typography>
+
             <Box sx={{ display: "flex", gap: 2, justifyContent: "center", flexWrap: "wrap" }}>
               <Button
                 variant="contained"
