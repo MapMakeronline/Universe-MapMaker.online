@@ -9,8 +9,8 @@ import dynamic from "next/dynamic"
 import LayerTree from "@/components/layer-tree/LayerTree"
 import type { LayerNode } from "@/types/layers"
 
-// Dynamic import with no SSR - using PRODUCTION component (Mapbox → OpenStreetMap fallback)
-const Map = dynamic(() => import("./ProductionMap"), {
+// Dynamic import with no SSR - using Mapbox GL JS only
+const Map = dynamic(() => import("./MapboxMap"), {
   ssr: false,
   loading: () => (
     <Box sx={{

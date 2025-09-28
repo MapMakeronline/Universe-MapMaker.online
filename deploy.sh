@@ -7,8 +7,8 @@ SERVICE_NAME="universe-mapmaker"
 REGION="europe-central2"
 PROJECT_ID="universe-mapmaker"
 
-# Your Mapbox token (replace with your actual token)
-MAPBOX_TOKEN="pk.eyJ1IjoibWFwbWFrZXJvbmxpbmUiLCJhIjoiY20zMjE5aWd3MDQ5aDJxcGN6M3F3aXFseiJ9.e_QHDBUIHNmwU5E-dqC1hA"
+# Your Mapbox token
+MAPBOX_TOKEN="pk.eyJ1IjoibWFwbWFrZXItb25saW5lIiwiYSI6ImNtMnRoZmZqMDBqNTJqb1RFUDM2cDpSIn0.VmrTGLrG_BMxv9gjtu4KnCJ_JrPiGlQ"
 
 echo "📦 Building and deploying with environment variables..."
 

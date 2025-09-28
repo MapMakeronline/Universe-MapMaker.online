@@ -23,12 +23,15 @@ export default function MapboxMap({ onMapLoad, onLayerToggle }: MapboxMapProps) 
         setStatus("🔍 Sprawdzanie tokena Mapbox...")
         console.log("🗺️ Starting Mapbox GL JS initialization...")
 
-        // Check token
+        // Check token with detailed production debugging
         const token = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN
-        console.log("🔑 Token check:")
+        console.log("🔑 Token check (production debug):")
         console.log("  - Exists:", !!token)
         console.log("  - Length:", token?.length || 0)
         console.log("  - Valid format:", token?.startsWith('pk.'))
+        console.log("  - First 20 chars:", token?.substring(0, 20))
+        console.log("  - Environment:", process.env.NODE_ENV)
+        console.log("  - All env vars starting with NEXT_PUBLIC:", Object.keys(process.env).filter(key => key.startsWith('NEXT_PUBLIC')))
 
         if (!token || !token.startsWith('pk.')) {
           throw new Error("Missing or invalid Mapbox token")
