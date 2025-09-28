@@ -2,8 +2,10 @@
 
 import { useState } from "react"
 import { Box, Container, Typography, Paper, Button } from "@mui/material"
+import { useRouter } from "next/navigation"
 
 export default function HomePage() {
+  const router = useRouter()
   const [message, setMessage] = useState("Universe MapMaker is ready for deployment!")
 
   return (
@@ -73,7 +75,10 @@ export default function HomePage() {
               <Button
                 variant="contained"
                 size="large"
-                onClick={() => setMessage("LayerTree i Mapbox są gotowe do integracji!")}
+                onClick={() => {
+                  setMessage("Przekierowuję do LayerTree Demo...")
+                  setTimeout(() => router.push("/layertree"), 500)
+                }}
                 sx={{
                   px: 4,
                   background: "linear-gradient(45deg, #667eea 30%, #764ba2 90%)",
@@ -84,12 +89,19 @@ export default function HomePage() {
               </Button>
 
               <Button
-                variant="outlined"
+                variant="contained"
                 size="large"
-                onClick={() => setMessage("MapBox GL integracja jest w trakcie przygotowania...")}
-                sx={{ px: 4 }}
+                onClick={() => {
+                  setMessage("Uruchamiam pełną aplikację mapową...")
+                  setTimeout(() => router.push("/map"), 500)
+                }}
+                sx={{
+                  px: 4,
+                  background: "linear-gradient(45deg, #4CAF50 30%, #45a049 90%)",
+                  boxShadow: "0 3px 5px 2px rgba(76, 175, 80, .3)"
+                }}
               >
-                🗺️ Testuj Mapbox
+                🗺️ Otwórz Mapę
               </Button>
             </Box>
 
