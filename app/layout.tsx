@@ -3,7 +3,7 @@ import type { Metadata } from "next"
 import { Inter, JetBrains_Mono } from "next/font/google"
 import "./globals.css"
 import { Providers } from "./providers"
-import { WebVitals } from "@/components/ui/WebVitals"
+// import { WebVitals } from "@/components/ui/WebVitals"
 
 const inter = Inter({
   subsets: ["latin"],
@@ -53,7 +53,7 @@ export default function RootLayout({
     <html lang="pl" className={`${inter.variable} ${jetbrainsMono.variable} antialiased`}>
       <body>
         <Providers>{children}</Providers>
-        <WebVitals />
+        {/*<WebVitals />*/}
       </body>
     </html>
   )

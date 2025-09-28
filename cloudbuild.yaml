@@ -32,8 +32,8 @@ steps:
       '--max-instances', '10',
       '--concurrency', '80',
       '--timeout', '300',
-      '--set-env-vars', 'NODE_ENV=production,NEXT_TELEMETRY_DISABLED=1',
-      '--set-secrets', 'GOOGLE_SHEETS_PRIVATE_KEY=google-sheets-private-key:latest,GOOGLE_SHEETS_SERVICE_ACCOUNT_EMAIL=google-sheets-service-account:latest,GOOGLE_SHEETS_SPREADSHEET_ID=google-sheets-spreadsheet-id:latest,GEOSERVER_URL=geoserver-url:latest,GEOSERVER_USERNAME=geoserver-username:latest,GEOSERVER_PASSWORD=geoserver-password:latest,MAPBOX_ACCESS_TOKEN=mapbox-access-token:latest'
+      '--set-env-vars', 'NODE_ENV=production,NEXT_TELEMETRY_DISABLED=1,NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN=pk.eyJ1IjoibWFwbWFrZXItb25saW5lIiwiYSI6ImNtNXV0ZnFkNzAwYnUyanM2NmZudDMxYngifQ.jPjzwtBTV8HWDK3zx7aGlw',
+      '--set-secrets', 'GOOGLE_SHEETS_PRIVATE_KEY=google-sheets-private-key:latest,GOOGLE_SHEETS_SERVICE_ACCOUNT_EMAIL=google-sheets-service-account:latest,GOOGLE_SHEETS_SPREADSHEET_ID=google-sheets-spreadsheet-id:latest,GEOSERVER_URL=geoserver-url:latest,GEOSERVER_USERNAME=geoserver-username:latest,GEOSERVER_PASSWORD=geoserver-password:latest'
     ]
 
 # Store images in Artifact Registry
