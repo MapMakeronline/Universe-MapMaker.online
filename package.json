@@ -27,6 +27,7 @@
     "@mui/material": "latest",
     "@mui/material-pigment-css": "latest",
     "@playwright/test": "latest",
+    "@radix-ui/react-switch": "^1.2.6",
     "@react-three/drei": "^9.92.0",
     "@react-three/fiber": "^8.15.0",
     "@reduxjs/toolkit": "latest",

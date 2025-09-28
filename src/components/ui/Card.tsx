@@ -27,18 +27,18 @@ export interface CardProps extends MuiCardProps {
   interactive?: boolean
 }
 
-const StyledCard = styled(MuiCard)<{ hoverable?: boolean; interactive?: boolean }>(
-  ({ theme, hoverable, interactive }) => ({
+const StyledCard = styled(MuiCard)<{ $hoverable?: boolean; $interactive?: boolean }>(
+  ({ theme, $hoverable, $interactive }) => ({
     transition: theme.transitions.create(["box-shadow", "transform"], {
       duration: theme.transitions.duration.short,
     }),
-    ...(hoverable && {
+    ...($hoverable && {
       "&:hover": {
         boxShadow: theme.shadows[4],
         transform: "translateY(-2px)",
       },
     }),
-    ...(interactive && {
+    ...($interactive && {
       cursor: "pointer",
       "&:focus-visible": {
         outline: `2px solid ${theme.palette.primary.main}`,
@@ -75,8 +75,8 @@ export const Card: React.FC<CardProps> = ({
   return (
     <StyledCard
       {...props}
-      hoverable={hoverable}
-      interactive={interactive}
+      $hoverable={hoverable}
+      $interactive={interactive}
       tabIndex={interactive ? 0 : undefined}
       role={interactive ? "button" : undefined}
     >
