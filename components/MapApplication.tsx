@@ -11,7 +11,7 @@ import type { LayerNode } from "@/types/layers"
 import type mapboxgl from "mapbox-gl"
 
 // Dynamic import with no SSR
-const Map = dynamic(() => import("@/components/Map"), {
+const Map = dynamic(() => import("@/components/FixedMap"), {
   ssr: false,
   loading: () => (
     <Box sx={{
@@ -135,9 +135,15 @@ export default function MapApplication() {
     if (node.layerIds && mapRef.current) {
       node.layerIds.forEach(layerId => {
         try {
-          const visibility = visible ? "visible" : "none"
-          mapRef.current!.setLayoutProperty(layerId, "visibility", visibility)
-          console.log(`✅ Set layer ${layerId} visibility to ${visibility}`)
+          // Use the exposed toggle function
+          if ((mapRef.current as any).toggleLayerVisibility) {
+            (mapRef.current as any).toggleLayerVisibility(layerId, visible)
+          } else {
+            // Fallback to direct method
+            const visibility = visible ? "visible" : "none"
+            mapRef.current!.setLayoutProperty(layerId, "visibility", visibility)
+          }
+          console.log(`✅ Toggled layer ${layerId} to ${visible ? "visible" : "hidden"}`)
         } catch (error) {
           console.warn(`⚠️ Could not toggle layer ${layerId}:`, error)
         }

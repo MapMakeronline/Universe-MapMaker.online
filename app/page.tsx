@@ -107,6 +107,18 @@ export default function HomePage() {
               >
                 🗺️ Otwórz Mapę
               </Button>
+
+              <Button
+                variant="outlined"
+                size="large"
+                onClick={() => {
+                  setMessage("Uruchamiam test mapy Mapbox...")
+                  setTimeout(() => router.push("/maptest"), 500)
+                }}
+                sx={{ px: 4, borderColor: "#ff9800", color: "#ff9800" }}
+              >
+                🧪 Test Mapy
+              </Button>
             </Box>
 
             <Typography

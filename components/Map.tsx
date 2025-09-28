@@ -1,59 +1,109 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import mapboxgl from "mapbox-gl"
-import "mapbox-gl/dist/mapbox-gl.css"
+import { Box, Typography } from "@mui/material"
+
+// Dynamic map initialization
+const initializeMapWithLayers = async (container: HTMLDivElement) => {
+  try {
+    // Check token
+    const token = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN
+    console.log("🔑 Map token check:", token ? "✅ Available" : "❌ Missing")
+
+    if (!token) {
+      throw new Error("NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN is required")
+    }
+
+    // Dynamic import
+    const mapboxgl = await import("mapbox-gl")
+    await import("mapbox-gl/dist/mapbox-gl.css")
+
+    console.log("📦 Mapbox GL version:", mapboxgl.default.version)
+
+    // Set token
+    mapboxgl.default.accessToken = token
+
+    // Create map
+    const map = new mapboxgl.default.Map({
+      container: container,
+      style: "mapbox://styles/mapbox/streets-v12",
+      center: [19.0, 52.0], // Poland center
+      zoom: 6
+    })
+
+    console.log("🗺️ Map created, waiting for load...")
+
+    return { map, mapboxgl: mapboxgl.default }
+  } catch (error) {
+    console.error("❌ Map initialization failed:", error)
+    throw error
+  }
+}
 
 export interface MapProps {
-  onMapLoad?: (map: mapboxgl.Map) => void
+  onMapLoad?: (map: any) => void
   onLayerToggle?: (layerId: string, visible: boolean) => void
 }
 
 export default function Map({ onMapLoad, onLayerToggle }: MapProps) {
   const mapContainer = useRef<HTMLDivElement>(null)
-  const map = useRef<mapboxgl.Map | null>(null)
+  const [mapInstance, setMapInstance] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!mapContainer.current) return
+    if (!mapContainer.current || mapInstance) return
 
-    // Initialize map
-    mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN!
+    console.log("🚀 Initializing map with layers...")
 
-    map.current = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: "mapbox://styles/mapbox/streets-v12",
-      center: [19.0, 52.0], // Poland center
-      zoom: 6,
-      projection: { name: "mercator" }
-    })
+    initializeMapWithLayers(mapContainer.current)
+      .then(({ map, mapboxgl }) => {
+        console.log("✅ Map instance created")
 
-    // Add navigation controls
-    map.current.addControl(new mapboxgl.NavigationControl(), "top-right")
+        // Wait for map to load
+        map.on("load", () => {
+          console.log("🎯 Map loaded, adding sample layers...")
+          addSampleLayers(map, mapboxgl)
+          setIsLoading(false)
+          onMapLoad?.(map)
+        })
 
-    // Add scale control
-    map.current.addControl(new mapboxgl.ScaleControl(), "bottom-left")
+        // Error handling
+        map.on("error", (e: any) => {
+          console.error("❌ Map error:", e.error)
+          setError(`Map error: ${e.error?.message || "Unknown error"}`)
+          setIsLoading(false)
+        })
 
-    map.current.on("load", () => {
-      if (!map.current) return
-
-      setIsLoading(false)
-
-      // Add sample layers
-      addSampleLayers(map.current)
-
-      // Notify parent component
-      onMapLoad?.(map.current)
-    })
+        setMapInstance(map)
+      })
+      .catch((err) => {
+        console.error("💥 Failed to initialize map:", err)
+        setError(err.message)
+        setIsLoading(false)
+      })
 
     return () => {
-      if (map.current) {
-        map.current.remove()
+      if (mapInstance) {
+        console.log("🧹 Cleaning up map")
+        mapInstance.remove()
       }
     }
-  }, [onMapLoad])
+  }, [])
 
-  const addSampleLayers = (mapInstance: mapboxgl.Map) => {
+  const addSampleLayers = (map: any, mapboxgl: any) => {
+    try {
+      console.log("🔧 Adding navigation controls...")
+
+      // Add navigation controls
+      map.addControl(new mapboxgl.NavigationControl(), "top-right")
+
+      // Add scale control
+      map.addControl(new mapboxgl.ScaleControl(), "bottom-left")
+
+      console.log("🗂️ Adding sample layers...")
+
+      // Add sample point layer (POI)
     // Add sample point layer
     mapInstance.addSource("poi-source", {
       type: "geojson",
