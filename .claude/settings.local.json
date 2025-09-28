@@ -16,7 +16,10 @@
       "Bash(npm cache clean:*)",
       "Bash(npm uninstall:*)",
       "Bash(gcloud builds:*)",
-      "Bash(/bashes)"
+      "Bash(/bashes)",
+      "Bash(gcloud run services describe:*)",
+      "Bash(gcloud run services:*)",
+      "Bash(npm install:*)"
     ],
     "deny": [],
     "ask": []
