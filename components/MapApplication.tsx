@@ -8,10 +8,9 @@ import { useRouter } from "next/navigation"
 import dynamic from "next/dynamic"
 import LayerTree from "@/components/layer-tree/LayerTree"
 import type { LayerNode } from "@/types/layers"
-import type mapboxgl from "mapbox-gl"
 
-// Dynamic import with no SSR
-const Map = dynamic(() => import("@/components/FixedMap"), {
+// Dynamic import with no SSR - using WORKING simple component
+const Map = dynamic(() => import("@/components/SimpleLeafletMap"), {
   ssr: false,
   loading: () => (
     <Box sx={{
@@ -27,7 +26,7 @@ const Map = dynamic(() => import("@/components/FixedMap"), {
       <Box sx={{
         width: 60,
         height: 60,
-        border: "4px solid #1976d2",
+        border: "4px solid #4CAF50",
         borderTop: "4px solid transparent",
         borderRadius: "50%",
         animation: "spin 1s linear infinite",
@@ -36,11 +35,11 @@ const Map = dynamic(() => import("@/components/FixedMap"), {
           "100%": { transform: "rotate(360deg)" }
         }
       }} />
-      <Typography variant="h6" color="primary">
-        🗺️ Ładowanie mapy Mapbox GL...
+      <Typography variant="h6" sx={{ color: "#4CAF50" }}>
+        🗺️ Ładowanie OpenStreetMap...
       </Typography>
       <Typography variant="body2" color="text.secondary">
-        Inicjalizacja warstw i komponentów mapowych
+        Inicjalizacja Leaflet i warstw mapowych
       </Typography>
     </Box>
   )
@@ -119,13 +118,13 @@ export default function MapApplication() {
   const router = useRouter()
   const [isLayerTreeVisible, setIsLayerTreeVisible] = useState(true)
   const [layersState, setLayersState] = useState(mapLayers)
-  const mapRef = useRef<mapboxgl.Map | null>(null)
+  const mapRef = useRef<any>(null)
   const [mapLoaded, setMapLoaded] = useState(false)
 
-  const handleMapLoad = (map: mapboxgl.Map) => {
+  const handleMapLoad = (map: any) => {
     mapRef.current = map
     setMapLoaded(true)
-    console.log("🗺️ Mapbox GL map loaded successfully!")
+    console.log("🗺️ Leaflet OpenStreetMap loaded successfully!")
   }
 
   const handleLayerVisibilityToggle = (node: LayerNode, visible: boolean) => {
@@ -214,19 +213,24 @@ export default function MapApplication() {
       </Paper>
 
       {/* Main Content */}
-      <Box sx={{ flex: 1, display: "flex", overflow: "hidden" }}>
-        {/* LayerTree Panel */}
+      <Box sx={{ flex: 1, position: "relative", overflow: "hidden" }}>
+        {/* ISOLATED LayerTree Sidebar */}
         {isLayerTreeVisible && (
           <Box
             sx={{
+              position: "fixed",
+              top: 80, // Header height
+              left: 0,
               width: 380,
+              height: "calc(100vh - 80px)",
+              bgcolor: "background.paper",
               borderRight: 1,
               borderColor: "divider",
-              bgcolor: "background.paper",
               overflow: "auto",
               display: "flex",
               flexDirection: "column",
-              boxShadow: "2px 0 4px rgba(0,0,0,0.1)"
+              boxShadow: "2px 0 8px rgba(0,0,0,0.15)",
+              zIndex: 1050 // Above map but below header
             }}
           >
             <LayerTree
@@ -238,8 +242,13 @@ export default function MapApplication() {
           </Box>
         )}
 
-        {/* Map Container */}
-        <Box sx={{ flex: 1, position: "relative" }}>
+        {/* Map Container with margin for LayerTree */}
+        <Box sx={{
+          height: "100%",
+          marginLeft: isLayerTreeVisible ? "380px" : 0,
+          transition: "margin-left 0.3s ease-in-out",
+          position: "relative"
+        }}>
           <Map
             onMapLoad={handleMapLoad}
             onLayerToggle={(layerId, visible) => {
@@ -258,7 +267,7 @@ export default function MapApplication() {
           >
             <Paper sx={{ p: 2, opacity: 0.95, bgcolor: "background.paper" }}>
               <Typography variant="caption" sx={{ display: "block", fontWeight: "bold" }}>
-                🌍 Mapbox GL JS
+                🌍 OpenStreetMap + Leaflet
               </Typography>
               <Typography variant="caption" sx={{ display: "block" }}>
                 📍 Centrum: Polska (52.0°N, 19.0°E)

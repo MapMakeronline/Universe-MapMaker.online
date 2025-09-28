@@ -1,83 +1,84 @@
 "use client"
 
-import { Box, Typography, Paper, IconButton } from "@mui/material"
-import ArrowBackIcon from "@mui/icons-material/ArrowBack"
-import { useRouter } from "next/navigation"
-import NoSSR from "@/components/NoSSR"
-import SimpleMap from "@/components/SimpleMap"
-
-// Force dynamic rendering
-export const dynamic = 'force-dynamic'
+import { useEffect, useRef } from "react"
+import { Box, Typography } from "@mui/material"
 
 export default function MapTestPage() {
-  const router = useRouter()
+  const mapContainer = useRef<HTMLDivElement>(null)
 
-  const handleMapLoad = (map: any) => {
-    console.log("✅ Map loaded in test page:", map)
-  }
+  useEffect(() => {
+    if (!mapContainer.current) return
+
+    const initializeMap = async () => {
+      try {
+        console.log("🗺️ Starting SIMPLE Leaflet test...")
+
+        // Import Leaflet
+        const L = await import("leaflet")
+        await import("leaflet/dist/leaflet.css")
+
+        console.log("✅ Leaflet imported, version:", L.default.version)
+
+        // Fix for default markers
+        delete (L.default.Icon.Default.prototype as any)._getIconUrl
+        L.default.Icon.Default.mergeOptions({
+          iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+          iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+          shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+        })
+
+        // Create simple Leaflet map
+        const map = L.default.map(mapContainer.current!, {
+          center: [52.0, 19.0], // Poland
+          zoom: 6,
+          zoomControl: true
+        })
+
+        // Add OpenStreetMap tiles
+        L.default.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '© OpenStreetMap contributors',
+          maxZoom: 19
+        }).addTo(map)
+
+        // Add a simple marker
+        L.default.marker([52.2297, 21.0122])
+          .addTo(map)
+          .bindPopup('🏆 Warszawa - Sukces! Mapa działa!')
+          .openPopup()
+
+        console.log("🎯 SIMPLE Leaflet map loaded successfully!")
+
+      } catch (err) {
+        console.error("💥 Failed to load simple map:", err)
+      }
+    }
+
+    initializeMap()
+  }, [])
 
   return (
-    <Box sx={{ height: "100vh", display: "flex", flexDirection: "column" }}>
-      {/* Header */}
-      <Paper sx={{ p: 2, borderRadius: 0, borderBottom: 1, borderColor: "divider" }}>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-          <IconButton
-            onClick={() => router.push("/")}
-            sx={{
-              background: "rgba(25, 118, 210, 0.1)",
-              "&:hover": { background: "rgba(25, 118, 210, 0.2)" }
-            }}
-          >
-            <ArrowBackIcon />
-          </IconButton>
-
-          <Box>
-            <Typography variant="h5" component="h1" fontWeight="bold">
-              🧪 Test mapy Mapbox
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Diagnoza i testowanie komponentu mapy
-            </Typography>
-          </Box>
-        </Box>
-      </Paper>
-
-      {/* Map Container */}
-      <Box sx={{ flex: 1, p: 2 }}>
-        <Paper sx={{ height: "100%", overflow: "hidden" }}>
-          <NoSSR
-            fallback={
-              <Box sx={{
-                height: "100%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                bgcolor: "#f5f5f5"
-              }}>
-                <Typography>🔄 Przygotowywanie mapy...</Typography>
-              </Box>
-            }
-          >
-            <SimpleMap onMapLoad={handleMapLoad} />
-          </NoSSR>
-        </Paper>
+    <Box sx={{ height: "100vh", width: "100vw", position: "relative" }}>
+      <Box sx={{
+        position: "absolute",
+        top: 10,
+        left: 10,
+        zIndex: 1000,
+        bgcolor: "white",
+        p: 1,
+        borderRadius: 1,
+        boxShadow: 1
+      }}>
+        <Typography variant="h6" sx={{ color: "#4CAF50", fontWeight: "bold" }}>
+          🗺️ Simple Leaflet Test
+        </Typography>
       </Box>
-
-      {/* Debug Info */}
-      <Paper sx={{ p: 2, bgcolor: "#f5f5f5" }}>
-        <Typography variant="subtitle2" sx={{ mb: 1 }}>
-          🔍 Debug Info:
-        </Typography>
-        <Typography variant="caption" sx={{ display: "block" }}>
-          • Token: {process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN ? "✅ Set" : "❌ Missing"}
-        </Typography>
-        <Typography variant="caption" sx={{ display: "block" }}>
-          • Environment: {process.env.NODE_ENV}
-        </Typography>
-        <Typography variant="caption" sx={{ display: "block" }}>
-          • Check browser console for detailed logs
-        </Typography>
-      </Paper>
+      <div
+        ref={mapContainer}
+        style={{
+          height: "100%",
+          width: "100%"
+        }}
+      />
     </Box>
   )
 }

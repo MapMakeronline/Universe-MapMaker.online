@@ -12,7 +12,9 @@
       "Bash(git checkout:*)",
       "Bash(git fetch:*)",
       "Bash(npm install)",
-      "Bash(docker build:*)"
+      "Bash(docker build:*)",
+      "Bash(npm cache clean:*)",
+      "Bash(npm uninstall:*)"
     ],
     "deny": [],
     "ask": []
