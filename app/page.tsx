@@ -72,52 +72,48 @@ export default function HomePage() {
             </Typography>
 
             <Typography variant="caption" sx={{ display: "block", mb: 3, color: "success.main", fontWeight: "bold" }}>
-              ✅ Rozwiązano problemy SSR • Pełna mapa Mapbox dostępna w production!
+              ✅ Mapbox GL JS + LayerTree • Hybrid fallback • Production Ready!
             </Typography>
 
-            <Box sx={{ display: "flex", gap: 2, justifyContent: "center", flexWrap: "wrap" }}>
+            <Box sx={{ display: "flex", gap: 3, justifyContent: "center", flexWrap: "wrap" }}>
               <Button
                 variant="contained"
                 size="large"
                 onClick={() => {
-                  setMessage("Przekierowuję do LayerTree Demo...")
-                  setTimeout(() => router.push("/layertree"), 500)
-                }}
-                sx={{
-                  px: 4,
-                  background: "linear-gradient(45deg, #667eea 30%, #764ba2 90%)",
-                  boxShadow: "0 3px 5px 2px rgba(102, 126, 234, .3)"
-                }}
-              >
-                🌳 Sprawdź LayerTree
-              </Button>
-
-              <Button
-                variant="contained"
-                size="large"
-                onClick={() => {
-                  setMessage("Uruchamiam pełną aplikację mapową...")
+                  setMessage("Uruchamiam aplikację mapową Mapbox GL JS...")
                   setTimeout(() => router.push("/map"), 500)
                 }}
                 sx={{
-                  px: 4,
-                  background: "linear-gradient(45deg, #4CAF50 30%, #45a049 90%)",
-                  boxShadow: "0 3px 5px 2px rgba(76, 175, 80, .3)"
+                  px: 5,
+                  py: 1.5,
+                  background: "linear-gradient(45deg, #1976d2 30%, #1565c0 90%)",
+                  boxShadow: "0 4px 8px 2px rgba(25, 118, 210, .3)",
+                  fontSize: "1.1rem",
+                  fontWeight: "bold"
                 }}
               >
-                🗺️ Otwórz Mapę
+                🗺️ Otwórz Universe MapMaker
               </Button>
 
               <Button
                 variant="outlined"
                 size="large"
                 onClick={() => {
-                  setMessage("Uruchamiam test mapy Mapbox...")
-                  setTimeout(() => router.push("/maptest"), 500)
+                  setMessage("Uruchamiam test Mapbox GL JS...")
+                  setTimeout(() => router.push("/mapboxtest"), 500)
                 }}
-                sx={{ px: 4, borderColor: "#ff9800", color: "#ff9800" }}
+                sx={{
+                  px: 4,
+                  py: 1.5,
+                  borderColor: "#4CAF50",
+                  color: "#4CAF50",
+                  fontSize: "1rem",
+                  "&:hover": {
+                    backgroundColor: "rgba(76, 175, 80, 0.1)"
+                  }
+                }}
               >
-                🧪 Test Mapy
+                🧪 Mapbox Test + LayerTree
               </Button>
             </Box>
 

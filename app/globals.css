@@ -1,3 +1,6 @@
+/* Import Mapbox GL CSS */
+@import 'mapbox-gl/dist/mapbox-gl.css';
+
 /* Basic global styles for Next.js app */
 
 * {

@@ -9,8 +9,8 @@ import dynamic from "next/dynamic"
 import LayerTree from "@/components/layer-tree/LayerTree"
 import type { LayerNode } from "@/types/layers"
 
-// Dynamic import with no SSR - using WORKING simple component
-const Map = dynamic(() => import("@/components/SimpleLeafletMap"), {
+// Dynamic import with no SSR - using HYBRID component (Mapbox → Leaflet fallback)
+const Map = dynamic(() => import("./MapboxMap"), {
   ssr: false,
   loading: () => (
     <Box sx={{
@@ -26,7 +26,7 @@ const Map = dynamic(() => import("@/components/SimpleLeafletMap"), {
       <Box sx={{
         width: 60,
         height: 60,
-        border: "4px solid #4CAF50",
+        border: "4px solid #1976d2",
         borderTop: "4px solid transparent",
         borderRadius: "50%",
         animation: "spin 1s linear infinite",
@@ -35,11 +35,11 @@ const Map = dynamic(() => import("@/components/SimpleLeafletMap"), {
           "100%": { transform: "rotate(360deg)" }
         }
       }} />
-      <Typography variant="h6" sx={{ color: "#4CAF50" }}>
-        🗺️ Ładowanie OpenStreetMap...
+      <Typography variant="h6" sx={{ color: "#1976d2" }}>
+        🗺️ Ładowanie Mapbox GL JS...
       </Typography>
       <Typography variant="body2" color="text.secondary">
-        Inicjalizacja Leaflet i warstw mapowych
+        Inicjalizacja mapy profesjonalnej
       </Typography>
     </Box>
   )
@@ -166,36 +166,82 @@ export default function MapApplication() {
   }
 
   return (
-    <Box sx={{ height: "100vh", display: "flex", flexDirection: "column" }}>
-      {/* Header */}
+    <Box sx={{ height: "100vh", position: "relative" }}>
+      {/* Map Container - BASE LAYER: Full screen, lowest z-index */}
+      <Box sx={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 1 // Base layer
+      }}>
+        <Map
+          onMapLoad={handleMapLoad}
+          onLayerToggle={(layerId, visible) => {
+            console.log(`🔄 Map layer ${layerId} toggled to ${visible}`)
+          }}
+        />
+      </Box>
+
+      {/* Header - OVERLAY: Above map */}
       <Paper
         elevation={3}
         sx={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
           p: 2,
           borderRadius: 0,
           borderBottom: 1,
           borderColor: "divider",
-          zIndex: 1100
+          zIndex: 1100, // Above map
+          bgcolor: "rgba(255, 255, 255, 0.95)", // Semi-transparent
+          backdropFilter: "blur(8px)" // Glass effect
         }}
       >
-        <Container maxWidth={false}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+        <Container maxWidth={false} sx={{ px: { xs: 1, sm: 3 } }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: { xs: 1, sm: 2 } }}>
             <IconButton
               onClick={() => router.push("/")}
               sx={{
                 background: "rgba(25, 118, 210, 0.1)",
-                "&:hover": { background: "rgba(25, 118, 210, 0.2)" }
+                "&:hover": { background: "rgba(25, 118, 210, 0.2)" },
+                // Responsive size via sx instead of size prop
+                width: { xs: 32, sm: 40 },
+                height: { xs: 32, sm: 40 }
               }}
             >
-              <ArrowBackIcon />
+              <ArrowBackIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />
             </IconButton>
 
-            <Box sx={{ flex: 1 }}>
-              <Typography variant="h5" component="h1" fontWeight="bold">
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Typography
+                variant="h5"
+                component="h1"
+                fontWeight="bold"
+                sx={{
+                  fontSize: { xs: "1.1rem", sm: "1.5rem" },
+                  lineHeight: 1.2,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap"
+                }}
+              >
                 🗺️ Universe MapMaker
               </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Profesjonalna aplikacja mapowa • {mapLoaded ? "✅ Mapa załadowana" : "🔄 Ładowanie..."}
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{
+                  fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap"
+                }}
+              >
+                {mapLoaded ? "✅ Mapbox GL JS" : "🔄 Ładowanie..."}
               </Typography>
             </Box>
 
@@ -203,108 +249,151 @@ export default function MapApplication() {
               onClick={() => setIsLayerTreeVisible(!isLayerTreeVisible)}
               sx={{
                 background: isLayerTreeVisible ? "rgba(25, 118, 210, 0.1)" : "rgba(0,0,0,0.05)",
-                "&:hover": { background: "rgba(25, 118, 210, 0.2)" }
+                "&:hover": { background: "rgba(25, 118, 210, 0.2)" },
+                // Responsive size via sx instead of size prop
+                width: { xs: 32, sm: 40 },
+                height: { xs: 32, sm: 40 }
               }}
             >
-              <LayersIcon />
+              <LayersIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />
             </IconButton>
           </Box>
         </Container>
       </Paper>
 
-      {/* Main Content */}
-      <Box sx={{ flex: 1, position: "relative", overflow: "hidden" }}>
-        {/* ISOLATED LayerTree Sidebar */}
-        {isLayerTreeVisible && (
-          <Box
-            sx={{
-              position: "fixed",
-              top: 80, // Header height
-              left: 0,
-              width: 380,
-              height: "calc(100vh - 80px)",
-              bgcolor: "background.paper",
-              borderRight: 1,
-              borderColor: "divider",
-              overflow: "auto",
-              display: "flex",
-              flexDirection: "column",
-              boxShadow: "2px 0 8px rgba(0,0,0,0.15)",
-              zIndex: 1050 // Above map but below header
-            }}
-          >
-            <LayerTree
-              data={layersState}
-              isVisible={isLayerTreeVisible}
-              onTogglePanel={() => setIsLayerTreeVisible(!isLayerTreeVisible)}
-              onToggleVisibility={handleLayerVisibilityToggle}
-            />
-          </Box>
-        )}
-
-        {/* Map Container with margin for LayerTree */}
-        <Box sx={{
-          height: "100%",
-          marginLeft: isLayerTreeVisible ? "380px" : 0,
-          transition: "margin-left 0.3s ease-in-out",
-          position: "relative"
-        }}>
-          <Map
-            onMapLoad={handleMapLoad}
-            onLayerToggle={(layerId, visible) => {
-              console.log(`🔄 Map layer ${layerId} toggled to ${visible}`)
-            }}
+      {/* LayerTree - OVERLAY: Above map and header */}
+      {isLayerTreeVisible && (
+        <Box
+          sx={{
+            position: "absolute",
+            top: { xs: 60, sm: 80 }, // Smaller header on mobile
+            left: 0,
+            width: { xs: "100vw", sm: 350, md: 300 }, // Full width on mobile
+            height: { xs: "calc(100vh - 60px)", sm: "calc(100vh - 80px)" },
+            bgcolor: "rgba(255, 255, 255, 0.95)",
+            backdropFilter: "blur(8px)",
+            borderRight: { xs: 0, sm: 1 },
+            borderColor: "divider",
+            overflow: "auto",
+            display: "flex",
+            flexDirection: "column",
+            boxShadow: {
+              xs: "0 2px 16px rgba(0,0,0,0.2)",
+              sm: "2px 0 8px rgba(0,0,0,0.15)"
+            },
+            zIndex: 1200,
+            // Mobile slide-in animation
+            transform: { xs: "translateX(0)", sm: "none" },
+            transition: "transform 0.3s ease-in-out"
+          }}
+        >
+          <LayerTree
+            data={layersState}
+            isVisible={isLayerTreeVisible}
+            onTogglePanel={() => setIsLayerTreeVisible(!isLayerTreeVisible)}
+            onToggleVisibility={handleLayerVisibilityToggle}
           />
+        </Box>
+      )}
 
-          {/* Map Controls Panel */}
-          <Box
+      {/* Map Controls Panel - OVERLAY: Above map */}
+      <Box
+        sx={{
+          position: "absolute",
+          bottom: { xs: 10, sm: 20 },
+          right: { xs: 10, sm: 20 },
+          zIndex: 1300,
+          display: { xs: mapLoaded ? "block" : "none", sm: "block" }, // Hide on mobile when loading
+        }}
+      >
+        <Paper sx={{
+          p: { xs: 1.5, sm: 2 },
+          opacity: 0.95,
+          bgcolor: "background.paper",
+          borderRadius: 2,
+          minWidth: { xs: 160, sm: 200 }
+        }}>
+          <Typography
+            variant="caption"
             sx={{
-              position: "absolute",
-              bottom: 20,
-              right: 20,
-              zIndex: 1000,
+              display: "block",
+              fontWeight: "bold",
+              fontSize: { xs: "0.65rem", sm: "0.75rem" }
             }}
           >
-            <Paper sx={{ p: 2, opacity: 0.95, bgcolor: "background.paper" }}>
-              <Typography variant="caption" sx={{ display: "block", fontWeight: "bold" }}>
-                🌍 OpenStreetMap + Leaflet
-              </Typography>
-              <Typography variant="caption" sx={{ display: "block" }}>
-                📍 Centrum: Polska (52.0°N, 19.0°E)
-              </Typography>
-              <Typography variant="caption" sx={{ display: "block" }}>
-                🎯 Status: {mapLoaded ? "Aktywna" : "Ładowanie..."}
-              </Typography>
-              <Typography variant="caption" sx={{ display: "block" }}>
-                📋 Warstwy: {layersState.reduce((count, group) => count + (group.children?.length || 0), 0)}
-              </Typography>
-            </Paper>
-          </Box>
-
-          {/* Layer Tree Toggle for Mobile */}
-          {!isLayerTreeVisible && (
-            <Box
-              sx={{
-                position: "absolute",
-                top: 20,
-                left: 20,
-                zIndex: 1000,
-              }}
-            >
-              <IconButton
-                onClick={() => setIsLayerTreeVisible(true)}
-                sx={{
-                  bgcolor: "background.paper",
-                  boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-                  "&:hover": { bgcolor: "background.paper" }
-                }}
-              >
-                <LayersIcon />
-              </IconButton>
-            </Box>
-          )}
-        </Box>
+            🌍 Mapbox GL JS
+          </Typography>
+          <Typography
+            variant="caption"
+            sx={{
+              display: { xs: "none", sm: "block" },
+              fontSize: "0.75rem"
+            }}
+          >
+            📍 Polska (52.0°N, 19.0°E)
+          </Typography>
+          <Typography
+            variant="caption"
+            sx={{
+              display: "block",
+              fontSize: { xs: "0.65rem", sm: "0.75rem" }
+            }}
+          >
+            🎯 {mapLoaded ? "✅ Aktywna" : "🔄 Ładowanie..."}
+          </Typography>
+          <Typography
+            variant="caption"
+            sx={{
+              display: "block",
+              fontSize: { xs: "0.65rem", sm: "0.75rem" }
+            }}
+          >
+            📋 {layersState.reduce((count, group) => count + (group.children?.length || 0), 0)} warstw
+          </Typography>
+        </Paper>
       </Box>
+
+      {/* Layer Tree Toggle for Mobile - OVERLAY: Above map */}
+      {!isLayerTreeVisible && (
+        <Box
+          sx={{
+            position: "absolute",
+            top: { xs: 70, sm: 100 }, // Adjusted for mobile header
+            left: { xs: 10, sm: 20 },
+            zIndex: 1300,
+          }}
+        >
+          <IconButton
+            onClick={() => setIsLayerTreeVisible(true)}
+            sx={{
+              bgcolor: "rgba(255, 255, 255, 0.9)",
+              boxShadow: "0 2px 12px rgba(0,0,0,0.2)",
+              "&:hover": {
+                bgcolor: "rgba(255, 255, 255, 1)",
+                transform: "scale(1.05)"
+              },
+              transition: "all 0.2s ease-in-out",
+              // Responsive size via sx
+              width: { xs: 32, sm: 40 },
+              height: { xs: 32, sm: 40 },
+              // Pulsing animation for mobile
+              animation: { xs: "pulse 2s infinite", sm: "none" },
+              "@keyframes pulse": {
+                "0%": { boxShadow: "0 2px 12px rgba(25, 118, 210, 0.3)" },
+                "50%": { boxShadow: "0 2px 20px rgba(25, 118, 210, 0.6)" },
+                "100%": { boxShadow: "0 2px 12px rgba(25, 118, 210, 0.3)" }
+              }
+            }}
+          >
+            <LayersIcon
+              sx={{
+                color: "#1976d2",
+                fontSize: { xs: 16, sm: 20 }
+              }}
+            />
+          </IconButton>
+        </Box>
+      )}
     </Box>
   )
 }

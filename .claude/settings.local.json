@@ -14,7 +14,9 @@
       "Bash(npm install)",
       "Bash(docker build:*)",
       "Bash(npm cache clean:*)",
-      "Bash(npm uninstall:*)"
+      "Bash(npm uninstall:*)",
+      "Bash(gcloud builds:*)",
+      "Bash(/bashes)"
     ],
     "deny": [],
     "ask": []
