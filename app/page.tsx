@@ -18,7 +18,7 @@ export default function MapPage() {
     const initializeMap = async () => {
       try {
         // Pobierz token z API
-        const response = await fetch('/api/mapbox/token');
+        const response = await fetch('/api/token');
         const data = await response.json();
 
         if (!response.ok || !data.token) {
