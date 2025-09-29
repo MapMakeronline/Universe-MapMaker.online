@@ -7,15 +7,15 @@ steps:
       'build',
       '--build-arg', 'NEXT_PUBLIC_MAPBOX_TOKEN=pk.eyJ1IjoibWFwbWFrZXItb25saW5lIiwiYSI6ImNtZzN3bm8wYTBwaXIybHM5dDlpc3YwOTQifQ.8Hrv97gishqnvI_h7PiqlQ',
       '--build-arg', 'NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN=pk.eyJ1IjoibWFwbWFrZXItb25saW5lIiwiYSI6ImNtZzN3bm8wYTBwaXIybHM5dDlpc3YwOTQifQ.8Hrv97gishqnvI_h7PiqlQ',
-      '-t', 'europe-central2-docker.pkg.dev/$PROJECT_ID/universe-mapmaker/app:$COMMIT_SHA',
-      '-t', 'europe-central2-docker.pkg.dev/$PROJECT_ID/universe-mapmaker/app:latest',
+      '-t', 'europe-central2-docker.pkg.dev/$PROJECT_ID/app-repo/app:$COMMIT_SHA',
+      '-t', 'europe-central2-docker.pkg.dev/$PROJECT_ID/app-repo/app:latest',
       '.'
     ]
 
   # Step 2: Push the Docker image to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
     id: 'push-image'
-    args: ['push', '--all-tags', 'europe-central2-docker.pkg.dev/$PROJECT_ID/universe-mapmaker/app']
+    args: ['push', '--all-tags', 'europe-central2-docker.pkg.dev/$PROJECT_ID/app-repo/app']
 
   # Step 3: Deploy to Cloud Run (FIXED - removed problematic secrets)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -23,7 +23,7 @@ steps:
     entrypoint: 'gcloud'
     args: [
       'run', 'deploy', 'universe-mapmaker',
-      '--image', 'europe-central2-docker.pkg.dev/$PROJECT_ID/universe-mapmaker/app:$COMMIT_SHA',
+      '--image', 'europe-central2-docker.pkg.dev/$PROJECT_ID/app-repo/app:$COMMIT_SHA',
       '--region', 'europe-central2',
       '--platform', 'managed',
       '--allow-unauthenticated',
@@ -40,8 +40,8 @@ steps:
 
 # Store images in Artifact Registry
 images:
-  - 'europe-central2-docker.pkg.dev/$PROJECT_ID/universe-mapmaker/app:$COMMIT_SHA'
-  - 'europe-central2-docker.pkg.dev/$PROJECT_ID/universe-mapmaker/app:latest'
+  - 'europe-central2-docker.pkg.dev/$PROJECT_ID/app-repo/app:$COMMIT_SHA'
+  - 'europe-central2-docker.pkg.dev/$PROJECT_ID/app-repo/app:latest'
 
 # Build options
 options:
