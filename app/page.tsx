@@ -10,35 +10,50 @@ export default function MapPage() {
   const [lng, setLng] = useState(19.9449799);
   const [lat, setLat] = useState(50.0646501);
   const [zoom, setZoom] = useState(12);
+  const [tokenStatus, setTokenStatus] = useState('loading');
 
   useEffect(() => {
     if (map.current) return; // Inicjalizuj tylko raz
 
-    // WALIDACJA: Sprawdź czy token jest dostępny
-    const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
-    if (!token) {
-      console.error('NEXT_PUBLIC_MAPBOX_TOKEN is not defined');
-      return;
-    }
+    const initializeMap = async () => {
+      try {
+        // Pobierz token z API
+        const response = await fetch('/api/mapbox/token');
+        const data = await response.json();
 
-    // WAŻNE: Token MUSI być ustawiony przed new Map()
-    mapboxgl.accessToken = token;
+        if (!response.ok || !data.token) {
+          console.error('Failed to get Mapbox token:', data.error);
+          setTokenStatus('error');
+          return;
+        }
 
-    map.current = new mapboxgl.Map({
-      container: mapContainer.current!,
-      style: 'mapbox://styles/mapbox/streets-v12', // Nowszy styl
-      center: [lng, lat],
-      zoom: zoom
-    });
+        // WAŻNE: Token MUSI być ustawiony przed new Map()
+        mapboxgl.accessToken = data.token;
+        setTokenStatus('success');
 
-    // Aktualizuj stan gdy mapa się porusza
-    map.current.on('move', () => {
-      if (map.current) {
-        setLng(parseFloat(map.current.getCenter().lng.toFixed(4)));
-        setLat(parseFloat(map.current.getCenter().lat.toFixed(4)));
-        setZoom(parseFloat(map.current.getZoom().toFixed(2)));
+        map.current = new mapboxgl.Map({
+          container: mapContainer.current!,
+          style: 'mapbox://styles/mapbox/streets-v12',
+          center: [lng, lat],
+          zoom: zoom
+        });
+
+        // Aktualizuj stan gdy mapa się porusza
+        map.current.on('move', () => {
+          if (map.current) {
+            setLng(parseFloat(map.current.getCenter().lng.toFixed(4)));
+            setLat(parseFloat(map.current.getCenter().lat.toFixed(4)));
+            setZoom(parseFloat(map.current.getZoom().toFixed(2)));
+          }
+        });
+
+      } catch (error) {
+        console.error('Error initializing map:', error);
+        setTokenStatus('error');
       }
-    });
+    };
+
+    initializeMap();
 
     // Cleanup
     return () => {
@@ -68,10 +83,10 @@ export default function MapPage() {
         <div>Latitude: {lat}</div>
         <div>Zoom: {zoom}</div>
         <div style={{ marginTop: '8px', fontSize: '12px' }}>
-          Token: {process.env.NEXT_PUBLIC_MAPBOX_TOKEN ? '✅' : '❌'}
+          Token: {tokenStatus === 'loading' ? '⏳' : tokenStatus === 'success' ? '✅' : '❌'}
         </div>
         <div style={{ fontSize: '10px', opacity: 0.7 }}>
-          Env: {typeof process !== 'undefined' && process.env.NODE_ENV}
+          Status: {tokenStatus}
         </div>
       </div>
 
