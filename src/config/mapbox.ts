@@ -4,6 +4,7 @@
  */
 
 import { MapStyle, MapConfig, Coordinates } from '../types/map.types'
+import { validateMapboxToken as enhancedValidate, getTokenDebugInfo, isCloudRunEnvironment } from '../utils/mapbox-token-validator'
 
 // Token z zmiennych środowiskowych
 export const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN
@@ -36,31 +37,31 @@ export const DEFAULT_MAP_CONFIG: MapConfig = {
   bearing: 0
 }
 
-// Walidacja tokenu Mapbox
+// Legacy validation for backward compatibility
 export const validateMapboxToken = (): { isValid: boolean; error?: string } => {
-  console.log('[MAP] Sprawdzanie tokenu Mapbox...')
+  const result = enhancedValidate(MAPBOX_TOKEN)
 
-  if (!MAPBOX_TOKEN) {
-    const error = 'Brak tokenu Mapbox. Dodaj NEXT_PUBLIC_MAPBOX_TOKEN do .env.local'
-    console.error('[MAP]', error)
-    return { isValid: false, error }
+  // Log enhanced debug info
+  if (typeof window !== 'undefined') {
+    console.log('[MAP] Token validation:', {
+      ...getTokenDebugInfo(),
+      environment: result.environment,
+      warnings: result.warnings
+    })
   }
 
-  if (!MAPBOX_TOKEN.startsWith('pk.')) {
-    const error = 'Nieprawidłowy format tokenu Mapbox. Token powinien zaczynać się od "pk."'
-    console.error('[MAP]', error)
-    return { isValid: false, error }
+  if (result.warnings && result.warnings.length > 0) {
+    result.warnings.forEach(warning => console.warn('[MAP Warning]', warning))
   }
 
-  if (MAPBOX_TOKEN.length < 50) {
-    const error = 'Token Mapbox jest za krótki. Sprawdź czy skopiowałeś pełny token'
-    console.error('[MAP]', error)
-    return { isValid: false, error }
+  return {
+    isValid: result.isValid,
+    error: result.error
   }
-
-  console.log('[MAP] Token Mapbox jest prawidłowy')
-  return { isValid: true }
 }
+
+// Export enhanced validator for direct use
+export { enhancedValidate, getTokenDebugInfo, isCloudRunEnvironment }
 
 // Ustawienia kontrolek mapy
 export const CONTROL_SETTINGS = {
