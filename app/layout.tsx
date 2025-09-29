@@ -1,6 +1,5 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { Providers } from "./providers"
 import "./globals.css"
 
 export const metadata: Metadata = {
@@ -15,9 +14,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pl">
-      <body>
-        <Providers>{children}</Providers>
-      </body>
+      <body>{children}</body>
     </html>
   )
 }
