@@ -14,8 +14,15 @@ export default function MapPage() {
   useEffect(() => {
     if (map.current) return; // Inicjalizuj tylko raz
 
+    // WALIDACJA: Sprawdź czy token jest dostępny
+    const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+    if (!token) {
+      console.error('NEXT_PUBLIC_MAPBOX_TOKEN is not defined');
+      return;
+    }
+
     // WAŻNE: Token MUSI być ustawiony przed new Map()
-    mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN!;
+    mapboxgl.accessToken = token;
 
     map.current = new mapboxgl.Map({
       container: mapContainer.current!,
@@ -62,6 +69,9 @@ export default function MapPage() {
         <div>Zoom: {zoom}</div>
         <div style={{ marginTop: '8px', fontSize: '12px' }}>
           Token: {process.env.NEXT_PUBLIC_MAPBOX_TOKEN ? '✅' : '❌'}
+        </div>
+        <div style={{ fontSize: '10px', opacity: 0.7 }}>
+          Env: {typeof process !== 'undefined' && process.env.NODE_ENV}
         </div>
       </div>
 
