@@ -1,0 +1,408 @@
+/* Mapbox Map Styles */
+
+/* Główny kontener mapy */
+.map-container {
+  position: relative;
+  width: 100%;
+  height: 600px;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Kontener Mapbox */
+.mapbox-container {
+  width: 100%;
+  height: 100%;
+}
+
+/* Panel ze współrzędnymi */
+.coordinates-panel {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  padding: 12px 16px;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+  z-index: 1;
+  min-width: 180px;
+}
+
+.coordinates-header {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.coordinates-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 6px 0;
+  font-size: 13px;
+}
+
+.coordinates-label {
+  color: #666;
+  font-weight: 500;
+}
+
+.coordinates-value {
+  color: #1976d2;
+  font-weight: 600;
+  font-family: 'Courier New', monospace;
+}
+
+/* Loading state */
+.map-loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  z-index: 10;
+}
+
+.map-loading-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 600px;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+}
+
+.map-loading-content {
+  text-align: center;
+  padding: 2rem;
+}
+
+.map-loading-spinner {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 1.5rem;
+}
+
+.spinner-ring {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border: 3px solid transparent;
+  border-top-color: #1976d2;
+  border-radius: 50%;
+  animation: spin 1.5s linear infinite;
+}
+
+.spinner-ring:nth-child(2) {
+  animation-delay: 0.2s;
+  width: 60px;
+  height: 60px;
+  top: 10px;
+  left: 10px;
+  border-top-color: #42a5f5;
+}
+
+.spinner-ring:nth-child(3) {
+  animation-delay: 0.4s;
+  width: 40px;
+  height: 40px;
+  top: 20px;
+  left: 20px;
+  border-top-color: #64b5f6;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #1976d2;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 10px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Error state */
+.map-error {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: white;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  max-width: 400px;
+  z-index: 10;
+}
+
+.error-title {
+  color: #d32f2f;
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.error-message {
+  color: #666;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+.error-help {
+  background: #f5f5f5;
+  padding: 12px;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.error-help p {
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.error-help ol {
+  margin-left: 20px;
+  color: #555;
+}
+
+.error-help li {
+  margin: 4px 0;
+}
+
+.error-help a {
+  color: #1976d2;
+  text-decoration: none;
+}
+
+.error-help a:hover {
+  text-decoration: underline;
+}
+
+/* Demo page styles */
+.map-demo-page {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.map-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.map-header h1 {
+  font-size: 2.5rem;
+  color: #333;
+  margin-bottom: 0.5rem;
+}
+
+.map-subtitle {
+  color: #666;
+  font-size: 1.1rem;
+}
+
+.map-instructions {
+  margin-bottom: 2rem;
+}
+
+.instruction-card {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+}
+
+.instruction-card h2 {
+  color: #333;
+  margin-bottom: 1rem;
+  font-size: 1.5rem;
+}
+
+.instruction-card ol {
+  margin: 1rem 0 1rem 1.5rem;
+}
+
+.instruction-card li {
+  margin: 0.75rem 0;
+  line-height: 1.6;
+}
+
+.instruction-card strong {
+  color: #1976d2;
+}
+
+.code-block {
+  background: #f5f5f5;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 0.75rem 1rem;
+  margin: 0.5rem 0;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9rem;
+  color: #d63384;
+}
+
+.link {
+  color: #1976d2;
+  text-decoration: none;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+.info-note {
+  background: #e3f2fd;
+  border-left: 4px solid #1976d2;
+  padding: 1rem;
+  margin-top: 1rem;
+  border-radius: 4px;
+  font-size: 0.95rem;
+}
+
+.map-section {
+  margin: 2rem 0;
+}
+
+.map-wrapper {
+  width: 100%;
+  position: relative;
+}
+
+.map-features {
+  margin-top: 2rem;
+}
+
+.map-features h2 {
+  text-align: center;
+  color: #333;
+  margin-bottom: 1.5rem;
+}
+
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.feature-card {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  text-align: center;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.feature-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.feature-card h3 {
+  color: #333;
+  margin-bottom: 0.5rem;
+  font-size: 1.2rem;
+}
+
+.feature-card p {
+  color: #666;
+  font-size: 0.95rem;
+}
+
+/* Responsywność */
+@media (max-width: 768px) {
+  .map-container {
+    height: 400px;
+  }
+
+  .map-loading-container {
+    height: 400px;
+  }
+
+  .coordinates-panel {
+    top: 10px;
+    left: 10px;
+    min-width: 150px;
+    padding: 8px 12px;
+  }
+
+  .coordinates-header {
+    font-size: 12px;
+    margin-bottom: 6px;
+  }
+
+  .coordinates-item {
+    font-size: 11px;
+    margin: 4px 0;
+  }
+
+  .map-demo-page {
+    padding: 1rem;
+  }
+
+  .map-header h1 {
+    font-size: 1.8rem;
+  }
+
+  .instruction-card {
+    padding: 1.5rem;
+  }
+
+  .features-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .coordinates-panel {
+    font-size: 11px;
+    min-width: 140px;
+  }
+
+  .error-help {
+    font-size: 12px;
+  }
+
+  .map-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .map-subtitle {
+    font-size: 1rem;
+  }
+}
+
+/* Mapbox GL overrides */
+.mapboxgl-ctrl-group {
+  background: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(10px);
+}
+
+.mapboxgl-ctrl button {
+  transition: background-color 0.2s;
+}
+
+.mapboxgl-ctrl button:hover {
+  background-color: #f0f0f0;
+}
+
+.mapboxgl-ctrl-scale {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+  border: 1px solid #ccc !important;
+  border-radius: 4px !important;
+  padding: 2px 5px !important;
+}

@@ -1,136 +1,125 @@
-"use client"
+'use client'
 
-import { useState } from "react"
-import { Box, Container, Typography, Paper, Button } from "@mui/material"
-import { useRouter } from "next/navigation"
+/**
+ * Strona główna - Universe MapMaker z zaawansowanym Layer Panel
+ */
 
-export default function HomePage() {
-  const router = useRouter()
-  const [message, setMessage] = useState("Universe MapMaker is ready for deployment!")
+import { useState } from 'react'
+import { Provider } from 'react-redux'
+import { ThemeProvider } from '@mui/material/styles'
+import CssBaseline from '@mui/material/CssBaseline'
+import Box from '@mui/material/Box'
+
+import { store } from '../src/state/store'
+import { darkTheme } from '../src/lib/theme'
+import { LayerManagerCore } from '../src/modules/layers'
+import MapLoader from '../src/components/map/MapLoader'
+import { ViewState } from '../src/types/map.types'
+
+export default function UniverseMapMaker() {
+  // Stan mapy
+  const [currentView, setCurrentView] = useState<ViewState | null>(null)
+  const [isMapLoaded, setIsMapLoaded] = useState(false)
+
+  // Handlers mapy
+  const handleMapMove = (viewState: ViewState) => {
+    setCurrentView(viewState)
+    console.log('[APP] Mapa przesunięta:', viewState)
+  }
+
+  const handleMapLoad = () => {
+    setIsMapLoaded(true)
+    console.log('[APP] Mapa załadowana')
+  }
+
+  const handleMapError = (error: Error) => {
+    console.error('[APP] Błąd mapy:', error)
+  }
 
   return (
-    <Box sx={{
-      minHeight: "100vh",
-      background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-      display: "flex",
-      flexDirection: "column"
-    }}>
-      {/* Header */}
-      <Paper
-        elevation={2}
-        sx={{
-          p: 3,
-          borderRadius: 0,
-          background: "rgba(255, 255, 255, 0.95)",
-          backdropFilter: "blur(10px)"
-        }}
-      >
-        <Container maxWidth="lg">
-          <Typography
-            variant="h3"
-            component="h1"
-            fontWeight="bold"
-            sx={{ color: "#2c3e50", mb: 1 }}
-          >
-            🗺️ Universe MapMaker
-          </Typography>
-          <Typography
-            variant="h6"
-            color="text.secondary"
-            sx={{ fontWeight: 300 }}
-          >
-            Profesjonalne narzędzie do tworzenia i analizy map
-          </Typography>
-        </Container>
-      </Paper>
+    <Provider store={store}>
+      <ThemeProvider theme={darkTheme}>
+        <CssBaseline />
 
-      {/* Main Content */}
-      <Box sx={{
-        flex: 1,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        p: 4
-      }}>
-        <Container maxWidth="md">
-          <Paper
-            elevation={6}
-            sx={{
-              p: 6,
-              borderRadius: 4,
-              background: "rgba(255, 255, 255, 0.9)",
-              backdropFilter: "blur(20px)",
-              textAlign: "center"
+        {/* Full screen layout without flex conflicts */}
+        <Box sx={{ position: 'relative', height: '100vh', width: '100vw', overflow: 'hidden' }}>
+
+          {/* Full screen map */}
+          <MapLoader
+            width="100%"
+            height="100vh"
+            showControls={true}
+            showCoordinates={true}
+            onMove={handleMapMove}
+            onLoad={handleMapLoad}
+            onError={handleMapError}
+            initialConfig={{
+              center: { lat: 52.2297, lng: 21.0122 }, // Warszawa
+              zoom: 11,
+              pitch: 0,
+              bearing: 0
             }}
-          >
-            <Typography variant="h4" sx={{ mb: 3, color: "#2c3e50" }}>
-              🚀 Aplikacja została pomyślnie wdrożona!
-            </Typography>
+          />
 
-            <Typography variant="body1" sx={{ mb: 4, fontSize: "1.1rem", lineHeight: 1.6 }}>
-              {message}
-            </Typography>
+          {/* Layer Panel overlay */}
+          <LayerManagerCore
+            sidebarVariant="permanent"
+            sidebarWidth={320}
+            sidebarMiniWidth={72}
+          />
 
-            <Typography variant="caption" sx={{ display: "block", mb: 3, color: "success.main", fontWeight: "bold" }}>
-              ✅ Mapbox GL JS + LayerTree • Hybrid fallback • Production Ready!
-            </Typography>
-
-            <Box sx={{ display: "flex", gap: 3, justifyContent: "center", flexWrap: "wrap" }}>
-              <Button
-                variant="contained"
-                size="large"
-                onClick={() => {
-                  setMessage("Uruchamiam aplikację mapową Mapbox GL JS...")
-                  setTimeout(() => router.push("/map"), 500)
-                }}
-                sx={{
-                  px: 5,
-                  py: 1.5,
-                  background: "linear-gradient(45deg, #1976d2 30%, #1565c0 90%)",
-                  boxShadow: "0 4px 8px 2px rgba(25, 118, 210, .3)",
-                  fontSize: "1.1rem",
-                  fontWeight: "bold"
-                }}
-              >
-                🗺️ Otwórz Universe MapMaker
-              </Button>
-
-              <Button
-                variant="outlined"
-                size="large"
-                onClick={() => {
-                  setMessage("Uruchamiam test Mapbox GL JS...")
-                  setTimeout(() => router.push("/mapboxtest"), 500)
-                }}
-                sx={{
-                  px: 4,
-                  py: 1.5,
-                  borderColor: "#4CAF50",
-                  color: "#4CAF50",
-                  fontSize: "1rem",
-                  "&:hover": {
-                    backgroundColor: "rgba(76, 175, 80, 0.1)"
-                  }
-                }}
-              >
-                🧪 Mapbox Test + LayerTree
-              </Button>
-            </Box>
-
-            <Typography
-              variant="caption"
+          {/* Debug panel */}
+          {isMapLoaded && currentView && (
+            <Box
               sx={{
-                display: "block",
-                mt: 4,
-                color: "text.secondary",
-                fontSize: "0.9rem"
+                position: 'fixed',
+                bottom: 20,
+                right: 20,
+                bgcolor: 'rgba(0, 0, 0, 0.8)',
+                color: 'white',
+                p: 1.5,
+                borderRadius: 1,
+                fontSize: '12px',
+                fontFamily: 'monospace',
+                zIndex: 1000,
+                minWidth: 200
               }}
             >
-              Build: {new Date().toLocaleString()} | Status: Production Ready ✅
-            </Typography>
-          </Paper>
-        </Container>
-      </Box>
-    </Box>
+              <div>🗺️ Universe MapMaker v2.0</div>
+              <div>Lat: {currentView.center.lat.toFixed(4)}</div>
+              <div>Lng: {currentView.center.lng.toFixed(4)}</div>
+              <div>Zoom: {currentView.zoom.toFixed(1)}</div>
+              <div style={{ marginTop: 8, fontSize: '10px', opacity: 0.8 }}>
+                Zaawansowany system zarządzania warstwami
+              </div>
+            </Box>
+          )}
+        </Box>
+      </ThemeProvider>
+    </Provider>
   )
 }
+
+/*
+ * INSTRUKCJE DLA DEVELOPERA:
+ *
+ * 1. QUICK START:
+ *    - Skopiuj .env.local.example do .env.local
+ *    - Dodaj swój token Mapbox
+ *    - npm run dev
+ *
+ * 2. DOSTOSOWANIE:
+ *    - Zmień initialConfig aby ustawić inne centrum
+ *    - Ustaw showControls={false} aby ukryć kontrolki
+ *    - Dodaj onMove handler aby reagować na ruch mapy
+ *
+ * 3. BŁĘDY:
+ *    - Brak tokenu? Sprawdź .env.local
+ *    - Mapa nie ładuje? Sprawdź console
+ *    - Błąd "pk."? Token musi zaczynać się od "pk."
+ *
+ * 4. PRODUCTION:
+ *    - Usuń debug panel
+ *    - Sprawdź czy token jest w zmiennych środowiskowych
+ *    - Zoptymalizuj rozmiar mapy dla mobile
+ */

@@ -19,7 +19,10 @@
       "Bash(/bashes)",
       "Bash(gcloud run services describe:*)",
       "Bash(gcloud run services:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(npx msw init:*)",
+      "WebSearch",
+      "WebFetch(domain:mui.com)"
     ],
     "deny": [],
     "ask": []

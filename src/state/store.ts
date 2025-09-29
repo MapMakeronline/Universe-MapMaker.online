@@ -2,8 +2,9 @@ import { configureStore, combineReducers } from "@reduxjs/toolkit"
 import { persistStore, persistReducer } from "redux-persist"
 import storage from "redux-persist/lib/storage"
 import { api } from "./services/api"
+import { layersApi } from "./layers/layersApi"
+import layersReducer from "./layers/layersSlice"
 import { uiSlice } from "./slices/uiSlice"
-import { layersSlice } from "./slices/layersSlice"
 import { parcelsSlice } from "./slices/parcelsSlice"
 import { measurementSlice } from "./slices/measurementSlice"
 
@@ -17,10 +18,11 @@ const persistConfig = {
 
 const rootReducer = combineReducers({
   ui: uiSlice.reducer,
-  layers: layersSlice.reducer,
+  layers: layersReducer,
   parcels: parcelsSlice.reducer,
   measurement: measurementSlice.reducer,
   [api.reducerPath]: api.reducer,
+  [layersApi.reducerPath]: layersApi.reducer,
 })
 
 const persistedReducer = persistReducer(persistConfig, rootReducer)
@@ -42,7 +44,7 @@ export const store = configureStore({
         ignoredActionsPaths: ["meta.arg", "payload.timestamp"],
         ignoredPaths: ["_persist"],
       },
-    }).concat(api.middleware),
+    }).concat(api.middleware, layersApi.middleware),
   devTools: process.env.NODE_ENV !== "production",
 })
 
