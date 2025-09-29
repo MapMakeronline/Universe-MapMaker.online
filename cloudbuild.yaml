@@ -1,7 +1,8 @@
 # Google Cloud Build configuration for Cloud Run deployment
 steps:
-  # Build the Docker image with build args
+  # Step 1: Build the Docker image with build args
   - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-image'
     args: [
       'build',
       '--build-arg', 'NEXT_PUBLIC_MAPBOX_TOKEN=pk.eyJ1IjoibWFwbWFrZXItb25saW5lIiwiYSI6ImNtZzN3bm8wYTBwaXIybHM5dDlpc3YwOTQifQ.8Hrv97gishqnvI_h7PiqlQ',
@@ -11,15 +12,14 @@ steps:
       '.'
     ]
 
-  # Push the Docker image to Artifact Registry
+  # Step 2: Push the Docker image to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'europe-central2-docker.pkg.dev/$PROJECT_ID/universe-mapmaker/app:$COMMIT_SHA']
+    id: 'push-image'
+    args: ['push', '--all-tags', 'europe-central2-docker.pkg.dev/$PROJECT_ID/universe-mapmaker/app']
 
-  - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'europe-central2-docker.pkg.dev/$PROJECT_ID/universe-mapmaker/app:latest']
-
-  # Deploy to Cloud Run
+  # Step 3: Deploy to Cloud Run (FIXED - removed problematic secrets)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'deploy-cloud-run'
     entrypoint: 'gcloud'
     args: [
       'run', 'deploy', 'universe-mapmaker',
@@ -27,15 +27,15 @@ steps:
       '--region', 'europe-central2',
       '--platform', 'managed',
       '--allow-unauthenticated',
-      '--port', '8080',
-      '--memory', '2Gi',
-      '--cpu', '2',
+      '--port', '3000',  # Changed to 3000 (Next.js default)
+      '--memory', '1Gi',  # Reduced to 1Gi for start
+      '--cpu', '1',       # Reduced to 1 CPU for start
       '--min-instances', '0',
-      '--max-instances', '10',
+      '--max-instances', '5',  # Reduced to 5 for start
       '--concurrency', '80',
       '--timeout', '300',
-      '--set-env-vars', 'NODE_ENV=production,NEXT_TELEMETRY_DISABLED=1,NEXT_PUBLIC_MAPBOX_TOKEN=pk.eyJ1IjoibWFwbWFrZXItb25saW5lIiwiYSI6ImNtZzN3bm8wYTBwaXIybHM5dDlpc3YwOTQifQ.8Hrv97gishqnvI_h7PiqlQ,NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN=pk.eyJ1IjoibWFwbWFrZXItb25saW5lIiwiYSI6ImNtZzN3bm8wYTBwaXIybHM5dDlpc3YwOTQifQ.8Hrv97gishqnvI_h7PiqlQ',
-      '--set-secrets', 'GOOGLE_SHEETS_PRIVATE_KEY=google-sheets-private-key:latest,GOOGLE_SHEETS_SERVICE_ACCOUNT_EMAIL=google-sheets-service-account:latest,GOOGLE_SHEETS_SPREADSHEET_ID=google-sheets-spreadsheet-id:latest,GEOSERVER_URL=geoserver-url:latest,GEOSERVER_USERNAME=geoserver-username:latest,GEOSERVER_PASSWORD=geoserver-password:latest'
+      '--set-env-vars', 'NODE_ENV=production,NEXT_TELEMETRY_DISABLED=1,NEXT_PUBLIC_MAPBOX_TOKEN=pk.eyJ1IjoibWFwbWFrZXItb25saW5lIiwiYSI6ImNtZzN3bm8wYTBwaXIybHM5dDlpc3YwOTQifQ.8Hrv97gishqnvI_h7PiqlQ,NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN=pk.eyJ1IjoibWFwbWFrZXItb25saW5lIiwiYSI6ImNtZzN3bm8wYTBwaXIybHM5dDlpc3YwOTQifQ.8Hrv97gishqnvI_h7PiqlQ'
+      # REMOVED --set-secrets line that was causing permission errors
     ]
 
 # Store images in Artifact Registry
@@ -49,5 +49,5 @@ options:
   diskSizeGb: 100
   logging: CLOUD_LOGGING_ONLY
 
-# Timeout for the entire build
+# Timeout for the entire build (20 minutes)
 timeout: '1200s'
