@@ -6,10 +6,10 @@
 set -e
 
 # Configuration
-PROJECT_ID="dzialkizamniej"
+PROJECT_ID="dzialkizamniej"  # Google Cloud project ID
 REGION="europe-central2"
-SERVICE_NAME="universe-mapmaker"
-REPO_NAME="universe-mapmaker"
+SERVICE_NAME="universe-mapmaker"  # Cloud Run service name
+REPO_NAME="universe-mapmaker"      # Artifact Registry repository name
 
 echo "================================================"
 echo "🚀 Universe MapMaker - Google Cloud Setup"
