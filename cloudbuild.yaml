@@ -1,9 +1,11 @@
 # Google Cloud Build configuration for Cloud Run deployment
 steps:
-  # Build the Docker image
+  # Build the Docker image with build args
   - name: 'gcr.io/cloud-builders/docker'
     args: [
       'build',
+      '--build-arg', 'NEXT_PUBLIC_MAPBOX_TOKEN=pk.eyJ1IjoibWFwbWFrZXItb25saW5lIiwiYToi6ImNtZzN3bm8wYTBwaXIybHM5dDlpc3YwOTQifQ.8Hrv97gishqnvI_h7PiqlQ',
+      '--build-arg', 'NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN=pk.eyJ1IjoibWFwbWFrZXItb25saW5lIiwiYToi6ImNtZzN3bm8wYTBwaXIybHM5dDlpc3YwOTQifQ.8Hrv97gishqnvI_h7PiqlQ',
       '-t', 'europe-central2-docker.pkg.dev/$PROJECT_ID/universe-mapmaker/app:$COMMIT_SHA',
       '-t', 'europe-central2-docker.pkg.dev/$PROJECT_ID/universe-mapmaker/app:latest',
       '.'
