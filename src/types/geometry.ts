@@ -47,12 +47,12 @@ export const DrawTools: DrawToolConfig[] = [
     mode: 'draw_polygon',
     icon: 'Pentagon',
     label: 'Polygon',
-    tooltip: 'Narysuj polygon'
+    tooltip: 'Narysuj wielokąt'
   },
   {
     mode: 'draw_rectangle',
     icon: 'CropDin',
     label: 'Prostokąt',
-    tooltip: 'Narysuj prostokąt'
+    tooltip: 'Narysuj prostokąt (używa trybu polygon)'
   },
 ];

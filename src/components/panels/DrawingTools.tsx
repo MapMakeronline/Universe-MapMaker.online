@@ -26,7 +26,16 @@ const DrawingTools: React.FC = () => {
   const { draw } = useAppSelector((state) => state.draw);
 
   const handleToolSelect = (mode: string) => {
+    console.log('🖱️ MUI DrawingTools: Selected tool mode:', mode);
+    console.log('🖱️ MUI DrawingTools: Current Redux state before dispatch:', draw);
+    console.log('🖱️ MUI DrawingTools: Dispatching setDrawMode...');
     dispatch(setDrawMode(mode as any));
+    console.log('🖱️ MUI DrawingTools: setDrawMode dispatched');
+
+    // Test if dispatch worked
+    setTimeout(() => {
+      console.log('🖱️ MUI DrawingTools: Redux state after dispatch (100ms later):', draw);
+    }, 100);
   };
 
   const handleClear = () => {
@@ -97,30 +106,34 @@ const DrawingTools: React.FC = () => {
         {/* Actions */}
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
           <Tooltip title="Wyczyść wszystkie obiekty" placement="right">
-            <Button
-              variant="outlined"
-              startIcon={<Clear />}
-              onClick={handleClear}
-              size="small"
-              color="error"
-              disabled={draw.features.length === 0}
-              sx={{ justifyContent: 'flex-start' }}
-            >
-              Wyczyść
-            </Button>
+            <span>
+              <Button
+                variant="outlined"
+                startIcon={<Clear />}
+                onClick={handleClear}
+                size="small"
+                color="error"
+                disabled={draw.features.length === 0}
+                sx={{ justifyContent: 'flex-start' }}
+              >
+                Wyczyść
+              </Button>
+            </span>
           </Tooltip>
 
           <Tooltip title="Eksportuj jako GeoJSON" placement="right">
-            <Button
-              variant="outlined"
-              startIcon={<GetApp />}
-              onClick={handleExport}
-              size="small"
-              disabled={draw.features.length === 0}
-              sx={{ justifyContent: 'flex-start' }}
-            >
-              Eksportuj
-            </Button>
+            <span>
+              <Button
+                variant="outlined"
+                startIcon={<GetApp />}
+                onClick={handleExport}
+                size="small"
+                disabled={draw.features.length === 0}
+                sx={{ justifyContent: 'flex-start' }}
+              >
+                Eksportuj
+              </Button>
+            </span>
           </Tooltip>
         </Box>
 

@@ -5,7 +5,7 @@ import { useMap } from 'react-map-gl';
 import MapboxGeocoder from '@mapbox/mapbox-gl-geocoder';
 import { useAppDispatch } from '@/store/hooks';
 import { flyToLocation } from '@/store/slices/mapSlice';
-import { fetchMapboxToken } from '@/lib/mapbox/config';
+import { MAPBOX_TOKEN } from '@/lib/mapbox/config';
 
 // Import CSS for Geocoder
 import '@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css';
@@ -44,13 +44,14 @@ const Geocoder: React.FC = () => {
 
     const initializeGeocoder = async () => {
       try {
-        // Get the token
-        const token = await fetchMapboxToken();
+        if (!MAPBOX_TOKEN) {
+          throw new Error('Mapbox token not configured');
+        }
 
         // Create geocoder instance
         const mapboxgl = (await import('mapbox-gl')).default;
         const geocoder = new MapboxGeocoder({
-          accessToken: token,
+          accessToken: MAPBOX_TOKEN,
           mapboxgl: mapboxgl as any,
           marker: true,
           placeholder: 'Szukaj miejsca...',

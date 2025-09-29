@@ -17,11 +17,13 @@ import {
   Draw,
   Palette,
   FilterList,
+  Straighten,
   ChevronLeft,
   Menu,
 } from '@mui/icons-material';
 import LayerTree from './LayerTree';
 import DrawingTools from './DrawingTools';
+import MeasurementTools from './MeasurementTools';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -100,6 +102,12 @@ const LeftPanel: React.FC = () => {
             id="left-panel-tab-3"
             aria-controls="left-panel-tabpanel-3"
           />
+          <Tab
+            icon={<Straighten />}
+            label="Pomiary"
+            id="left-panel-tab-4"
+            aria-controls="left-panel-tabpanel-4"
+          />
         </Tabs>
       </Box>
 
@@ -155,6 +163,10 @@ const LeftPanel: React.FC = () => {
               </Box>
             </Box>
           </Box>
+        </TabPanel>
+
+        <TabPanel value={activeTab} index={4}>
+          <MeasurementTools />
         </TabPanel>
       </Box>
     </Box>

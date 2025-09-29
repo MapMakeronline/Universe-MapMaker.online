@@ -1,24 +1,14 @@
 import { MapStyles } from '@/types/map';
 
-// Token will be fetched from API at runtime
-export let MAPBOX_TOKEN = '';
+// Get token directly from environment variable
+export const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
 
-// Function to fetch token from API
+// Simple function to get token (for compatibility)
 export const fetchMapboxToken = async (): Promise<string> => {
-  try {
-    const response = await fetch('/api/token');
-    const data = await response.json();
-
-    if (!response.ok || !data.token) {
-      throw new Error('Failed to get Mapbox token');
-    }
-
-    MAPBOX_TOKEN = data.token;
-    return data.token;
-  } catch (error) {
-    console.error('Error fetching Mapbox token:', error);
-    throw error;
+  if (!MAPBOX_TOKEN) {
+    throw new Error('Mapbox token not configured in environment variables');
   }
+  return MAPBOX_TOKEN;
 };
 
 export const DEFAULT_VIEW_STATE = {
