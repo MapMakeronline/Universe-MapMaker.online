@@ -24,10 +24,34 @@ interface MapLoadStatus {
   details?: any
 }
 
+interface ServerStatus {
+  hasToken: boolean
+  tokenValid: boolean
+  tokenInfo?: {
+    prefix: string
+    length: number
+  }
+  environment: {
+    nodeEnv: string
+    isProduction: boolean
+    isCloudRun: boolean
+    region?: string
+    service?: string
+  }
+  apiTest?: {
+    success: boolean
+    status?: number
+    error?: string
+    styleName?: string
+  }
+  availableEnvVars: string[]
+}
+
 export default function MapboxTestPage() {
   const mapContainer = useRef<HTMLDivElement>(null)
   const map = useRef<mapboxgl.Map | null>(null)
   const [tokenInfo, setTokenInfo] = useState<TokenInfo | null>(null)
+  const [serverStatus, setServerStatus] = useState<ServerStatus | null>(null)
   const [mapStatus, setMapStatus] = useState<MapLoadStatus>({
     status: 'loading',
     message: 'Initializing...'
@@ -47,6 +71,20 @@ export default function MapboxTestPage() {
     const altToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN
     const actualToken = token || altToken
 
+    // Debug: Log all NEXT_PUBLIC environment variables
+    const nextPublicEnvs = Object.keys(process.env)
+      .filter(key => key.startsWith('NEXT_PUBLIC_'))
+      .reduce((acc, key) => {
+        acc[key] = process.env[key]?.substring(0, 10) + '...'  // Show only first 10 chars for security
+        return acc
+      }, {} as Record<string, string>)
+
+    addLog('Available NEXT_PUBLIC environment variables', nextPublicEnvs)
+
+    // Detect Cloud Run based on hostname pattern
+    const isCloudRunByHostname = typeof window !== 'undefined' &&
+      window.location.hostname.includes('.run.app')
+
     const info: TokenInfo = {
       hasToken: !!actualToken,
       tokenPrefix: actualToken?.substring(0, 7),
@@ -54,7 +92,7 @@ export default function MapboxTestPage() {
       environment: {
         nodeEnv: process.env.NODE_ENV || 'development',
         isProduction: process.env.NODE_ENV === 'production',
-        isCloudRun: typeof process !== 'undefined' && !!process.env.K_SERVICE,
+        isCloudRun: isCloudRunByHostname,
         hostname: typeof window !== 'undefined' ? window.location.hostname : 'unknown',
         url: typeof window !== 'undefined' ? window.location.href : 'unknown'
       }
@@ -62,6 +100,40 @@ export default function MapboxTestPage() {
 
     setTokenInfo(info)
     addLog('Environment info gathered', info)
+
+    // Call server-side API for more accurate information
+    addLog('Fetching server-side token status...')
+    fetch('/api/mapbox/status')
+      .then(response => response.json())
+      .then((serverData: ServerStatus) => {
+        setServerStatus(serverData)
+        addLog('Server-side status received', {
+          hasToken: serverData.hasToken,
+          tokenValid: serverData.tokenValid,
+          environment: serverData.environment,
+          availableEnvVars: serverData.availableEnvVars,
+          apiTest: serverData.apiTest
+        })
+
+        // Override client detection with server info
+        if (serverData.environment) {
+          const updatedInfo = {
+            ...info,
+            hasToken: serverData.hasToken,
+            tokenPrefix: serverData.tokenInfo?.prefix || info.tokenPrefix,
+            tokenLength: serverData.tokenInfo?.length || info.tokenLength,
+            environment: {
+              ...info.environment,
+              isCloudRun: serverData.environment.isCloudRun,
+              isProduction: serverData.environment.isProduction
+            }
+          }
+          setTokenInfo(updatedInfo)
+        }
+      })
+      .catch(error => {
+        addLog('Failed to fetch server status', error.message)
+      })
 
     // Check token availability
     if (!actualToken) {
@@ -260,6 +332,53 @@ export default function MapboxTestPage() {
                 </dl>
               ) : (
                 <p className="text-gray-500">Loading...</p>
+              )}
+            </div>
+
+            {/* Server Status */}
+            <div className="bg-green-50 rounded-lg p-4">
+              <h3 className="font-semibold text-green-900 mb-3">Server Status (API)</h3>
+              {serverStatus ? (
+                <dl className="space-y-2 text-sm">
+                  <div>
+                    <dt className="font-medium text-green-700">Server Has Token:</dt>
+                    <dd className={serverStatus.hasToken ? 'text-green-600' : 'text-red-600'}>
+                      {serverStatus.hasToken ? '✓ Yes' : '✗ No'}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="font-medium text-green-700">Token Valid:</dt>
+                    <dd className={serverStatus.tokenValid ? 'text-green-600' : 'text-red-600'}>
+                      {serverStatus.tokenValid ? '✓ Yes' : '✗ No'}
+                    </dd>
+                  </div>
+                  {serverStatus.apiTest && (
+                    <div>
+                      <dt className="font-medium text-green-700">API Test:</dt>
+                      <dd className={serverStatus.apiTest.success ? 'text-green-600' : 'text-red-600'}>
+                        {serverStatus.apiTest.success ?
+                          `✓ Success (${serverStatus.apiTest.styleName})` :
+                          `✗ Failed (${serverStatus.apiTest.status})`
+                        }
+                      </dd>
+                    </div>
+                  )}
+                  <div>
+                    <dt className="font-medium text-green-700">Available Env Vars:</dt>
+                    <dd className="text-xs font-mono">{serverStatus.availableEnvVars.join(', ')}</dd>
+                  </div>
+                  {serverStatus.environment.isCloudRun && (
+                    <div className="pt-2 border-t border-green-200">
+                      <dt className="font-medium text-green-700">Cloud Run Info:</dt>
+                      <dd className="text-xs">
+                        Service: {serverStatus.environment.service}<br/>
+                        Region: {serverStatus.environment.region}
+                      </dd>
+                    </div>
+                  )}
+                </dl>
+              ) : (
+                <p className="text-green-700">Loading server status...</p>
               )}
             </div>
 

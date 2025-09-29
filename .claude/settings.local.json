@@ -22,7 +22,9 @@
       "Bash(npm install:*)",
       "Bash(npx msw init:*)",
       "WebSearch",
-      "WebFetch(domain:mui.com)"
+      "WebFetch(domain:mui.com)",
+      "Bash(gcloud run deploy:*)",
+      "Bash(gcloud logging read:*)"
     ],
     "deny": [],
     "ask": []
