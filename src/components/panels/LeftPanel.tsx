@@ -31,6 +31,9 @@ import {
   Edit as EditIcon,
   ChevronRight as ChevronRightIcon,
 } from '@mui/icons-material';
+import AddDatasetModal from './AddDatasetModal';
+import AddNationalLawModal from './AddNationalLawModal';
+import AddLayerModal from './AddLayerModal';
 
 interface Warstwa {
   id: string;
@@ -62,6 +65,9 @@ const LeftPanel: React.FC = () => {
     'metadane': false,
     'inne-projekty': false
   });
+  const [addDatasetModalOpen, setAddDatasetModalOpen] = useState(false);
+  const [addNationalLawModalOpen, setAddNationalLawModalOpen] = useState(false);
+  const [addLayerModalOpen, setAddLayerModalOpen] = useState(false);
   const [warstwy, setWarstwy] = useState<Warstwa[]>([
     {
       id: 'obszar-rewitalizacji',
@@ -178,6 +184,98 @@ const LeftPanel: React.FC = () => {
   const handleLayerSelect = (id: string) => {
     const layer = findLayerById(warstwy, id);
     setSelectedLayer(layer);
+  };
+
+  const handleDeleteLayer = () => {
+    if (selectedLayer) {
+      const deleteLayerRecursive = (layers: Warstwa[], targetId: string): Warstwa[] => {
+        return layers.filter(layer => {
+          if (layer.id === targetId) {
+            return false; // Remove this layer
+          }
+          if (layer.dzieci) {
+            layer.dzieci = deleteLayerRecursive(layer.dzieci, targetId);
+          }
+          return true;
+        });
+      };
+      
+      const updatedWarstwy = deleteLayerRecursive(warstwy, selectedLayer.id);
+      setWarstwy(updatedWarstwy);
+      setSelectedLayer(null);
+    }
+  };
+
+  const handleOpenAddDatasetModal = () => {
+    setAddDatasetModalOpen(true);
+  };
+
+  const handleCloseAddDatasetModal = () => {
+    setAddDatasetModalOpen(false);
+  };
+
+  const handleAddDataset = (data: { nazwaPlan: string; nazwaGrupy: string; temat: string }) => {
+    // Create a new layer/dataset
+    const newLayer: Warstwa = {
+      id: `dataset-${Date.now()}`,
+      nazwa: data.nazwaPlan,
+      widoczna: true,
+      typ: 'wektor',
+    };
+
+    // Add to warstwy
+    const updatedWarstwy = [...warstwy, newLayer];
+    setWarstwy(updatedWarstwy);
+    
+    console.log('Adding new dataset:', data);
+  };
+
+  const handleOpenNationalLawModal = () => {
+    setAddNationalLawModalOpen(true);
+  };
+
+  const handleCloseNationalLawModal = () => {
+    setAddNationalLawModalOpen(false);
+  };
+
+  const handleAddNationalLaw = (data: { type: 'create' | 'import'; [key: string]: any }) => {
+    // Create a new layer based on type
+    const newLayer: Warstwa = {
+      id: `national-law-${Date.now()}`,
+      nazwa: data.type === 'create' ? data.nazwaApp : data.nazwaApp,
+      widoczna: true,
+      typ: 'wektor',
+    };
+
+    // Add to warstwy
+    const updatedWarstwy = [...warstwy, newLayer];
+    setWarstwy(updatedWarstwy);
+    
+    console.log('Adding new national law:', data);
+  };
+
+  const handleOpenAddLayerModal = () => {
+    setAddLayerModalOpen(true);
+  };
+
+  const handleCloseAddLayerModal = () => {
+    setAddLayerModalOpen(false);
+  };
+
+  const handleAddLayer = (data: { nazwaWarstwy: string; typGeometrii: string; nazwaGrupy: string; columns: any[] }) => {
+    // Create a new layer
+    const newLayer: Warstwa = {
+      id: `layer-${Date.now()}`,
+      nazwa: data.nazwaWarstwy,
+      widoczna: true,
+      typ: 'wektor',
+    };
+
+    // Add to warstwy
+    const updatedWarstwy = [...warstwy, newLayer];
+    setWarstwy(updatedWarstwy);
+    
+    console.log('Adding new layer:', data);
   };
 
   const getWarstwaIcon = (typ: Warstwa['typ']) => {
@@ -699,19 +797,31 @@ const LeftPanel: React.FC = () => {
             px: 1
           }}>
             <Tooltip title="Dodaj zbiór danych - INSPIRE" arrow>
-              <IconButton size="small" sx={{ color: theme.palette.text.secondary, p: 0.5, '&:hover': { color: theme.palette.primary.main } }}>
+              <IconButton 
+                size="small" 
+                onClick={handleOpenAddDatasetModal}
+                sx={{ color: theme.palette.text.secondary, p: 0.5, '&:hover': { color: theme.palette.primary.main } }}
+              >
                 <PublicIcon sx={{ fontSize: '18px' }} />
               </IconButton>
             </Tooltip>
 
             <Tooltip title="Dodaj zbór danych - PRAWO KRAJOWE" arrow>
-              <IconButton size="small" sx={{ color: theme.palette.text.secondary, p: 0.5, '&:hover': { color: theme.palette.primary.main } }}>
+              <IconButton 
+                size="small" 
+                onClick={handleOpenNationalLawModal}
+                sx={{ color: theme.palette.text.secondary, p: 0.5, '&:hover': { color: theme.palette.primary.main } }}
+              >
                 <MapIcon sx={{ fontSize: '18px' }} />
               </IconButton>
             </Tooltip>
 
             <Tooltip title="Dodaj warstwe" arrow>
-              <IconButton size="small" sx={{ color: theme.palette.text.secondary, p: 0.5, '&:hover': { color: theme.palette.primary.main } }}>
+              <IconButton 
+                size="small" 
+                onClick={handleOpenAddLayerModal}
+                sx={{ color: theme.palette.text.secondary, p: 0.5, '&:hover': { color: theme.palette.primary.main } }}
+              >
                 <AddBoxIcon sx={{ fontSize: '18px' }} />
               </IconButton>
             </Tooltip>
@@ -729,7 +839,17 @@ const LeftPanel: React.FC = () => {
             </Tooltip>
 
             <Tooltip title="Usuń grupę lub warstwę" arrow>
-              <IconButton size="small" sx={{ color: theme.palette.text.secondary, p: 0.5, '&:hover': { color: theme.palette.error.main } }}>
+              <IconButton 
+                size="small" 
+                onClick={handleDeleteLayer}
+                disabled={!selectedLayer}
+                sx={{ 
+                  color: theme.palette.text.secondary, 
+                  p: 0.5, 
+                  '&:hover': { color: theme.palette.error.main },
+                  '&:disabled': { color: theme.palette.action.disabled }
+                }}
+              >
                 <ClearIcon sx={{ fontSize: '18px' }} />
               </IconButton>
             </Tooltip>
@@ -1316,6 +1436,27 @@ const LeftPanel: React.FC = () => {
           </Typography>
         </Box>
       </Box>
+
+      {/* Add Dataset Modal */}
+      <AddDatasetModal
+        open={addDatasetModalOpen}
+        onClose={handleCloseAddDatasetModal}
+        onSubmit={handleAddDataset}
+      />
+
+      {/* Add National Law Modal */}
+      <AddNationalLawModal
+        open={addNationalLawModalOpen}
+        onClose={handleCloseNationalLawModal}
+        onSubmit={handleAddNationalLaw}
+      />
+
+      {/* Add Layer Modal */}
+      <AddLayerModal
+        open={addLayerModalOpen}
+        onClose={handleCloseAddLayerModal}
+        onSubmit={handleAddLayer}
+      />
     </>
   );
 };
