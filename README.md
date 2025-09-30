@@ -17,20 +17,190 @@ Professional Mapbox-powered mapping application built with Next.js 15+, deployed
 
 ## 🏗️ Architecture
 
-### Simple & Clean Structure
+### Project Structure Overview
+
 ```
-app/
-├── api/mapbox/token/route.ts  # Secure token API endpoint
-├── page.tsx                   # Main map component
-├── layout.tsx                 # App layout
-└── providers.tsx              # Material-UI theme provider
+Universe-MapMaker.online/
+│
+├── 📁 src/                      # ⭐ Main application code
+│   ├── 📁 components/          # React components
+│   ├── 📁 store/               # Redux state management
+│   ├── 📁 lib/                 # Helper utilities
+│   └── 📁 types/               # TypeScript type definitions
+│
+├── 📁 app/                      # Next.js App Router
+│   ├── page.tsx                # Home page
+│   ├── layout.tsx              # Root layout
+│   └── 📁 api/                 # API routes
+│
+├── 📁 public/                   # Static assets
+├── 📄 package.json             # Dependencies & scripts
+├── 📄 tsconfig.json            # TypeScript config
+├── 📄 cloudbuild.yaml          # Cloud Build config
+└── 📄 server.js                # Production server
 ```
 
+### Detailed Structure Guide
+
+#### 📂 `src/components/` - UI Components
+
+The heart of the application's user interface, organized by functionality:
+
+```
+src/components/
+│
+├── 📁 map/                          # 🗺️ Map Components
+│   ├── MapContainer.tsx            # Main Mapbox map container
+│   ├── DrawTools.tsx               # Drawing tools integration
+│   ├── Geocoder.tsx                # Address search functionality
+│   └── MeasurementTools.tsx        # Distance/area measurement tools
+│
+├── 📁 panels/                       # 📊 Side Panels
+│   ├── LeftPanel.tsx               # ⭐ Left panel with layer tree
+│   │                               #    - Drag & drop layers
+│   │                               #    - Layer properties panel
+│   │                               #    - Basemap selector
+│   │                               #    - Toolbar with actions
+│   ├── RightToolbar.tsx            # Right toolbar with tools
+│   ├── LayerTree.tsx               # Layer tree component
+│   ├── AddDatasetModal.tsx         # Add dataset dialog
+│   ├── AddLayerModal.tsx           # Add layer dialog
+│   ├── AddNationalLawModal.tsx     # National law data dialog
+│   ├── DrawingTools.tsx            # Drawing tools panel
+│   └── MeasurementTools.tsx        # Measurement tools panel
+│
+├── 📁 drawing/                      # ✏️ Drawing Components
+│   └── SimpleDrawingToolbar.tsx    # Simple drawing toolbar
+│
+├── 📁 measurement/                  # 📏 Measurement Components
+│   └── SimpleMeasurementToolbar.tsx # Simple measurement toolbar
+│
+└── 📁 providers/                    # 🔌 Context Providers
+    └── Providers.tsx                # Redux & Theme providers
+```
+
+**Key Components Explained:**
+
+- **MapContainer.tsx**: Main map component handling Mapbox initialization, layer management, and map interactions
+- **LeftPanel.tsx**: Most important UI component featuring hierarchical layer management with drag-and-drop, property editing, and basemap selection
+- **RightToolbar.tsx**: Tool palette for drawing, measurements, fullscreen, and settings
+
+#### 💾 `src/store/` - State Management
+
+Redux-based state management for application-wide data:
+
+```
+src/store/
+│
+├── store.ts                 # ⚙️ Redux store configuration
+├── hooks.ts                 # 🪝 Typed Redux hooks (useAppSelector, useAppDispatch)
+│
+└── 📁 slices/               # State slices (modular state)
+    ├── mapSlice.ts         # Map state (zoom, center, style)
+    ├── layersSlice.ts      # Layer management (list, visibility, properties)
+    └── drawSlice.ts        # Drawing state (geometries, active tool)
+```
+
+**How State Works:**
+
+1. **Define state in slice:**
+   ```typescript
+   // layersSlice.ts
+   const initialState = {
+     layers: [],
+     selectedLayer: null
+   }
+   ```
+
+2. **Use in component:**
+   ```typescript
+   // LeftPanel.tsx
+   const layers = useAppSelector(state => state.layers.layers)
+   ```
+
+3. **Update state:**
+   ```typescript
+   dispatch(addLayer({ id: '123', name: 'New Layer' }))
+   ```
+
+#### 🛠️ `src/lib/` - Utility Libraries
+
+Helper functions and configurations:
+
+```
+src/lib/
+│
+├── 📁 mapbox/               # Mapbox configuration
+│   ├── config.ts           # API keys, default settings
+│   └── draw-styles.ts      # Drawing styles configuration
+│
+├── 📁 turf/                 # Geospatial calculations
+│   └── measurements.ts     # Distance/area calculations
+│
+└── theme.ts                 # 🎨 Material-UI theme (colors, typography)
+```
+
+**Library Details:**
+
+- **mapbox/config.ts**: Central configuration for Mapbox tokens, default center (Poland), zoom levels
+- **turf/measurements.ts**: Geospatial calculations using Turf.js (length, area, distances)
+- **theme.ts**: Application theme with color palette, supporting dark/light modes
+
+#### 📝 `src/types/` - TypeScript Definitions
+
+Type definitions for type safety:
+
+```
+src/types/
+│
+├── geometry.ts      # GeoJSON geometry types (Point, LineString, Polygon)
+├── layers.ts        # Layer types (Layer, Group, LayerConfig)
+└── map.ts           # Map types (MapConfig, ViewState)
+```
+
+**Example Type Definition:**
+```typescript
+// layers.ts
+export interface Layer {
+  id: string
+  name: string
+  visible: boolean
+  type: 'vector' | 'raster' | 'group'
+  children?: Layer[]
+}
+```
+
+#### 🚪 `app/` - Next.js App Router
+
+File-based routing system:
+
+```
+app/
+│
+├── page.tsx             # 🏠 Home page (/)
+├── layout.tsx           # Root layout wrapper
+│
+├── 📁 map/              # Map page (/map)
+│   └── page.tsx
+│
+└── 📁 api/              # 🔌 API Routes
+    └── mapbox/
+        └── status/
+            └── route.ts  # Health check endpoint
+```
+
+**Routing Convention:**
+- `app/page.tsx` → `/`
+- `app/map/page.tsx` → `/map`
+- `app/api/mapbox/status/route.ts` → `/api/mapbox/status`
+
 ### Key Technical Decisions
+
 - **Runtime Token Loading**: API route serves Mapbox tokens at runtime instead of build-time
-- **Direct Mapbox Integration**: No abstractions - direct mapbox-gl usage
-- **Minimal Dependencies**: Only essential libraries for better performance
-- **Cloud Run Deployment**: Containerized deployment with proper region consistency
+- **Direct Mapbox Integration**: No abstractions - direct mapbox-gl usage for maximum control
+- **Redux Toolkit**: Modern Redux with TypeScript for predictable state management
+- **Material-UI**: Comprehensive design system with theming support
+- **Cloud Run Deployment**: Containerized serverless deployment with auto-scaling
 
 ## 🚀 Quick Start
 
@@ -207,11 +377,179 @@ MIT License - see [LICENSE](LICENSE) file.
 4. Push to branch: `git push origin feature/amazing-feature`
 5. Open Pull Request
 
+## 🔄 How It All Works Together
+
+### Application Flow
+
+**1. User Opens Application:**
+```
+User → https://universe-mapmaker.app
+    ↓
+app/page.tsx (home page)
+    ↓
+<MapContainer /> (map component)
+    ↓
+Mapbox GL JS initialization
+    ↓
+Map renders with default view (Poland)
+```
+
+**2. User Clicks "Add Layer":**
+```
+Click → LeftPanel.tsx
+    ↓
+dispatch(addLayer(...)) (Redux action)
+    ↓
+store/slices/layersSlice.ts
+    ↓
+State updates
+    ↓
+LeftPanel.tsx re-renders with new layer
+    ↓
+MapContainer.tsx detects layer change
+    ↓
+New layer appears on map
+```
+
+**3. Build & Deployment Process:**
+```
+npm run build
+    ↓
+Next.js compiles TypeScript → JavaScript
+    ↓
+Creates .next/ folder with optimized bundles
+    ↓
+Docker packages application + dependencies
+    ↓
+Image pushed to Artifact Registry
+    ↓
+Cloud Run deploys new container
+    ↓
+Application available at production URL
+```
+
+### Data Flow Diagram
+
+```
+┌─────────────┐
+│   User UI   │
+│  (Browser)  │
+└──────┬──────┘
+       │ Interactions
+       ↓
+┌─────────────────┐
+│   Components    │  ← React components
+│  (LeftPanel,    │    render UI
+│   MapContainer) │
+└────────┬────────┘
+         │ dispatch(action)
+         ↓
+┌─────────────────┐
+│  Redux Store    │  ← Central state
+│  (layers, map,  │    management
+│   drawing)      │
+└────────┬────────┘
+         │ state updates
+         ↓
+┌─────────────────┐
+│  Mapbox GL JS   │  ← Map rendering
+│  (map instance) │    engine
+└─────────────────┘
+```
+
+### File Editing Guide
+
+| To Change... | Edit File... | Description |
+|--------------|-------------|-------------|
+| 🎨 **Left Panel UI** | `src/components/panels/LeftPanel.tsx` | Layer tree, properties panel, basemap selector |
+| 🗺️ **Map Behavior** | `src/components/map/MapContainer.tsx` | Map initialization, interactions, layer rendering |
+| 🛠️ **Right Toolbar** | `src/components/panels/RightToolbar.tsx` | Tool buttons, fullscreen, settings |
+| 💾 **Layer State** | `src/store/slices/layersSlice.ts` | Layer list, visibility, properties logic |
+| 💾 **Map State** | `src/store/slices/mapSlice.ts` | Zoom, center, style, viewport |
+| 🔑 **Mapbox Config** | `src/lib/mapbox/config.ts` | API tokens, default settings |
+| 🎨 **Theme Colors** | `src/lib/theme.ts` | Color palette, typography |
+| 📦 **Dependencies** | `package.json` | Add/remove libraries |
+| ☁️ **Cloud Deployment** | `cloudbuild.yaml` | Build steps, environment variables |
+| 🖥️ **Production Server** | `server.js` | Server configuration |
+
+### Common Development Tasks
+
+**Adding a New Component:**
+1. Create file in `src/components/[category]/NewComponent.tsx`
+2. Export component: `export default function NewComponent() { ... }`
+3. Import in parent: `import NewComponent from '@/components/[category]/NewComponent'`
+4. Use in JSX: `<NewComponent />`
+
+**Adding State Management:**
+1. Create slice in `src/store/slices/newSlice.ts`
+2. Define initial state and reducers
+3. Add slice to store in `src/store/store.ts`
+4. Use in component: `const data = useAppSelector(state => state.new.data)`
+
+**Adding a New Library:**
+1. Install: `npm install library-name`
+2. Import in component: `import { Feature } from 'library-name'`
+3. TypeScript types: `npm install -D @types/library-name` (if available)
+
+**Deploying Changes:**
+1. Commit code: `git add . && git commit -m "Description"`
+2. Push to main: `git push origin main`
+3. Automatic deployment triggers via Cloud Build
+4. Monitor: Check Cloud Run console for status
+
+## 💡 Frequently Asked Questions
+
+**Q: What's the difference between `.tsx` and `.ts` files?**
+- `.ts` = Regular TypeScript (logic, functions, utilities)
+- `.tsx` = TypeScript + JSX (React components with HTML-like syntax)
+
+**Q: What does `import` do?**
+```typescript
+import { Button } from '@mui/material'
+// Imports the Button component from Material-UI library
+```
+
+**Q: What does `export` do?**
+```typescript
+export default function MyComponent() { ... }
+// Makes this component available to other files
+```
+
+**Q: Why use `@/` in imports?**
+```typescript
+import Component from '@/components/Component'
+// '@/' is an alias for 'src/' directory (cleaner imports)
+```
+
+**Q: How does TypeScript help?**
+```typescript
+interface Layer {
+  id: string
+  name: string
+  visible: boolean
+}
+// TypeScript checks that you use the correct types
+// Catches errors before runtime!
+```
+
+**Q: What is Redux state?**
+- Redux stores application data that needs to be shared between components
+- Like a "memory" for your app that components can read and update
+- Changes to state automatically trigger UI re-renders
+
+**Q: How does scale-to-zero work?**
+- After ~15 minutes of no traffic, Cloud Run stops the container
+- You don't pay for idle time (cost = $0)
+- Next request triggers "cold start" (2-5 seconds to restart)
+- Subsequent requests are instant
+
 ## 🆘 Support
 
 - **Issues**: [GitHub Issues](https://github.com/MapMakeronline/Universe-MapMaker.online/issues)
 - **Mapbox Documentation**: [docs.mapbox.com](https://docs.mapbox.com/)
 - **Next.js Documentation**: [nextjs.org/docs](https://nextjs.org/docs)
+- **Material-UI Docs**: [mui.com](https://mui.com/)
+- **Redux Toolkit Docs**: [redux-toolkit.js.org](https://redux-toolkit.js.org/)
 
 ---
 
