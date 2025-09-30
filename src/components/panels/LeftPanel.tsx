@@ -7,6 +7,8 @@ import {
   Typography,
   Tooltip,
   useTheme,
+  TextField,
+  MenuItem,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -27,6 +29,7 @@ import {
   Chat as ChatIcon,
   Star as StarIcon,
   Edit as EditIcon,
+  ChevronRight as ChevronRightIcon,
 } from '@mui/icons-material';
 
 interface Warstwa {
@@ -49,6 +52,16 @@ const LeftPanel: React.FC = () => {
   const [dropPosition, setDropPosition] = useState<'before' | 'after'>('before');
   const [filterMenuOpen, setFilterMenuOpen] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState<'wszystko' | 'wektor' | 'raster' | 'wms'>('wszystko');
+  const [selectedLayer, setSelectedLayer] = useState<Warstwa | null>(null);
+  const [expandedSections, setExpandedSections] = useState<{[key: string]: boolean}>({
+    'informacje-ogolne': false,
+    'pobieranie': false,
+    'widocznosc': false,
+    'informacje-szczegolowe': false,
+    'uslugi': false,
+    'metadane': false,
+    'inne-projekty': false
+  });
   const [warstwy, setWarstwy] = useState<Warstwa[]>([
     {
       id: 'obszar-rewitalizacji',
@@ -104,7 +117,7 @@ const LeftPanel: React.FC = () => {
     }
   }, [filterMenuOpen]);
 
-  const toggleWarstwaVisibility = (id: string) => {
+  const toggleVisibility = (id: string) => {
     const updateWarstwy = (warstwy: Warstwa[]): Warstwa[] => {
       return warstwy.map(warstwa => {
         if (warstwa.id === id) {
@@ -126,7 +139,7 @@ const LeftPanel: React.FC = () => {
     setWarstwy(updateWarstwy(warstwy));
   };
 
-  const toggleWarstwaExpansion = (id: string) => {
+  const toggleExpansion = (id: string) => {
     const updateExpansion = (warstwy: Warstwa[]): Warstwa[] => {
       return warstwy.map(warstwa => {
         if (warstwa.id === id && warstwa.typ === 'grupa') {
@@ -139,6 +152,32 @@ const LeftPanel: React.FC = () => {
       });
     };
     setWarstwy(updateExpansion(warstwy));
+  };
+
+  const toggleWarstwaExpansion = toggleExpansion; // Alias dla kompatybilności
+  const toggleWarstwaVisibility = toggleVisibility; // Alias dla kompatybilności
+
+  const toggleSection = (sectionId: string) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [sectionId]: !prev[sectionId]
+    }));
+  };
+
+  const findLayerById = (layers: Warstwa[], id: string): Warstwa | null => {
+    for (const layer of layers) {
+      if (layer.id === id) return layer;
+      if (layer.dzieci) {
+        const found = findLayerById(layer.dzieci, id);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+
+  const handleLayerSelect = (id: string) => {
+    const layer = findLayerById(warstwy, id);
+    setSelectedLayer(layer);
   };
 
   const getWarstwaIcon = (typ: Warstwa['typ']) => {
@@ -415,6 +454,7 @@ const LeftPanel: React.FC = () => {
         <Box
           className="layer-item"
           draggable
+          onClick={() => handleLayerSelect(warstwa.id)}
           onDragStart={(e) => handleDragStart(e, warstwa.id)}
           onDragEnd={handleDragEnd}
           onDragEnter={(e) => handleDragEnter(e, warstwa.id)}
@@ -428,25 +468,40 @@ const LeftPanel: React.FC = () => {
             px: 1,
             ml: level * 1.5,
             borderRadius: 4,
-            cursor: isDragged ? 'grabbing' : 'grab',
+            cursor: isDragged ? 'grabbing' : 'pointer',
             transition: 'all 0.2s ease',
             bgcolor: isDragged ? theme.palette.action.selected :
-                     isDropTarget ? theme.palette.action.hover : 'transparent',
+                     isDropTarget ? theme.palette.action.hover :
+                     selectedLayer?.id === warstwa.id ? 'rgba(255, 152, 0, 0.2)' : 'transparent',
             borderLeft: level > 0 ? `2px solid ${theme.palette.divider}` : 'none',
             border: isDragged ? `2px dashed ${theme.palette.primary.main}` :
-                    isDropTarget ? `2px solid ${theme.palette.success.main}` : 'none',
+                    isDropTarget ? `2px solid ${theme.palette.success.main}` :
+                    selectedLayer?.id === warstwa.id ? '2px solid #ff9800' : 'none',
             opacity: isDragged ? 0.6 : 1,
             transform: isDragged ? 'scale(1.02) rotate(2deg)' : 'none',
+            boxShadow: isDragged ? '0 8px 16px rgba(0,0,0,0.3)' :
+                       isDropTarget ? '0 0 0 2px rgba(76, 175, 80, 0.4)' : 'none',
             '&:hover': {
-              bgcolor: theme.palette.action.hover,
+              bgcolor: isDragged ? theme.palette.action.selected :
+                       isDropTarget ? theme.palette.action.hover :
+                       theme.palette.action.hover,
               borderLeft: level > 0 ? `2px solid ${theme.palette.primary.main}` : 'none',
               transform: isDragged ? 'scale(1.02) rotate(2deg)' : 'translateX(4px)',
+              '& .layer-item__actions': {
+                opacity: 1
+              },
+              '& .drag-handle': {
+                color: theme.palette.primary.main
+              }
             }
           }}
         >
         {warstwa.typ === 'grupa' && (
           <Box
-            onClick={() => toggleWarstwaExpansion(warstwa.id)}
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleExpansion(warstwa.id);
+            }}
             sx={{
               width: 16,
               height: 16,
@@ -477,7 +532,11 @@ const LeftPanel: React.FC = () => {
           component="input"
           type="checkbox"
           checked={warstwa.widoczna}
-          onChange={() => toggleWarstwaVisibility(warstwa.id)}
+          onChange={(e) => {
+            e.stopPropagation();
+            toggleVisibility(warstwa.id);
+          }}
+          onClick={(e) => e.stopPropagation()}
           sx={{
             mr: 1,
             cursor: 'pointer',
@@ -606,7 +665,9 @@ const LeftPanel: React.FC = () => {
           boxShadow: sidebarCollapsed ? 'none' : 2,
           transition: 'left 0.3s ease',
           zIndex: 1200,
-          borderRight: `1px solid ${theme.palette.divider}`
+          borderRight: `1px solid ${theme.palette.divider}`,
+          display: 'flex',
+          flexDirection: 'column'
         }}
       >
         <Box sx={{
@@ -831,7 +892,8 @@ const LeftPanel: React.FC = () => {
         <Box
           className="layer-tree"
           sx={{
-            flex: 1,
+            flex: selectedLayer ? '1 1 0%' : 1,
+            minHeight: 0,
             overflow: 'auto',
             p: 1,
             '&::-webkit-scrollbar': {
@@ -847,6 +909,411 @@ const LeftPanel: React.FC = () => {
           }}
         >
           {filteredWarstwy.map(warstwa => renderWarstwaItem(warstwa))}
+        </Box>
+
+        {/* Panel właściwości */}
+        <Box
+          sx={{
+            flexShrink: 0,
+            bgcolor: theme.palette.background.default,
+            borderTop: `1px solid ${theme.palette.divider}`,
+            display: 'flex',
+            flexDirection: 'column',
+            height: '250px',
+            overflow: 'hidden'
+          }}
+        >
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              p: 1.5,
+              borderBottom: `1px solid ${theme.palette.divider}`,
+              bgcolor: theme.palette.background.paper
+            }}
+          >
+            <Typography
+              sx={{
+                color: theme.palette.text.primary,
+                fontSize: '12px',
+                fontWeight: 500,
+                flex: 1
+              }}
+            >
+              {selectedLayer
+                ? `Właściwości ${selectedLayer.typ === 'grupa' ? 'grupy' : 'warstwy'}`
+                : 'Właściwości projektu'
+              }
+            </Typography>
+            {selectedLayer && (
+              <IconButton
+                size="small"
+                onClick={() => setSelectedLayer(null)}
+                sx={{
+                  color: theme.palette.text.secondary,
+                  p: 0.5,
+                  '&:hover': { color: theme.palette.error.main }
+                }}
+              >
+                <CloseIcon sx={{ fontSize: '14px' }} />
+              </IconButton>
+            )}
+          </Box>
+
+          <Box sx={{ flex: 1, p: 1.5, overflow: 'auto' }}>
+            {selectedLayer ? (
+              <>
+                {/* Właściwości warstwy */}
+                <Box sx={{ mb: 1.5 }}>
+                  <Box
+                    onClick={() => toggleSection('informacje-ogolne')}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      cursor: 'pointer',
+                      '&:hover': { color: theme.palette.primary.main }
+                    }}
+                  >
+                    {expandedSections['informacje-ogolne'] ?
+                      <ExpandMoreIcon sx={{ fontSize: '14px', color: theme.palette.text.primary, mr: 0.5 }} /> :
+                      <ChevronRightIcon sx={{ fontSize: '14px', color: theme.palette.text.primary, mr: 0.5 }} />
+                    }
+                    <Typography sx={{ color: theme.palette.text.primary, fontSize: '11px', fontWeight: 500 }}>
+                      Informacje ogólne
+                    </Typography>
+                  </Box>
+
+                  {expandedSections['informacje-ogolne'] && (
+                    <Box sx={{ ml: 2, mt: 1 }}>
+                      <Box sx={{ mb: 1 }}>
+                        <Typography sx={{ fontSize: '10px', color: theme.palette.text.secondary }}>
+                          Nazwa
+                        </Typography>
+                        <Typography sx={{ fontSize: '11px', color: theme.palette.text.primary, fontStyle: 'italic', mt: 0.5 }}>
+                          {selectedLayer.nazwa}
+                        </Typography>
+                      </Box>
+
+                      <Box>
+                        <Typography sx={{ fontSize: '10px', color: theme.palette.text.secondary }}>
+                          Grupa
+                        </Typography>
+                        <Typography sx={{ fontSize: '11px', color: theme.palette.text.primary, fontStyle: 'italic', mt: 0.5 }}>
+                          {selectedLayer.typ === 'grupa' ? 'Brak grupy nadrzędnej' : 'Brak grupy nadrzędnej'}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  )}
+                </Box>
+
+                <Box sx={{ mb: 1.5 }}>
+                  <Box
+                    onClick={() => toggleSection('pobieranie')}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      cursor: 'pointer',
+                      '&:hover': { color: theme.palette.primary.main }
+                    }}
+                  >
+                    <ChevronRightIcon sx={{ fontSize: '14px', color: theme.palette.text.primary, mr: 0.5 }} />
+                    <Typography sx={{ color: theme.palette.text.primary, fontSize: '11px', fontWeight: 500 }}>
+                      Pobieranie
+                    </Typography>
+                  </Box>
+                </Box>
+
+                <Box sx={{ mb: 1.5 }}>
+                  <Box
+                    onClick={() => toggleSection('widocznosc')}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      cursor: 'pointer',
+                      '&:hover': { color: theme.palette.primary.main }
+                    }}
+                  >
+                    <ChevronRightIcon sx={{ fontSize: '14px', color: theme.palette.text.primary, mr: 0.5 }} />
+                    <Typography sx={{ color: theme.palette.text.primary, fontSize: '11px', fontWeight: 500 }}>
+                      Widoczność
+                    </Typography>
+                  </Box>
+                </Box>
+
+                <Box sx={{ mb: 1.5 }}>
+                  <Box
+                    onClick={() => toggleSection('informacje-szczegolowe')}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      cursor: 'pointer',
+                      '&:hover': { color: theme.palette.primary.main }
+                    }}
+                  >
+                    <ChevronRightIcon sx={{ fontSize: '14px', color: theme.palette.text.primary, mr: 0.5 }} />
+                    <Typography sx={{ color: theme.palette.text.primary, fontSize: '11px', fontWeight: 500 }}>
+                      Informacje szczegółowe
+                    </Typography>
+                  </Box>
+                </Box>
+              </>
+            ) : (
+              <>
+                {/* Widok domyślny - Właściwości projektu */}
+                <Box sx={{ mb: 1.5 }}>
+                  <Box
+                    onClick={() => toggleSection('uslugi')}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      cursor: 'pointer',
+                      mb: 1,
+                      '&:hover': { color: theme.palette.primary.main }
+                    }}
+                  >
+                    {expandedSections['uslugi'] ?
+                      <ExpandMoreIcon sx={{ fontSize: '14px', color: theme.palette.text.primary, mr: 0.5 }} /> :
+                      <ChevronRightIcon sx={{ fontSize: '14px', color: theme.palette.text.primary, mr: 0.5 }} />
+                    }
+                    <Typography sx={{ color: theme.palette.text.primary, fontSize: '11px', fontWeight: 500 }}>
+                      Usługi
+                    </Typography>
+                  </Box>
+
+                  {expandedSections['uslugi'] && (
+                    <Box sx={{ ml: 2 }}>
+                      <Typography sx={{ fontSize: '10px', color: theme.palette.text.disabled, mb: 1, fontStyle: 'italic' }}>
+                        Brak udostępnionych usług
+                      </Typography>
+                    </Box>
+                  )}
+                </Box>
+
+                <Box sx={{ mb: 1.5 }}>
+                  <Box
+                    onClick={() => toggleSection('pobieranie')}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      cursor: 'pointer',
+                      mb: 1,
+                      '&:hover': { color: theme.palette.primary.main }
+                    }}
+                  >
+                    {expandedSections['pobieranie'] ?
+                      <ExpandMoreIcon sx={{ fontSize: '14px', color: theme.palette.text.primary, mr: 0.5 }} /> :
+                      <ChevronRightIcon sx={{ fontSize: '14px', color: theme.palette.text.primary, mr: 0.5 }} />
+                    }
+                    <Typography sx={{ color: theme.palette.text.primary, fontSize: '11px', fontWeight: 500 }}>
+                      Pobieranie
+                    </Typography>
+                  </Box>
+
+                  {expandedSections['pobieranie'] && (
+                    <Box sx={{ ml: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                      <Box
+                        sx={{
+                          bgcolor: `${theme.palette.primary.main}33`,
+                          border: `1px solid ${theme.palette.primary.main}66`,
+                          borderRadius: '4px',
+                          px: 1.5,
+                          py: 0.5,
+                          cursor: 'pointer',
+                          fontSize: '10px',
+                          color: theme.palette.primary.main,
+                          fontWeight: 500,
+                          '&:hover': {
+                            bgcolor: `${theme.palette.primary.main}44`,
+                          }
+                        }}
+                      >
+                        QGS/QGZ
+                      </Box>
+                      <Box
+                        sx={{
+                          bgcolor: `${theme.palette.primary.main}33`,
+                          border: `1px solid ${theme.palette.primary.main}66`,
+                          borderRadius: '4px',
+                          px: 1.5,
+                          py: 0.5,
+                          cursor: 'pointer',
+                          fontSize: '10px',
+                          color: theme.palette.primary.main,
+                          fontWeight: 500,
+                          '&:hover': {
+                            bgcolor: `${theme.palette.primary.main}44`,
+                          }
+                        }}
+                      >
+                        Zbiór APP
+                      </Box>
+                      <Box
+                        sx={{
+                          bgcolor: `${theme.palette.primary.main}33`,
+                          border: `1px solid ${theme.palette.primary.main}66`,
+                          borderRadius: '4px',
+                          px: 1.5,
+                          py: 0.5,
+                          cursor: 'pointer',
+                          fontSize: '10px',
+                          color: theme.palette.primary.main,
+                          fontWeight: 500,
+                          '&:hover': {
+                            bgcolor: `${theme.palette.primary.main}44`,
+                          }
+                        }}
+                      >
+                        Metadane
+                      </Box>
+                    </Box>
+                  )}
+                </Box>
+
+                <Box sx={{ mb: 1.5 }}>
+                  <Box
+                    onClick={() => toggleSection('metadane')}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      cursor: 'pointer',
+                      mb: 1,
+                      '&:hover': { color: theme.palette.primary.main }
+                    }}
+                  >
+                    {expandedSections['metadane'] ?
+                      <ExpandMoreIcon sx={{ fontSize: '14px', color: theme.palette.text.primary, mr: 0.5 }} /> :
+                      <ChevronRightIcon sx={{ fontSize: '14px', color: theme.palette.text.primary, mr: 0.5 }} />
+                    }
+                    <Typography sx={{ color: theme.palette.text.primary, fontSize: '11px', fontWeight: 500 }}>
+                      Metadane
+                    </Typography>
+                  </Box>
+
+                  {expandedSections['metadane'] && (
+                    <Box sx={{ ml: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                      <Box sx={{ bgcolor: 'rgba(156, 39, 176, 0.2)', border: '1px solid rgba(156, 39, 176, 0.4)', borderRadius: '4px', px: 1.5, py: 0.5, cursor: 'pointer', fontSize: '10px', color: '#ab47bc', fontWeight: 500, '&:hover': { bgcolor: 'rgba(156, 39, 176, 0.3)' } }}>
+                        Wyświetl
+                      </Box>
+                      <Box sx={{ bgcolor: 'rgba(63, 81, 181, 0.2)', border: '1px solid rgba(63, 81, 181, 0.4)', borderRadius: '4px', px: 1.5, py: 0.5, cursor: 'pointer', fontSize: '10px', color: '#5c6bc0', fontWeight: 500, '&:hover': { bgcolor: 'rgba(63, 81, 181, 0.3)' } }}>
+                        Wyszukaj
+                      </Box>
+                      <Box sx={{ bgcolor: 'rgba(76, 175, 80, 0.2)', border: '1px solid rgba(76, 175, 80, 0.4)', borderRadius: '4px', px: 1.5, py: 0.5, cursor: 'pointer', fontSize: '10px', color: '#66bb6a', fontWeight: 500, '&:hover': { bgcolor: 'rgba(76, 175, 80, 0.3)' } }}>
+                        Stwórz
+                      </Box>
+                    </Box>
+                  )}
+                </Box>
+
+                <Box>
+                  <Box
+                    onClick={() => toggleSection('inne-projekty')}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      cursor: 'pointer',
+                      '&:hover': { color: theme.palette.primary.main }
+                    }}
+                  >
+                    {expandedSections['inne-projekty'] ?
+                      <ExpandMoreIcon sx={{ fontSize: '14px', color: theme.palette.text.primary, mr: 0.5 }} /> :
+                      <ChevronRightIcon sx={{ fontSize: '14px', color: theme.palette.text.primary, mr: 0.5 }} />
+                    }
+                    <Typography sx={{ color: theme.palette.text.primary, fontSize: '11px', fontWeight: 500 }}>
+                      Inne projekty użytkownika
+                    </Typography>
+                  </Box>
+
+                  {expandedSections['inne-projekty'] && (
+                    <Box sx={{ ml: 2 }}>
+                      <Typography sx={{ fontSize: '10px', color: theme.palette.text.disabled, fontStyle: 'italic' }}>
+                        Brak innych projektów
+                      </Typography>
+                    </Box>
+                  )}
+                </Box>
+              </>
+            )}
+          </Box>
+        </Box>
+
+        {/* Wybór mapy podkładowej */}
+        <Box
+          sx={{
+            flexShrink: 0,
+            bgcolor: theme.palette.background.default,
+            borderTop: `1px solid ${theme.palette.divider}`,
+            p: 1.5,
+            display: 'flex',
+            flexDirection: 'column'
+          }}
+        >
+          <Typography sx={{
+            fontSize: '11px',
+            fontWeight: 500,
+            color: theme.palette.text.primary,
+            mb: 1
+          }}>
+            Wybór mapy podkładowej
+          </Typography>
+
+          <TextField
+            select
+            defaultValue="google-maps"
+            size="small"
+            fullWidth
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                backgroundColor: theme.palette.background.paper,
+                color: theme.palette.text.primary,
+                fontSize: '10px',
+                '& fieldset': {
+                  borderColor: theme.palette.divider,
+                },
+                '&:hover fieldset': {
+                  borderColor: theme.palette.text.secondary,
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: theme.palette.primary.main,
+                },
+              },
+              '& .MuiSelect-icon': {
+                color: theme.palette.text.secondary,
+              },
+              '& .MuiInputBase-input': {
+                padding: '6px 12px !important',
+              }
+            }}
+          >
+            <MenuItem value="google-maps" sx={{ fontSize: '10px' }}>
+              Google Maps
+            </MenuItem>
+            <MenuItem value="openstreetmap" sx={{ fontSize: '10px' }}>
+              OpenStreetMap
+            </MenuItem>
+            <MenuItem value="satellite" sx={{ fontSize: '10px' }}>
+              Satelita
+            </MenuItem>
+            <MenuItem value="terrain" sx={{ fontSize: '10px' }}>
+              Teren
+            </MenuItem>
+            <MenuItem value="hybrid" sx={{ fontSize: '10px' }}>
+              Hybrydowa
+            </MenuItem>
+          </TextField>
+
+          <Typography sx={{
+            fontSize: '9px',
+            color: theme.palette.text.disabled,
+            mt: 1,
+            fontWeight: 500,
+            cursor: 'pointer',
+            '&:hover': {
+              color: theme.palette.primary.main
+            }
+          }}>
+            Rozpocznij poradnik
+          </Typography>
         </Box>
       </Box>
     </>
