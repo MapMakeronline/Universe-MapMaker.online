@@ -155,6 +155,29 @@ const layersSlice = createSlice({
     setActiveLayer: (state, action: PayloadAction<string | undefined>) => {
       state.activeLayerId = action.payload;
     },
+    deleteLayer: (state, action: PayloadAction<string>) => {
+      const deleteLayerRecursive = (layers: LayerNode[], targetId: string): LayerNode[] => {
+        return layers.filter(layer => {
+          if (layer.id === targetId) {
+            return false; // Remove this layer
+          }
+          if (layer.children) {
+            layer.children = deleteLayerRecursive(layer.children, targetId);
+          }
+          return true;
+        });
+      };
+      
+      state.layers = deleteLayerRecursive(state.layers, action.payload);
+      
+      // If the deleted layer was active, clear the active layer
+      if (state.activeLayerId === action.payload) {
+        state.activeLayerId = undefined;
+      }
+      
+      // Remove from expanded groups if it was a group
+      state.expandedGroups = state.expandedGroups.filter(id => id !== action.payload);
+    },
   },
 });
 
@@ -163,6 +186,7 @@ export const {
   setLayerOpacity,
   toggleGroupExpanded,
   setActiveLayer,
+  deleteLayer,
 } = layersSlice.actions;
 
 export default layersSlice.reducer;
