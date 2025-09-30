@@ -209,10 +209,11 @@ const DrawTools: React.FC = () => {
       }
 
       console.log('🎨 DrawTools: Calling changeMode with:', actualMode);
-      drawRef.current.changeMode(actualMode);
+      drawRef.current.changeMode(actualMode as any);
       console.log('✅ DrawTools: Successfully changed to mode:', actualMode);
 
       // Check cursor change and add visual feedback
+      if (!map) return;
       const canvas = map.getCanvas();
       if (actualMode !== 'simple_select') {
         console.log('🎯 DrawTools: Setting cursor to crosshair for drawing mode');

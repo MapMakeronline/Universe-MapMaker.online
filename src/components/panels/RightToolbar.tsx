@@ -1,224 +1,298 @@
-'use client';
+"use client"
 
-import React, { useState } from 'react';
+import type React from "react"
+import { useState } from "react"
+import { Paper, IconButton, Tooltip, Box, Menu, MenuItem, ListItemIcon, ListItemText, Divider } from "@mui/material"
 import {
-  Paper,
-  IconButton,
-  Tooltip,
-  Box,
-  ButtonGroup,
-  Menu,
-  MenuItem,
-  ListItemIcon,
-  ListItemText,
-} from '@mui/material';
-import {
+  Home,
+  LocationSearching,
+  Edit,
+  Category,
   Straighten,
-  CropFree,
-  AddLocation,
-  CameraAlt,
-  Map,
-  Settings,
+  Search,
   Info,
-  Clear,
-} from '@mui/icons-material';
-import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { setMeasurementMode, clearAllMeasurements } from '@/store/slices/drawSlice';
-import { setMapStyle } from '@/store/slices/mapSlice';
-import { MAP_STYLES } from '@/lib/mapbox/config';
+  PictureAsPdf,
+  Description,
+  MyLocation,
+  Crop,
+  Keyboard,
+  Email,
+  Settings,
+  Map,
+} from "@mui/icons-material"
+import { useAppDispatch, useAppSelector } from "@/store/hooks"
+import { setMeasurementMode, clearAllMeasurements } from "@/store/slices/drawSlice"
+import { setMapStyle } from "@/store/slices/mapSlice"
+import { MAP_STYLES } from "@/lib/mapbox/config"
 
-const TOOLBAR_WIDTH = 60;
+const TOOLBAR_WIDTH = 56
 
 const RightToolbar: React.FC = () => {
-  const dispatch = useAppDispatch();
-  const { measurement } = useAppSelector((state) => state.draw);
-  const { mapStyle } = useAppSelector((state) => state.map);
+  const dispatch = useAppDispatch()
+  const { measurement } = useAppSelector((state) => state.draw)
+  const { mapStyle } = useAppSelector((state) => state.map)
 
-  const [styleMenuAnchor, setStyleMenuAnchor] = useState<null | HTMLElement>(null);
+  const [styleMenuAnchor, setStyleMenuAnchor] = useState<null | HTMLElement>(null)
 
   const handleDistanceMeasure = () => {
-    dispatch(setMeasurementMode({
-      distance: !measurement.isDistanceMode,
-      area: false
-    }));
-  };
+    dispatch(
+      setMeasurementMode({
+        distance: !measurement.isDistanceMode,
+        area: false,
+      }),
+    )
+  }
 
   const handleAreaMeasure = () => {
-    dispatch(setMeasurementMode({
-      distance: false,
-      area: !measurement.isAreaMode
-    }));
-  };
+    dispatch(
+      setMeasurementMode({
+        distance: false,
+        area: !measurement.isAreaMode,
+      }),
+    )
+  }
 
   const handleClearMeasurements = () => {
-    dispatch(clearAllMeasurements());
-  };
+    dispatch(clearAllMeasurements())
+  }
 
   const handleStyleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
-    setStyleMenuAnchor(event.currentTarget);
-  };
+    setStyleMenuAnchor(event.currentTarget)
+  }
 
   const handleStyleMenuClose = () => {
-    setStyleMenuAnchor(null);
-  };
+    setStyleMenuAnchor(null)
+  }
 
   const handleStyleChange = (styleUrl: string) => {
-    dispatch(setMapStyle(styleUrl));
-    handleStyleMenuClose();
-  };
+    dispatch(setMapStyle(styleUrl))
+    handleStyleMenuClose()
+  }
 
   const handleScreenshot = () => {
     // TODO: Implement map screenshot
-    console.log('Screenshot feature coming soon...');
-  };
+    console.log("Screenshot feature coming soon...")
+  }
 
   const handleAddMarker = () => {
     // TODO: Implement marker adding
-    console.log('Add marker feature coming soon...');
-  };
+    console.log("Add marker feature coming soon...")
+  }
 
-  const tools = [
+  interface Tool {
+    id: string;
+    icon?: any;
+    tooltip?: string;
+    onClick?: (event: React.MouseEvent<HTMLElement>) => void;
+    active?: boolean;
+    disabled?: boolean;
+  }
+
+  const tools: Tool[] = [
     {
-      id: 'distance',
-      icon: Straighten,
-      tooltip: 'Pomiar odległości',
-      onClick: handleDistanceMeasure,
-      active: measurement.isDistanceMode,
-    },
-    {
-      id: 'area',
-      icon: CropFree,
-      tooltip: 'Pomiar powierzchni',
-      onClick: handleAreaMeasure,
-      active: measurement.isAreaMode,
-    },
-    {
-      id: 'clear-measurements',
-      icon: Clear,
-      tooltip: 'Wyczyść pomiary',
-      onClick: handleClearMeasurements,
+      id: "home",
+      icon: Home,
+      tooltip: "Strona główna",
+      onClick: () => console.log("Home"),
       active: false,
-      disabled: measurement.measurements.length === 0,
     },
-    { id: 'divider' },
+    { id: "divider-1" },
     {
-      id: 'marker',
-      icon: AddLocation,
-      tooltip: 'Dodaj marker',
+      id: "parcel-search",
+      icon: LocationSearching,
+      tooltip: "Wyszukiwanie działek",
       onClick: handleAddMarker,
       active: false,
     },
     {
-      id: 'screenshot',
-      icon: CameraAlt,
-      tooltip: 'Zrób zrzut ekranu',
+      id: "edit",
+      icon: Edit,
+      tooltip: "Edycja",
+      onClick: () => console.log("Edit"),
+      active: false,
+    },
+    {
+      id: "geometry-tools",
+      icon: Category,
+      tooltip: "Narzędzia geometrii",
+      onClick: () => console.log("Walking route"),
+      active: false,
+    },
+    {
+      id: "measure-distance",
+      icon: Straighten,
+      tooltip: "Mierzenie",
+      onClick: handleDistanceMeasure,
+      active: measurement.isDistanceMode,
+    },
+    {
+      id: "search",
+      icon: Search,
+      tooltip: "Wyszukiwanie",
+      onClick: () => console.log("Search"),
+      active: false,
+    },
+    {
+      id: "identify",
+      icon: Info,
+      tooltip: "Identyfikacja obiektu",
+      onClick: () => console.log("Info"),
+      active: false,
+    },
+    {
+      id: "export-pdf",
+      icon: PictureAsPdf,
+      tooltip: "Eksportuj obrys w formacie PDF",
       onClick: handleScreenshot,
       active: false,
     },
     {
-      id: 'style',
+      id: "document",
+      icon: Description,
+      tooltip: "Wypis i wyrys",
+      onClick: () => console.log("Document"),
+      active: false,
+    },
+    {
+      id: "georeference",
+      icon: MyLocation,
+      tooltip: "Georeferencja",
+      onClick: () => console.log("My location"),
+      active: false,
+    },
+    {
+      id: "crop-mask",
+      icon: Crop,
+      tooltip: "Przycinanie do maski",
+      onClick: handleAreaMeasure,
+      active: measurement.isAreaMode,
+    },
+    {
+      id: "keyboard-shortcuts",
+      icon: Keyboard,
+      tooltip: "Skróty klawiszowe",
+      onClick: () => console.log("Keyboard shortcuts"),
+      active: false,
+    },
+    { id: "divider-2" },
+    {
+      id: "contact",
+      icon: Email,
+      tooltip: "Kontakt",
+      onClick: () => console.log("Contact"),
+      active: false,
+    },
+    {
+      id: "map-style",
       icon: Map,
-      tooltip: 'Zmień styl mapy',
-      onClick: handleStyleMenuOpen,
+      tooltip: "Zmień styl mapy",
+      onClick: (e) => handleStyleMenuOpen(e),
       active: false,
     },
-    { id: 'divider' },
     {
-      id: 'settings',
+      id: "settings",
       icon: Settings,
-      tooltip: 'Ustawienia',
-      onClick: () => console.log('Settings coming soon...'),
+      tooltip: "Ustawienia",
+      onClick: () => console.log("Settings"),
       active: false,
     },
-    {
-      id: 'info',
-      icon: Info,
-      tooltip: 'Informacje',
-      onClick: () => console.log('Info coming soon...'),
-      active: false,
-    },
-  ];
+  ]
 
   return (
     <>
       <Paper
         elevation={2}
         sx={{
-          position: 'fixed',
-          top: '50%',
+          position: "fixed",
+          top: 16,
           right: 16,
-          transform: 'translateY(-50%)',
           width: TOOLBAR_WIDTH,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
+          maxHeight: "calc(100vh - 32px)",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
           py: 1,
           zIndex: 1200,
-          borderRadius: 2,
+          borderRadius: 1,
+          overflowY: "auto",
+          overflowX: "hidden",
+          "&::-webkit-scrollbar": {
+            width: "4px",
+          },
+          "&::-webkit-scrollbar-track": {
+            background: "transparent",
+          },
+          "&::-webkit-scrollbar-thumb": {
+            background: "action.hover",
+            borderRadius: "4px",
+            "&:hover": {
+              background: "action.selected",
+            },
+          },
         }}
       >
         {tools.map((tool, index) => {
-          if (tool.id === 'divider') {
+          if (tool.id.startsWith("divider")) {
             return (
-              <Box
-                key={`divider-${index}`}
+              <Divider
+                key={tool.id}
                 sx={{
-                  width: '80%',
-                  height: 1,
-                  bgcolor: 'divider',
-                  my: 1,
+                  width: "100%",
+                  my: 0.5,
                 }}
               />
-            );
+            )
           }
 
-          const IconComponent = tool.icon!;
+          const IconComponent = tool.icon!
 
           return (
             <Tooltip key={tool.id} title={tool.tooltip} placement="left">
               <span>
                 <IconButton
-                  onClick={tool.onClick}
+                  onClick={event => tool.onClick?.(event)}
                   disabled={tool.disabled}
+                  size="small"
                   sx={{
-                    width: 44,
-                    height: 44,
-                    m: 0.5,
+                    width: 40,
+                    height: 40,
+                    my: 0.5,
+                    borderRadius: 1,
                     backgroundColor: tool.active ? 'primary.main' : 'transparent',
-                    color: tool.active ? 'primary.contrastText' : 'text.primary',
+                    color: tool.active ? 'primary.contrastText' : 'text.secondary',
                     '&:hover': {
                       backgroundColor: tool.active ? 'primary.dark' : 'action.hover',
                     },
-                    '&:disabled': {
-                      color: 'text.disabled',
-                    },
                   }}
                 >
-                  <IconComponent fontSize="small" />
+                  <IconComponent sx={{ fontSize: 20 }} />
                 </IconButton>
               </span>
             </Tooltip>
-          );
+          )
         })}
 
         {/* Measurement info */}
         {(measurement.isDistanceMode || measurement.isAreaMode) && (
           <Box
             sx={{
-              position: 'absolute',
-              right: '100%',
+              position: "absolute",
+              right: "100%",
               top: 0,
               mr: 1,
-              bgcolor: 'background.paper',
-              p: 1,
+              bgcolor: "background.paper",
+              color: "text.primary",
+              p: 1.5,
               borderRadius: 1,
               boxShadow: 2,
-              minWidth: 120,
-              fontSize: '0.75rem',
+              minWidth: 140,
+              fontSize: "0.75rem",
+              border: 1,
+              borderColor: 'divider',
             }}
           >
-            {measurement.isDistanceMode && 'Kliknij punkty na mapie'}
-            {measurement.isAreaMode && 'Kliknij punkty obszaru'}
+            {measurement.isDistanceMode && "Kliknij punkty na mapie"}
+            {measurement.isAreaMode && "Kliknij punkty obszaru"}
           </Box>
         )}
       </Paper>
@@ -229,12 +303,12 @@ const RightToolbar: React.FC = () => {
         open={Boolean(styleMenuAnchor)}
         onClose={handleStyleMenuClose}
         anchorOrigin={{
-          vertical: 'center',
-          horizontal: 'left',
+          vertical: "center",
+          horizontal: "left",
         }}
         transformOrigin={{
-          vertical: 'center',
-          horizontal: 'right',
+          vertical: "center",
+          horizontal: "right",
         }}
       >
         {Object.entries(MAP_STYLES).map(([key, style]) => (
@@ -251,7 +325,7 @@ const RightToolbar: React.FC = () => {
         ))}
       </Menu>
     </>
-  );
-};
+  )
+}
 
-export default RightToolbar;
+export default RightToolbar

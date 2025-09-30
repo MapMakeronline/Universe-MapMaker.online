@@ -80,6 +80,7 @@ const MapContainer: React.FC<MapContainerProps> = ({ children }) => {
         overflow: 'hidden',
       }}
     >
+
       <Map
         ref={mapRef}
         {...viewState}
@@ -94,24 +95,24 @@ const MapContainer: React.FC<MapContainerProps> = ({ children }) => {
           height: '100%',
         }}
       >
-        {/* Navigation Controls - prawy górny róg */}
+        {/* Navigation Controls - lewy dolny róg */}
         <NavigationControl
-          position="top-right"
+          position="bottom-left"
           showCompass={true}
           showZoom={true}
         />
 
-        {/* Geolocation Control - prawy górny róg, poniżej navigation */}
+        {/* Geolocation Control - lewy dolny róg, poniżej navigation */}
         <GeolocateControl
-          position="top-right"
+          position="bottom-left"
           positionOptions={{ enableHighAccuracy: true }}
           trackUserLocation={true}
           showUserHeading={true}
         />
 
-        {/* Fullscreen Control - prawy górny róg, na dole */}
+        {/* Fullscreen Control - lewy dolny róg, na dole */}
         <FullscreenControl
-          position="top-right"
+          position="bottom-left"
         />
 
         {/* Scale Control - lewy dolny róg */}
