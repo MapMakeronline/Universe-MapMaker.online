@@ -20,6 +20,7 @@ import {
   useTheme,
   alpha,
 } from '@mui/material';
+import { useRouter } from 'next/navigation';
 import {
   Menu as MenuIcon,
   Home,
@@ -55,6 +56,7 @@ export default function DashboardLayout({ children, currentPage, onPageChange }:
   const [open, setOpen] = useState(true);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const theme = useTheme();
+  const router = useRouter();
 
   const handleDrawerToggle = () => {
     setOpen(!open);
@@ -69,8 +71,8 @@ export default function DashboardLayout({ children, currentPage, onPageChange }:
   };
 
   const handleLogout = () => {
-    // Implement logout logic here
     handleCloseMenu();
+    router.push('/login');
   };
 
   return (
@@ -389,7 +391,7 @@ export default function DashboardLayout({ children, currentPage, onPageChange }:
 
           <Box sx={{ mt: 4, px: 2 }}>
             <ListItemButton
-              onClick={() => onPageChange('logout')}
+              onClick={handleLogout}
               sx={{
                 borderRadius: 2,
                 color: 'text.secondary',
