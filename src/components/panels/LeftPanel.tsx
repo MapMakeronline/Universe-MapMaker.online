@@ -34,6 +34,11 @@ import {
 import AddDatasetModal from './AddDatasetModal';
 import AddNationalLawModal from './AddNationalLawModal';
 import AddLayerModal from './AddLayerModal';
+import ImportLayerModal from '../modals/ImportLayerModal';
+import AddGroupModal from '../modals/AddGroupModal';
+import CreateConsultationModal from '../modals/CreateConsultationModal';
+import ManageLayersModal from '../modals/ManageLayersModal';
+import ConfigurationModal from '../modals/ConfigurationModal';
 
 interface Warstwa {
   id: string;
@@ -68,6 +73,11 @@ const LeftPanel: React.FC = () => {
   const [addDatasetModalOpen, setAddDatasetModalOpen] = useState(false);
   const [addNationalLawModalOpen, setAddNationalLawModalOpen] = useState(false);
   const [addLayerModalOpen, setAddLayerModalOpen] = useState(false);
+  const [importLayerModalOpen, setImportLayerModalOpen] = useState(false);
+  const [addGroupModalOpen, setAddGroupModalOpen] = useState(false);
+  const [createConsultationModalOpen, setCreateConsultationModalOpen] = useState(false);
+  const [manageLayersModalOpen, setManageLayersModalOpen] = useState(false);
+  const [configurationModalOpen, setConfigurationModalOpen] = useState(false);
   const [warstwy, setWarstwy] = useState<Warstwa[]>([
     {
       id: 'obszar-rewitalizacji',
@@ -260,6 +270,88 @@ const LeftPanel: React.FC = () => {
 
   const handleCloseAddLayerModal = () => {
     setAddLayerModalOpen(false);
+  };
+
+  const handleOpenImportLayerModal = () => {
+    setImportLayerModalOpen(true);
+  };
+
+  const handleCloseImportLayerModal = () => {
+    setImportLayerModalOpen(false);
+  };
+
+  const handleOpenAddGroupModal = () => {
+    setAddGroupModalOpen(true);
+  };
+
+  const handleCloseAddGroupModal = () => {
+    setAddGroupModalOpen(false);
+  };
+
+  const handleAddGroup = (data: { nazwaGrupy: string; grupaNadrzedna: string }) => {
+    // Create a new group
+    const newGroup: Warstwa = {
+      id: `group-${Date.now()}`,
+      nazwa: data.nazwaGrupy,
+      widoczna: true,
+      typ: 'grupa',
+      dzieci: [],
+      rozwinięta: true,
+    };
+
+    // Add to warstwy
+    const updatedWarstwy = [...warstwy, newGroup];
+    setWarstwy(updatedWarstwy);
+    
+    console.log('Adding new group:', data);
+  };
+
+  const handleCloseCreateConsultationModal = () => {
+    setCreateConsultationModalOpen(false);
+  };
+
+  const handleCreateConsultation = (data: {
+    nazwa: string;
+    numerUchwaly: string;
+    email: string;
+    dataRozpoczecia: string;
+    dataZakonczenia: string;
+  }) => {
+    console.log('Creating new consultation:', data);
+    // Here you would typically send the data to your backend or store it in state
+    // For now, we'll just log it
+  };
+
+  const handleCloseManageLayersModal = () => {
+    setManageLayersModalOpen(false);
+  };
+
+  const handleRestoreLayer = (layerId: string) => {
+    console.log('Restoring layer:', layerId);
+    // Here you would implement the logic to restore a layer from database
+  };
+
+  const handleAddLayerFromDatabase = (layerId: string) => {
+    console.log('Adding layer from database:', layerId);
+    // Here you would implement the logic to add a layer from the database to the map
+  };
+
+  const handleLayerInfo = (layerId: string) => {
+    console.log('Showing layer info for:', layerId);
+    // Here you would implement the logic to show layer information
+  };
+
+  const handleCloseConfigurationModal = () => {
+    setConfigurationModalOpen(false);
+  };
+
+  const handleConfiguration = (data: {
+    nazwaWypisu: string;
+    wybierzWarstwe: string;
+    dodajWarstwy: string;
+  }) => {
+    console.log('Configuration settings:', data);
+    // Here you would implement the logic to apply configuration settings
   };
 
   const handleAddLayer = (data: { nazwaWarstwy: string; typGeometrii: string; nazwaGrupy: string; columns: any[] }) => {
@@ -827,13 +919,21 @@ const LeftPanel: React.FC = () => {
             </Tooltip>
 
             <Tooltip title="Importuj warstwe" arrow>
-              <IconButton size="small" sx={{ color: theme.palette.text.secondary, p: 0.5, '&:hover': { color: theme.palette.primary.main } }}>
+              <IconButton 
+                size="small" 
+                onClick={handleOpenImportLayerModal}
+                sx={{ color: theme.palette.text.secondary, p: 0.5, '&:hover': { color: theme.palette.primary.main } }}
+              >
                 <ArrowUpwardIcon sx={{ fontSize: '18px' }} />
               </IconButton>
             </Tooltip>
 
             <Tooltip title="Dodaj grupę" arrow>
-              <IconButton size="small" sx={{ color: theme.palette.text.secondary, p: 0.5, '&:hover': { color: theme.palette.primary.main } }}>
+              <IconButton 
+                size="small" 
+                onClick={handleOpenAddGroupModal}
+                sx={{ color: theme.palette.text.secondary, p: 0.5, '&:hover': { color: theme.palette.primary.main } }}
+              >
                 <AddIcon sx={{ fontSize: '18px' }} />
               </IconButton>
             </Tooltip>
@@ -855,19 +955,31 @@ const LeftPanel: React.FC = () => {
             </Tooltip>
 
             <Tooltip title="Utwórz konsultacje społeczne" arrow>
-              <IconButton size="small" sx={{ color: theme.palette.text.secondary, p: 0.5, '&:hover': { color: theme.palette.primary.main } }}>
+              <IconButton 
+                size="small" 
+                onClick={() => setCreateConsultationModalOpen(true)}
+                sx={{ color: theme.palette.text.secondary, p: 0.5, '&:hover': { color: theme.palette.primary.main } }}
+              >
                 <ChatIcon sx={{ fontSize: '18px' }} />
               </IconButton>
             </Tooltip>
 
             <Tooltip title="Menedżer warstw" arrow>
-              <IconButton size="small" sx={{ color: theme.palette.text.secondary, p: 0.5, '&:hover': { color: theme.palette.primary.main } }}>
+              <IconButton 
+                size="small" 
+                onClick={() => setManageLayersModalOpen(true)}
+                sx={{ color: theme.palette.text.secondary, p: 0.5, '&:hover': { color: theme.palette.primary.main } }}
+              >
                 <StarIcon sx={{ fontSize: '18px' }} />
               </IconButton>
             </Tooltip>
 
             <Tooltip title="Konfiguracja wyrysu i wypisu" arrow>
-              <IconButton size="small" sx={{ color: theme.palette.text.secondary, p: 0.5, '&:hover': { color: theme.palette.primary.main } }}>
+              <IconButton 
+                size="small" 
+                onClick={() => setConfigurationModalOpen(true)}
+                sx={{ color: theme.palette.text.secondary, p: 0.5, '&:hover': { color: theme.palette.primary.main } }}
+              >
                 <EditIcon sx={{ fontSize: '18px' }} />
               </IconButton>
             </Tooltip>
@@ -1456,6 +1568,42 @@ const LeftPanel: React.FC = () => {
         open={addLayerModalOpen}
         onClose={handleCloseAddLayerModal}
         onSubmit={handleAddLayer}
+      />
+
+      {/* Import Layer Modal */}
+      <ImportLayerModal
+        open={importLayerModalOpen}
+        onClose={handleCloseImportLayerModal}
+      />
+
+      {/* Add Group Modal */}
+      <AddGroupModal
+        open={addGroupModalOpen}
+        onClose={handleCloseAddGroupModal}
+        onSubmit={handleAddGroup}
+      />
+
+      {/* Create Consultation Modal */}
+      <CreateConsultationModal
+        open={createConsultationModalOpen}
+        onClose={handleCloseCreateConsultationModal}
+        onSubmit={handleCreateConsultation}
+      />
+
+      {/* Manage Layers Modal */}
+      <ManageLayersModal
+        open={manageLayersModalOpen}
+        onClose={handleCloseManageLayersModal}
+        onRestoreLayer={handleRestoreLayer}
+        onAddLayer={handleAddLayerFromDatabase}
+        onLayerInfo={handleLayerInfo}
+      />
+
+      {/* Configuration Modal */}
+      <ConfigurationModal
+        open={configurationModalOpen}
+        onClose={handleCloseConfigurationModal}
+        onSubmit={handleConfiguration}
       />
     </>
   );

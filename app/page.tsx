@@ -7,7 +7,7 @@ export default function HomePage() {
   const router = useRouter();
 
   useEffect(() => {
-    // Przekieruj do aplikacji mapowej
+    // Redirect to map application
     router.replace('/map');
   }, [router]);
 
@@ -21,7 +21,7 @@ export default function HomePage() {
     }}>
       <div style={{ textAlign: 'center' }}>
         <h1>🗺️ Universe MapMaker</h1>
-        <p>Przekierowywanie do aplikacji...</p>
+        <p>Redirecting to application...</p>
       </div>
     </div>
   );

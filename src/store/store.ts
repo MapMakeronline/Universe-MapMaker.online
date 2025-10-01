@@ -9,14 +9,6 @@ export const store = configureStore({
     layers: layersReducer,
     draw: drawReducer,
   },
-  middleware: (getDefaultMiddleware) =>
-    getDefaultMiddleware({
-      serializableCheck: {
-        // Ignoruj nieserializowalne dane w Redux (np. funkcje z Mapbox)
-        ignoredActions: ['map/setViewState'],
-        ignoredPaths: ['map.mapInstance'],
-      },
-    }),
 });
 
 export type RootState = ReturnType<typeof store.getState>;
