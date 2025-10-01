@@ -160,36 +160,44 @@ export default function UserProfile() {
       </Box>
 
       <Grid container spacing={3}>
-        {/* User Info Card */}
-        <Grid item xs={12} md={4}>
+        {/* User Info Card - Expanded */}
+        <Grid item xs={12} md={6}>
           <Card sx={{ height: 'fit-content', border: '1px solid', borderColor: 'divider' }}>
-            <CardContent sx={{ textAlign: 'center', p: 3 }}>
-              <Avatar
-                sx={{
-                  width: 80,
-                  height: 80,
-                  bgcolor: 'primary.main',
-                  fontSize: '2rem',
-                  mx: 'auto',
-                  mb: 2,
-                }}
-              >
-                T
-              </Avatar>
-              <Typography variant="h6" fontWeight="600" gutterBottom>
-                Terenyinwestycyjne
-              </Typography>
-              <Typography variant="body2" color="text.secondary" gutterBottom>
-                terenyinwest@gmail.com
-              </Typography>
-              <Chip
-                icon={<CheckCircle />}
-                label="Konto aktywne"
-                color="success"
-                size="small"
-                sx={{ mt: 1 }}
-              />
-              <Box sx={{ mt: 2 }}>
+            <CardContent sx={{ p: 4 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+                <Avatar
+                  sx={{
+                    width: 100,
+                    height: 100,
+                    bgcolor: 'primary.main',
+                    fontSize: '2.5rem',
+                    mr: 3,
+                  }}
+                >
+                  T
+                </Avatar>
+                <Box sx={{ flexGrow: 1 }}>
+                  <Typography variant="h5" fontWeight="700" gutterBottom>
+                    Terenyinwestycyjne
+                  </Typography>
+                  <Typography variant="body1" color="text.secondary" gutterBottom>
+                    terenyinwest@gmail.com
+                  </Typography>
+                  <Chip
+                    icon={<CheckCircle />}
+                    label="Konto aktywne"
+                    color="success"
+                    sx={{ mt: 1 }}
+                  />
+                </Box>
+              </Box>
+              
+              <Divider sx={{ my: 3 }} />
+              
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  <strong>Zarządzaj swoim kontem i subskrypcją</strong>
+                </Typography>
                 <Typography variant="caption" color="text.secondary">
                   Członek od: {mockUserStats.joinDate}
                 </Typography>
@@ -198,10 +206,10 @@ export default function UserProfile() {
           </Card>
         </Grid>
 
-        {/* Stats Cards */}
-        <Grid item xs={12} md={8}>
+        {/* Stats Cards - 2x2 Grid */}
+        <Grid item xs={12} md={6}>
           <Grid container spacing={2}>
-            <Grid item xs={6} sm={3}>
+            <Grid item xs={6}>
               <StatCard
                 title="Projekty"
                 value={mockUserStats.totalProjects}
@@ -209,7 +217,7 @@ export default function UserProfile() {
                 subtitle={`${mockUserStats.publicProjects} publicznych`}
               />
             </Grid>
-            <Grid item xs={6} sm={3}>
+            <Grid item xs={6}>
               <StatCard
                 title="Wyświetlenia"
                 value={mockUserStats.totalViews.toLocaleString()}
@@ -217,7 +225,7 @@ export default function UserProfile() {
                 color="success"
               />
             </Grid>
-            <Grid item xs={6} sm={3}>
+            <Grid item xs={6}>
               <StatCard
                 title="Warstwy"
                 value={mockUserStats.layersCount}
@@ -225,7 +233,7 @@ export default function UserProfile() {
                 color="info"
               />
             </Grid>
-            <Grid item xs={6} sm={3}>
+            <Grid item xs={6}>
               <StatCard
                 title="Dni aktywności"
                 value="1827"
@@ -237,7 +245,7 @@ export default function UserProfile() {
         </Grid>
 
         {/* Storage Usage */}
-        <Grid item xs={12} md={6}>
+        <Grid item xs={12} md={7}>
           <Card sx={{ height: 'fit-content', border: '1px solid', borderColor: 'divider' }}>
             <CardContent>
               <Typography variant="h6" fontWeight="600" gutterBottom>
@@ -294,7 +302,7 @@ export default function UserProfile() {
         </Grid>
 
         {/* Subscription Info */}
-        <Grid item xs={12} md={6}>
+        <Grid item xs={12} md={5}>
           <Card sx={{ height: 'fit-content', border: '1px solid', borderColor: 'divider' }}>
             <CardContent>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
