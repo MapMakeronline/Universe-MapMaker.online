@@ -269,6 +269,18 @@ export default function ImportLayerModal({ open, onClose }: ImportLayerModalProp
           </Box>
 
           {renderFileUploadArea('.gml', '.gml')}
+
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="body2" color="textSecondary">
+              Błędy geometrii są naprawiane automatycznie
+            </Typography>
+            <Typography variant="body2" color="textSecondary">
+              Kodowanie znaków: UTF-8
+            </Typography>
+            <Typography variant="body2" color="textSecondary">
+              ID układu współrzędnych projektu : EPSG 3857
+            </Typography>
+          </Box>
         </TabPanel>
 
         {/* SHP Tab */}
@@ -401,6 +413,9 @@ export default function ImportLayerModal({ open, onClose }: ImportLayerModalProp
           <Box sx={{ mt: 2 }}>
             <Typography variant="body2" color="textSecondary">
               Błędy geometrii są naprawiane automatycznie
+            </Typography>
+            <Typography variant="body2" color="textSecondary">
+              Kodowanie znaków: UTF-8
             </Typography>
             <Typography variant="body2" color="textSecondary">
               ID układu współrzędnych projektu : EPSG 3857

@@ -326,9 +326,9 @@ const LeftPanel: React.FC = () => {
     setManageLayersModalOpen(false);
   };
 
-  const handleRestoreLayer = (layerId: string) => {
-    console.log('Restoring layer:', layerId);
-    // Here you would implement the logic to restore a layer from database
+  const handleRestoreLayer = (layerId: string, data: { nazwaWarstwy: string; grupaNadrzedna: string }) => {
+    console.log('Restoring layer:', layerId, 'with data:', data);
+    // Here you would implement the logic to restore a layer from database with the specified group
   };
 
   const handleAddLayerFromDatabase = (layerId: string) => {
