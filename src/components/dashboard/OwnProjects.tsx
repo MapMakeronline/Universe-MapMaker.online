@@ -131,7 +131,6 @@ const mockProjects: Project[] = [
 ];
 
 export default function OwnProjects() {
-  const [selectedProject, setSelectedProject] = useState<string | null>(null);
   const [databaseDialogOpen, setDatabaseDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
@@ -158,23 +157,23 @@ export default function OwnProjects() {
 
 
 
-  const handleProjectAction = (action: string) => {
-    console.log(`${action} project:`, selectedProject);
+  const handleProjectAction = (action: string, projectId: string) => {
+    console.log(`${action} project:`, projectId);
     
     switch (action) {
       case 'database':
-        setDialogProjectId(selectedProject);
+        setDialogProjectId(projectId);
         setDatabaseDialogOpen(true);
         break;
       case 'delete':
-        setProjectToDelete(selectedProject);
+        setProjectToDelete(projectId);
         setDeleteDialogOpen(true);
         break;
       case 'import':
         setImportDialogOpen(true);
         break;
       case 'settings':
-        setDialogProjectId(selectedProject);
+        setDialogProjectId(projectId);
         setSettingsDialogOpen(true);
         break;
       default:
@@ -267,7 +266,6 @@ export default function OwnProjects() {
       event.preventDefault();
       event.stopPropagation();
       setCardMenuAnchor(event.currentTarget);
-      setSelectedProject(project.id);
     };
 
     const handleCardMenuClose = () => {
@@ -276,7 +274,7 @@ export default function OwnProjects() {
 
     const handleCardProjectAction = (action: string) => {
       handleCardMenuClose();
-      handleProjectAction(action);
+      handleProjectAction(action, project.id);
     };
 
     return (
