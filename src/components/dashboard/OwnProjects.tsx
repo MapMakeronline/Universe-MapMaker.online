@@ -288,6 +288,7 @@ export default function OwnProjects() {
         border: '1px solid',
         borderColor: 'divider',
       }}
+      onClick={() => window.location.href = '/map'}
     >
       <Box sx={{ position: 'relative' }}>
         <CardMedia

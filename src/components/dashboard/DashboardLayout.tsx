@@ -128,7 +128,7 @@ export default function DashboardLayout({ children, currentPage, onPageChange }:
             <Box sx={{ display: 'flex', gap: 3, mr: 2 }}>
               <Typography
                 component="a"
-                href="/blog"
+                href="#"
                 sx={{
                   color: 'inherit',
                   textDecoration: 'none',
@@ -144,7 +144,7 @@ export default function DashboardLayout({ children, currentPage, onPageChange }:
               </Typography>
               <Typography
                 component="a"
-                href="/regulamin"
+                href="#"
                 sx={{
                   color: 'inherit',
                   textDecoration: 'none',
@@ -160,7 +160,7 @@ export default function DashboardLayout({ children, currentPage, onPageChange }:
               </Typography>
               <Typography
                 component="a"
-                href="/faq"
+                href="#"
                 sx={{
                   color: 'inherit',
                   textDecoration: 'none',
