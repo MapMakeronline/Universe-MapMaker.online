@@ -131,7 +131,6 @@ const mockProjects: Project[] = [
 ];
 
 export default function OwnProjects() {
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
   const [databaseDialogOpen, setDatabaseDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -157,17 +156,7 @@ export default function OwnProjects() {
   });
   const theme = useTheme();
 
-  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, projectId: string) => {
-    event.preventDefault();
-    event.stopPropagation();
-    setAnchorEl(event.currentTarget);
-    setSelectedProject(projectId);
-  };
 
-  const handleMenuClose = () => {
-    setAnchorEl(null);
-    setSelectedProject(null);
-  };
 
   const handleProjectAction = (action: string) => {
     console.log(`${action} project:`, selectedProject);
@@ -191,8 +180,6 @@ export default function OwnProjects() {
       default:
         console.log(`Action ${action} not implemented yet`);
     }
-    
-    handleMenuClose();
   };
 
   const handleNewProject = () => {
@@ -273,92 +260,109 @@ export default function OwnProjects() {
     }
   }, [settingsDialogOpen, dialogProjectId]);
 
-  const ProjectCard = ({ project }: { project: Project }) => (
-    <Card
-      sx={{
-        height: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        cursor: 'pointer',
-        transition: 'all 0.2s ease-in-out',
-        '&:hover': {
-          transform: 'translateY(-4px)',
-          boxShadow: theme.shadows[8],
-        },
-        border: '1px solid',
-        borderColor: 'divider',
-      }}
-      onClick={() => window.location.href = '/map'}
-    >
-      <Box sx={{ position: 'relative' }}>
-        <CardMedia
-          component="img"
-          height="200"
-          image={project.image}
-          alt={project.title}
-          sx={{ 
-            bgcolor: 'grey.100',
-            backgroundImage: 'linear-gradient(45deg, #f5f5f5 25%, transparent 25%), linear-gradient(-45deg, #f5f5f5 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #f5f5f5 75%), linear-gradient(-45deg, transparent 75%, #f5f5f5 75%)',
-            backgroundSize: '20px 20px',
-            backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0px',
-          }}
-        />
-        <Box
+  const ProjectCard = ({ project }: { project: Project }) => {
+    const [cardMenuAnchor, setCardMenuAnchor] = useState<null | HTMLElement>(null);
+
+    const handleCardMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+      setCardMenuAnchor(event.currentTarget);
+      setSelectedProject(project.id);
+    };
+
+    const handleCardMenuClose = () => {
+      setCardMenuAnchor(null);
+    };
+
+    const handleCardProjectAction = (action: string) => {
+      handleCardMenuClose();
+      handleProjectAction(action);
+    };
+
+    return (
+      <>
+        <Card
           sx={{
-            position: 'absolute',
-            top: 8,
-            left: 8,
-            right: 8,
+            height: '100%',
             display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'flex-start',
+            flexDirection: 'column',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease-in-out',
+            '&:hover': {
+              transform: 'translateY(-4px)',
+              boxShadow: theme.shadows[8],
+            },
+            border: '1px solid',
+            borderColor: 'divider',
           }}
+          onClick={() => window.location.href = '/map'}
         >
-          {project.isPublic && (
-            <Chip
-              label="OPUBLIKOWANY"
-              size="small"
-              sx={{
-                bgcolor: alpha(theme.palette.success.main, 0.9),
-                color: 'white',
-                fontWeight: 600,
-                fontSize: '0.7rem',
-                backdropFilter: 'blur(4px)',
+          <Box sx={{ position: 'relative' }}>
+            <CardMedia
+              component="img"
+              height="200"
+              image={project.image}
+              alt={project.title}
+              sx={{ 
+                bgcolor: 'grey.100',
+                backgroundImage: 'linear-gradient(45deg, #f5f5f5 25%, transparent 25%), linear-gradient(-45deg, #f5f5f5 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #f5f5f5 75%), linear-gradient(-45deg, transparent 75%, #f5f5f5 75%)',
+                backgroundSize: '20px 20px',
+                backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0px',
               }}
             />
-          )}
-          <Chip
-            icon={project.isPublic ? <Public /> : <Lock />}
-            label="Prywatny"
-            size="small"
-            color="default"
-            sx={{
-              bgcolor: alpha(theme.palette.background.paper, 0.9),
-              backdropFilter: 'blur(4px)',
-              ml: project.isPublic ? 0 : 'auto',
-            }}
-          />
-        </Box>
-        <IconButton
-          sx={{
-            position: 'absolute',
-            bottom: 8,
-            right: 8,
-            bgcolor: alpha(theme.palette.background.paper, 0.9),
-            backdropFilter: 'blur(4px)',
-            '&:hover': {
-              bgcolor: alpha(theme.palette.background.paper, 1),
-            },
-            zIndex: 10,
-          }}
-          onClick={(e) => {
-            e.stopPropagation();
-            handleMenuOpen(e, project.id);
-          }}
-        >
-          <MoreVert />
-        </IconButton>
-      </Box>
+            <Box
+              sx={{
+                position: 'absolute',
+                top: 8,
+                left: 8,
+                right: 8,
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
+              }}
+            >
+              {project.isPublic && (
+                <Chip
+                  label="OPUBLIKOWANY"
+                  size="small"
+                  sx={{
+                    bgcolor: alpha(theme.palette.success.main, 0.9),
+                    color: 'white',
+                    fontWeight: 600,
+                    fontSize: '0.7rem',
+                    backdropFilter: 'blur(4px)',
+                  }}
+                />
+              )}
+              <Chip
+                icon={project.isPublic ? <Public /> : <Lock />}
+                label="Prywatny"
+                size="small"
+                color="default"
+                sx={{
+                  bgcolor: alpha(theme.palette.background.paper, 0.9),
+                  backdropFilter: 'blur(4px)',
+                  ml: project.isPublic ? 0 : 'auto',
+                }}
+              />
+            </Box>
+            <IconButton
+              sx={{
+                position: 'absolute',
+                bottom: 8,
+                right: 8,
+                bgcolor: alpha(theme.palette.background.paper, 0.9),
+                backdropFilter: 'blur(4px)',
+                '&:hover': {
+                  bgcolor: alpha(theme.palette.background.paper, 1),
+                },
+                zIndex: 10,
+              }}
+              onClick={handleCardMenuOpen}
+            >
+              <MoreVert />
+            </IconButton>
+          </Box>
       
       <CardContent sx={{ flexGrow: 1, p: 2 }}>
         <Typography variant="h6" component="h3" gutterBottom fontWeight="600">
@@ -400,7 +404,74 @@ export default function OwnProjects() {
         </Typography>
       </CardContent>
     </Card>
-  );
+
+    {/* Project Menu */}
+    <Menu
+      anchorEl={cardMenuAnchor}
+      open={Boolean(cardMenuAnchor)}
+      onClose={handleCardMenuClose}
+      anchorOrigin={{
+        vertical: 'bottom',
+        horizontal: 'right',
+      }}
+      transformOrigin={{
+        vertical: 'top',
+        horizontal: 'right',
+      }}
+      sx={{
+        '& .MuiPaper-root': {
+          minWidth: 220,
+          boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+          border: '1px solid',
+          borderColor: 'divider',
+          mt: 0.5,
+        }
+      }}
+    >
+      {project.isPublic && (
+        <MenuItem onClick={() => handleCardProjectAction('published-view')}>
+          <ListItemIcon>
+            <Language fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Mapa w wersji opublikowanej</ListItemText>
+        </MenuItem>
+      )}
+      <MenuItem onClick={() => handleCardProjectAction('settings')}>
+        <ListItemIcon>
+          <Settings fontSize="small" />
+        </ListItemIcon>
+        <ListItemText>Ustawienia</ListItemText>
+      </MenuItem>
+      <MenuItem onClick={() => handleCardProjectAction('database')}>
+        <ListItemIcon>
+          <TableChart fontSize="small" />
+        </ListItemIcon>
+        <ListItemText>Baza danych</ListItemText>
+      </MenuItem>
+      <MenuItem onClick={() => handleCardProjectAction('publish')}>
+        <ListItemIcon>
+          <Public fontSize="small" />
+        </ListItemIcon>
+        <ListItemText>
+          {project.isPublic ? 'Cofnij publikację' : 'Publikacja mapy'}
+        </ListItemText>
+      </MenuItem>
+      <MenuItem onClick={() => handleCardProjectAction('import')}>
+        <ListItemIcon>
+          <Upload fontSize="small" />
+        </ListItemIcon>
+        <ListItemText>Importuj projekt</ListItemText>
+      </MenuItem>
+      <MenuItem onClick={() => handleCardProjectAction('delete')} sx={{ color: 'error.main' }}>
+        <ListItemIcon>
+          <Delete fontSize="small" color="error" />
+        </ListItemIcon>
+        <ListItemText>Usuń projekt</ListItemText>
+      </MenuItem>
+    </Menu>
+  </>
+);
+};
 
   return (
     <Box>
@@ -440,73 +511,7 @@ export default function OwnProjects() {
         ))}
       </Grid>
 
-      {/* Context Menu */}
-      <Menu
-        anchorEl={anchorEl}
-        open={Boolean(anchorEl && selectedProject)}
-        onClose={handleMenuClose}
-        anchorOrigin={{
-          vertical: 'bottom',
-          horizontal: 'right',
-        }}
-        transformOrigin={{
-          vertical: 'top',
-          horizontal: 'right',
-        }}
-        sx={{
-          '& .MuiPaper-root': {
-            minWidth: 220,
-            boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-            border: '1px solid',
-            borderColor: 'divider',
-            mt: 0.5,
-          }
-        }}
-      >
-        {selectedProject && mockProjects.find(p => p.id === selectedProject)?.isPublic && (
-          <MenuItem onClick={() => handleProjectAction('published-view')}>
-            <ListItemIcon>
-              <Language fontSize="small" />
-            </ListItemIcon>
-            <ListItemText>Mapa w wersji opublikowanej</ListItemText>
-          </MenuItem>
-        )}
-        <MenuItem onClick={() => handleProjectAction('settings')}>
-          <ListItemIcon>
-            <Settings fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>Ustawienia</ListItemText>
-        </MenuItem>
-        <MenuItem onClick={() => handleProjectAction('database')}>
-          <ListItemIcon>
-            <TableChart fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>Baza danych</ListItemText>
-        </MenuItem>
-        <MenuItem onClick={() => handleProjectAction('publish')}>
-          <ListItemIcon>
-            <Public fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>
-            {selectedProject && mockProjects.find(p => p.id === selectedProject)?.isPublic 
-              ? 'Cofnij publikację' 
-              : 'Publikacja mapy'
-            }
-          </ListItemText>
-        </MenuItem>
-        <MenuItem onClick={() => handleProjectAction('import')}>
-          <ListItemIcon>
-            <Upload fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>Importuj projekt</ListItemText>
-        </MenuItem>
-        <MenuItem onClick={() => handleProjectAction('delete')} sx={{ color: 'error.main' }}>
-          <ListItemIcon>
-            <Delete fontSize="small" color="error" />
-          </ListItemIcon>
-          <ListItemText>Usuń projekt</ListItemText>
-        </MenuItem>
-        </Menu>
+
 
       {/* Floating Action Button */}
       <Fab
