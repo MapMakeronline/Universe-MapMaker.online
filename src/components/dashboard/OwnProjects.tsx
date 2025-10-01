@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   Box,
   Typography,
@@ -31,6 +31,11 @@ import {
   Lock,
   ViewModule,
   Storage,
+  Language,
+  Settings,
+  Upload,
+  GetApp,
+  TableChart,
 } from '@mui/icons-material';
 
 interface Project {
@@ -51,7 +56,7 @@ const mockProjects: Project[] = [
     id: '1',
     title: 'REKLAMY',
     description: 'Projekt własny',
-    image: '/api/placeholder/300/200',
+    image: '',
     category: 'Reklamy',
     isPublic: false,
     size: '88.97 MB',
@@ -63,7 +68,7 @@ const mockProjects: Project[] = [
     id: '2',
     title: 'DOLNOŚLĄSKIE',
     description: 'Projekt własny',
-    image: '/api/placeholder/300/200',
+    image: '',
     category: 'Województwo',
     isPublic: false,
     size: '45.32 MB',
@@ -75,12 +80,36 @@ const mockProjects: Project[] = [
     id: '3',
     title: 'KONSULTACJE PREZENTACJA',
     description: 'Projekt własny',
-    image: '/api/placeholder/300/200',
+    image: '',
     category: 'Prezentacja',
     isPublic: false,
     size: '53.72 MB',
     layers: 8,
     lastModified: '3 dni temu',
+    owner: 'Ty',
+  },
+  {
+    id: '4',
+    title: 'DZIAŁKI ZA MNIEJ',
+    description: 'Projekt własny',
+    image: '',
+    category: 'Nieruchomości',
+    isPublic: true,
+    size: '20.83 MB',
+    layers: 17,
+    lastModified: '5 dni temu',
+    owner: 'Ty',
+  },
+  {
+    id: '5',
+    title: 'PRZETARGILODZ',
+    description: 'Projekt własny',
+    image: '',
+    category: 'Przetargi',
+    isPublic: true,
+    size: '14.89 MB',
+    layers: 1,
+    lastModified: '1 dzień temu',
     owner: 'Ty',
   },
 ];
@@ -91,6 +120,7 @@ export default function OwnProjects() {
   const theme = useTheme();
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, projectId: string) => {
+    event.preventDefault();
     event.stopPropagation();
     setAnchorEl(event.currentTarget);
     setSelectedProject(projectId);
@@ -139,19 +169,35 @@ export default function OwnProjects() {
           sx={{
             position: 'absolute',
             top: 8,
+            left: 8,
             right: 8,
             display: 'flex',
-            gap: 1,
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
           }}
         >
+          {project.isPublic && (
+            <Chip
+              label="OPUBLIKOWANY"
+              size="small"
+              sx={{
+                bgcolor: alpha(theme.palette.success.main, 0.9),
+                color: 'white',
+                fontWeight: 600,
+                fontSize: '0.7rem',
+                backdropFilter: 'blur(4px)',
+              }}
+            />
+          )}
           <Chip
             icon={project.isPublic ? <Public /> : <Lock />}
-            label={project.isPublic ? 'Publiczny' : 'Prywatny'}
+            label="Prywatny"
             size="small"
-            color={project.isPublic ? 'success' : 'default'}
+            color="default"
             sx={{
               bgcolor: alpha(theme.palette.background.paper, 0.9),
               backdropFilter: 'blur(4px)',
+              ml: project.isPublic ? 0 : 'auto',
             }}
           />
         </Box>
@@ -165,8 +211,12 @@ export default function OwnProjects() {
             '&:hover': {
               bgcolor: alpha(theme.palette.background.paper, 1),
             },
+            zIndex: 10,
           }}
-          onClick={(e) => handleMenuOpen(e, project.id)}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleMenuOpen(e, project.id);
+          }}
         >
           <MoreVert />
         </IconButton>
@@ -252,44 +302,74 @@ export default function OwnProjects() {
       </Grid>
 
       {/* Context Menu */}
-      <Menu
-        anchorEl={anchorEl}
-        open={Boolean(anchorEl)}
-        onClose={handleMenuClose}
-        anchorOrigin={{
-          vertical: 'bottom',
-          horizontal: 'right',
-        }}
-        transformOrigin={{
-          vertical: 'top',
-          horizontal: 'right',
-        }}
-      >
-        <MenuItem onClick={() => handleProjectAction('edit')}>
+      {anchorEl && selectedProject && (
+        <Menu
+          anchorEl={anchorEl}
+          open={Boolean(anchorEl)}
+          onClose={handleMenuClose}
+          anchorOrigin={{
+            vertical: 'bottom',
+            horizontal: 'right',
+          }}
+          transformOrigin={{
+            vertical: 'top',
+            horizontal: 'right',
+          }}
+          sx={{
+            '& .MuiPaper-root': {
+              minWidth: 220,
+              boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+              border: '1px solid',
+              borderColor: 'divider',
+              mt: 0.5,
+            }
+          }}
+        >
+        {selectedProject && mockProjects.find(p => p.id === selectedProject)?.isPublic && (
+          <MenuItem onClick={() => handleProjectAction('published-view')}>
+            <ListItemIcon>
+              <Language fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Mapa w wersji opublikowanej</ListItemText>
+          </MenuItem>
+        )}
+        <MenuItem onClick={() => handleProjectAction('settings')}>
           <ListItemIcon>
-            <Edit fontSize="small" />
+            <Settings fontSize="small" />
           </ListItemIcon>
-          <ListItemText>Edytuj</ListItemText>
+          <ListItemText>Ustawienia</ListItemText>
         </MenuItem>
-        <MenuItem onClick={() => handleProjectAction('copy')}>
+        <MenuItem onClick={() => handleProjectAction('database')}>
           <ListItemIcon>
-            <FileCopy fontSize="small" />
+            <TableChart fontSize="small" />
           </ListItemIcon>
-          <ListItemText>Duplikuj</ListItemText>
+          <ListItemText>Baza danych</ListItemText>
         </MenuItem>
-        <MenuItem onClick={() => handleProjectAction('share')}>
+        <MenuItem onClick={() => handleProjectAction('publish')}>
           <ListItemIcon>
-            <Share fontSize="small" />
+            <Public fontSize="small" />
           </ListItemIcon>
-          <ListItemText>Udostępnij</ListItemText>
+          <ListItemText>
+            {selectedProject && mockProjects.find(p => p.id === selectedProject)?.isPublic 
+              ? 'Cofnij publikację' 
+              : 'Publikacja mapy'
+            }
+          </ListItemText>
+        </MenuItem>
+        <MenuItem onClick={() => handleProjectAction('import')}>
+          <ListItemIcon>
+            <Upload fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Importuj projekt</ListItemText>
         </MenuItem>
         <MenuItem onClick={() => handleProjectAction('delete')} sx={{ color: 'error.main' }}>
           <ListItemIcon>
             <Delete fontSize="small" color="error" />
           </ListItemIcon>
-          <ListItemText>Usuń</ListItemText>
+          <ListItemText>Usuń projekt</ListItemText>
         </MenuItem>
-      </Menu>
+        </Menu>
+      )}
 
       {/* Floating Action Button */}
       <Fab
