@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -19,6 +19,20 @@ import {
   Avatar,
   alpha,
   useTheme,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  FormControlLabel,
+  Checkbox,
+  FormControl,
+  InputLabel,
+  Select,
+  SelectChangeEvent,
+  Divider,
+  Stack,
+  Alert,
 } from '@mui/material';
 import {
   MoreVert,
@@ -36,6 +50,8 @@ import {
   Upload,
   GetApp,
   TableChart,
+  Close,
+  CloudUpload,
 } from '@mui/icons-material';
 
 interface Project {
@@ -117,6 +133,28 @@ const mockProjects: Project[] = [
 export default function OwnProjects() {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
+  const [databaseDialogOpen, setDatabaseDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [newProjectDialogOpen, setNewProjectDialogOpen] = useState(false);
+  const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
+  const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
+  const [dialogProjectId, setDialogProjectId] = useState<string | null>(null);
+  const [newProjectData, setNewProjectData] = useState({
+    name: '',
+    subdomain: '',
+    keywords: '',
+    description: '',
+    categories: [] as string[],
+  });
+  const [editProjectData, setEditProjectData] = useState({
+    name: '',
+    subdomain: '',
+    keywords: '',
+    description: '',
+    categories: [] as string[],
+    isPublic: false,
+  });
   const theme = useTheme();
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, projectId: string) => {
@@ -133,8 +171,107 @@ export default function OwnProjects() {
 
   const handleProjectAction = (action: string) => {
     console.log(`${action} project:`, selectedProject);
+    
+    switch (action) {
+      case 'database':
+        setDialogProjectId(selectedProject);
+        setDatabaseDialogOpen(true);
+        break;
+      case 'delete':
+        setProjectToDelete(selectedProject);
+        setDeleteDialogOpen(true);
+        break;
+      case 'import':
+        setImportDialogOpen(true);
+        break;
+      case 'settings':
+        setDialogProjectId(selectedProject);
+        setSettingsDialogOpen(true);
+        break;
+      default:
+        console.log(`Action ${action} not implemented yet`);
+    }
+    
     handleMenuClose();
   };
+
+  const handleNewProject = () => {
+    setNewProjectDialogOpen(true);
+  };
+
+  const handleDeleteProject = () => {
+    if (projectToDelete) {
+      console.log('Deleting project:', projectToDelete);
+      // Here you would call your delete API
+      setDeleteDialogOpen(false);
+      setProjectToDelete(null);
+    }
+  };
+
+  const handleCreateProject = () => {
+    console.log('Creating project:', newProjectData);
+    // Here you would call your create project API
+    setNewProjectDialogOpen(false);
+    setNewProjectData({
+      name: '',
+      subdomain: '',
+      keywords: '',
+      description: '',
+      categories: [],
+    });
+  };
+
+  const handleCategoryChange = (category: string) => {
+    setNewProjectData(prev => ({
+      ...prev,
+      categories: prev.categories.includes(category)
+        ? prev.categories.filter(c => c !== category)
+        : [...prev.categories, category]
+    }));
+  };
+
+  const handleEditCategoryChange = (category: string) => {
+    setEditProjectData(prev => ({
+      ...prev,
+      categories: prev.categories.includes(category)
+        ? prev.categories.filter(c => c !== category)
+        : [...prev.categories, category]
+    }));
+  };
+
+  const handleSaveProjectSettings = () => {
+    console.log('Saving project settings:', editProjectData);
+    // Tutaj będzie API call do zapisu zmian
+    setSettingsDialogOpen(false);
+    setDialogProjectId(null);
+  };
+
+  const handleCloseDatabaseDialog = () => {
+    setDatabaseDialogOpen(false);
+    setDialogProjectId(null);
+  };
+
+  const handleCloseSettingsDialog = () => {
+    setSettingsDialogOpen(false);
+    setDialogProjectId(null);
+  };
+
+  // Załaduj dane projektu przy otwieraniu dialogu ustawień
+  useEffect(() => {
+    if (settingsDialogOpen && dialogProjectId) {
+      const project = mockProjects.find(p => p.id === dialogProjectId);
+      if (project) {
+        setEditProjectData({
+          name: project.title,
+          subdomain: `${project.title.toLowerCase().replace(/\s+/g, '')}.mapmaker.online`,
+          keywords: `${project.category}, mapa, projekt`,
+          description: project.description,
+          categories: [project.category],
+          isPublic: project.isPublic,
+        });
+      }
+    }
+  }, [settingsDialogOpen, dialogProjectId]);
 
   const ProjectCard = ({ project }: { project: Project }) => (
     <Card
@@ -280,6 +417,7 @@ export default function OwnProjects() {
           variant="contained"
           startIcon={<Add />}
           size="large"
+          onClick={handleNewProject}
           sx={{
             borderRadius: 2,
             textTransform: 'none',
@@ -302,29 +440,28 @@ export default function OwnProjects() {
       </Grid>
 
       {/* Context Menu */}
-      {anchorEl && selectedProject && (
-        <Menu
-          anchorEl={anchorEl}
-          open={Boolean(anchorEl)}
-          onClose={handleMenuClose}
-          anchorOrigin={{
-            vertical: 'bottom',
-            horizontal: 'right',
-          }}
-          transformOrigin={{
-            vertical: 'top',
-            horizontal: 'right',
-          }}
-          sx={{
-            '& .MuiPaper-root': {
-              minWidth: 220,
-              boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-              border: '1px solid',
-              borderColor: 'divider',
-              mt: 0.5,
-            }
-          }}
-        >
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl && selectedProject)}
+        onClose={handleMenuClose}
+        anchorOrigin={{
+          vertical: 'bottom',
+          horizontal: 'right',
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
+        }}
+        sx={{
+          '& .MuiPaper-root': {
+            minWidth: 220,
+            boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+            border: '1px solid',
+            borderColor: 'divider',
+            mt: 0.5,
+          }
+        }}
+      >
         {selectedProject && mockProjects.find(p => p.id === selectedProject)?.isPublic && (
           <MenuItem onClick={() => handleProjectAction('published-view')}>
             <ListItemIcon>
@@ -369,12 +506,12 @@ export default function OwnProjects() {
           <ListItemText>Usuń projekt</ListItemText>
         </MenuItem>
         </Menu>
-      )}
 
       {/* Floating Action Button */}
       <Fab
         color="primary"
         aria-label="add"
+        onClick={handleNewProject}
         sx={{
           position: 'fixed',
           bottom: 24,
@@ -383,6 +520,421 @@ export default function OwnProjects() {
       >
         <Add />
       </Fab>
+
+      {/* Database Dialog */}
+      <Dialog 
+        open={databaseDialogOpen} 
+        onClose={handleCloseDatabaseDialog}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontWeight: 600 }}>
+          Baza danych
+          <IconButton onClick={handleCloseDatabaseDialog} size="small">
+            <Close />
+          </IconButton>
+        </DialogTitle>
+        <Divider />
+        <DialogContent sx={{ pt: 3 }}>
+          {dialogProjectId && (() => {
+            const project = mockProjects.find(p => p.id === dialogProjectId);
+            if (!project) return null;
+            
+            // Placeholder database info - można łatwo zmienić później
+            const dbInfo = {
+              dbName: `db_${project.title.toLowerCase().replace(/\s+/g, '_')}`,
+              createdDate: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toLocaleDateString('pl-PL', {
+                day: '2-digit',
+                month: '2-digit',
+                year: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+              }),
+              host: `db-${project.id}.mapmaker.online`,
+              port: 5432,
+              username: `user_${project.id}_${project.title.toLowerCase().slice(0, 8)}`,
+              password: `***${Math.random().toString(36).substring(2, 8)}***`,
+              schema: `schema_${project.category.toLowerCase()}`,
+              tables: Math.floor(Math.random() * 15) + 5,
+              size: project.size
+            };
+            
+            return (
+              <Stack spacing={2}>
+                <Box>
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    Nazwa bazy danych:
+                  </Typography>
+                  <Typography variant="body1" fontWeight="500" sx={{ fontFamily: 'monospace' }}>
+                    {dbInfo.dbName}
+                  </Typography>
+                </Box>
+                <Box>
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    Projekt utworzony:
+                  </Typography>
+                  <Typography variant="body1" fontWeight="500">
+                    {dbInfo.createdDate}
+                  </Typography>
+                </Box>
+                <Box>
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    Host:
+                  </Typography>
+                  <Typography variant="body1" fontWeight="500" sx={{ fontFamily: 'monospace' }}>
+                    {dbInfo.host}
+                  </Typography>
+                </Box>
+                <Box>
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    Port:
+                  </Typography>
+                  <Typography variant="body1" fontWeight="500">
+                    {dbInfo.port}
+                  </Typography>
+                </Box>
+                <Box>
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    Login:
+                  </Typography>
+                  <Typography variant="body1" fontWeight="500" sx={{ fontFamily: 'monospace' }}>
+                    {dbInfo.username}
+                  </Typography>
+                </Box>
+                <Box>
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    Hasło:
+                  </Typography>
+                  <Typography variant="body1" fontWeight="500" sx={{ fontFamily: 'monospace' }}>
+                    {dbInfo.password}
+                  </Typography>
+                </Box>
+                <Divider />
+                <Box>
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    Schema:
+                  </Typography>
+                  <Typography variant="body1" fontWeight="500" sx={{ fontFamily: 'monospace' }}>
+                    {dbInfo.schema}
+                  </Typography>
+                </Box>
+                <Box>
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    Liczba tabel:
+                  </Typography>
+                  <Typography variant="body1" fontWeight="500">
+                    {dbInfo.tables}
+                  </Typography>
+                </Box>
+                <Box>
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    Rozmiar bazy:
+                  </Typography>
+                  <Typography variant="body1" fontWeight="500">
+                    {dbInfo.size}
+                  </Typography>
+                </Box>
+              </Stack>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog 
+        open={deleteDialogOpen} 
+        onClose={() => setDeleteDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontWeight: 600 }}>
+          Potwierdzenie
+          <IconButton onClick={() => setDeleteDialogOpen(false)} size="small">
+            <Close />
+          </IconButton>
+        </DialogTitle>
+        <Divider />
+        <DialogContent sx={{ pt: 3 }}>
+          <Typography variant="body1" gutterBottom>
+            Czy na pewno chcesz usunąć {projectToDelete && mockProjects.find(p => p.id === projectToDelete)?.title}?
+          </Typography>
+          <FormControlLabel
+            control={<Checkbox defaultChecked />}
+            label="Usuń projekt permanentnie i zwolnij miejsce na koncie"
+            sx={{ mt: 2 }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button onClick={() => setDeleteDialogOpen(false)} color="inherit">
+            Anuluj
+          </Button>
+          <Button onClick={handleDeleteProject} variant="contained" color="error">
+            Usuń
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Import Project Dialog */}
+      <Dialog 
+        open={importDialogOpen} 
+        onClose={() => setImportDialogOpen(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontWeight: 600 }}>
+          Importuj projekt
+          <IconButton onClick={() => setImportDialogOpen(false)} size="small">
+            <Close />
+          </IconButton>
+        </DialogTitle>
+        <Divider />
+        <DialogContent sx={{ pt: 3 }}>
+          <Box
+            sx={{
+              border: '2px dashed',
+              borderColor: 'primary.main',
+              borderRadius: 2,
+              p: 4,
+              textAlign: 'center',
+              bgcolor: alpha(theme.palette.primary.main, 0.05),
+            }}
+          >
+            <CloudUpload sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} />
+            <Typography variant="h6" gutterBottom>
+              Upuść plik tutaj lub kliknij, aby wybrać z dysku
+            </Typography>
+            <Typography variant="body2" color="text.secondary" gutterBottom>
+              Pliki niestandardowe (*.qgs,*.qgz)
+            </Typography>
+            <Button variant="outlined" sx={{ mt: 2 }}>
+              Wybierz pliki
+            </Button>
+          </Box>
+          <Alert severity="info" sx={{ mt: 2 }}>
+            Obsługiwane formaty: QGS, QGZ (pliki projektów QGIS)
+          </Alert>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button onClick={() => setImportDialogOpen(false)} color="inherit">
+            Anuluj
+          </Button>
+          <Button variant="contained">
+            Importuj
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* New Project Dialog */}
+      <Dialog 
+        open={newProjectDialogOpen} 
+        onClose={() => setNewProjectDialogOpen(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontWeight: 600 }}>
+          Utwórz nowy projekt
+          <IconButton onClick={() => setNewProjectDialogOpen(false)} size="small">
+            <Close />
+          </IconButton>
+        </DialogTitle>
+        <Divider />
+        <DialogContent sx={{ pt: 3 }}>
+          <Stack spacing={3}>
+            <TextField
+              label="Nazwa projektu"
+              placeholder="Wpisz minimum 4 znaki"
+              fullWidth
+              value={newProjectData.name}
+              onChange={(e) => setNewProjectData(prev => ({ ...prev, name: e.target.value }))}
+              helperText="Minimum 4 znaki"
+            />
+            
+            <TextField
+              label="Subdomena"
+              placeholder="Wpisz pod jaką domeną ma zostać wyświetlony Twój projekt"
+              fullWidth
+              value={newProjectData.subdomain}
+              onChange={(e) => setNewProjectData(prev => ({ ...prev, subdomain: e.target.value }))}
+            />
+            
+            <TextField
+              label="Słowa kluczowe"
+              placeholder="Opisz swój projekt słowami kluczowymi używając przecinków między słowami"
+              fullWidth
+              value={newProjectData.keywords}
+              onChange={(e) => setNewProjectData(prev => ({ ...prev, keywords: e.target.value }))}
+            />
+            
+            <TextField
+              label="Opis"
+              placeholder="Opisz swój projekt maksymalnie w 120 znakach"
+              fullWidth
+              multiline
+              rows={3}
+              value={newProjectData.description}
+              onChange={(e) => setNewProjectData(prev => ({ ...prev, description: e.target.value }))}
+              helperText={`${newProjectData.description.length}/120`}
+            />
+            
+            <Box>
+              <Typography variant="subtitle1" gutterBottom fontWeight="600">
+                Kategoria:
+              </Typography>
+              <Grid container spacing={1}>
+                {['EMUiA', 'SIP', 'Suikzp', 'MPZP', 'EGiB', 'Inne'].map((category) => (
+                  <Grid item key={category}>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={newProjectData.categories.includes(category)}
+                          onChange={() => handleCategoryChange(category)}
+                        />
+                      }
+                      label={category}
+                    />
+                  </Grid>
+                ))}
+              </Grid>
+            </Box>
+            
+            <Box
+              sx={{
+                border: '2px dashed',
+                borderColor: 'grey.400',
+                borderRadius: 2,
+                p: 4,
+                textAlign: 'center',
+                bgcolor: 'grey.50',
+              }}
+            >
+              <CloudUpload sx={{ fontSize: 48, color: 'grey.500', mb: 2 }} />
+              <Typography variant="body1" gutterBottom>
+                Upuść plik tutaj lub kliknij, aby wybrać z dysku (*.qgs, *.qgz)
+              </Typography>
+            </Box>
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button onClick={() => setNewProjectDialogOpen(false)} color="inherit">
+            Wyczyść
+          </Button>
+          <Button onClick={handleCreateProject} variant="contained">
+            Stwórz nowy projekt
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Settings Dialog */}
+      <Dialog 
+        open={settingsDialogOpen} 
+        onClose={handleCloseSettingsDialog}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontWeight: 600 }}>
+          Ustawienia projektu
+          <IconButton onClick={handleCloseSettingsDialog} size="small">
+            <Close />
+          </IconButton>
+        </DialogTitle>
+        <Divider />
+        <DialogContent sx={{ pt: 3 }}>
+          <Stack spacing={3}>
+            <TextField
+              label="Nazwa projektu"
+              placeholder="Wpisz minimum 4 znaki"
+              fullWidth
+              value={editProjectData.name}
+              onChange={(e) => setEditProjectData(prev => ({ ...prev, name: e.target.value }))}
+              helperText="Minimum 4 znaki"
+            />
+            
+            <TextField
+              label="Subdomena"
+              placeholder="Wpisz pod jaką domeną ma zostać wyświetlony Twój projekt"
+              fullWidth
+              value={editProjectData.subdomain}
+              onChange={(e) => setEditProjectData(prev => ({ ...prev, subdomain: e.target.value }))}
+            />
+            
+            <TextField
+              label="Słowa kluczowe"
+              placeholder="Opisz swój projekt słowami kluczowymi używając przecinków między słowami"
+              fullWidth
+              value={editProjectData.keywords}
+              onChange={(e) => setEditProjectData(prev => ({ ...prev, keywords: e.target.value }))}
+            />
+            
+            <TextField
+              label="Opis"
+              placeholder="Opisz swój projekt maksymalnie w 120 znakach"
+              fullWidth
+              multiline
+              rows={3}
+              value={editProjectData.description}
+              onChange={(e) => setEditProjectData(prev => ({ ...prev, description: e.target.value }))}
+              helperText={`${editProjectData.description.length}/120`}
+            />
+            
+            <Box>
+              <Typography variant="subtitle1" gutterBottom fontWeight="600">
+                Kategoria:
+              </Typography>
+              <Grid container spacing={1}>
+                {['EMUiA', 'SIP', 'Suikzp', 'MPZP', 'EGiB', 'Inne'].map((category) => (
+                  <Grid item key={category}>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={editProjectData.categories.includes(category)}
+                          onChange={() => handleEditCategoryChange(category)}
+                        />
+                      }
+                      label={category}
+                    />
+                  </Grid>
+                ))}
+              </Grid>
+            </Box>
+
+            <Box>
+              <Typography variant="subtitle1" gutterBottom fontWeight="600">
+                Widoczność:
+              </Typography>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={editProjectData.isPublic}
+                    onChange={(e) => setEditProjectData(prev => ({ ...prev, isPublic: e.target.checked }))}
+                  />
+                }
+                label="Projekt publiczny"
+              />
+            </Box>
+
+            {dialogProjectId && (() => {
+              const project = mockProjects.find(p => p.id === dialogProjectId);
+              return project ? (
+                <Alert severity="info">
+                  <Typography variant="body2">
+                    <strong>Ostatnia modyfikacja:</strong> {project.lastModified}<br />
+                    <strong>Rozmiar:</strong> {project.size}<br />
+                    <strong>Liczba warstw:</strong> {project.layers}
+                  </Typography>
+                </Alert>
+              ) : null;
+            })()}
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button onClick={handleCloseSettingsDialog} color="inherit">
+            Anuluj
+          </Button>
+          <Button onClick={handleSaveProjectSettings} variant="contained">
+            Zapisz zmiany
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
