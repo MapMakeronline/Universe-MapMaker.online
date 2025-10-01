@@ -124,6 +124,58 @@ export default function DashboardLayout({ children, currentPage, onPageChange }:
           </Box>
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            {/* Footer links in header */}
+            <Box sx={{ display: 'flex', gap: 3, mr: 2 }}>
+              <Typography
+                component="a"
+                href="/blog"
+                sx={{
+                  color: 'inherit',
+                  textDecoration: 'none',
+                  fontSize: '14px',
+                  opacity: 0.8,
+                  '&:hover': {
+                    opacity: 1,
+                    textDecoration: 'underline',
+                  },
+                }}
+              >
+                Blog
+              </Typography>
+              <Typography
+                component="a"
+                href="/regulamin"
+                sx={{
+                  color: 'inherit',
+                  textDecoration: 'none',
+                  fontSize: '14px',
+                  opacity: 0.8,
+                  '&:hover': {
+                    opacity: 1,
+                    textDecoration: 'underline',
+                  },
+                }}
+              >
+                Regulamin
+              </Typography>
+              <Typography
+                component="a"
+                href="/faq"
+                sx={{
+                  color: 'inherit',
+                  textDecoration: 'none',
+                  fontSize: '14px',
+                  opacity: 0.8,
+                  '&:hover': {
+                    opacity: 1,
+                    textDecoration: 'underline',
+                  },
+                }}
+              >
+                FAQ
+              </Typography>
+            </Box>
+            
             <IconButton
               size="large"
               aria-label="account of current user"

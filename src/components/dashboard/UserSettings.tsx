@@ -383,47 +383,50 @@ export default function UserSettings() {
             </Typography>
             
             <Box sx={{ mt: 3 }}>
-              <FormControlLabel
-                control={
+              <Box sx={{ mb: 3 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
                   <Switch 
                     checked={notificationSettings.newsletter}
                     onChange={handleNotificationChange('newsletter')}
                   />
-                }
-                label="Newsletter"
-                sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', ml: 0 }}
-              />
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 3, ml: 0 }}>
-                Otrzymuj najnowsze wiadomości o produktach i funkcjach
-              </Typography>
+                  <Typography variant="body1" fontWeight="500">
+                    Newsletter
+                  </Typography>
+                </Box>
+                <Typography variant="body2" color="text.secondary" sx={{ ml: 6 }}>
+                  Otrzymuj najnowsze wiadomości o produktach i funkcjach
+                </Typography>
+              </Box>
 
-              <FormControlLabel
-                control={
+              <Box sx={{ mb: 3 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
                   <Switch 
                     checked={notificationSettings.appNotifications}
                     onChange={handleNotificationChange('appNotifications')}
                   />
-                }
-                label="Powiadomienia w aplikacji"
-                sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', ml: 0 }}
-              />
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 3, ml: 0 }}>
-                Otrzymuj powiadomienia o aktywności w aplikacji
-              </Typography>
+                  <Typography variant="body1" fontWeight="500">
+                    Powiadomienia w aplikacji
+                  </Typography>
+                </Box>
+                <Typography variant="body2" color="text.secondary" sx={{ ml: 6 }}>
+                  Otrzymuj powiadomienia o aktywności w aplikacji
+                </Typography>
+              </Box>
 
-              <FormControlLabel
-                control={
+              <Box sx={{ mb: 3 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
                   <Switch 
                     checked={true}
                     disabled
                   />
-                }
-                label="Samouczek"
-                sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', ml: 0 }}
-              />
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 3, ml: 0 }}>
-                Powiadomienia pomocnicze (zawsze włączone)
-              </Typography>
+                  <Typography variant="body1" fontWeight="500">
+                    Samouczek
+                  </Typography>
+                </Box>
+                <Typography variant="body2" color="text.secondary" sx={{ ml: 6 }}>
+                  Powiadomienia pomocnicze (zawsze włączone)
+                </Typography>
+              </Box>
             </Box>
 
             <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
