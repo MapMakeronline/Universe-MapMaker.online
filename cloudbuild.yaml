@@ -8,7 +8,7 @@ steps:
       '--build-arg', 'NEXT_PUBLIC_MAPBOX_TOKEN=pk.eyJ1IjoibWFwbWFrZXItb25saW5lIiwiYSI6ImNtZzN3bm8wYTBwaXIybHM5dDlpc3YwOTQifQ.8Hrv97gishqnvI_h7PiqlQ',
       '--build-arg', 'NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN=pk.eyJ1IjoibWFwbWFrZXItb25saW5lIiwiYSI6ImNtZzN3bm8wYTBwaXIybHM5dDlpc3YwOTQifQ.8Hrv97gishqnvI_h7PiqlQ',
       '--build-arg', 'NEXT_PUBLIC_API_URL=https://geocraft-production.up.railway.app',
-      '-t', 'europe-central2-docker.pkg.dev/$PROJECT_ID/app-repo/app:$COMMIT_SHA',
+      '-t', 'europe-central2-docker.pkg.dev/$PROJECT_ID/app-repo/app:$SHORT_SHA',
       '-t', 'europe-central2-docker.pkg.dev/$PROJECT_ID/app-repo/app:latest',
       '.'
     ]
@@ -24,7 +24,7 @@ steps:
     entrypoint: 'gcloud'
     args: [
       'run', 'deploy', 'universe-mapmaker',
-      '--image', 'europe-central2-docker.pkg.dev/$PROJECT_ID/app-repo/app:$COMMIT_SHA',
+      '--image', 'europe-central2-docker.pkg.dev/$PROJECT_ID/app-repo/app:$SHORT_SHA',
       '--region', 'europe-central2',
       '--platform', 'managed',
       '--allow-unauthenticated',
@@ -41,7 +41,7 @@ steps:
 
 # Store images in Artifact Registry
 images:
-  - 'europe-central2-docker.pkg.dev/$PROJECT_ID/app-repo/app:$COMMIT_SHA'
+  - 'europe-central2-docker.pkg.dev/$PROJECT_ID/app-repo/app:$SHORT_SHA'
   - 'europe-central2-docker.pkg.dev/$PROJECT_ID/app-repo/app:latest'
 
 # Build options
