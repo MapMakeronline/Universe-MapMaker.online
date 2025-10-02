@@ -2,12 +2,14 @@ import { configureStore } from '@reduxjs/toolkit';
 import mapReducer from './slices/mapSlice';
 import layersReducer from './slices/layersSlice';
 import drawReducer from './slices/drawSlice';
+import authReducer from './slices/authSlice';
 
 export const store = configureStore({
   reducer: {
     map: mapReducer,
     layers: layersReducer,
     draw: drawReducer,
+    auth: authReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

@@ -20,6 +20,8 @@ import {
   Stepper,
   Step,
   StepLabel,
+  Alert,
+  CircularProgress,
 } from '@mui/material';
 import {
   Visibility,
@@ -29,20 +31,27 @@ import {
   Google,
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
+import { authService } from '@/lib/api/auth';
+import { useAppDispatch } from '@/store/hooks';
+import { setAuth, setLoading } from '@/store/slices/authSlice';
 
 export default function RegisterPage() {
   const theme = useTheme();
   const router = useRouter();
+  const dispatch = useAppDispatch();
   const [currentStep, setCurrentStep] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [acceptMarketing, setAcceptMarketing] = useState(false);
+  const [error, setError] = useState<string>('');
+  const [fieldErrors, setFieldErrors] = useState<{ [key: string]: string }>({});
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
+    username: '',
     email: '',
     password: '',
     confirmPassword: '',
-    username: '',
     firstName: '',
     lastName: '',
     city: '',
@@ -59,14 +68,98 @@ export default function RegisterPage() {
       ...prev,
       [field]: event.target.value
     }));
+    // Clear errors when user starts typing
+    if (error) setError('');
+    if (fieldErrors[field]) {
+      setFieldErrors(prev => ({ ...prev, [field]: '' }));
+    }
+  };
+
+  const handleRegister = async () => {
+    setError('');
+    setFieldErrors({});
+    setIsLoading(true);
+    dispatch(setLoading(true));
+
+    try {
+      const response = await authService.register({
+        username: formData.username,
+        email: formData.email,
+        password: formData.password,
+        password_confirm: formData.confirmPassword,
+        first_name: formData.firstName,
+        last_name: formData.lastName,
+        address: formData.address || undefined,
+        city: formData.city || undefined,
+        zip_code: formData.postalCode || undefined,
+        nip: formData.nip || undefined,
+        company_name: formData.companyName || undefined,
+      });
+
+      // Save auth state to Redux
+      dispatch(setAuth({
+        user: response.user,
+        token: response.token,
+      }));
+
+      // Redirect to dashboard
+      router.push('/dashboard');
+    } catch (err: any) {
+      console.error('Registration error:', err);
+
+      // Handle field-specific errors
+      if (typeof err === 'object') {
+        const errors: { [key: string]: string } = {};
+        let hasFieldErrors = false;
+
+        Object.keys(err).forEach((key) => {
+          const value = err[key];
+          const errorMessage = Array.isArray(value) ? value[0] : value;
+
+          if (key === 'username') {
+            errors.username = errorMessage;
+            hasFieldErrors = true;
+          } else if (key === 'email') {
+            errors.email = errorMessage;
+            hasFieldErrors = true;
+          } else if (key === 'password') {
+            errors.password = errorMessage;
+            hasFieldErrors = true;
+          } else if (key === 'password_confirm') {
+            errors.confirmPassword = errorMessage;
+            hasFieldErrors = true;
+          } else if (key === 'first_name') {
+            errors.firstName = errorMessage;
+            hasFieldErrors = true;
+          } else if (key === 'last_name') {
+            errors.lastName = errorMessage;
+            hasFieldErrors = true;
+          } else {
+            // Generic errors
+            if (!hasFieldErrors) {
+              setError(errorMessage);
+            }
+          }
+        });
+
+        if (hasFieldErrors) {
+          setFieldErrors(errors);
+        }
+      } else {
+        setError('Wystąpił błąd podczas rejestracji. Spróbuj ponownie.');
+      }
+    } finally {
+      setIsLoading(false);
+      dispatch(setLoading(false));
+    }
   };
 
   const handleNext = () => {
     if (currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1);
     } else {
-      // Ostatni krok - rejestracja
-      router.push('/dashboard');
+      // Last step - perform registration
+      handleRegister();
     }
   };
 
@@ -185,6 +278,12 @@ export default function RegisterPage() {
                   Zarejestruj się
                 </Typography>
 
+                {error && (
+                  <Alert severity="error" sx={{ mt: 3 }} onClose={() => setError('')}>
+                    {error}
+                  </Alert>
+                )}
+
                 {/* Google Sign Up - Available from start */}
                 <Box sx={{ mt: 3, mb: 3 }}>
                   <Button
@@ -231,13 +330,16 @@ export default function RegisterPage() {
                     <Grid container spacing={2}>
                       <Grid item xs={12}>
                         <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                          E-mail
+                          Nazwa użytkownika *
                         </Typography>
                         <TextField
                           fullWidth
-                          placeholder="jan@kowalski.pl"
-                          value={formData.email}
-                          onChange={handleInputChange('email')}
+                          placeholder="jan_kowalski"
+                          value={formData.username}
+                          onChange={handleInputChange('username')}
+                          disabled={isLoading}
+                          error={!!fieldErrors.username}
+                          helperText={fieldErrors.username}
                           sx={{
                             '& .MuiOutlinedInput-root': {
                               borderRadius: 2,
@@ -246,7 +348,29 @@ export default function RegisterPage() {
                           }}
                         />
                       </Grid>
-                      
+
+                      <Grid item xs={12}>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                          E-mail *
+                        </Typography>
+                        <TextField
+                          fullWidth
+                          type="email"
+                          placeholder="jan@kowalski.pl"
+                          value={formData.email}
+                          onChange={handleInputChange('email')}
+                          disabled={isLoading}
+                          error={!!fieldErrors.email}
+                          helperText={fieldErrors.email}
+                          sx={{
+                            '& .MuiOutlinedInput-root': {
+                              borderRadius: 2,
+                              bgcolor: alpha(theme.palette.background.default, 0.5),
+                            },
+                          }}
+                        />
+                      </Grid>
+
                       <Grid item xs={12}>
                         <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                           Hasło *
@@ -257,12 +381,16 @@ export default function RegisterPage() {
                           placeholder="Wpisz minimum 8 znaków"
                           value={formData.password}
                           onChange={handleInputChange('password')}
+                          disabled={isLoading}
+                          error={!!fieldErrors.password}
+                          helperText={fieldErrors.password}
                           InputProps={{
                             endAdornment: (
                               <InputAdornment position="end">
                                 <IconButton
                                   onClick={() => setShowPassword(!showPassword)}
                                   edge="end"
+                                  disabled={isLoading}
                                 >
                                   {showPassword ? <VisibilityOff /> : <Visibility />}
                                 </IconButton>
@@ -277,7 +405,7 @@ export default function RegisterPage() {
                           }}
                         />
                       </Grid>
-                      
+
                       <Grid item xs={12}>
                         <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                           Powtórz hasło *
@@ -288,12 +416,16 @@ export default function RegisterPage() {
                           placeholder="Wpisz swoje hasło ponownie"
                           value={formData.confirmPassword}
                           onChange={handleInputChange('confirmPassword')}
+                          disabled={isLoading}
+                          error={!!fieldErrors.confirmPassword}
+                          helperText={fieldErrors.confirmPassword}
                           InputProps={{
                             endAdornment: (
                               <InputAdornment position="end">
                                 <IconButton
                                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                                   edge="end"
+                                  disabled={isLoading}
                                 >
                                   {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
                                 </IconButton>
@@ -529,7 +661,12 @@ export default function RegisterPage() {
                     <Button
                       variant="contained"
                       onClick={handleNext}
-                      disabled={currentStep === 2 && !acceptTerms}
+                      disabled={
+                        isLoading ||
+                        (currentStep === 2 && !acceptTerms) ||
+                        (currentStep === 0 && (!formData.username || !formData.email || !formData.password || !formData.confirmPassword)) ||
+                        (currentStep === 1 && (!formData.firstName || !formData.lastName))
+                      }
                       endIcon={currentStep === steps.length - 1 ? null : <ArrowForward />}
                       sx={{
                         px: 4,
@@ -547,7 +684,11 @@ export default function RegisterPage() {
                         },
                       }}
                     >
-                      {currentStep === steps.length - 1 ? 'Zarejestruj' : 'Dalej'}
+                      {isLoading ? (
+                        <CircularProgress size={24} color="inherit" />
+                      ) : (
+                        currentStep === steps.length - 1 ? 'Zarejestruj' : 'Dalej'
+                      )}
                     </Button>
                   </Box>
                 </Box>

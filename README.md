@@ -14,6 +14,8 @@ Professional Mapbox-powered mapping application built with Next.js 15+, deployed
 - **Mobile Optimized** - Touch-friendly controls and responsive design
 - **Google Cloud Run** - Scalable, serverless deployment
 - **Modern Stack** - Next.js 15+, React 19, TypeScript
+- **User Authentication** - Complete auth system with registration, login, and profile management
+- **Backend Integration** - Django REST API with PostgreSQL per-user databases
 
 ## 🏗️ Architecture
 
@@ -542,6 +544,197 @@ interface Layer {
 - You don't pay for idle time (cost = $0)
 - Next request triggers "cold start" (2-5 seconds to restart)
 - Subsequent requests are instant
+
+## 🔐 Backend API Integration
+
+### Authentication System
+
+The application integrates with a Django REST API backend for user authentication and data management.
+
+**Base API URL:** Configure in your environment variables
+
+#### Available Endpoints
+
+##### 1. User Registration
+```
+POST /auth/register
+```
+
+**Request Body:**
+```json
+{
+  "username": "jan_kowalski",
+  "email": "jan.kowalski@example.com",
+  "password": "bezpieczne_haslo123",
+  "password_confirm": "bezpieczne_haslo123",
+  "first_name": "Jan",
+  "last_name": "Kowalski"
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "token": "9944b09199c62bcf9418ad846dd0e4bbdfc6ee4b",
+  "user": {
+    "id": 42,
+    "username": "jan_kowalski",
+    "email": "jan.kowalski@example.com",
+    "first_name": "Jan",
+    "last_name": "Kowalski"
+  }
+}
+```
+
+**What happens during registration:**
+- Creates user account with validation
+- Generates dedicated PostgreSQL database user with secure 20-character password
+- Sets up database permissions (LOGIN, NOSUPERUSER, INHERIT, etc.)
+- Returns authentication token
+- Sends welcome email asynchronously
+
+##### 2. User Login
+```
+POST /auth/login
+```
+
+**Request Body:**
+```json
+{
+  "username": "jan_kowalski",
+  "password": "bezpieczne_haslo123"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "token": "9944b09199c62bcf9418ad846dd0e4bbdfc6ee4b",
+  "user": {
+    "id": 42,
+    "username": "jan_kowalski",
+    "email": "jan.kowalski@example.com",
+    "first_name": "Jan",
+    "last_name": "Kowalski",
+    "address": "ul. Główna 123",
+    "city": "Warszawa",
+    "zip_code": "00-001",
+    "nip": "1234567890",
+    "company_name": "Firma ABC",
+    "theme": "dark"
+  }
+}
+```
+
+##### 3. User Logout
+```
+POST /auth/logout
+Authorization: Token 9944b09199c62bcf9418ad846dd0e4bbdfc6ee4b
+```
+
+**Response (200 OK):**
+```json
+{
+  "message": "Logged out successfully"
+}
+```
+
+##### 4. Get User Profile
+```
+GET /auth/profile
+Authorization: Token 9944b09199c62bcf9418ad846dd0e4bbdfc6ee4b
+```
+
+**Response (200 OK):**
+```json
+{
+  "id": 42,
+  "username": "jan_kowalski",
+  "email": "jan.kowalski@example.com",
+  "first_name": "Jan",
+  "last_name": "Kowalski",
+  "address": "ul. Główna 123",
+  "city": "Warszawa",
+  "zip_code": "00-001",
+  "nip": "1234567890",
+  "company_name": "Firma ABC",
+  "theme": "dark"
+}
+```
+
+### Authentication Flow
+
+**Token-based authentication:**
+1. User registers or logs in → receives token
+2. Store token in localStorage/sessionStorage
+3. Include token in all authenticated requests:
+   ```
+   Authorization: Token {your_token}
+   ```
+
+**Frontend Integration Example:**
+```typescript
+// Login
+const response = await fetch(`${API_URL}/auth/login`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ username, password })
+});
+const { token, user } = await response.json();
+localStorage.setItem('authToken', token);
+
+// Authenticated Request
+const profile = await fetch(`${API_URL}/auth/profile`, {
+  headers: {
+    'Authorization': `Token ${localStorage.getItem('authToken')}`,
+    'Content-Type': 'application/json'
+  }
+});
+```
+
+### Security Features
+
+**Database Isolation:**
+- Each user gets a dedicated PostgreSQL user account
+- Database login format: `{email_prefix}_{timestamp}` (e.g., `jan_kowalski_123456`)
+- Auto-generated secure 20-character passwords
+- Restricted permissions (no SUPERUSER, CREATEDB, or CREATEROLE)
+
+**Password Security:**
+- Passwords hashed using Django's PBKDF2 with SHA256
+- Password confirmation required during registration
+- Atomic transactions ensure database consistency
+
+**Token Management:**
+- Tokens are permanent until logout
+- Tokens invalidated on logout
+- Consider implementing rate limiting for production
+
+### Error Codes
+
+| Code | Meaning |
+|------|---------|
+| 200 | OK - Request successful |
+| 201 | Created - User registered successfully |
+| 400 | Bad Request - Invalid input (e.g., passwords don't match) |
+| 401 | Unauthorized - Invalid token or missing authorization |
+| 500 | Internal Server Error - Database or server issue |
+
+### User Profile Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | integer | Unique user ID |
+| `username` | string | Username (unique) |
+| `email` | string | Email address |
+| `first_name` | string | First name |
+| `last_name` | string | Last name |
+| `address` | string | Street address (optional) |
+| `city` | string | City (optional) |
+| `zip_code` | string | Postal code (optional) |
+| `nip` | string | Tax ID/NIP (optional) |
+| `company_name` | string | Company name (optional) |
+| `theme` | string | UI theme preference (optional) |
 
 ## 🆘 Support
 

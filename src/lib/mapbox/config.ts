@@ -1,7 +1,7 @@
 import { MapStyles } from '@/types/map';
 
 // Get token directly from environment variable
-export const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
+export const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || 'pk.eyJ1IjoibWFwbWFrZXItb25saW5lIiwiYSI6ImNtZzN3bm8wYTBwaXIybHM5dDlpc3YwOTQifQ.8Hrv97gishqnvI_h7PiqlQ';
 
 // Simple function to get token (for compatibility)
 export const fetchMapboxToken = async (): Promise<string> => {

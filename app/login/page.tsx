@@ -14,6 +14,8 @@ import {
   useTheme,
   alpha,
   Container,
+  Alert,
+  CircularProgress,
 } from '@mui/material';
 import {
   Visibility,
@@ -21,11 +23,17 @@ import {
   ArrowBack,
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
+import { authService } from '@/lib/api/auth';
+import { useAppDispatch } from '@/store/hooks';
+import { setAuth, setLoading } from '@/store/slices/authSlice';
 
 export default function LoginPage() {
   const theme = useTheme();
   const router = useRouter();
+  const dispatch = useAppDispatch();
   const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -36,11 +44,46 @@ export default function LoginPage() {
       ...prev,
       [field]: event.target.value
     }));
+    // Clear error when user starts typing
+    if (error) setError('');
   };
 
-  const handleLogin = () => {
-    // Niezależnie od danych, prowadź do dashboard
-    router.push('/dashboard');
+  const handleLogin = async () => {
+    setError('');
+    setIsLoading(true);
+    dispatch(setLoading(true));
+
+    try {
+      const response = await authService.login({
+        username: formData.email, // Using email as username
+        password: formData.password,
+      });
+
+      // Save auth state to Redux
+      dispatch(setAuth({
+        user: response.user,
+        token: response.token,
+      }));
+
+      // Redirect to dashboard
+      router.push('/dashboard');
+    } catch (err: any) {
+      console.error('Login error:', err);
+
+      // Handle different error formats
+      if (err.non_field_errors) {
+        setError(Array.isArray(err.non_field_errors) ? err.non_field_errors[0] : err.non_field_errors);
+      } else if (err.detail) {
+        setError(err.detail);
+      } else if (err.message) {
+        setError(err.message);
+      } else {
+        setError('Wystąpił błąd podczas logowania. Spróbuj ponownie.');
+      }
+    } finally {
+      setIsLoading(false);
+      dispatch(setLoading(false));
+    }
   };
 
   const handleForgotPassword = () => {
@@ -153,15 +196,22 @@ export default function LoginPage() {
                   Zaloguj się
                 </Typography>
 
+                {error && (
+                  <Alert severity="error" sx={{ mt: 3 }} onClose={() => setError('')}>
+                    {error}
+                  </Alert>
+                )}
+
                 <Box sx={{ mt: 4 }}>
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                    Email/nazwa użytkownika
+                    Nazwa użytkownika
                   </Typography>
                   <TextField
                     fullWidth
-                    placeholder="Wpisz swój login lub adres e-mail"
+                    placeholder="Wpisz swoją nazwę użytkownika"
                     value={formData.email}
                     onChange={handleInputChange('email')}
+                    disabled={isLoading}
                     sx={{
                       mb: 3,
                       '& .MuiOutlinedInput-root': {
@@ -180,12 +230,14 @@ export default function LoginPage() {
                     placeholder="Wpisz minimum 8 znaków"
                     value={formData.password}
                     onChange={handleInputChange('password')}
+                    disabled={isLoading}
                     InputProps={{
                       endAdornment: (
                         <InputAdornment position="end">
                           <IconButton
                             onClick={() => setShowPassword(!showPassword)}
                             edge="end"
+                            disabled={isLoading}
                           >
                             {showPassword ? <VisibilityOff /> : <Visibility />}
                           </IconButton>
@@ -206,6 +258,7 @@ export default function LoginPage() {
                     variant="contained"
                     size="large"
                     onClick={handleLogin}
+                    disabled={isLoading || !formData.email || !formData.password}
                     sx={{
                       mb: 3,
                       py: 1.5,
@@ -219,7 +272,7 @@ export default function LoginPage() {
                       },
                     }}
                   >
-                    Zaloguj
+                    {isLoading ? <CircularProgress size={24} color="inherit" /> : 'Zaloguj'}
                   </Button>
 
                   <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
