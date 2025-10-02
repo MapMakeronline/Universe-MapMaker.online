@@ -17,6 +17,7 @@ import {
   ListItemIcon,
   ListItemText,
   Divider,
+  CircularProgress,
 } from '@mui/material';
 import {
   ContactMail,
@@ -27,6 +28,7 @@ import {
   LocationOn,
   Send,
 } from '@mui/icons-material';
+import { dashboardService } from '@/lib/api/dashboard';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -59,6 +61,8 @@ export default function Contact() {
     message: '',
   });
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setCurrentTab(newValue);
@@ -71,17 +75,31 @@ export default function Contact() {
     }));
   };
 
-  const handleSubmit = (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    // Implement form submission logic
-    setSubmitSuccess(true);
-    setFormData({
-      subject: '',
-      name: '',
-      email: '',
-      message: '',
-    });
-    setTimeout(() => setSubmitSuccess(false), 5000);
+    setError(null);
+    setSubmitSuccess(false);
+    setIsLoading(true);
+
+    try {
+      await dashboardService.sendContactForm({
+        subject: formData.subject,
+        message: formData.message,
+      });
+
+      setSubmitSuccess(true);
+      setFormData({
+        subject: '',
+        name: '',
+        email: '',
+        message: '',
+      });
+      setTimeout(() => setSubmitSuccess(false), 5000);
+    } catch (err: any) {
+      setError(err.message || 'Wystąpił błąd podczas wysyłania wiadomości');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const companyInfo = {
@@ -109,6 +127,12 @@ export default function Contact() {
       {submitSuccess && (
         <Alert severity="success" sx={{ mb: 3 }}>
           Wiadomość została wysłana pomyślnie! Odpowiemy wkrótce.
+        </Alert>
+      )}
+
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
+          {error}
         </Alert>
       )}
 
@@ -207,16 +231,17 @@ export default function Contact() {
                 <Button
                   type="submit"
                   variant="contained"
-                  startIcon={<Send />}
+                  startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : <Send />}
                   size="large"
-                  sx={{ 
-                    textTransform: 'none', 
+                  disabled={isLoading}
+                  sx={{
+                    textTransform: 'none',
                     px: 4,
                     py: 1.5,
                     fontWeight: 600,
                   }}
                 >
-                  Wyślij wiadomość
+                  {isLoading ? 'Wysyłanie...' : 'Wyślij wiadomość'}
                 </Button>
               </Box>
             </Box>

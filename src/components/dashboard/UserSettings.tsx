@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -17,6 +17,7 @@ import {
   Alert,
   IconButton,
   InputAdornment,
+  CircularProgress,
 } from '@mui/material';
 import {
   Person,
@@ -26,6 +27,9 @@ import {
   VisibilityOff,
   Save,
 } from '@mui/icons-material';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { updateUser } from '@/store/slices/authSlice';
+import { dashboardService } from '@/lib/api/dashboard';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -50,28 +54,32 @@ function TabPanel(props: TabPanelProps) {
 }
 
 export default function UserSettings() {
+  const dispatch = useAppDispatch();
+  const { user } = useAppSelector((state) => state.auth);
+
   const [currentTab, setCurrentTab] = useState(0);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(false);
 
   // Form states
   const [generalSettings, setGeneralSettings] = useState({
-    username: 'Terenyinwestycyjne',
     firstName: '',
     lastName: '',
     city: '',
-    postalCode: '',
+    zip_code: '',
     nip: '',
-    email: 'terenyinwest@gmail.com',
-    surname: '',
+    email: '',
     address: '',
-    companyName: '',
+    company_name: '',
   });
 
   const [passwordSettings, setPasswordSettings] = useState({
-    currentPassword: '',
-    newPassword: '',
+    old_password: '',
+    new_password: '',
     confirmPassword: '',
   });
 
@@ -81,8 +89,26 @@ export default function UserSettings() {
     emailUpdates: true,
   });
 
+  // Load user data on mount
+  useEffect(() => {
+    if (user) {
+      setGeneralSettings({
+        firstName: user.first_name || '',
+        lastName: user.last_name || '',
+        city: user.city || '',
+        zip_code: user.zip_code || '',
+        nip: user.nip || '',
+        email: user.email || '',
+        address: user.address || '',
+        company_name: user.company_name || '',
+      });
+    }
+  }, [user]);
+
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setCurrentTab(newValue);
+    setSaveSuccess(false);
+    setSaveError('');
   };
 
   const handleGeneralChange = (field: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -106,20 +132,73 @@ export default function UserSettings() {
     }));
   };
 
-  const handleSave = () => {
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 3000);
+  const handleSave = async () => {
+    setIsLoading(true);
+    setSaveError('');
+    setSaveSuccess(false);
+
+    try {
+      const response = await dashboardService.updateProfile({
+        first_name: generalSettings.firstName,
+        last_name: generalSettings.lastName,
+        email: generalSettings.email,
+        city: generalSettings.city,
+        zip_code: generalSettings.zip_code,
+        nip: generalSettings.nip,
+        address: generalSettings.address,
+        company_name: generalSettings.company_name,
+      });
+
+      // Update Redux with new user data
+      dispatch(updateUser(response.user));
+
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (err: any) {
+      console.error('Failed to update profile:', err);
+      setSaveError(err.message || 'Nie udało się zaktualizować profilu');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handlePasswordSave = () => {
-    // Implement password change logic
-    setPasswordSettings({
-      currentPassword: '',
-      newPassword: '',
-      confirmPassword: '',
-    });
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 3000);
+  const handlePasswordSave = async () => {
+    setSaveError('');
+    setSaveSuccess(false);
+
+    // Validate passwords match
+    if (passwordSettings.new_password !== passwordSettings.confirmPassword) {
+      setSaveError('Nowe hasła nie są identyczne');
+      return;
+    }
+
+    if (!passwordSettings.old_password || !passwordSettings.new_password) {
+      setSaveError('Wszystkie pola są wymagane');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      await dashboardService.changePassword({
+        old_password: passwordSettings.old_password,
+        new_password: passwordSettings.new_password,
+      });
+
+      setPasswordSettings({
+        old_password: '',
+        new_password: '',
+        confirmPassword: '',
+      });
+
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (err: any) {
+      console.error('Failed to change password:', err);
+      setSaveError(err.message || 'Nie udało się zmienić hasła');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -137,6 +216,12 @@ export default function UserSettings() {
       {saveSuccess && (
         <Alert severity="success" sx={{ mb: 3 }}>
           Ustawienia zostały zapisane pomyślnie!
+        </Alert>
+      )}
+
+      {saveError && (
+        <Alert severity="error" sx={{ mb: 3 }} onClose={() => setSaveError('')}>
+          {saveError}
         </Alert>
       )}
 
@@ -175,15 +260,6 @@ export default function UserSettings() {
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
-                  label="Nazwa użytkownika"
-                  value={generalSettings.username}
-                  onChange={handleGeneralChange('username')}
-                  variant="outlined"
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
                   label="E-mail"
                   value={generalSettings.email}
                   onChange={handleGeneralChange('email')}
@@ -205,8 +281,8 @@ export default function UserSettings() {
                 <TextField
                   fullWidth
                   label="Nazwisko"
-                  value={generalSettings.surname}
-                  onChange={handleGeneralChange('surname')}
+                  value={generalSettings.lastName}
+                  onChange={handleGeneralChange('lastName')}
                   variant="outlined"
                   placeholder="Wpisz swoje nazwisko"
                 />
@@ -235,8 +311,8 @@ export default function UserSettings() {
                 <TextField
                   fullWidth
                   label="Kod pocztowy"
-                  value={generalSettings.postalCode}
-                  onChange={handleGeneralChange('postalCode')}
+                  value={generalSettings.zip_code}
+                  onChange={handleGeneralChange('zip_code')}
                   variant="outlined"
                   placeholder="00-000"
                 />
@@ -245,8 +321,8 @@ export default function UserSettings() {
                 <TextField
                   fullWidth
                   label="Nazwa firmy"
-                  value={generalSettings.companyName}
-                  onChange={handleGeneralChange('companyName')}
+                  value={generalSettings.company_name}
+                  onChange={handleGeneralChange('company_name')}
                   variant="outlined"
                   placeholder="Wpisz nazwę swojej firmy"
                 />
@@ -266,11 +342,12 @@ export default function UserSettings() {
             <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
               <Button
                 variant="contained"
-                startIcon={<Save />}
+                startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : <Save />}
                 onClick={handleSave}
+                disabled={isLoading}
                 sx={{ textTransform: 'none', px: 3 }}
               >
-                Zaktualizuj dane
+                {isLoading ? 'Zapisywanie...' : 'Zaktualizuj dane'}
               </Button>
             </Box>
           </CardContent>
@@ -292,8 +369,8 @@ export default function UserSettings() {
                   fullWidth
                   label="Obecne hasło"
                   type={showCurrentPassword ? 'text' : 'password'}
-                  value={passwordSettings.currentPassword}
-                  onChange={handlePasswordChange('currentPassword')}
+                  value={passwordSettings.old_password}
+                  onChange={handlePasswordChange('old_password')}
                   variant="outlined"
                   placeholder="Jakie jest twoje obecne hasło?"
                   InputProps={{
@@ -315,8 +392,8 @@ export default function UserSettings() {
                   fullWidth
                   label="Nowe hasło"
                   type={showNewPassword ? 'text' : 'password'}
-                  value={passwordSettings.newPassword}
-                  onChange={handlePasswordChange('newPassword')}
+                  value={passwordSettings.new_password}
+                  onChange={handlePasswordChange('new_password')}
                   variant="outlined"
                   placeholder="Minimum 8 znaków"
                   InputProps={{
@@ -364,12 +441,12 @@ export default function UserSettings() {
             <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
               <Button
                 variant="contained"
-                startIcon={<Save />}
+                startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : <Save />}
                 onClick={handlePasswordSave}
                 sx={{ textTransform: 'none', px: 3 }}
-                disabled={!passwordSettings.currentPassword || !passwordSettings.newPassword || passwordSettings.newPassword !== passwordSettings.confirmPassword}
+                disabled={isLoading || !passwordSettings.old_password || !passwordSettings.new_password || passwordSettings.new_password !== passwordSettings.confirmPassword}
               >
-                Zmień hasło
+                {isLoading ? 'Zapisywanie...' : 'Zmień hasło'}
               </Button>
             </Box>
           </CardContent>
