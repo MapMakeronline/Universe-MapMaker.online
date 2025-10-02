@@ -3,6 +3,7 @@ import mapReducer from './slices/mapSlice';
 import layersReducer from './slices/layersSlice';
 import drawReducer from './slices/drawSlice';
 import authReducer from './slices/authSlice';
+import dashboardReducer from './slices/dashboardSlice';
 
 export const store = configureStore({
   reducer: {
@@ -10,6 +11,7 @@ export const store = configureStore({
     layers: layersReducer,
     draw: drawReducer,
     auth: authReducer,
+    dashboard: dashboardReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

@@ -33,6 +33,7 @@ import {
   Divider,
   Stack,
   Alert,
+  CircularProgress,
 } from '@mui/material';
 import {
   MoreVert,
@@ -53,6 +54,10 @@ import {
   Close,
   CloudUpload,
 } from '@mui/icons-material';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { setProjects, setLoading, setError, setSelectedProject } from '@/store/slices/dashboardSlice';
+import { dashboardService } from '@/lib/api/dashboard';
+import type { Project as ApiProject } from '@/lib/api/dashboard';
 
 interface Project {
   id: string;
@@ -67,70 +72,11 @@ interface Project {
   owner: string;
 }
 
-const mockProjects: Project[] = [
-  {
-    id: '1',
-    title: 'REKLAMY',
-    description: 'Projekt własny',
-    image: '',
-    category: 'Reklamy',
-    isPublic: false,
-    size: '88.97 MB',
-    layers: 21,
-    lastModified: '2 dni temu',
-    owner: 'Ty',
-  },
-  {
-    id: '2',
-    title: 'DOLNOŚLĄSKIE',
-    description: 'Projekt własny',
-    image: '',
-    category: 'Województwo',
-    isPublic: false,
-    size: '45.32 MB',
-    layers: 15,
-    lastModified: '1 tydzień temu',
-    owner: 'Ty',
-  },
-  {
-    id: '3',
-    title: 'KONSULTACJE PREZENTACJA',
-    description: 'Projekt własny',
-    image: '',
-    category: 'Prezentacja',
-    isPublic: false,
-    size: '53.72 MB',
-    layers: 8,
-    lastModified: '3 dni temu',
-    owner: 'Ty',
-  },
-  {
-    id: '4',
-    title: 'DZIAŁKI ZA MNIEJ',
-    description: 'Projekt własny',
-    image: '',
-    category: 'Nieruchomości',
-    isPublic: true,
-    size: '20.83 MB',
-    layers: 17,
-    lastModified: '5 dni temu',
-    owner: 'Ty',
-  },
-  {
-    id: '5',
-    title: 'PRZETARGILODZ',
-    description: 'Projekt własny',
-    image: '',
-    category: 'Przetargi',
-    isPublic: true,
-    size: '14.89 MB',
-    layers: 1,
-    lastModified: '1 dzień temu',
-    owner: 'Ty',
-  },
-];
-
 export default function OwnProjects() {
+  const theme = useTheme();
+  const dispatch = useAppDispatch();
+  const { projects: apiProjects, dbInfo, isLoading, error } = useAppSelector((state) => state.dashboard);
+
   const [databaseDialogOpen, setDatabaseDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
@@ -153,7 +99,43 @@ export default function OwnProjects() {
     categories: [] as string[],
     isPublic: false,
   });
-  const theme = useTheme();
+
+  // Fetch projects on mount
+  useEffect(() => {
+    const fetchProjects = async () => {
+      dispatch(setLoading(true));
+      dispatch(setError(null));
+
+      try {
+        const response = await dashboardService.getProjects();
+        dispatch(setProjects({
+          projects: response.list_of_projects,
+          dbInfo: response.db_info,
+        }));
+      } catch (err: any) {
+        console.error('Failed to fetch projects:', err);
+        dispatch(setError(err.error || 'Nie udało się pobrać projektów'));
+      } finally {
+        dispatch(setLoading(false));
+      }
+    };
+
+    fetchProjects();
+  }, [dispatch]);
+
+  // Map API projects to UI format
+  const projects: Project[] = apiProjects.map((proj) => ({
+    id: proj.project_name,
+    title: proj.custom_project_name || proj.project_name,
+    description: proj.description || 'Projekt własny',
+    image: proj.logoExists ? `/api/logos/${proj.project_name}` : '',
+    category: proj.categories || 'Inne',
+    isPublic: proj.published,
+    size: '0 MB', // TODO: Calculate from backend if available
+    layers: 0, // TODO: Get from backend if available
+    lastModified: `${proj.project_date} ${proj.project_time}`,
+    owner: 'Ty',
+  }));
 
 
 
@@ -500,14 +482,46 @@ export default function OwnProjects() {
         </Button>
       </Box>
 
+      {/* Loading State */}
+      {isLoading && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+          <CircularProgress />
+        </Box>
+      )}
+
+      {/* Error State */}
+      {error && !isLoading && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {error}
+        </Alert>
+      )}
+
+      {/* Empty State */}
+      {!isLoading && !error && projects.length === 0 && (
+        <Box sx={{ textAlign: 'center', py: 8 }}>
+          <ViewModule sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
+          <Typography variant="h6" color="text.secondary" gutterBottom>
+            Brak projektów
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            Utwórz swój pierwszy projekt, aby zacząć
+          </Typography>
+          <Button variant="contained" startIcon={<Add />} onClick={handleNewProject}>
+            Utwórz projekt
+          </Button>
+        </Box>
+      )}
+
       {/* Projects Grid */}
-      <Grid container spacing={3}>
-        {mockProjects.map((project) => (
-          <Grid item xs={12} sm={6} md={4} key={project.id}>
-            <ProjectCard project={project} />
-          </Grid>
-        ))}
-      </Grid>
+      {!isLoading && !error && projects.length > 0 && (
+        <Grid container spacing={3}>
+          {projects.map((project) => (
+            <Grid item xs={12} sm={6} md={4} key={project.id}>
+              <ProjectCard project={project} />
+            </Grid>
+          ))}
+        </Grid>
+      )}
 
 
 
@@ -660,7 +674,7 @@ export default function OwnProjects() {
         <Divider />
         <DialogContent sx={{ pt: 3 }}>
           <Typography variant="body1" gutterBottom>
-            Czy na pewno chcesz usunąć {projectToDelete && mockProjects.find(p => p.id === projectToDelete)?.title}?
+            Czy na pewno chcesz usunąć {projectToDelete && projects.find(p => p.id === projectToDelete)?.title}?
           </Typography>
           <FormControlLabel
             control={<Checkbox defaultChecked />}
