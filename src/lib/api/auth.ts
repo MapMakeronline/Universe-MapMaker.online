@@ -58,7 +58,7 @@ class AuthService {
   }
 
   async register(data: RegisterData): Promise<AuthResponse> {
-    const response = await fetch(`${API_URL}/auth/user/register`, {
+    const response = await fetch(`${API_URL}/auth/register`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -82,7 +82,7 @@ class AuthService {
   }
 
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
-    const response = await fetch(`${API_URL}/auth/user/login`, {
+    const response = await fetch(`${API_URL}/auth/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -113,7 +113,7 @@ class AuthService {
     }
 
     try {
-      await fetch(`${API_URL}/auth/user/logout`, {
+      await fetch(`${API_URL}/auth/logout`, {
         method: 'POST',
         headers: this.getAuthHeader(),
       });
@@ -124,7 +124,7 @@ class AuthService {
   }
 
   async getProfile(): Promise<User> {
-    const response = await fetch(`${API_URL}/auth/user/profile`, {
+    const response = await fetch(`${API_URL}/auth/profile`, {
       method: 'GET',
       headers: this.getAuthHeader(),
     });
