@@ -13,6 +13,9 @@ import AddNationalLawModal from './AddNationalLawModal';
 import AddLayerModal from './AddLayerModal';
 import ImportLayerModal from './ImportLayerModal';
 import AddGroupModal from './AddGroupModal';
+import CreateConsultationModal from './CreateConsultationModal';
+import LayerManagerModal from './LayerManagerModal';
+import PrintConfigModal from './PrintConfigModal';
 import { useResizable, useDragDrop } from '../../hooks';
 
 // Types
@@ -57,6 +60,9 @@ const LeftPanel: React.FC = () => {
   const [addLayerModalOpen, setAddLayerModalOpen] = useState(false);
   const [importLayerModalOpen, setImportLayerModalOpen] = useState(false);
   const [addGroupModalOpen, setAddGroupModalOpen] = useState(false);
+  const [createConsultationModalOpen, setCreateConsultationModalOpen] = useState(false);
+  const [layerManagerModalOpen, setLayerManagerModalOpen] = useState(false);
+  const [printConfigModalOpen, setPrintConfigModalOpen] = useState(false);
 
   const [expandedSections, setExpandedSections] = useState<{[key: string]: boolean}>({
     'informacje-ogolne': false,
@@ -323,16 +329,112 @@ const LeftPanel: React.FC = () => {
     console.log('Adding new group:', data);
   };
 
+  const handleDeleteLayer = () => {
+    if (selectedLayer) {
+      const deleteLayerRecursive = (layers: Warstwa[], targetId: string): Warstwa[] => {
+        return layers.filter(layer => {
+          if (layer.id === targetId) {
+            return false; // Remove this layer
+          }
+          if (layer.dzieci) {
+            layer.dzieci = deleteLayerRecursive(layer.dzieci, targetId);
+          }
+          return true;
+        });
+      };
+
+      const updatedWarstwy = deleteLayerRecursive(warstwy, selectedLayer.id);
+      setWarstwy(updatedWarstwy);
+      setSelectedLayer(null);
+    }
+  };
+
+  const handleCreateConsultation = (data: {
+    nazwa: string;
+    numerUchwaly: string;
+    email: string;
+    dataRozpoczecia: string;
+    dataZakonczenia: string;
+  }) => {
+    // Create a new consultation layer
+    const newConsultationLayer: Warstwa = {
+      id: `consultation-${Date.now()}`,
+      nazwa: data.nazwa,
+      widoczna: true,
+      typ: 'wektor',
+    };
+
+    setWarstwy([...warstwy, newConsultationLayer]);
+    setCreateConsultationModalOpen(false);
+    console.log('Creating consultation:', data);
+  };
+
+  const handleLayerManager = (data: {
+    deletedLayerIds: string[];
+    restoredLayers: Array<{ id: string; nazwa: string; typ: 'wektor' | 'raster'; grupaNadrzedna?: string }>;
+  }) => {
+    // Handle deleted layers (remove from database layers list - this will be backend)
+    console.log('Deleted layers:', data.deletedLayerIds);
+
+    // Handle restored layers (add to project)
+    data.restoredLayers.forEach(restoredLayer => {
+      const newLayer: Warstwa = {
+        id: restoredLayer.id,
+        nazwa: restoredLayer.nazwa,
+        widoczna: true,
+        typ: restoredLayer.typ,
+      };
+
+      if (restoredLayer.grupaNadrzedna === 'Stwórz poza grupami' || !restoredLayer.grupaNadrzedna) {
+        // Add at main level
+        setWarstwy(prev => [...prev, newLayer]);
+      } else {
+        // Add to parent group
+        const addToParent = (layers: Warstwa[]): Warstwa[] => {
+          return layers.map(layer => {
+            if (layer.id === restoredLayer.grupaNadrzedna) {
+              return {
+                ...layer,
+                dzieci: layer.dzieci ? [...layer.dzieci, newLayer] : [newLayer],
+              };
+            }
+            if (layer.dzieci) {
+              return {
+                ...layer,
+                dzieci: addToParent(layer.dzieci),
+              };
+            }
+            return layer;
+          });
+        };
+        setWarstwy(addToParent);
+      }
+    });
+
+    setLayerManagerModalOpen(false);
+  };
+
+  const handlePrintConfig = (data: {
+    nazwaWypisu: string;
+    warstwaId: string;
+    kolumnaObreb: string;
+    kolumnaNumerDzialki: string;
+    warstwyPrzeznaczenia: any[];
+  }) => {
+    console.log('Print config data:', data);
+    setPrintConfigModalOpen(false);
+  };
+
   const toolbarHandlers = {
     onAddInspireDataset: () => setAddDatasetModalOpen(true),
     onAddNationalLaw: () => setAddNationalLawModalOpen(true),
     onAddLayer: () => setAddLayerModalOpen(true),
     onImportLayer: () => setImportLayerModalOpen(true),
     onAddGroup: () => setAddGroupModalOpen(true),
-    onRemoveLayer: () => console.log('Usuń grupę lub warstwę'),
-    onCreateConsultation: () => console.log('Utwórz konsultacje społeczne'),
-    onLayerManager: () => console.log('Menedżer warstw'),
-    onPrintConfig: () => console.log('Konfiguracja wyrysu i wypisu')
+    onRemoveLayer: handleDeleteLayer,
+    onCreateConsultation: () => setCreateConsultationModalOpen(true),
+    onLayerManager: () => setLayerManagerModalOpen(true),
+    onPrintConfig: () => setPrintConfigModalOpen(true)
   };
 
   return (
@@ -397,7 +499,7 @@ const LeftPanel: React.FC = () => {
             universe-mapmaker.online
           </Box>
 
-          <Toolbar {...toolbarHandlers} />
+          <Toolbar {...toolbarHandlers} selectedLayer={selectedLayer} />
           <SearchBar
             searchFilter={searchFilter}
             onSearchChange={setSearchFilter}
@@ -526,6 +628,29 @@ const LeftPanel: React.FC = () => {
         onClose={() => setAddGroupModalOpen(false)}
         onSubmit={handleAddGroup}
         existingGroups={warstwy}
+      />
+
+      {/* Create Consultation Modal */}
+      <CreateConsultationModal
+        open={createConsultationModalOpen}
+        onClose={() => setCreateConsultationModalOpen(false)}
+        onSubmit={handleCreateConsultation}
+      />
+
+      {/* Layer Manager Modal */}
+      <LayerManagerModal
+        open={layerManagerModalOpen}
+        onClose={() => setLayerManagerModalOpen(false)}
+        onSubmit={handleLayerManager}
+        existingGroups={warstwy}
+      />
+
+      {/* Print Config Modal */}
+      <PrintConfigModal
+        open={printConfigModalOpen}
+        onClose={() => setPrintConfigModalOpen(false)}
+        onSubmit={handlePrintConfig}
+        projectLayers={warstwy}
       />
     </>
   );

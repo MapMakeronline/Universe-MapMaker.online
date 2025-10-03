@@ -25,6 +25,15 @@ import {
   Edit as EditIcon
 } from '@mui/icons-material';
 
+interface Warstwa {
+  id: string;
+  nazwa: string;
+  widoczna: boolean;
+  typ: 'grupa' | 'wektor' | 'raster' | 'wms';
+  dzieci?: Warstwa[];
+  rozwinięta?: boolean;
+}
+
 interface ToolbarProps {
   onAddInspireDataset: () => void;
   onAddNationalLaw: () => void;
@@ -35,6 +44,7 @@ interface ToolbarProps {
   onCreateConsultation: () => void;
   onLayerManager: () => void;
   onPrintConfig: () => void;
+  selectedLayer?: Warstwa | null;
 }
 
 // Obiekt konfiguracji dla wielkości i stylów paska narzędzi
@@ -66,26 +76,33 @@ const ToolbarButton: React.FC<{
   icon: React.ReactElement;
   isDanger?: boolean;
   className?: string;
-}> = ({ title, onClick, icon, isDanger = false, className }) => {
+  disabled?: boolean;
+}> = ({ title, onClick, icon, isDanger = false, className, disabled = false }) => {
   const theme = useTheme();
 
   return (
     <Tooltip title={title} arrow>
-      <IconButton
-        size={TOOLBAR_CONFIG.button.size}
-        onClick={onClick}
-        className={className}
-        sx={{
-          color: theme.palette.text.secondary,
-          p: TOOLBAR_CONFIG.button.padding,
-          minWidth: TOOLBAR_CONFIG.button.minWidth,
-          '&:hover': {
-            color: isDanger ? theme.palette.error.main : theme.palette.primary.main
-          }
-        }}
-      >
-        {React.cloneElement(icon, { sx: { fontSize: TOOLBAR_CONFIG.icon.fontSize } })}
-      </IconButton>
+      <span>
+        <IconButton
+          size={TOOLBAR_CONFIG.button.size}
+          onClick={onClick}
+          className={className}
+          disabled={disabled}
+          sx={{
+            color: theme.palette.text.secondary,
+            p: TOOLBAR_CONFIG.button.padding,
+            minWidth: TOOLBAR_CONFIG.button.minWidth,
+            '&:hover': {
+              color: isDanger ? theme.palette.error.main : theme.palette.primary.main
+            },
+            '&.Mui-disabled': {
+              color: theme.palette.action.disabled,
+            }
+          }}
+        >
+          {React.cloneElement(icon, { sx: { fontSize: TOOLBAR_CONFIG.icon.fontSize } })}
+        </IconButton>
+      </span>
     </Tooltip>
   );
 };
@@ -99,7 +116,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onRemoveLayer,
   onCreateConsultation,
   onLayerManager,
-  onPrintConfig
+  onPrintConfig,
+  selectedLayer
 }) => {
   return (
     <Box sx={{
@@ -146,6 +164,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         onClick={onRemoveLayer}
         icon={<ClearIcon />}
         isDanger={true}
+        disabled={!selectedLayer}
       />
 
       <ToolbarButton
