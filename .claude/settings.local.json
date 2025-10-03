@@ -24,7 +24,10 @@
       "WebSearch",
       "WebFetch(domain:mui.com)",
       "Bash(gcloud run deploy:*)",
-      "Bash(gcloud logging read:*)"
+      "Bash(gcloud logging read:*)",
+      "Bash(mkdir:*)",
+      "Bash(timeout:*)",
+      "Bash(1)"
     ],
     "deny": [],
     "ask": []
