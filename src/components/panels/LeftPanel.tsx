@@ -11,6 +11,8 @@ import { BasemapSelector } from './components/BasemapSelector';
 import AddDatasetModal from './AddDatasetModal';
 import AddNationalLawModal from './AddNationalLawModal';
 import AddLayerModal from './AddLayerModal';
+import ImportLayerModal from './ImportLayerModal';
+import AddGroupModal from './AddGroupModal';
 import { useResizable, useDragDrop } from '../../hooks';
 
 // Types
@@ -53,6 +55,8 @@ const LeftPanel: React.FC = () => {
   const [addDatasetModalOpen, setAddDatasetModalOpen] = useState(false);
   const [addNationalLawModalOpen, setAddNationalLawModalOpen] = useState(false);
   const [addLayerModalOpen, setAddLayerModalOpen] = useState(false);
+  const [importLayerModalOpen, setImportLayerModalOpen] = useState(false);
+  const [addGroupModalOpen, setAddGroupModalOpen] = useState(false);
 
   const [expandedSections, setExpandedSections] = useState<{[key: string]: boolean}>({
     'informacje-ogolne': false,
@@ -269,12 +273,62 @@ const LeftPanel: React.FC = () => {
     console.log('Adding new layer:', data);
   };
 
+  const handleImportLayer = (data: { nazwaWarstwy: string; nazwaGrupy: string; format: string; file?: File }) => {
+    const newLayer: Warstwa = {
+      id: `import-${Date.now()}`,
+      nazwa: data.nazwaWarstwy,
+      widoczna: true,
+      typ: 'wektor',
+    };
+    setWarstwy([...warstwy, newLayer]);
+    setImportLayerModalOpen(false);
+    console.log('Importing layer:', data, 'File:', data.file?.name);
+  };
+
+  const handleAddGroup = (data: { nazwaGrupy: string; grupaNadrzedna: string }) => {
+    const newGroup: Warstwa = {
+      id: `group-${Date.now()}`,
+      nazwa: data.nazwaGrupy,
+      widoczna: true,
+      typ: 'grupa',
+      dzieci: [],
+      rozwinięta: false,
+    };
+
+    if (data.grupaNadrzedna === 'Stwórz poza grupami') {
+      // Add at main level
+      setWarstwy([...warstwy, newGroup]);
+    } else {
+      // Add to parent group
+      const addToParent = (layers: Warstwa[]): Warstwa[] => {
+        return layers.map(layer => {
+          if (layer.id === data.grupaNadrzedna) {
+            return {
+              ...layer,
+              dzieci: layer.dzieci ? [...layer.dzieci, newGroup] : [newGroup],
+            };
+          }
+          if (layer.dzieci) {
+            return {
+              ...layer,
+              dzieci: addToParent(layer.dzieci),
+            };
+          }
+          return layer;
+        });
+      };
+      setWarstwy(addToParent(warstwy));
+    }
+    setAddGroupModalOpen(false);
+    console.log('Adding new group:', data);
+  };
+
   const toolbarHandlers = {
     onAddInspireDataset: () => setAddDatasetModalOpen(true),
     onAddNationalLaw: () => setAddNationalLawModalOpen(true),
     onAddLayer: () => setAddLayerModalOpen(true),
-    onImportLayer: () => console.log('Importuj warstwę'),
-    onAddGroup: () => console.log('Dodaj grupę'),
+    onImportLayer: () => setImportLayerModalOpen(true),
+    onAddGroup: () => setAddGroupModalOpen(true),
     onRemoveLayer: () => console.log('Usuń grupę lub warstwę'),
     onCreateConsultation: () => console.log('Utwórz konsultacje społeczne'),
     onLayerManager: () => console.log('Menedżer warstw'),
@@ -457,6 +511,21 @@ const LeftPanel: React.FC = () => {
         open={addLayerModalOpen}
         onClose={() => setAddLayerModalOpen(false)}
         onSubmit={handleAddLayer}
+      />
+
+      {/* Import Layer Modal */}
+      <ImportLayerModal
+        open={importLayerModalOpen}
+        onClose={() => setImportLayerModalOpen(false)}
+        onSubmit={handleImportLayer}
+      />
+
+      {/* Add Group Modal */}
+      <AddGroupModal
+        open={addGroupModalOpen}
+        onClose={() => setAddGroupModalOpen(false)}
+        onSubmit={handleAddGroup}
+        existingGroups={warstwy}
       />
     </>
   );
