@@ -18,6 +18,8 @@ import {
   ListItemText,
   Divider,
   CircularProgress,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import {
   ContactMail,
@@ -53,6 +55,8 @@ function TabPanel(props: TabPanelProps) {
 }
 
 export default function Contact() {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [currentTab, setCurrentTab] = useState(0);
   const [formData, setFormData] = useState({
     subject: '',
@@ -116,10 +120,10 @@ export default function Contact() {
     <Box>
       {/* Header */}
       <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" component="h1" fontWeight="700" gutterBottom>
+        <Typography variant="h4" component="h1" fontWeight="700" gutterBottom sx={{ fontSize: { xs: '1.75rem', sm: '2.125rem' } }}>
           Kontakt
         </Typography>
-        <Typography variant="body1" color="text.secondary">
+        <Typography variant="body1" color="text.secondary" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
           Masz pytania? Skontaktuj się z nami
         </Typography>
       </Box>
@@ -137,36 +141,57 @@ export default function Contact() {
       )}
 
       <Card sx={{ border: '1px solid', borderColor: 'divider' }}>
-        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-          <Tabs value={currentTab} onChange={handleTabChange}>
-            <Tab 
-              icon={<ContactMail />} 
-              label="Kontakt" 
+        <Box sx={{ borderBottom: 1, borderColor: 'divider', overflowX: 'auto' }}>
+          <Tabs
+            value={currentTab}
+            onChange={handleTabChange}
+            variant={isMobile ? 'scrollable' : 'standard'}
+            scrollButtons={isMobile ? 'auto' : false}
+            allowScrollButtonsMobile
+          >
+            <Tab
+              icon={isMobile ? undefined : <ContactMail />}
+              label="Kontakt"
               iconPosition="start"
-              sx={{ textTransform: 'none', fontWeight: 500 }}
+              sx={{
+                textTransform: 'none',
+                fontWeight: 500,
+                minWidth: { xs: 'auto', sm: 120 },
+                px: { xs: 2, sm: 3 }
+              }}
             />
-            <Tab 
-              icon={<Info />} 
-              label="Informacje" 
+            <Tab
+              icon={isMobile ? undefined : <Info />}
+              label="Informacje"
               iconPosition="start"
-              sx={{ textTransform: 'none', fontWeight: 500 }}
+              sx={{
+                textTransform: 'none',
+                fontWeight: 500,
+                minWidth: { xs: 'auto', sm: 120 },
+                px: { xs: 2, sm: 3 }
+              }}
             />
-            <Tab 
-              icon={<Business />} 
-              label="O MapMaker" 
+            <Tab
+              icon={isMobile ? undefined : <Business />}
+              label="O MapMaker"
               iconPosition="start"
-              sx={{ textTransform: 'none', fontWeight: 500 }}
+              sx={{
+                textTransform: 'none',
+                fontWeight: 500,
+                minWidth: { xs: 'auto', sm: 120 },
+                px: { xs: 2, sm: 3 }
+              }}
             />
           </Tabs>
         </Box>
 
         {/* Contact Form Tab */}
         <TabPanel value={currentTab} index={0}>
-          <CardContent>
-            <Typography variant="h6" fontWeight="600" gutterBottom>
+          <CardContent sx={{ px: { xs: 2, sm: 3 } }}>
+            <Typography variant="h6" fontWeight="600" gutterBottom sx={{ fontSize: { xs: '1.125rem', sm: '1.25rem' } }}>
               Wyślij wiadomość
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3, fontSize: { xs: '0.875rem', sm: '0.875rem' } }}>
               Napotkałeś problemy podczas korzystania z aplikacji lub brakuje ci jakiejś
               funkcji, która jest dla Ciebie niezbędna? A może po prostu chcesz się z Nami
               skontaktować? Koniecznie do napisz do Nas!
@@ -227,12 +252,13 @@ export default function Contact() {
                 </Grid>
               </Grid>
 
-              <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
+              <Box sx={{ mt: 3, display: 'flex', justifyContent: { xs: 'stretch', sm: 'flex-end' } }}>
                 <Button
                   type="submit"
                   variant="contained"
                   startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : <Send />}
                   size="large"
+                  fullWidth={isMobile}
                   disabled={isLoading}
                   sx={{
                     textTransform: 'none',
@@ -250,14 +276,14 @@ export default function Contact() {
 
         {/* Company Info Tab */}
         <TabPanel value={currentTab} index={1}>
-          <CardContent>
-            <Typography variant="h6" fontWeight="600" gutterBottom>
+          <CardContent sx={{ px: { xs: 2, sm: 3 } }}>
+            <Typography variant="h6" fontWeight="600" gutterBottom sx={{ fontSize: { xs: '1.125rem', sm: '1.25rem' } }}>
               Dane kontaktowe
             </Typography>
 
             <Grid container spacing={4}>
               <Grid item xs={12} md={6}>
-                <Typography variant="subtitle1" fontWeight="600" gutterBottom>
+                <Typography variant="subtitle1" fontWeight="600" gutterBottom sx={{ fontSize: { xs: '1rem', sm: '1rem' } }}>
                   O spółce
                 </Typography>
                 <List>
@@ -288,7 +314,7 @@ export default function Contact() {
               </Grid>
 
               <Grid item xs={12} md={6}>
-                <Typography variant="subtitle1" fontWeight="600" gutterBottom>
+                <Typography variant="subtitle1" fontWeight="600" gutterBottom sx={{ fontSize: { xs: '1rem', sm: '1rem' } }}>
                   Kontaktowe
                 </Typography>
                 <List>
@@ -327,8 +353,8 @@ export default function Contact() {
 
         {/* About MapMaker Tab */}
         <TabPanel value={currentTab} index={2}>
-          <CardContent>
-            <Typography variant="h6" fontWeight="600" gutterBottom>
+          <CardContent sx={{ px: { xs: 2, sm: 3 } }}>
+            <Typography variant="h6" fontWeight="600" gutterBottom sx={{ fontSize: { xs: '1.125rem', sm: '1.25rem' } }}>
               O MapMaker
             </Typography>
             

@@ -16,14 +16,14 @@ declare module '@mui/material/styles' {
 export const theme = createTheme({
   palette: {
     primary: {
-      main: '#1976d2', // Niebieski Mapbox
-      light: '#42a5f5',
-      dark: '#1565c0',
+      main: '#f75e4c', // Czerwony/koralowy MapMaker
+      light: '#ff8f7c',
+      dark: '#c23526',
     },
     secondary: {
-      main: '#dc004e',
-      light: '#ff5983',
-      dark: '#9a0036',
+      main: '#1c679d', // Niebieski MapMaker
+      light: '#4a8fc7',
+      dark: '#154d75',
     },
     background: {
       default: '#fafafa',

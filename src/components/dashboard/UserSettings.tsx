@@ -18,6 +18,8 @@ import {
   IconButton,
   InputAdornment,
   CircularProgress,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import {
   Person,
@@ -56,6 +58,8 @@ function TabPanel(props: TabPanelProps) {
 export default function UserSettings() {
   const dispatch = useAppDispatch();
   const { user } = useAppSelector((state) => state.auth);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const [currentTab, setCurrentTab] = useState(0);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
@@ -205,10 +209,10 @@ export default function UserSettings() {
     <Box>
       {/* Header */}
       <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" component="h1" fontWeight="700" gutterBottom>
+        <Typography variant="h4" component="h1" fontWeight="700" gutterBottom sx={{ fontSize: { xs: '1.75rem', sm: '2.125rem' } }}>
           Ustawienia
         </Typography>
-        <Typography variant="body1" color="text.secondary">
+        <Typography variant="body1" color="text.secondary" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
           Zarządzaj ustawieniami swojego konta
         </Typography>
       </Box>
@@ -226,36 +230,57 @@ export default function UserSettings() {
       )}
 
       <Card sx={{ border: '1px solid', borderColor: 'divider' }}>
-        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-          <Tabs value={currentTab} onChange={handleTabChange}>
-            <Tab 
-              icon={<Person />} 
-              label="Generalne" 
+        <Box sx={{ borderBottom: 1, borderColor: 'divider', overflowX: 'auto' }}>
+          <Tabs
+            value={currentTab}
+            onChange={handleTabChange}
+            variant={isMobile ? 'scrollable' : 'standard'}
+            scrollButtons={isMobile ? 'auto' : false}
+            allowScrollButtonsMobile
+          >
+            <Tab
+              icon={isMobile ? undefined : <Person />}
+              label="Generalne"
               iconPosition="start"
-              sx={{ textTransform: 'none', fontWeight: 500 }}
+              sx={{
+                textTransform: 'none',
+                fontWeight: 500,
+                minWidth: { xs: 'auto', sm: 120 },
+                px: { xs: 2, sm: 3 }
+              }}
             />
-            <Tab 
-              icon={<Security />} 
-              label="Prywatność" 
+            <Tab
+              icon={isMobile ? undefined : <Security />}
+              label="Prywatność"
               iconPosition="start"
-              sx={{ textTransform: 'none', fontWeight: 500 }}
+              sx={{
+                textTransform: 'none',
+                fontWeight: 500,
+                minWidth: { xs: 'auto', sm: 120 },
+                px: { xs: 2, sm: 3 }
+              }}
             />
-            <Tab 
-              icon={<Notifications />} 
-              label="Powiadomienia" 
+            <Tab
+              icon={isMobile ? undefined : <Notifications />}
+              label="Powiadomienia"
               iconPosition="start"
-              sx={{ textTransform: 'none', fontWeight: 500 }}
+              sx={{
+                textTransform: 'none',
+                fontWeight: 500,
+                minWidth: { xs: 'auto', sm: 120 },
+                px: { xs: 2, sm: 3 }
+              }}
             />
           </Tabs>
         </Box>
 
         {/* General Settings Tab */}
         <TabPanel value={currentTab} index={0}>
-          <CardContent>
-            <Typography variant="h6" fontWeight="600" gutterBottom>
+          <CardContent sx={{ px: { xs: 2, sm: 3 } }}>
+            <Typography variant="h6" fontWeight="600" gutterBottom sx={{ fontSize: { xs: '1.125rem', sm: '1.25rem' } }}>
               Informacje osobiste
             </Typography>
-            
+
             <Grid container spacing={3}>
               <Grid item xs={12} sm={6}>
                 <TextField
@@ -339,12 +364,13 @@ export default function UserSettings() {
               </Grid>
             </Grid>
 
-            <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
+            <Box sx={{ mt: 3, display: 'flex', justifyContent: { xs: 'stretch', sm: 'flex-end' } }}>
               <Button
                 variant="contained"
                 startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : <Save />}
                 onClick={handleSave}
                 disabled={isLoading}
+                fullWidth={isMobile}
                 sx={{ textTransform: 'none', px: 3 }}
               >
                 {isLoading ? 'Zapisywanie...' : 'Zaktualizuj dane'}
@@ -355,8 +381,8 @@ export default function UserSettings() {
 
         {/* Privacy Settings Tab */}
         <TabPanel value={currentTab} index={1}>
-          <CardContent>
-            <Typography variant="h6" fontWeight="600" gutterBottom>
+          <CardContent sx={{ px: { xs: 2, sm: 3 } }}>
+            <Typography variant="h6" fontWeight="600" gutterBottom sx={{ fontSize: { xs: '1.125rem', sm: '1.25rem' } }}>
               Zmiana hasła
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
@@ -425,24 +451,22 @@ export default function UserSettings() {
 
             <Divider sx={{ my: 3 }} />
 
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Box>
-                <FormControlLabel
-                  control={<Switch checked={false} />}
-                  label="Wyloguj ze wszystkich urządzeń"
-                  sx={{ mb: 1 }}
-                />
-                <Typography variant="body2" color="text.secondary">
-                  Po zmianie hasła zostaniesz wylogowany ze wszystkich urządzeń
-                </Typography>
-              </Box>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <FormControlLabel
+                control={<Switch checked={false} />}
+                label="Wyloguj ze wszystkich urządzeń"
+              />
+              <Typography variant="body2" color="text.secondary" sx={{ ml: { xs: 0, sm: 5 } }}>
+                Po zmianie hasła zostaniesz wylogowany ze wszystkich urządzeń
+              </Typography>
             </Box>
 
-            <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
+            <Box sx={{ mt: 3, display: 'flex', justifyContent: { xs: 'stretch', sm: 'flex-end' } }}>
               <Button
                 variant="contained"
                 startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : <Save />}
                 onClick={handlePasswordSave}
+                fullWidth={isMobile}
                 sx={{ textTransform: 'none', px: 3 }}
                 disabled={isLoading || !passwordSettings.old_password || !passwordSettings.new_password || passwordSettings.new_password !== passwordSettings.confirmPassword}
               >
@@ -454,15 +478,15 @@ export default function UserSettings() {
 
         {/* Notifications Settings Tab */}
         <TabPanel value={currentTab} index={2}>
-          <CardContent>
-            <Typography variant="h6" fontWeight="600" gutterBottom>
+          <CardContent sx={{ px: { xs: 2, sm: 3 } }}>
+            <Typography variant="h6" fontWeight="600" gutterBottom sx={{ fontSize: { xs: '1.125rem', sm: '1.25rem' } }}>
               Preferencje powiadomień
             </Typography>
-            
+
             <Box sx={{ mt: 3 }}>
               <Box sx={{ mb: 3 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
-                  <Switch 
+                  <Switch
                     checked={notificationSettings.newsletter}
                     onChange={handleNotificationChange('newsletter')}
                   />
@@ -470,14 +494,14 @@ export default function UserSettings() {
                     Newsletter
                   </Typography>
                 </Box>
-                <Typography variant="body2" color="text.secondary" sx={{ ml: 6 }}>
+                <Typography variant="body2" color="text.secondary" sx={{ ml: { xs: 0, sm: 6 }, pl: { xs: 0, sm: 0 } }}>
                   Otrzymuj najnowsze wiadomości o produktach i funkcjach
                 </Typography>
               </Box>
 
               <Box sx={{ mb: 3 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
-                  <Switch 
+                  <Switch
                     checked={notificationSettings.appNotifications}
                     onChange={handleNotificationChange('appNotifications')}
                   />
@@ -485,14 +509,14 @@ export default function UserSettings() {
                     Powiadomienia w aplikacji
                   </Typography>
                 </Box>
-                <Typography variant="body2" color="text.secondary" sx={{ ml: 6 }}>
+                <Typography variant="body2" color="text.secondary" sx={{ ml: { xs: 0, sm: 6 } }}>
                   Otrzymuj powiadomienia o aktywności w aplikacji
                 </Typography>
               </Box>
 
               <Box sx={{ mb: 3 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
-                  <Switch 
+                  <Switch
                     checked={true}
                     disabled
                   />
@@ -500,17 +524,18 @@ export default function UserSettings() {
                     Samouczek
                   </Typography>
                 </Box>
-                <Typography variant="body2" color="text.secondary" sx={{ ml: 6 }}>
+                <Typography variant="body2" color="text.secondary" sx={{ ml: { xs: 0, sm: 6 } }}>
                   Powiadomienia pomocnicze (zawsze włączone)
                 </Typography>
               </Box>
             </Box>
 
-            <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
+            <Box sx={{ mt: 3, display: 'flex', justifyContent: { xs: 'stretch', sm: 'flex-end' } }}>
               <Button
                 variant="contained"
                 startIcon={<Save />}
                 onClick={handleSave}
+                fullWidth={isMobile}
                 sx={{ textTransform: 'none', px: 3 }}
               >
                 Zapisz zmiany

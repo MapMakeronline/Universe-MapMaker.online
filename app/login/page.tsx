@@ -23,6 +23,7 @@ import {
   ArrowBack,
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { authService } from '@/lib/api/auth';
 import { useAppDispatch } from '@/store/hooks';
 import { setAuth, setLoading } from '@/store/slices/authSlice';
@@ -145,11 +146,17 @@ export default function LoginPage() {
                   alignItems: 'center',
                   justifyContent: 'center',
                   mr: 2,
+                  p: 1,
                 }}
               >
-                <Typography variant="h4" sx={{ color: theme.palette.primary.main, fontWeight: 'bold' }}>
-                  M
-                </Typography>
+                <Image
+                  src="/logo.svg"
+                  alt="MapMaker Logo"
+                  width={50}
+                  height={50}
+                  style={{ objectFit: 'contain' }}
+                  priority
+                />
               </Box>
               <Typography variant="h4" component="h1" fontWeight="700">
                 MapMaker.Online

@@ -34,6 +34,7 @@ import {
   Stack,
   Alert,
   CircularProgress,
+  useMediaQuery,
 } from '@mui/material';
 import {
   MoreVert,
@@ -74,6 +75,7 @@ interface Project {
 
 export default function OwnProjects() {
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const dispatch = useAppDispatch();
   const { projects: apiProjects, dbInfo, isLoading, error } = useAppSelector((state) => state.dashboard);
 
@@ -456,12 +458,19 @@ export default function OwnProjects() {
   return (
     <Box>
       {/* Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+      <Box sx={{
+        display: 'flex',
+        flexDirection: { xs: 'column', sm: 'row' },
+        justifyContent: 'space-between',
+        alignItems: { xs: 'flex-start', sm: 'center' },
+        gap: 2,
+        mb: 4
+      }}>
         <Box>
-          <Typography variant="h4" component="h1" fontWeight="700" gutterBottom>
+          <Typography variant="h4" component="h1" fontWeight="700" gutterBottom sx={{ fontSize: { xs: '1.75rem', sm: '2.125rem' } }}>
             Twoje projekty
           </Typography>
-          <Typography variant="body1" color="text.secondary">
+          <Typography variant="body1" color="text.secondary" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
             Zarządzaj swoimi projektami mapowymi
           </Typography>
         </Box>
@@ -476,6 +485,7 @@ export default function OwnProjects() {
             px: 3,
             py: 1.5,
             fontWeight: 600,
+            display: { xs: 'none', sm: 'flex' },
           }}
         >
           Nowy projekt
@@ -525,7 +535,7 @@ export default function OwnProjects() {
 
 
 
-      {/* Floating Action Button */}
+      {/* Floating Action Button - tylko mobile */}
       <Fab
         color="primary"
         aria-label="add"
@@ -534,17 +544,19 @@ export default function OwnProjects() {
           position: 'fixed',
           bottom: 24,
           right: 24,
+          display: { xs: 'flex', sm: 'none' },
         }}
       >
         <Add />
       </Fab>
 
       {/* Database Dialog */}
-      <Dialog 
-        open={databaseDialogOpen} 
+      <Dialog
+        open={databaseDialogOpen}
         onClose={handleCloseDatabaseDialog}
         maxWidth="sm"
         fullWidth
+        fullScreen={isMobile}
       >
         <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontWeight: 600 }}>
           Baza danych
@@ -659,11 +671,12 @@ export default function OwnProjects() {
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog 
-        open={deleteDialogOpen} 
+      <Dialog
+        open={deleteDialogOpen}
         onClose={() => setDeleteDialogOpen(false)}
         maxWidth="sm"
         fullWidth
+        fullScreen={isMobile}
       >
         <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontWeight: 600 }}>
           Potwierdzenie
@@ -693,11 +706,12 @@ export default function OwnProjects() {
       </Dialog>
 
       {/* Import Project Dialog */}
-      <Dialog 
-        open={importDialogOpen} 
+      <Dialog
+        open={importDialogOpen}
         onClose={() => setImportDialogOpen(false)}
         maxWidth="md"
         fullWidth
+        fullScreen={isMobile}
       >
         <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontWeight: 600 }}>
           Importuj projekt
@@ -743,11 +757,12 @@ export default function OwnProjects() {
       </Dialog>
 
       {/* New Project Dialog */}
-      <Dialog 
-        open={newProjectDialogOpen} 
+      <Dialog
+        open={newProjectDialogOpen}
         onClose={() => setNewProjectDialogOpen(false)}
         maxWidth="md"
         fullWidth
+        fullScreen={isMobile}
       >
         <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontWeight: 600 }}>
           Utwórz nowy projekt
@@ -800,7 +815,7 @@ export default function OwnProjects() {
               </Typography>
               <Grid container spacing={1}>
                 {['EMUiA', 'SIP', 'Suikzp', 'MPZP', 'EGiB', 'Inne'].map((category) => (
-                  <Grid item key={category}>
+                  <Grid item xs={6} sm={4} key={category}>
                     <FormControlLabel
                       control={
                         <Checkbox
@@ -843,11 +858,12 @@ export default function OwnProjects() {
       </Dialog>
 
       {/* Settings Dialog */}
-      <Dialog 
-        open={settingsDialogOpen} 
+      <Dialog
+        open={settingsDialogOpen}
         onClose={handleCloseSettingsDialog}
         maxWidth="md"
         fullWidth
+        fullScreen={isMobile}
       >
         <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontWeight: 600 }}>
           Ustawienia projektu
@@ -900,7 +916,7 @@ export default function OwnProjects() {
               </Typography>
               <Grid container spacing={1}>
                 {['EMUiA', 'SIP', 'Suikzp', 'MPZP', 'EGiB', 'Inne'].map((category) => (
-                  <Grid item key={category}>
+                  <Grid item xs={6} sm={4} key={category}>
                     <FormControlLabel
                       control={
                         <Checkbox
