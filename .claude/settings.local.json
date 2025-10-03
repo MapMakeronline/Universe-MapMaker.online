@@ -27,7 +27,9 @@
       "Bash(gcloud logging read:*)",
       "Bash(mkdir:*)",
       "Bash(timeout:*)",
-      "Bash(1)"
+      "Bash(1)",
+      "Bash(claude mcp:*)",
+      "Bash(cp:*)"
     ],
     "deny": [],
     "ask": []

@@ -6,6 +6,7 @@ import { Box, Alert } from '@mui/material';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { setViewState, setMapLoaded, setFullscreen } from '@/store/slices/mapSlice';
 import { MAPBOX_TOKEN, MAP_CONFIG } from '@/lib/mapbox/config';
+import { mapLogger } from '@/lib/logger';
 import DrawTools from './DrawTools';
 import Geocoder from './Geocoder';
 import MeasurementTools from './MeasurementTools';
@@ -30,11 +31,11 @@ const MapContainer: React.FC<MapContainerProps> = ({ children }) => {
   useEffect(() => {
     if (!MAPBOX_TOKEN) {
       setTokenError('Mapbox token nie jest skonfigurowany');
-      console.error('❌ MAPBOX_TOKEN is missing in environment variables');
+      mapLogger.error('❌ MAPBOX_TOKEN is missing in environment variables');
     } else {
       setTokenError('');
-      console.log('✅ MAPBOX_TOKEN loaded successfully:', MAPBOX_TOKEN.substring(0, 20) + '...');
-      console.log('🗺️ MapContainer: Mapbox access token is valid');
+      mapLogger.log('✅ MAPBOX_TOKEN loaded successfully:', MAPBOX_TOKEN.substring(0, 20) + '...');
+      mapLogger.log('🗺️ MapContainer: Mapbox access token is valid');
     }
   }, []);
 

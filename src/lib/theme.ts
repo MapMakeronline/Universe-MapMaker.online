@@ -1,4 +1,4 @@
-import { createTheme } from '@mui/material/styles';
+import { createTheme, alpha } from '@mui/material/styles';
 
 declare module '@mui/material/styles' {
   interface BreakpointOverrides {
@@ -10,6 +10,24 @@ declare module '@mui/material/styles' {
     mobile: true;
     tablet: true;
     desktop: true;
+  }
+
+  interface Palette {
+    modal: {
+      header: string;
+      headerText: string;
+      content: string;
+      border: string;
+    };
+  }
+
+  interface PaletteOptions {
+    modal?: {
+      header?: string;
+      headerText?: string;
+      content?: string;
+      border?: string;
+    };
   }
 }
 
@@ -39,6 +57,12 @@ export const theme = createTheme({
       700: '#616161',
       800: '#424242',
       900: '#212121',
+    },
+    modal: {
+      header: '#4a5568',
+      headerText: '#ffffff',
+      content: '#f7f9fc',
+      border: '#e5e7eb',
     },
   },
   typography: {
@@ -81,6 +105,9 @@ export const theme = createTheme({
     },
   },
   spacing: 8,
+  shape: {
+    borderRadius: 8,
+  },
   components: {
     MuiPaper: {
       styleOverrides: {
@@ -99,17 +126,131 @@ export const theme = createTheme({
       },
     },
     MuiButton: {
+      defaultProps: {
+        disableElevation: true,
+      },
       styleOverrides: {
         root: {
           textTransform: 'none',
           borderRadius: 8,
+          fontWeight: 500,
+        },
+        sizeMedium: {
+          padding: '8px 16px',
         },
       },
+      variants: [
+        {
+          props: { variant: 'contained', color: 'secondary' },
+          style: ({ theme }) => ({
+            backgroundColor: theme.palette.modal.header,
+            color: theme.palette.modal.headerText,
+            '&:hover': {
+              backgroundColor: '#2d3748',
+            },
+            '&:disabled': {
+              backgroundColor: '#a0aec0',
+              color: 'white',
+            },
+          }),
+        },
+      ],
     },
     MuiIconButton: {
       styleOverrides: {
         root: {
           borderRadius: 8,
+        },
+      },
+    },
+    MuiTextField: {
+      defaultProps: {
+        size: 'small',
+      },
+      styleOverrides: {
+        root: ({ theme }) => ({
+          '& .MuiOutlinedInput-root': {
+            backgroundColor: 'white',
+            borderRadius: '4px',
+            '& fieldset': {
+              borderColor: '#d1d5db',
+            },
+            '&:hover fieldset': {
+              borderColor: theme.palette.primary.main,
+            },
+            '&.Mui-focused fieldset': {
+              borderColor: theme.palette.primary.main,
+            },
+          },
+          '& .MuiOutlinedInput-input': {
+            fontSize: '14px',
+            padding: '12px',
+          },
+          '& .MuiSelect-icon': {
+            color: theme.palette.text.secondary,
+          },
+        }),
+      },
+    },
+    MuiDialog: {
+      defaultProps: {
+        maxWidth: 'sm',
+        fullWidth: true,
+      },
+      styleOverrides: {
+        paper: {
+          borderRadius: '8px',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
+        },
+      },
+    },
+    MuiDialogTitle: {
+      styleOverrides: {
+        root: ({ theme }) => ({
+          backgroundColor: theme.palette.modal.header,
+          color: theme.palette.modal.headerText,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '16px 24px',
+          fontSize: '16px',
+          fontWeight: 600,
+          margin: 0,
+        }),
+      },
+    },
+    MuiDialogContent: {
+      styleOverrides: {
+        root: ({ theme }) => ({
+          backgroundColor: theme.palette.modal.content,
+          padding: '24px',
+        }),
+      },
+    },
+    MuiDialogActions: {
+      styleOverrides: {
+        root: ({ theme }) => ({
+          backgroundColor: theme.palette.modal.content,
+          padding: '16px 24px',
+          borderTop: `1px solid ${theme.palette.modal.border}`,
+          gap: '16px',
+        }),
+      },
+    },
+    MuiTab: {
+      styleOverrides: {
+        root: {
+          textTransform: 'none',
+          fontWeight: 500,
+          fontSize: '14px',
+          minHeight: '48px',
+        },
+      },
+    },
+    MuiTabs: {
+      styleOverrides: {
+        root: {
+          minHeight: '48px',
         },
       },
     },

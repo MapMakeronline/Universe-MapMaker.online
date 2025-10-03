@@ -59,6 +59,7 @@ import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { setProjects, setLoading, setError, setSelectedProject } from '@/store/slices/dashboardSlice';
 import { dashboardService } from '@/lib/api/dashboard';
 import type { Project as ApiProject } from '@/lib/api/dashboard';
+import { ProjectsGridSkeleton } from './ProjectCardSkeleton';
 
 interface Project {
   id: string;
@@ -329,6 +330,7 @@ export default function OwnProjects() {
               />
             </Box>
             <IconButton
+              aria-label="Więcej opcji"
               sx={{
                 position: 'absolute',
                 bottom: 8,
@@ -493,11 +495,7 @@ export default function OwnProjects() {
       </Box>
 
       {/* Loading State */}
-      {isLoading && (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-          <CircularProgress />
-        </Box>
-      )}
+      {isLoading && <ProjectsGridSkeleton count={6} />}
 
       {/* Error State */}
       {error && !isLoading && (
@@ -560,7 +558,7 @@ export default function OwnProjects() {
       >
         <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontWeight: 600 }}>
           Baza danych
-          <IconButton onClick={handleCloseDatabaseDialog} size="small">
+          <IconButton onClick={handleCloseDatabaseDialog} size="small" aria-label="Zamknij">
             <Close />
           </IconButton>
         </DialogTitle>
@@ -680,7 +678,7 @@ export default function OwnProjects() {
       >
         <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontWeight: 600 }}>
           Potwierdzenie
-          <IconButton onClick={() => setDeleteDialogOpen(false)} size="small">
+          <IconButton onClick={() => setDeleteDialogOpen(false)} size="small" aria-label="Zamknij">
             <Close />
           </IconButton>
         </DialogTitle>

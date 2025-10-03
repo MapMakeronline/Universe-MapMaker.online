@@ -36,6 +36,29 @@ The application uses the following color palette:
 - **Primary (Coral/Red):** `#f75e4c` - Main brand color
 - **Secondary (Blue):** `#1c679d` - Accent color
 - **Background:** `#ffffff` (white), `#fafafa` (light gray)
+- **Modal Colors:** Accessible via `theme.palette.modal.*`
+
+### Global Theme Configuration (MUI v7)
+
+The theme has been enhanced with automatic styling for common components. Most MUI components now have default styles and don't require inline `sx` props.
+
+**Automated Components:**
+- `TextField` - Auto-styled with white background, primary border on hover/focus
+- `Dialog` - Auto-styled with modal colors, rounded corners, shadows
+- `DialogTitle` - Dark header (#4a5568) with close button positioning
+- `DialogContent` - Light gray background (#f7f9fc)
+- `DialogActions` - Matching background with border and gap spacing
+- `Button` - No text transform, consistent padding, secondary variant for modals
+- `Tab/Tabs` - No text transform, consistent sizing
+
+**Custom Theme Properties:**
+```typescript
+// Access modal colors
+theme.palette.modal.header      // #4a5568 - Dark gray
+theme.palette.modal.headerText  // #ffffff - White
+theme.palette.modal.content     // #f7f9fc - Light blue-gray
+theme.palette.modal.border      // #e5e7eb - Border gray
+```
 
 ### Using Theme in Components
 ```typescript
@@ -47,6 +70,55 @@ import { theme } from '@/lib/theme';
   {/* Your content */}
 </ThemeProvider>
 ```
+
+### Theme Utilities (`src/lib/theme-utils.tsx`)
+
+Helper components and utilities for rapid development:
+
+```typescript
+import { FormField, FormContainer, DialogHeader, responsive, commonSx } from '@/lib/theme-utils';
+
+// Form field with auto-styled label
+<FormField label="Nazwa">
+  <TextField fullWidth value={value} onChange={onChange} />
+</FormField>
+
+// Form container with consistent spacing
+<FormContainer gap={2.5}>
+  <FormField label="Field 1">...</FormField>
+  <FormField label="Field 2">...</FormField>
+</FormContainer>
+
+// Dialog header with close button
+<DialogTitle>
+  <DialogHeader title="My Dialog" onClose={handleClose} />
+</DialogTitle>
+
+// Responsive utilities
+<Box sx={responsive.hideOnMobile}>Desktop only</Box>
+<Box sx={responsive.padding}>Responsive padding</Box>
+
+// Common sx patterns
+<Box sx={commonSx.centerContent}>Centered</Box>
+<Box sx={commonSx.scrollable}>Scrollable with custom scrollbar</Box>
+```
+
+**Available Helper Components:**
+- `<FormLabel>` - Consistent label styling (14px, medium weight)
+- `<FormField>` - Label + input wrapper
+- `<FormContainer>` - Flex column with gap spacing
+- `<DialogHeader>` - Title + close button in one component
+
+**Available Utilities:**
+- `responsive.hideOnMobile` / `hideOnDesktop` - Responsive visibility
+- `responsive.padding` - Responsive padding (xs: 2, sm: 3)
+- `responsive.fontSize.*` - Small, medium, large, xlarge responsive fonts
+- `commonSx.centerContent` - Flexbox centering
+- `commonSx.fullSize` - 100% width and height
+- `commonSx.scrollable` - Styled scrollbar
+- `commonSx.cardShadow` - Card shadow with hover effect
+- `commonSx.transition()` - Create theme-aware transitions
+- `conditionalSx(condition, trueSx, falseSx)` - Conditional styles
 
 ### Logo Assets
 - **Full Logo:** `/logo.svg` - Use for login screens and large branding
@@ -445,3 +517,134 @@ Monitor deployment:
 gcloud run services describe universe-mapmaker --region=europe-central2
 gcloud logging read "resource.type=cloud_run_revision AND resource.labels.service_name=universe-mapmaker" --limit=50
 ```
+
+## Context7 MCP Integration - Library Documentation Validation
+
+**IMPORTANT:** Before implementing new features or making significant changes, ALWAYS verify that our code follows the latest best practices from official documentation using Context7 MCP tools.
+
+### Core Libraries to Validate
+
+The project uses these main libraries - verify implementation against latest docs:
+
+1. **Next.js** (v15.5.4)
+   - Library ID: `/vercel/next.js`
+   - Topics to check: "app router", "server components", "client components", "routing", "metadata"
+
+2. **Material-UI (MUI)** (v5.18.0)
+   - Library ID: `/mui-org/material-ui`
+   - Topics to check: "theming", "sx prop", "responsive design", "breakpoints", "components"
+
+3. **MUI X Tree View** (v8.12.0)
+   - Library ID: `/mui-org/mui-x`
+   - Topics to check: "tree view", "drag and drop", "simple tree view"
+
+4. **Redux Toolkit** (v2.9.0)
+   - Library ID: `/reduxjs/redux-toolkit`
+   - Topics to check: "createSlice", "configureStore", "typescript", "best practices"
+
+5. **React Redux** (v9.2.0)
+   - Library ID: `/reduxjs/react-redux`
+   - Topics to check: "hooks", "useSelector", "useDispatch", "typescript"
+
+6. **Mapbox GL JS** (v3.0.0)
+   - Library ID: `/mapbox/mapbox-gl-js`
+   - Topics to check: "map initialization", "layers", "sources", "events"
+
+7. **React Map GL** (v7.1.9)
+   - Library ID: `/visgl/react-map-gl`
+   - Topics to check: "map component", "hooks", "controls", "markers"
+
+### Validation Workflow
+
+**Step 1: Resolve Library ID**
+```typescript
+// Use Context7 to find the exact library ID
+mcp__context7__resolve-library-id({ libraryName: "next.js" })
+```
+
+**Step 2: Fetch Latest Documentation**
+```typescript
+// Get up-to-date documentation for specific topics
+mcp__context7__get-library-docs({
+  context7CompatibleLibraryID: "/vercel/next.js",
+  topic: "app router",
+  tokens: 5000
+})
+```
+
+### When to Validate
+
+- **Before implementing new features** - Check if the library has new/better APIs
+- **When encountering bugs** - Verify if our implementation matches current best practices
+- **During code review** - Ensure patterns align with latest library recommendations
+- **When updating dependencies** - Review breaking changes and new features
+
+### Example Validation Scenarios
+
+**Scenario 1: Adding new MUI component**
+1. Resolve MUI library ID
+2. Fetch docs for specific component (e.g., "DataGrid", "Autocomplete")
+3. Compare our theming approach with latest recommendations
+4. Verify responsive patterns match MUI v5 best practices
+
+**Scenario 2: Optimizing Redux state**
+1. Fetch Redux Toolkit latest docs on "performance"
+2. Check if we're using latest selector patterns (e.g., `createSelector`)
+3. Validate our slice structure against current recommendations
+
+**Scenario 3: Next.js routing changes**
+1. Get Next.js App Router latest documentation
+2. Verify our file structure matches conventions
+3. Check for new metadata API features
+4. Ensure server/client component split is optimal
+
+### Quick Reference Commands
+
+```bash
+# Validate Next.js implementation
+Check /vercel/next.js docs for "app router" patterns
+
+# Validate MUI theming
+Check /mui-org/material-ui docs for "theming" and "sx prop"
+
+# Validate Redux patterns
+Check /reduxjs/redux-toolkit docs for "typescript" best practices
+
+# Validate Mapbox integration
+Check /mapbox/mapbox-gl-js docs for "react integration"
+```
+
+**Note:** Context7 provides the most current library documentation, which may be more up-to-date than our installed versions. Always cross-reference version compatibility.
+
+
+## Development Utilities & Best Practices
+
+### Logger Utility (src/lib/logger.ts)
+
+IMPORTANT: ALWAYS use the logger utility instead of console.log. Console logs are automatically disabled in production.
+
+Available loggers:
+- logger - Default logger
+- mapLogger - Map operations (🗺️)
+- reduxLogger - Redux state changes (🔴)
+- apiLogger - API calls (🌐)
+- drawLogger - Drawing tools (✏️)
+- layerLogger - Layer management (📊)
+- perfLogger - Performance measurements (⚡)
+
+### Error Boundary (src/components/ErrorBoundary.tsx)
+
+IMPORTANT: Always wrap major components/routes in ErrorBoundary to prevent full app crashes.
+
+### Skeleton Loaders (src/components/dashboard/ProjectCardSkeleton.tsx)
+
+IMPORTANT: Always show skeleton loaders during data fetching, not just spinners.
+
+## UI Audit Report
+
+See UI-AUDIT-REPORT.md for comprehensive frontend audit including:
+- Duplicate components to remove
+- Code quality improvements
+- Accessibility enhancements
+- Performance optimizations
+- Bundle size analysis
