@@ -158,6 +158,158 @@ Next.js configured with `output: 'standalone'` in `next.config.mjs` for optimize
 - Images unoptimized for faster builds
 - Mapbox GL transpiled for webpack compatibility
 
+## Modal Component Style Guide
+
+All modals in the application follow a consistent design pattern. Use this template when creating new modals:
+
+### Modal Structure Template
+
+```typescript
+<Dialog
+  open={open}
+  onClose={onClose}
+  maxWidth="md"  // or "sm" for smaller modals
+  fullWidth
+  PaperProps={{
+    sx: {
+      borderRadius: '8px',
+      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
+      maxWidth: '700px',  // or '480px' for small modals
+      width: '90%',
+    }
+  }}
+>
+  {/* Header */}
+  <DialogTitle
+    sx={{
+      bgcolor: '#4a5568',  // Dark gray header
+      color: 'white',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      py: 2,
+      px: 3,
+      fontSize: '16px',
+      fontWeight: 600,
+      m: 0,
+    }}
+  >
+    Modal Title
+    <IconButton
+      onClick={onClose}
+      size="small"
+      sx={{
+        color: 'white',
+        '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.1)' }
+      }}
+    >
+      <CloseIcon sx={{ fontSize: '20px' }} />
+    </IconButton>
+  </DialogTitle>
+
+  {/* Content */}
+  <DialogContent
+    sx={{
+      bgcolor: '#f7f9fc',  // Light blue-gray background
+      px: 3,
+      py: 3,
+    }}
+  >
+    {/* Form fields go here */}
+  </DialogContent>
+
+  {/* Footer */}
+  <DialogActions
+    sx={{
+      bgcolor: '#f7f9fc',
+      px: 3,
+      pb: 3,
+      pt: 0,
+      gap: 2,
+      justifyContent: 'flex-end',
+    }}
+  >
+    <Button
+      onClick={onClose}
+      variant="outlined"
+      sx={{
+        borderColor: '#d1d5db',
+        color: theme.palette.text.primary,
+        '&:hover': {
+          borderColor: theme.palette.text.primary,
+          bgcolor: 'rgba(0, 0, 0, 0.04)',
+        },
+      }}
+    >
+      Anuluj
+    </Button>
+    <Button
+      onClick={handleSubmit}
+      variant="contained"
+      disabled={isSubmitDisabled()}
+      sx={{
+        bgcolor: theme.palette.primary.main,
+        '&:hover': { bgcolor: theme.palette.primary.dark },
+      }}
+    >
+      Submit Text
+    </Button>
+  </DialogActions>
+</Dialog>
+```
+
+### Text Field Styling
+
+```typescript
+<TextField
+  fullWidth
+  value={value}
+  onChange={handleChange}
+  placeholder="Placeholder text"
+  size="small"
+  sx={{
+    '& .MuiOutlinedInput-root': {
+      bgcolor: 'white',
+      borderRadius: '4px',
+      '& fieldset': {
+        borderColor: '#d1d5db',
+      },
+      '&:hover fieldset': {
+        borderColor: theme.palette.primary.main,
+      },
+      '&.Mui-focused fieldset': {
+        borderColor: theme.palette.primary.main,
+      },
+    },
+    '& .MuiOutlinedInput-input': {
+      fontSize: '14px',
+      color: theme.palette.text.primary,
+    },
+  }}
+/>
+```
+
+### Section Label Styling
+
+```typescript
+<Typography
+  sx={{
+    fontSize: '14px',
+    fontWeight: 500,
+    color: theme.palette.text.primary,
+    mb: 1,
+  }}
+>
+  Label Text
+</Typography>
+```
+
+### Existing Modal Components
+
+- `src/components/panels/AddDatasetModal.tsx` - INSPIRE dataset modal (small, simple form)
+- `src/components/panels/AddNationalLawModal.tsx` - National law modal (tabs for create/import)
+- `src/components/panels/AddLayerModal.tsx` - Add layer modal (large, grid layout with columns)
+
 ## Live Deployment
 
 Production URL: https://universe-mapmaker-vs4lfmh3ma-lm.a.run.app
