@@ -27,6 +27,40 @@ NEXT_PUBLIC_MAPBOX_TOKEN=pk.eyJ1IjoibWFwbWFrZXItb25saW5lIiwiYSI6ImNtZzN3bm8wYTBw
 **Fallback Configuration:**
 If `.env.local` is missing, the token fallback is in `src/lib/mapbox/config.ts` (line 4).
 
+## Theme & Styling
+
+**IMPORTANT:** Always use the global theme from `src/lib/theme.ts`. NEVER create a new theme with `createTheme()` in components.
+
+### Brand Colors
+The application uses the following color palette:
+- **Primary (Coral/Red):** `#f75e4c` - Main brand color
+- **Secondary (Blue):** `#1c679d` - Accent color
+- **Background:** `#ffffff` (white), `#fafafa` (light gray)
+
+### Using Theme in Components
+```typescript
+import { ThemeProvider } from '@mui/material';
+import { theme } from '@/lib/theme';
+
+// In your component:
+<ThemeProvider theme={theme}>
+  {/* Your content */}
+</ThemeProvider>
+```
+
+### Logo Assets
+- **Full Logo:** `/logo.svg` - Use for login screens and large branding
+- **Icon Logo:** `/logo2.svg` - Use for dashboards, headers, and small icons
+- Both logos are located in the `/public` folder
+
+### Accessing Theme Colors
+```typescript
+import { useTheme } from '@mui/material';
+
+const theme = useTheme();
+// Use: theme.palette.primary.main, theme.palette.secondary.main, etc.
+```
+
 ## Architecture Overview
 
 ### State Management (Redux Toolkit)

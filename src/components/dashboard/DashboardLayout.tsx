@@ -22,6 +22,7 @@ import {
   useMediaQuery,
 } from '@mui/material';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import {
   Menu as MenuIcon,
   Home,
@@ -117,17 +118,24 @@ export default function DashboardLayout({ children, currentPage, onPageChange }:
               sx={{
                 width: 40,
                 height: 40,
-                bgcolor: 'primary.main',
                 borderRadius: 1,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 mr: 2,
+                position: 'relative',
+                bgcolor: 'white',
+                p: 0.5,
               }}
             >
-              <Typography variant="h6" color="white" fontWeight="bold">
-                M
-              </Typography>
+              <Image
+                src="/logo2.svg"
+                alt="MapMaker Logo"
+                width={32}
+                height={32}
+                style={{ objectFit: 'contain' }}
+                priority
+              />
             </Box>
             <Typography variant="h6" component="div" fontWeight="600" sx={{ display: { xs: 'none', sm: 'block' } }}>
               MapMaker
