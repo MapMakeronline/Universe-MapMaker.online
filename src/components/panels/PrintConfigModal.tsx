@@ -77,6 +77,8 @@ const PrintConfigModal: React.FC<PrintConfigModalProps> = ({
     ustaleniaOgolne: null as File | null,
     ustaleniaKoncowe: null as File | null,
   });
+  const [selectedPrzeznaczenie, setSelectedPrzeznaczenie] = useState('Wybierz z listy');
+  const [przeznaczenia, setPrzeznaczenia] = useState<Array<{ id: string; nazwa: string; dokument: File | null }>>([]);
 
   // Mock columns (będzie z backendu)
   const mockColumns: LayerColumn[] = [
@@ -160,8 +162,34 @@ const PrintConfigModal: React.FC<PrintConfigModalProps> = ({
         ustaleniaOgolne: layer.ustaleniaOgolne || null,
         ustaleniaKoncowe: layer.ustaleniaKoncowe || null,
       });
+      setPrzeznaczenia([]);
+      setSelectedPrzeznaczenie('Wybierz z listy');
       setEditModalOpen(true);
     }
+  };
+
+  const handleAddPrzeznaczenie = () => {
+    if (selectedPrzeznaczenie !== 'Wybierz z listy') {
+      const column = mockColumns.find(c => c.id === selectedPrzeznaczenie);
+      if (column && !przeznaczenia.find(p => p.id === column.id)) {
+        setPrzeznaczenia([...przeznaczenia, {
+          id: column.id,
+          nazwa: column.nazwa,
+          dokument: null,
+        }]);
+        setSelectedPrzeznaczenie('Wybierz z listy');
+      }
+    }
+  };
+
+  const handleDeletePrzeznaczenie = (id: string) => {
+    setPrzeznaczenia(przeznaczenia.filter(p => p.id !== id));
+  };
+
+  const handlePrzeznaczenieDocumentChange = (id: string, file: File | null) => {
+    setPrzeznaczenia(przeznaczenia.map(p =>
+      p.id === id ? { ...p, dokument: file } : p
+    ));
   };
 
   const handleEditSubmit = () => {
@@ -179,6 +207,7 @@ const PrintConfigModal: React.FC<PrintConfigModalProps> = ({
       }));
       setEditModalOpen(false);
       setEditingLayerId(null);
+      setPrzeznaczenia([]);
     }
   };
 
@@ -711,6 +740,130 @@ const PrintConfigModal: React.FC<PrintConfigModalProps> = ({
               ))}
             </TextField>
           </Box>
+
+          {/* Dodaj przeznaczenie - pokazuje się tylko gdy kolumna jest wybrana */}
+          {editFormData.kolumnaPrzeznaczenia !== 'Wybierz z listy' && (
+            <Box sx={{ mb: 3, bgcolor: '#e8eaf6', p: 2, borderRadius: '4px' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                <Typography
+                  sx={{
+                    fontSize: '14px',
+                    fontWeight: 500,
+                    color: '#3182ce',
+                    flex: 1,
+                  }}
+                >
+                  Dodaj przeznaczenie:
+                </Typography>
+                <IconButton
+                  onClick={handleAddPrzeznaczenie}
+                  size="small"
+                  sx={{
+                    bgcolor: '#4a5568',
+                    color: 'white',
+                    width: 24,
+                    height: 24,
+                    '&:hover': { bgcolor: '#2d3748' },
+                  }}
+                >
+                  <AddIcon sx={{ fontSize: 16 }} />
+                </IconButton>
+                <TextField
+                  select
+                  value={selectedPrzeznaczenie}
+                  onChange={(e) => setSelectedPrzeznaczenie(e.target.value)}
+                  size="small"
+                  sx={{
+                    width: 200,
+                    '& .MuiOutlinedInput-root': {
+                      bgcolor: 'white',
+                      borderRadius: '4px',
+                      '& fieldset': {
+                        borderColor: '#d1d5db',
+                      },
+                    },
+                  }}
+                >
+                  <MenuItem value="Wybierz z listy">Wybierz z listy</MenuItem>
+                  {mockColumns.map(col => (
+                    <MenuItem key={col.id} value={col.id}>
+                      {col.nazwa}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </Box>
+
+              {/* Lista dodanych przeznczeń */}
+              {przeznaczenia.map(prz => (
+                <Box
+                  key={prz.id}
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                    mb: 1,
+                  }}
+                >
+                  <Typography
+                    sx={{
+                      fontSize: '14px',
+                      color: theme.palette.text.primary,
+                      flex: 1,
+                    }}
+                  >
+                    {prz.nazwa}
+                  </Typography>
+                  <IconButton
+                    onClick={() => handleDeletePrzeznaczenie(prz.id)}
+                    size="small"
+                    sx={{ color: '#e53e3e' }}
+                  >
+                    <DeleteIcon sx={{ fontSize: 18 }} />
+                  </IconButton>
+                  <Box
+                    component="label"
+                    sx={{
+                      bgcolor: '#4a5568',
+                      color: 'white',
+                      py: 0.5,
+                      px: 2,
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontSize: '12px',
+                      fontWeight: 500,
+                      '&:hover': {
+                        bgcolor: '#2d3748',
+                      },
+                    }}
+                  >
+                    Załącz dokument
+                    <input
+                      type="file"
+                      hidden
+                      onChange={(e) => handlePrzeznaczenieDocumentChange(prz.id, e.target.files?.[0] || null)}
+                    />
+                  </Box>
+                </Box>
+              ))}
+
+              {/* Brak wyników */}
+              {przeznaczenia.length === 0 && (
+                <Box
+                  sx={{
+                    bgcolor: '#4a5568',
+                    color: 'white',
+                    py: 1,
+                    px: 2,
+                    borderRadius: '4px',
+                    textAlign: 'center',
+                    fontSize: '13px',
+                  }}
+                >
+                  Brak wyników
+                </Box>
+              )}
+            </Box>
+          )}
 
           {/* Zapisz Button */}
           <Box
