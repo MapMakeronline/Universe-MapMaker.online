@@ -310,6 +310,98 @@ All modals in the application follow a consistent design pattern. Use this templ
 - `src/components/panels/AddNationalLawModal.tsx` - National law modal (tabs for create/import)
 - `src/components/panels/AddLayerModal.tsx` - Add layer modal (large, grid layout with columns)
 
+## Responsive Design Guidelines
+
+All dashboard components follow mobile-first responsive design principles using Material-UI breakpoints:
+
+### Breakpoints
+- `xs`: 0px - 599px (mobile phones)
+- `sm`: 600px - 899px (tablets)
+- `md`: 900px - 1199px (small laptops)
+- `lg`: 1200px+ (desktops)
+
+### Dashboard Layout (`src/components/dashboard/DashboardLayout.tsx`)
+- **Drawer Behavior:**
+  - Mobile (< md): `temporary` variant with overlay (closes on click outside)
+  - Desktop (≥ md): `persistent` variant (stays open, pushes content)
+  - Separate state management: `mobileOpen` and `desktopOpen`
+- **Header Elements:**
+  - Navigation links (Blog, Regulamin, FAQ): hidden on mobile (< md)
+  - Logo text "MapMaker": hidden on small screens (xs)
+  - Hamburger icon changes based on context (ChevronLeft on desktop when open, MenuIcon otherwise)
+- **Content Padding:**
+  - Mobile: `p: 2` (16px)
+  - Desktop: `p: 3` (24px)
+
+### Project Lists (`OwnProjects.tsx`, `PublicProjects.tsx`)
+- **Headers:**
+  - Font sizes scale down on mobile: `{ xs: '1.75rem', sm: '2.125rem' }`
+  - Layout switches from row to column on mobile
+- **Buttons:**
+  - Desktop: Regular buttons in header
+  - Mobile: FAB (Floating Action Button) for primary actions
+- **Filters:**
+  - Desktop: Horizontal row layout
+  - Mobile: Vertical stack, full width
+- **Dialogs:**
+  - Desktop: Standard modal with maxWidth
+  - Mobile: Full screen (`fullScreen={isMobile}`)
+- **Category Grids in Forms:**
+  - Mobile: 2 columns (`xs={6}`)
+  - Tablet+: 3 columns (`sm={4}`)
+
+### User Settings (`UserSettings.tsx`)
+- **Tabs:**
+  - Desktop: Standard tabs with icons
+  - Mobile: Scrollable tabs without icons (`variant="scrollable"`)
+  - Icons hidden on mobile to save space
+- **Form Grid:**
+  - All fields use responsive grid: `xs={12} sm={6}`
+  - Desktop: 2 columns side-by-side
+  - Mobile: Single column stacked
+- **Action Buttons:**
+  - Desktop: Right-aligned
+  - Mobile: Full width (`fullWidth={isMobile}`)
+- **Content Padding:**
+  - Reduced on mobile: `px: { xs: 2, sm: 3 }`
+- **Typography:**
+  - Section headings scale: `{ xs: '1.125rem', sm: '1.25rem' }`
+  - Description text margins adjust: `ml: { xs: 0, sm: 6 }`
+
+### Implementation Pattern
+
+Always use MUI's `useMediaQuery` hook with theme breakpoints:
+
+```typescript
+import { useTheme, useMediaQuery } from '@mui/material';
+
+const theme = useTheme();
+const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
+// Then use in components
+<Button fullWidth={isMobile} />
+<Dialog fullScreen={isMobile} />
+```
+
+For inline responsive styles, use the `sx` prop with breakpoint objects:
+
+```typescript
+<Box sx={{
+  flexDirection: { xs: 'column', sm: 'row' },
+  p: { xs: 2, sm: 3 },
+  fontSize: { xs: '0.875rem', sm: '1rem' }
+}} />
+```
+
+### Testing Responsiveness
+
+Test at these viewport widths:
+- 375px (iPhone SE)
+- 390px (iPhone 12/13/14)
+- 768px (iPad)
+- 1024px (iPad Pro)
+- 1440px (Desktop)
+
 ## Live Deployment
 
 Production URL: https://universe-mapmaker-vs4lfmh3ma-lm.a.run.app

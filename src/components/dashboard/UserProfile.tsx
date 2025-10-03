@@ -18,6 +18,7 @@ import {
   ListItemIcon,
   useTheme,
   alpha,
+  useMediaQuery,
 } from '@mui/material';
 import {
   Person,
@@ -83,18 +84,19 @@ const mockLargestProjects = [
 
 export default function UserProfile() {
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const storagePercentage = (mockUserStats.storageUsed / mockUserStats.storageLimit) * 100;
 
-  const StatCard = ({ 
-    title, 
-    value, 
-    icon, 
+  const StatCard = ({
+    title,
+    value,
+    icon,
     color = 'primary',
-    subtitle 
-  }: { 
-    title: string; 
-    value: string | number; 
-    icon: React.ReactNode; 
+    subtitle
+  }: {
+    title: string;
+    value: string | number;
+    icon: React.ReactNode;
     color?: string;
     subtitle?: string;
   }) => (
@@ -108,17 +110,17 @@ export default function UserProfile() {
         },
       }}
     >
-      <CardContent>
+      <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <Box>
-            <Typography variant="h4" component="div" fontWeight="700" color={`${color}.main`}>
+            <Typography variant="h4" component="div" fontWeight="700" color={`${color}.main`} sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
               {value}
             </Typography>
-            <Typography variant="body2" color="text.secondary" gutterBottom>
+            <Typography variant="body2" color="text.secondary" gutterBottom sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
               {title}
             </Typography>
             {subtitle && (
-              <Typography variant="caption" color="text.secondary">
+              <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.625rem', sm: '0.75rem' } }}>
                 {subtitle}
               </Typography>
             )}
@@ -130,11 +132,11 @@ export default function UserProfile() {
                 color === 'success' ? theme.palette.success.main :
                 color === 'info' ? theme.palette.info.main :
                 color === 'warning' ? theme.palette.warning.main :
-                theme.palette.primary.main, 
+                theme.palette.primary.main,
                 0.1
               ),
               borderRadius: 2,
-              p: 1.5,
+              p: { xs: 1, sm: 1.5 },
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -151,10 +153,10 @@ export default function UserProfile() {
     <Box>
       {/* Header */}
       <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" component="h1" fontWeight="700" gutterBottom>
+        <Typography variant="h4" component="h1" fontWeight="700" gutterBottom sx={{ fontSize: { xs: '1.75rem', sm: '2.125rem' } }}>
           Profil użytkownika
         </Typography>
-        <Typography variant="body1" color="text.secondary">
+        <Typography variant="body1" color="text.secondary" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
           Zarządzaj swoim kontem i subskrypcją
         </Typography>
       </Box>
@@ -163,30 +165,32 @@ export default function UserProfile() {
         {/* User Info Card - Expanded */}
         <Grid item xs={12} md={6}>
           <Card sx={{ height: 'fit-content', border: '1px solid', borderColor: 'divider' }}>
-            <CardContent sx={{ p: 4 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+            <CardContent sx={{ p: { xs: 2, sm: 4 } }}>
+              <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: 'center', mb: 3, textAlign: { xs: 'center', sm: 'left' } }}>
                 <Avatar
                   sx={{
-                    width: 100,
-                    height: 100,
+                    width: { xs: 80, sm: 100 },
+                    height: { xs: 80, sm: 100 },
                     bgcolor: 'primary.main',
-                    fontSize: '2.5rem',
-                    mr: 3,
+                    fontSize: { xs: '2rem', sm: '2.5rem' },
+                    mr: { xs: 0, sm: 3 },
+                    mb: { xs: 2, sm: 0 },
                   }}
                 >
                   T
                 </Avatar>
                 <Box sx={{ flexGrow: 1 }}>
-                  <Typography variant="h5" fontWeight="700" gutterBottom>
+                  <Typography variant="h5" fontWeight="700" gutterBottom sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
                     Terenyinwestycyjne
                   </Typography>
-                  <Typography variant="body1" color="text.secondary" gutterBottom>
+                  <Typography variant="body1" color="text.secondary" gutterBottom sx={{ fontSize: { xs: '0.875rem', sm: '1rem' }, wordBreak: 'break-all' }}>
                     terenyinwest@gmail.com
                   </Typography>
                   <Chip
                     icon={<CheckCircle />}
                     label="Konto aktywne"
                     color="success"
+                    size={isMobile ? 'small' : 'medium'}
                     sx={{ mt: 1 }}
                   />
                 </Box>
@@ -208,12 +212,12 @@ export default function UserProfile() {
 
         {/* Stats Cards - 2x2 Grid */}
         <Grid item xs={12} md={6}>
-          <Grid container spacing={2}>
+          <Grid container spacing={{ xs: 1.5, sm: 2 }}>
             <Grid item xs={6}>
               <StatCard
                 title="Projekty"
                 value={mockUserStats.totalProjects}
-                icon={<ViewModule color="primary" />}
+                icon={<ViewModule color="primary" fontSize={isMobile ? 'small' : 'medium'} />}
                 subtitle={`${mockUserStats.publicProjects} publicznych`}
               />
             </Grid>
@@ -221,7 +225,7 @@ export default function UserProfile() {
               <StatCard
                 title="Wyświetlenia"
                 value={mockUserStats.totalViews.toLocaleString()}
-                icon={<TrendingUp color="success" />}
+                icon={<TrendingUp color="success" fontSize={isMobile ? 'small' : 'medium'} />}
                 color="success"
               />
             </Grid>
@@ -229,7 +233,7 @@ export default function UserProfile() {
               <StatCard
                 title="Warstwy"
                 value={mockUserStats.layersCount}
-                icon={<Public color="info" />}
+                icon={<Public color="info" fontSize={isMobile ? 'small' : 'medium'} />}
                 color="info"
               />
             </Grid>
@@ -237,7 +241,7 @@ export default function UserProfile() {
               <StatCard
                 title="Dni aktywności"
                 value="1827"
-                icon={<CalendarToday color="warning" />}
+                icon={<CalendarToday color="warning" fontSize={isMobile ? 'small' : 'medium'} />}
                 color="warning"
               />
             </Grid>
@@ -247,8 +251,8 @@ export default function UserProfile() {
         {/* Storage Usage */}
         <Grid item xs={12} md={7}>
           <Card sx={{ height: 'fit-content', border: '1px solid', borderColor: 'divider' }}>
-            <CardContent>
-              <Typography variant="h6" fontWeight="600" gutterBottom>
+            <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+              <Typography variant="h6" fontWeight="600" gutterBottom sx={{ fontSize: { xs: '1.125rem', sm: '1.25rem' } }}>
                 Użycie przestrzeni dyskowej
               </Typography>
               
@@ -304,9 +308,9 @@ export default function UserProfile() {
         {/* Subscription Info */}
         <Grid item xs={12} md={5}>
           <Card sx={{ height: 'fit-content', border: '1px solid', borderColor: 'divider' }}>
-            <CardContent>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="h6" fontWeight="600">
+            <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 1 }}>
+                <Typography variant="h6" fontWeight="600" sx={{ fontSize: { xs: '1.125rem', sm: '1.25rem' } }}>
                   Aktualny pakiet
                 </Typography>
                 <Chip
@@ -317,10 +321,10 @@ export default function UserProfile() {
               </Box>
 
               <Box sx={{ mb: 3 }}>
-                <Typography variant="h5" fontWeight="700" color="primary.main">
+                <Typography variant="h5" fontWeight="700" color="primary.main" sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
                   {mockSubscription.plan}
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.875rem', sm: '0.875rem' } }}>
                   Abonament: {mockSubscription.type}
                 </Typography>
               </Box>

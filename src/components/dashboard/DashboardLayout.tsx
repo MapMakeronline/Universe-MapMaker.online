@@ -19,6 +19,7 @@ import {
   MenuItem,
   useTheme,
   alpha,
+  useMediaQuery,
 } from '@mui/material';
 import { useRouter } from 'next/navigation';
 import {
@@ -53,13 +54,21 @@ const menuItems = [
 ];
 
 export default function DashboardLayout({ children, currentPage, onPageChange }: DashboardLayoutProps) {
-  const [open, setOpen] = useState(true);
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [desktopOpen, setDesktopOpen] = useState(true);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const router = useRouter();
 
+  const open = isMobile ? mobileOpen : desktopOpen;
+
   const handleDrawerToggle = () => {
-    setOpen(!open);
+    if (isMobile) {
+      setMobileOpen(!mobileOpen);
+    } else {
+      setDesktopOpen(!desktopOpen);
+    }
   };
 
   const handleMenu = (event: React.MouseEvent<HTMLElement>) => {
@@ -81,8 +90,8 @@ export default function DashboardLayout({ children, currentPage, onPageChange }:
       <AppBar
         position="fixed"
         sx={{
-          width: { sm: open ? `calc(100% - ${drawerWidth}px)` : '100%' },
-          ml: { sm: open ? `${drawerWidth}px` : 0 },
+          width: { md: desktopOpen ? `calc(100% - ${drawerWidth}px)` : '100%' },
+          ml: { md: desktopOpen ? `${drawerWidth}px` : 0 },
           bgcolor: 'background.paper',
           color: 'text.primary',
           boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
@@ -100,9 +109,9 @@ export default function DashboardLayout({ children, currentPage, onPageChange }:
             onClick={handleDrawerToggle}
             sx={{ mr: 2 }}
           >
-            {open ? <ChevronLeft /> : <MenuIcon />}
+            {open && !isMobile ? <ChevronLeft /> : <MenuIcon />}
           </IconButton>
-          
+
           <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
             <Box
               sx={{
@@ -120,14 +129,14 @@ export default function DashboardLayout({ children, currentPage, onPageChange }:
                 M
               </Typography>
             </Box>
-            <Typography variant="h6" component="div" fontWeight="600">
+            <Typography variant="h6" component="div" fontWeight="600" sx={{ display: { xs: 'none', sm: 'block' } }}>
               MapMaker
             </Typography>
           </Box>
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            {/* Footer links in header */}
-            <Box sx={{ display: 'flex', gap: 3, mr: 2 }}>
+            {/* Footer links in header - hidden on mobile */}
+            <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 3, mr: 2 }}>
               <Typography
                 component="a"
                 href="#"
@@ -177,7 +186,7 @@ export default function DashboardLayout({ children, currentPage, onPageChange }:
                 FAQ
               </Typography>
             </Box>
-            
+
             <IconButton
               size="large"
               aria-label="account of current user"
@@ -231,7 +240,12 @@ export default function DashboardLayout({ children, currentPage, onPageChange }:
 
       {/* Drawer */}
       <Drawer
-        variant="persistent"
+        variant={isMobile ? 'temporary' : 'persistent'}
+        open={open}
+        onClose={isMobile ? handleDrawerToggle : undefined}
+        ModalProps={{
+          keepMounted: true, // Better mobile performance
+        }}
         sx={{
           width: open ? drawerWidth : 0,
           flexShrink: 0,
@@ -241,14 +255,15 @@ export default function DashboardLayout({ children, currentPage, onPageChange }:
             bgcolor: 'background.paper',
             borderRight: '1px solid',
             borderColor: 'divider',
-            transform: open ? 'translateX(0)' : `translateX(-${drawerWidth}px)`,
-            transition: theme.transitions.create('transform', {
-              easing: theme.transitions.easing.sharp,
-              duration: theme.transitions.duration.enteringScreen,
+            ...(!isMobile && {
+              transform: open ? 'translateX(0)' : `translateX(-${drawerWidth}px)`,
+              transition: theme.transitions.create('transform', {
+                easing: theme.transitions.easing.sharp,
+                duration: theme.transitions.duration.enteringScreen,
+              }),
             }),
           },
         }}
-        open={open}
       >
         <Toolbar />
         <Box sx={{ overflow: 'auto', mt: 2 }}>
@@ -421,8 +436,8 @@ export default function DashboardLayout({ children, currentPage, onPageChange }:
         component="main"
         sx={{
           flexGrow: 1,
-          p: 3,
-          width: { sm: open ? `calc(100% - ${drawerWidth}px)` : '100%' },
+          p: { xs: 2, sm: 3 },
+          width: { md: desktopOpen ? `calc(100% - ${drawerWidth}px)` : '100%' },
           transition: theme.transitions.create(['width', 'margin'], {
             easing: theme.transitions.easing.sharp,
             duration: theme.transitions.duration.leavingScreen,

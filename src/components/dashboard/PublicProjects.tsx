@@ -19,6 +19,7 @@ import {
   Pagination,
   useTheme,
   alpha,
+  useMediaQuery,
 } from '@mui/material';
 import {
   Search,
@@ -138,6 +139,7 @@ export default function PublicProjects() {
   const [selectedCategory, setSelectedCategory] = useState('Wszystkie');
   const [currentPage, setCurrentPage] = useState(1);
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const projectsPerPage = 6;
 
   const filteredProjects = mockPublicProjects.filter(project => {
@@ -296,16 +298,16 @@ export default function PublicProjects() {
     <Box>
       {/* Header */}
       <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" component="h1" fontWeight="700" gutterBottom>
+        <Typography variant="h4" component="h1" fontWeight="700" gutterBottom sx={{ fontSize: { xs: '1.75rem', sm: '2.125rem' } }}>
           Projekty publiczne
         </Typography>
-        <Typography variant="body1" color="text.secondary">
+        <Typography variant="body1" color="text.secondary" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
           Przeglądaj publiczne projekty mapowe stworzone przez społeczność
         </Typography>
       </Box>
 
       {/* Filters */}
-      <Box sx={{ display: 'flex', gap: 2, mb: 4, flexWrap: 'wrap' }}>
+      <Box sx={{ display: 'flex', gap: 2, mb: 4, flexDirection: { xs: 'column', sm: 'row' } }}>
         <TextField
           placeholder="Wyszukaj projekty..."
           value={searchTerm}
@@ -317,9 +319,10 @@ export default function PublicProjects() {
               </InputAdornment>
             ),
           }}
-          sx={{ minWidth: 300, flexGrow: 1 }}
+          sx={{ flexGrow: 1 }}
+          fullWidth={isMobile}
         />
-        <FormControl sx={{ minWidth: 200 }}>
+        <FormControl sx={{ minWidth: { xs: '100%', sm: 200 } }}>
           <InputLabel>Kategoria</InputLabel>
           <Select
             value={selectedCategory}
