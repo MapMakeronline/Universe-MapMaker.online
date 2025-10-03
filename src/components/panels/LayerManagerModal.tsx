@@ -194,15 +194,15 @@ const LayerManagerModal: React.FC<LayerManagerModalProps> = ({
       <Dialog
         open={open}
         onClose={onClose}
-        maxWidth="sm"
+        maxWidth="md"
         fullWidth
         PaperProps={{
           sx: {
             borderRadius: '8px',
             boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
-            maxWidth: '550px',
-            width: '90%',
-            maxHeight: '80vh',
+            maxWidth: '650px',
+            width: '95%',
+            maxHeight: '85vh',
           }
         }}
       >
@@ -214,9 +214,9 @@ const LayerManagerModal: React.FC<LayerManagerModalProps> = ({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            py: 2,
+            py: 2.5,
             px: 3,
-            fontSize: '16px',
+            fontSize: '17px',
             fontWeight: 600,
             m: 0,
           }}
@@ -238,8 +238,9 @@ const LayerManagerModal: React.FC<LayerManagerModalProps> = ({
         <DialogContent
           sx={{
             bgcolor: '#f7f9fc',
-            px: 3,
-            py: 3,
+            px: 4,
+            pt: 3,
+            pb: 4,
             display: 'flex',
             flexDirection: 'column',
             gap: 2,
@@ -579,11 +580,12 @@ const LayerManagerModal: React.FC<LayerManagerModalProps> = ({
         <DialogContent
           sx={{
             bgcolor: '#f7f9fc',
-            px: 3,
-            py: 3,
+            px: 4,
+            pt: 3,
+            pb: 4,
           }}
         >
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             {/* Nazwa warstwy */}
             <Box>
               <Typography

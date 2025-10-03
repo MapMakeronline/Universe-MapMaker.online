@@ -238,14 +238,14 @@ const PrintConfigModal: React.FC<PrintConfigModalProps> = ({
       <Dialog
         open={open}
         onClose={onClose}
-        maxWidth="sm"
+        maxWidth="md"
         fullWidth
         PaperProps={{
           sx: {
             borderRadius: '8px',
             boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
-            maxWidth: '550px',
-            width: '90%',
+            maxWidth: '650px',
+            width: '95%',
           }
         }}
       >
@@ -257,9 +257,9 @@ const PrintConfigModal: React.FC<PrintConfigModalProps> = ({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            py: 1.5,
-            px: 2,
-            fontSize: '16px',
+            py: 2,
+            px: 3,
+            fontSize: '17px',
             fontWeight: 500,
           }}
         >
@@ -276,15 +276,15 @@ const PrintConfigModal: React.FC<PrintConfigModalProps> = ({
           </IconButton>
         </DialogTitle>
 
-        <DialogContent sx={{ bgcolor: '#f7f9fc', p: 3 }}>
+        <DialogContent sx={{ bgcolor: '#f7f9fc', px: 4, pt: 3, pb: 4 }}>
           {/* Nazwa wypisu */}
-          <Box sx={{ mb: 2 }}>
+          <Box sx={{ mb: 3 }}>
             <Typography
               sx={{
-                fontSize: '14px',
+                fontSize: '15px',
                 fontWeight: 500,
                 color: '#e53e3e',
-                mb: 1,
+                mb: 1.5,
               }}
             >
               Nazwa wypisu
@@ -307,13 +307,13 @@ const PrintConfigModal: React.FC<PrintConfigModalProps> = ({
           </Box>
 
           {/* Wybierz warstwę działek */}
-          <Box sx={{ mb: 2 }}>
+          <Box sx={{ mb: 3 }}>
             <Typography
               sx={{
-                fontSize: '14px',
+                fontSize: '15px',
                 fontWeight: 500,
                 color: '#e53e3e',
-                mb: 1,
+                mb: 1.5,
               }}
             >
               Wybierz warstwę działek:
@@ -344,13 +344,13 @@ const PrintConfigModal: React.FC<PrintConfigModalProps> = ({
           </Box>
 
           {/* Kolumna obręb */}
-          <Box sx={{ mb: 2 }}>
+          <Box sx={{ mb: 3 }}>
             <Typography
               sx={{
-                fontSize: '14px',
+                fontSize: '15px',
                 fontWeight: 500,
                 color: '#3182ce',
-                mb: 1,
+                mb: 1.5,
               }}
             >
               Kolumna obręb:
@@ -381,13 +381,13 @@ const PrintConfigModal: React.FC<PrintConfigModalProps> = ({
           </Box>
 
           {/* Kolumna numer działki */}
-          <Box sx={{ mb: 3 }}>
+          <Box sx={{ mb: 4 }}>
             <Typography
               sx={{
-                fontSize: '14px',
+                fontSize: '15px',
                 fontWeight: 500,
                 color: '#3182ce',
-                mb: 1,
+                mb: 1.5,
               }}
             >
               Kolumna numer działki:
@@ -418,11 +418,11 @@ const PrintConfigModal: React.FC<PrintConfigModalProps> = ({
           </Box>
 
           {/* Dodaj warstwy przeznaczenia planu */}
-          <Box sx={{ mb: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+          <Box sx={{ mb: 3 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
               <Typography
                 sx={{
-                  fontSize: '14px',
+                  fontSize: '15px',
                   fontWeight: 500,
                   color: '#3182ce',
                   flex: 1,
@@ -574,14 +574,14 @@ const PrintConfigModal: React.FC<PrintConfigModalProps> = ({
       <Dialog
         open={editModalOpen}
         onClose={() => setEditModalOpen(false)}
-        maxWidth="sm"
+        maxWidth="md"
         fullWidth
         PaperProps={{
           sx: {
             borderRadius: '8px',
             boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
-            maxWidth: '550px',
-            width: '90%',
+            maxWidth: '650px',
+            width: '95%',
           }
         }}
       >
@@ -592,9 +592,9 @@ const PrintConfigModal: React.FC<PrintConfigModalProps> = ({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            py: 1.5,
-            px: 2,
-            fontSize: '16px',
+            py: 2,
+            px: 3,
+            fontSize: '17px',
             fontWeight: 500,
           }}
         >
@@ -611,12 +611,12 @@ const PrintConfigModal: React.FC<PrintConfigModalProps> = ({
           </IconButton>
         </DialogTitle>
 
-        <DialogContent sx={{ bgcolor: '#f7f9fc', p: 3 }}>
+        <DialogContent sx={{ bgcolor: '#f7f9fc', px: 4, pt: 3, pb: 4 }}>
           {/* Ustalenia ogólne */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
             <Typography
               sx={{
-                fontSize: '14px',
+                fontSize: '15px',
                 fontWeight: 500,
                 color: theme.palette.text.primary,
                 flex: 1,
@@ -659,10 +659,10 @@ const PrintConfigModal: React.FC<PrintConfigModalProps> = ({
           </Box>
 
           {/* Ustalenia końcowe */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 4 }}>
             <Typography
               sx={{
-                fontSize: '14px',
+                fontSize: '15px',
                 fontWeight: 500,
                 color: theme.palette.text.primary,
                 flex: 1,
@@ -708,10 +708,10 @@ const PrintConfigModal: React.FC<PrintConfigModalProps> = ({
           <Box sx={{ mb: 3 }}>
             <Typography
               sx={{
-                fontSize: '14px',
+                fontSize: '15px',
                 fontWeight: 500,
                 color: theme.palette.text.primary,
-                mb: 1,
+                mb: 1.5,
               }}
             >
               Wybierz kolumnę przeznaczenia:
@@ -743,11 +743,11 @@ const PrintConfigModal: React.FC<PrintConfigModalProps> = ({
 
           {/* Dodaj przeznaczenie - pokazuje się tylko gdy kolumna jest wybrana */}
           {editFormData.kolumnaPrzeznaczenia !== 'Wybierz z listy' && (
-            <Box sx={{ mb: 3, bgcolor: '#e8eaf6', p: 2, borderRadius: '4px' }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+            <Box sx={{ mb: 4, bgcolor: '#e8eaf6', p: 3, borderRadius: '6px' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
                 <Typography
                   sx={{
-                    fontSize: '14px',
+                    fontSize: '15px',
                     fontWeight: 500,
                     color: '#3182ce',
                     flex: 1,
