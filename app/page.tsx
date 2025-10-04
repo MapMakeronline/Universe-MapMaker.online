@@ -1,7 +1,6 @@
 'use client';
 
-import { Box, Button, Container, Typography, Card, CardContent, Stack } from '@mui/material';
-import Grid from '@mui/material/Grid2';
+import { Box, Button, Container, Typography, Card, CardContent, Stack, Grid } from '@mui/material';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import {
@@ -224,7 +223,7 @@ export default function LandingPage() {
           }}
         >
           {/* Register Card */}
-          <Grid size={{ xs: 12, md: 4 }}>
+          <Grid xs={12} md={4}>
             <Card
               sx={{
                 height: '100%',
@@ -289,7 +288,7 @@ export default function LandingPage() {
           </Grid>
 
           {/* Login Card */}
-          <Grid size={{ xs: 12, md: 4 }}>
+          <Grid xs={12} md={4}>
             <Card
               sx={{
                 height: '100%',
@@ -354,7 +353,7 @@ export default function LandingPage() {
           </Grid>
 
           {/* Public Projects Card */}
-          <Grid size={{ xs: 12, md: 4 }}>
+          <Grid xs={12} md={4}>
             <Card
               sx={{
                 height: '100%',
@@ -461,7 +460,7 @@ export default function LandingPage() {
 
           <Grid container spacing={{ xs: 3, md: 4 }}>
             {features.map((feature, index) => (
-              <Grid key={index} size={{ xs: 12, sm: 6, md: 4 }}>
+              <Grid key={index} xs={12} sm={6} md={4}>
                 <Box
                   sx={{
                     textAlign: 'center',
