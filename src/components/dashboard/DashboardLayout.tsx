@@ -36,6 +36,7 @@ import {
   ChevronLeft,
   Dashboard as DashboardIcon,
 } from '@mui/icons-material';
+import { currentUser } from '@/lib/auth/mockUser';
 
 const drawerWidth = 280;
 
@@ -61,13 +62,6 @@ export default function DashboardLayout({ children, currentPage, onPageChange }:
   const [desktopOpen, setDesktopOpen] = useState(true);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const router = useRouter();
-
-  // Mock user data - replace with actual user state from Redux/Auth
-  const currentUser = {
-    name: "Jan Kowalski",
-    email: "jan.kowalski@example.com",
-    isLoggedIn: false, // Change to true to test logged-in state
-  };
 
   const open = isMobile ? mobileOpen : desktopOpen;
 

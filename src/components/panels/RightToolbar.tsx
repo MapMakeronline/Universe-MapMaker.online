@@ -21,6 +21,9 @@ import {
   AccountCircle,
   Logout,
   Home,
+  Person,
+  Public,
+  ContactMail,
 } from "@mui/icons-material"
 import { useRouter } from "next/navigation"
 import { useAppDispatch, useAppSelector } from "@/store/hooks"
@@ -100,15 +103,18 @@ const RightToolbar: React.FC = () => {
   const handleLogout = () => {
     // TODO: Implement actual logout logic
     console.log("Logout")
-    router.push('/login')
+    router.push('/auth?tab=0')
     handleUserMenuClose()
   }
 
-  // Mock user data - replace with actual user state from Redux/Auth
-  const currentUser = {
-    name: "Jan Kowalski",
-    email: "jan.kowalski@example.com",
-    isLoggedIn: true, // Change to false to see orange color
+  const handleLogin = () => {
+    router.push('/auth?tab=0')
+    handleUserMenuClose()
+  }
+
+  const handleRegister = () => {
+    router.push('/auth?tab=1')
+    handleUserMenuClose()
   }
 
   interface Tool {
@@ -412,46 +418,88 @@ const RightToolbar: React.FC = () => {
           }
         }}
       >
-        {/* User Info Header */}
-        <Box sx={{ px: 2, py: 1.5, borderBottom: 1, borderColor: 'divider' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <AccountCircle sx={{ fontSize: 40, color: 'primary.main' }} />
-            <Box>
-              <Typography variant="subtitle2" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
-                {currentUser.name}
-              </Typography>
-              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                {currentUser.email}
-              </Typography>
+        {currentUser.isLoggedIn ? (
+          <>
+            {/* Logged In User Menu */}
+            <Box sx={{ px: 2, py: 1.5, borderBottom: 1, borderColor: 'divider' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                <AccountCircle sx={{ fontSize: 40, color: '#10b981' }} />
+                <Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
+                    {currentUser.name}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                    {currentUser.email}
+                  </Typography>
+                </Box>
+              </Box>
             </Box>
-          </Box>
-        </Box>
 
-        <Divider />
+            <Divider />
 
-        {/* Menu Items */}
-        <MenuItem onClick={handleGoToDashboard}>
-          <ListItemIcon>
-            <Home fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>Dashboard</ListItemText>
-        </MenuItem>
+            <MenuItem onClick={handleGoToDashboard}>
+              <ListItemIcon>
+                <Home fontSize="small" />
+              </ListItemIcon>
+              <ListItemText>Dashboard</ListItemText>
+            </MenuItem>
 
-        <MenuItem onClick={handleUserMenuClose}>
-          <ListItemIcon>
-            <Settings fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>Ustawienia konta</ListItemText>
-        </MenuItem>
+            <MenuItem onClick={handleUserMenuClose}>
+              <ListItemIcon>
+                <Settings fontSize="small" />
+              </ListItemIcon>
+              <ListItemText>Ustawienia konta</ListItemText>
+            </MenuItem>
 
-        <Divider />
+            <Divider />
 
-        <MenuItem onClick={handleLogout}>
-          <ListItemIcon>
-            <Logout fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>Wyloguj się</ListItemText>
-        </MenuItem>
+            <MenuItem onClick={handleLogout}>
+              <ListItemIcon>
+                <Logout fontSize="small" />
+              </ListItemIcon>
+              <ListItemText>Wyloguj się</ListItemText>
+            </MenuItem>
+          </>
+        ) : (
+          <>
+            {/* Guest User Menu */}
+            <Box sx={{ px: 2, py: 1.5, borderBottom: 1, borderColor: 'divider' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                <AccountCircle sx={{ fontSize: 40, color: '#f97316' }} />
+                <Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
+                    Gość
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                    Niezalogowany
+                  </Typography>
+                </Box>
+              </Box>
+            </Box>
+
+            <Divider />
+
+            <MenuItem onClick={handleLogin}>
+              <ListItemIcon>
+                <Logout fontSize="small" sx={{ transform: 'scaleX(-1)' }} />
+              </ListItemIcon>
+              <ListItemText>Zaloguj się</ListItemText>
+            </MenuItem>
+            <MenuItem onClick={handleRegister}>
+              <ListItemIcon>
+                <Person fontSize="small" />
+              </ListItemIcon>
+              <ListItemText>Zarejestruj się</ListItemText>
+            </MenuItem>
+            <Divider />
+            <MenuItem onClick={handleGoToDashboard}>
+              <ListItemIcon>
+                <Home fontSize="small" />
+              </ListItemIcon>
+              <ListItemText>Dashboard</ListItemText>
+            </MenuItem>
+          </>
+        )}
       </Menu>
     </>
   )
