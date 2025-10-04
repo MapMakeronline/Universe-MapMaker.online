@@ -66,7 +66,7 @@ export default function DashboardLayout({ children, currentPage, onPageChange }:
   const currentUser = {
     name: "Jan Kowalski",
     email: "jan.kowalski@example.com",
-    isLoggedIn: true,
+    isLoggedIn: false, // Change to true to test logged-in state
   };
 
   const open = isMobile ? mobileOpen : desktopOpen;
@@ -89,7 +89,22 @@ export default function DashboardLayout({ children, currentPage, onPageChange }:
 
   const handleLogout = () => {
     handleCloseMenu();
-    router.push('/login');
+    router.push('/auth?tab=0');
+  };
+
+  const handleLogin = () => {
+    handleCloseMenu();
+    router.push('/auth?tab=0');
+  };
+
+  const handleRegister = () => {
+    handleCloseMenu();
+    router.push('/auth?tab=1');
+  };
+
+  const handleGoToDashboard = () => {
+    handleCloseMenu();
+    router.push('/dashboard?tab=1');
   };
 
   return (
@@ -247,42 +262,97 @@ export default function DashboardLayout({ children, currentPage, onPageChange }:
                 }
               }}
             >
-              {/* User Info Header */}
-              <Box sx={{ px: 2, py: 1.5, borderBottom: 1, borderColor: 'divider' }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                  <AccountCircle sx={{ fontSize: 40, color: currentUser.isLoggedIn ? '#10b981' : '#f97316' }} />
-                  <Box>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
-                      {currentUser.name}
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                      {currentUser.email}
-                    </Typography>
+              {currentUser.isLoggedIn ? (
+                <>
+                  {/* Logged In User Menu */}
+                  <Box sx={{ px: 2, py: 1.5, borderBottom: 1, borderColor: 'divider' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                      <AccountCircle sx={{ fontSize: 40, color: '#10b981' }} />
+                      <Box>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
+                          {currentUser.name}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                          {currentUser.email}
+                        </Typography>
+                      </Box>
+                    </Box>
                   </Box>
-                </Box>
-              </Box>
 
-              <Divider />
+                  <Divider />
 
-              <MenuItem onClick={handleCloseMenu}>
-                <ListItemIcon>
-                  <Person fontSize="small" />
-                </ListItemIcon>
-                <ListItemText>Profil</ListItemText>
-              </MenuItem>
-              <MenuItem onClick={handleCloseMenu}>
-                <ListItemIcon>
-                  <Settings fontSize="small" />
-                </ListItemIcon>
-                <ListItemText>Ustawienia</ListItemText>
-              </MenuItem>
-              <Divider />
-              <MenuItem onClick={handleLogout}>
-                <ListItemIcon>
-                  <Logout fontSize="small" />
-                </ListItemIcon>
-                <ListItemText>Wyloguj</ListItemText>
-              </MenuItem>
+                  <MenuItem onClick={handleGoToDashboard}>
+                    <ListItemIcon>
+                      <DashboardIcon fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText>Dashboard</ListItemText>
+                  </MenuItem>
+                  <MenuItem onClick={() => { handleCloseMenu(); onPageChange('profile'); }}>
+                    <ListItemIcon>
+                      <Person fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText>Profil</ListItemText>
+                  </MenuItem>
+                  <MenuItem onClick={() => { handleCloseMenu(); onPageChange('settings'); }}>
+                    <ListItemIcon>
+                      <Settings fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText>Ustawienia</ListItemText>
+                  </MenuItem>
+                  <Divider />
+                  <MenuItem onClick={handleLogout}>
+                    <ListItemIcon>
+                      <Logout fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText>Wyloguj</ListItemText>
+                  </MenuItem>
+                </>
+              ) : (
+                <>
+                  {/* Guest User Menu */}
+                  <Box sx={{ px: 2, py: 1.5, borderBottom: 1, borderColor: 'divider' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                      <AccountCircle sx={{ fontSize: 40, color: '#f97316' }} />
+                      <Box>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
+                          Gość
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                          Niezalogowany
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Box>
+
+                  <Divider />
+
+                  <MenuItem onClick={handleLogin}>
+                    <ListItemIcon>
+                      <Logout fontSize="small" sx={{ transform: 'scaleX(-1)' }} />
+                    </ListItemIcon>
+                    <ListItemText>Zaloguj się</ListItemText>
+                  </MenuItem>
+                  <MenuItem onClick={handleRegister}>
+                    <ListItemIcon>
+                      <Person fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText>Zarejestruj się</ListItemText>
+                  </MenuItem>
+                  <Divider />
+                  <MenuItem onClick={() => { handleCloseMenu(); onPageChange('public'); }}>
+                    <ListItemIcon>
+                      <Public fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText>Projekty publiczne</ListItemText>
+                  </MenuItem>
+                  <MenuItem onClick={() => { handleCloseMenu(); onPageChange('contact'); }}>
+                    <ListItemIcon>
+                      <ContactMail fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText>Kontakt</ListItemText>
+                  </MenuItem>
+                </>
+              )}
             </Menu>
           </Box>
         </Toolbar>
@@ -455,28 +525,53 @@ export default function DashboardLayout({ children, currentPage, onPageChange }:
           </List>
 
           <Box sx={{ mt: 4, px: 2 }}>
-            <ListItemButton
-              onClick={handleLogout}
-              sx={{
-                borderRadius: 2,
-                color: 'text.secondary',
-                '&:hover': {
-                  bgcolor: alpha(theme.palette.error.main, 0.08),
-                  color: 'error.main',
-                  '& .MuiListItemIcon-root': {
+            {currentUser.isLoggedIn ? (
+              <ListItemButton
+                onClick={handleLogout}
+                sx={{
+                  borderRadius: 2,
+                  color: 'text.secondary',
+                  '&:hover': {
+                    bgcolor: alpha(theme.palette.error.main, 0.08),
                     color: 'error.main',
+                    '& .MuiListItemIcon-root': {
+                      color: 'error.main',
+                    },
                   },
-                },
-              }}
-            >
-              <ListItemIcon>
-                <Logout />
-              </ListItemIcon>
-              <ListItemText 
-                primary="Wyloguj"
-                primaryTypographyProps={{ fontWeight: 500 }}
-              />
-            </ListItemButton>
+                }}
+              >
+                <ListItemIcon>
+                  <Logout />
+                </ListItemIcon>
+                <ListItemText
+                  primary="Wyloguj"
+                  primaryTypographyProps={{ fontWeight: 500 }}
+                />
+              </ListItemButton>
+            ) : (
+              <ListItemButton
+                onClick={handleLogin}
+                sx={{
+                  borderRadius: 2,
+                  color: 'text.secondary',
+                  '&:hover': {
+                    bgcolor: alpha(theme.palette.primary.main, 0.08),
+                    color: 'primary.main',
+                    '& .MuiListItemIcon-root': {
+                      color: 'primary.main',
+                    },
+                  },
+                }}
+              >
+                <ListItemIcon>
+                  <Logout sx={{ transform: 'scaleX(-1)' }} />
+                </ListItemIcon>
+                <ListItemText
+                  primary="Zaloguj się"
+                  primaryTypographyProps={{ fontWeight: 500 }}
+                />
+              </ListItemButton>
+            )}
           </Box>
         </Box>
       </Drawer>
