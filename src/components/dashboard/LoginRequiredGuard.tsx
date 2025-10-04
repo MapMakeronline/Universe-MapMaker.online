@@ -2,8 +2,6 @@
 
 import React from 'react';
 import {
-  Dialog,
-  DialogContent,
   Typography,
   Button,
   Stack,
@@ -11,6 +9,7 @@ import {
 } from '@mui/material';
 import { Login as LoginIcon } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
+import { useTheme } from '@mui/material';
 
 interface LoginRequiredGuardProps {
   children: React.ReactNode;
@@ -26,86 +25,74 @@ export default function LoginRequiredGuard({
   message = 'Ta sekcja wymaga zalogowania do Twojego konta MapMaker',
 }: LoginRequiredGuardProps) {
   const router = useRouter();
+  const theme = useTheme();
 
   if (!isLoggedIn) {
     return (
-      <Dialog
-        open={true}
-        maxWidth="sm"
-        fullWidth
-        PaperProps={{
-          sx: {
-            borderRadius: '8px',
-            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
-          }
-        }}
-      >
-        <DialogContent sx={{ textAlign: 'center', py: 5, px: 4 }}>
-          <Box
-            sx={{
-              width: 80,
-              height: 80,
-              borderRadius: '50%',
-              bgcolor: 'primary.light',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '0 auto 24px',
-            }}
-          >
-            <LoginIcon sx={{ fontSize: 40, color: 'primary.main' }} />
-          </Box>
+      <Box sx={{ textAlign: 'center', py: 8 }}>
+        <Box
+          sx={{
+            bgcolor: theme.palette.primary.main,
+            borderRadius: '50%',
+            p: 3,
+            display: 'inline-flex',
+            mb: 3,
+            boxShadow: `0 8px 24px ${theme.palette.primary.main}40`,
+          }}
+        >
+          <LoginIcon sx={{ fontSize: 56, color: 'white' }} />
+        </Box>
 
-          <Typography variant="h5" fontWeight="600" gutterBottom sx={{ mb: 2 }}>
-            {title}
-          </Typography>
+        <Typography variant="h5" component="h2" sx={{ fontWeight: 700, mb: 2 }}>
+          {title}
+        </Typography>
 
-          <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
-            {message}
-          </Typography>
+        <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
+          {message}
+        </Typography>
 
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ justifyContent: 'center' }}>
-            <Button
-              variant="contained"
-              size="large"
-              onClick={() => router.push('/auth?tab=0')}
-              sx={{
-                textTransform: 'none',
-                px: 4,
-                py: 1.5,
-                fontWeight: 600,
-              }}
-            >
-              Zaloguj się
-            </Button>
-            <Button
-              variant="outlined"
-              size="large"
-              onClick={() => router.push('/auth?tab=1')}
-              sx={{
-                textTransform: 'none',
-                px: 4,
-                py: 1.5,
-                fontWeight: 600,
-              }}
-            >
-              Utwórz konto
-            </Button>
-          </Stack>
-
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="center">
           <Button
-            variant="text"
-            onClick={() => router.push('/dashboard?tab=1')}
+            variant="contained"
+            size="large"
+            startIcon={<LoginIcon />}
+            onClick={() => router.push('/auth?tab=0')}
             sx={{
-              mt: 3,
+              px: 4,
+              py: 1.5,
               textTransform: 'none',
-              color: 'text.secondary',
+              fontWeight: 600,
             }}
           >
-            Wróć do projektów publicznych
+            Zaloguj się
           </Button>
-        </DialogContent>
-      </Dialog>
+          <Button
+            variant="outlined"
+            size="large"
+            onClick={() => router.push('/auth?tab=1')}
+            sx={{
+              px: 4,
+              py: 1.5,
+              textTransform: 'none',
+              fontWeight: 600,
+            }}
+          >
+            Utwórz konto
+          </Button>
+        </Stack>
+
+        <Button
+          variant="text"
+          onClick={() => router.push('/dashboard?tab=1')}
+          sx={{
+            mt: 3,
+            textTransform: 'none',
+            color: 'text.secondary',
+          }}
+        >
+          Wróć do projektów publicznych
+        </Button>
+      </Box>
     );
   }
 
