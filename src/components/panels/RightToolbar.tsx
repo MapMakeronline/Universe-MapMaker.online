@@ -27,19 +27,26 @@ import {
 } from "@mui/icons-material"
 import { useRouter } from "next/navigation"
 import { useAppDispatch, useAppSelector } from "@/store/hooks"
-import { setMeasurementMode, clearAllMeasurements } from "@/store/slices/drawSlice"
+import { setMeasurementMode, clearAllMeasurements, setIdentifyMode } from "@/store/slices/drawSlice"
 import { currentUser } from "@/lib/auth/mockUser"
 import SearchModal from "@/components/map/SearchModal"
+import MeasurementModal from "@/components/panels/MeasurementModal"
+import ExportPDFModal, { type ExportConfig } from "@/components/panels/ExportPDFModal"
+import { exportMapToPDF } from "@/lib/mapbox/pdfExport"
+import { useMap } from "react-map-gl"
 
 const TOOLBAR_WIDTH = 56
 
 const RightToolbar: React.FC = () => {
   const router = useRouter()
   const dispatch = useAppDispatch()
-  const { measurement } = useAppSelector((state) => state.draw)
+  const { measurement, identify } = useAppSelector((state) => state.draw)
+  const { current: map } = useMap()
 
   const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null)
   const [searchModalOpen, setSearchModalOpen] = useState(false)
+  const [measurementModalOpen, setMeasurementModalOpen] = useState(false)
+  const [pdfModalOpen, setPdfModalOpen] = useState(false)
 
   const handleDistanceMeasure = () => {
     dispatch(
@@ -63,9 +70,16 @@ const RightToolbar: React.FC = () => {
     dispatch(clearAllMeasurements())
   }
 
-  const handleScreenshot = () => {
-    // TODO: Implement map screenshot
-    console.log("Screenshot feature coming soon...")
+  const handlePDFExport = () => {
+    setPdfModalOpen(true)
+  }
+
+  const handleExportPDF = async (config: ExportConfig) => {
+    if (!map) {
+      console.error('Map instance not available')
+      return
+    }
+    await exportMapToPDF(map, config)
   }
 
   const handleAddMarker = () => {
@@ -101,6 +115,10 @@ const RightToolbar: React.FC = () => {
   const handleRegister = () => {
     router.push('/auth?tab=1')
     handleUserMenuClose()
+  }
+
+  const handleIdentify = () => {
+    dispatch(setIdentifyMode(!identify.isActive))
   }
 
   interface Tool {
@@ -142,8 +160,8 @@ const RightToolbar: React.FC = () => {
       id: "measure-distance",
       icon: Straighten,
       tooltip: "Mierzenie",
-      onClick: handleDistanceMeasure,
-      active: measurement.isDistanceMode,
+      onClick: () => setMeasurementModalOpen(true),
+      active: measurement.isDistanceMode || measurement.isAreaMode,
     },
     {
       id: "search",
@@ -156,14 +174,14 @@ const RightToolbar: React.FC = () => {
       id: "identify",
       icon: Info,
       tooltip: "Identyfikacja obiektu",
-      onClick: () => console.log("Info"),
-      active: false,
+      onClick: handleIdentify,
+      active: identify.isActive,
     },
     {
       id: "export-pdf",
       icon: PictureAsPdf,
-      tooltip: "Eksportuj obrys w formacie PDF",
-      onClick: handleScreenshot,
+      tooltip: "Eksportuj mapę do PDF",
+      onClick: handlePDFExport,
       active: false,
     },
     {
@@ -457,6 +475,19 @@ const RightToolbar: React.FC = () => {
       <SearchModal
         open={searchModalOpen}
         onClose={() => setSearchModalOpen(false)}
+      />
+
+      {/* Measurement Modal */}
+      <MeasurementModal
+        open={measurementModalOpen}
+        onClose={() => setMeasurementModalOpen(false)}
+      />
+
+      {/* PDF Export Modal */}
+      <ExportPDFModal
+        open={pdfModalOpen}
+        onClose={() => setPdfModalOpen(false)}
+        onExport={handleExportPDF}
       />
     </>
   )

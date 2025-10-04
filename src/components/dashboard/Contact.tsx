@@ -29,6 +29,7 @@ import {
   Phone,
   LocationOn,
   Send,
+  VideoCall,
 } from '@mui/icons-material';
 import { dashboardService } from '@/lib/api/dashboard';
 
@@ -188,6 +189,79 @@ export default function Contact() {
         {/* Contact Form Tab */}
         <TabPanel value={currentTab} index={0}>
           <CardContent sx={{ px: { xs: 2, sm: 3 } }}>
+            {/* Google Meet CTA Section */}
+            <Box
+              sx={{
+                bgcolor: theme.palette.primary.main,
+                color: 'white',
+                borderRadius: 2,
+                p: { xs: 3, sm: 4 },
+                mb: 4,
+                boxShadow: '0 4px 12px rgba(247, 94, 76, 0.3)',
+                position: 'relative',
+                overflow: 'hidden',
+                '&::before': {
+                  content: '""',
+                  position: 'absolute',
+                  top: 0,
+                  right: 0,
+                  width: '200px',
+                  height: '200px',
+                  background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%)',
+                  pointerEvents: 'none',
+                },
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <VideoCall sx={{ fontSize: 40, mr: 2 }} />
+                <Typography variant="h5" fontWeight="700" sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
+                  Umów się na darmowe wdrożenie!
+                </Typography>
+              </Box>
+
+              <Typography variant="body1" sx={{ mb: 3, opacity: 0.95, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                Nowoczesne podejście do kontaktu - spotkajmy się online! Przeprowadzę dla Ciebie
+                <strong> bezpłatne wdrożenie aplikacji</strong> i pokażę wszystkie jej możliwości.
+              </Typography>
+
+              <Button
+                variant="contained"
+                size="large"
+                href="https://meet.google.com/wqb-kfga-msg"
+                target="_blank"
+                rel="noopener noreferrer"
+                startIcon={<VideoCall />}
+                sx={{
+                  bgcolor: 'white',
+                  color: theme.palette.primary.main,
+                  fontWeight: 700,
+                  px: 4,
+                  py: 1.5,
+                  fontSize: { xs: '0.875rem', sm: '1rem' },
+                  textTransform: 'none',
+                  boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+                  '&:hover': {
+                    bgcolor: 'white',
+                    boxShadow: '0 6px 12px rgba(0,0,0,0.3)',
+                    transform: 'translateY(-2px)',
+                  },
+                  transition: 'all 0.3s ease',
+                }}
+              >
+                Dołącz do spotkania Google Meet
+              </Button>
+
+              <Typography variant="caption" sx={{ display: 'block', mt: 2, opacity: 0.9 }}>
+                Stały link do spotkania - możesz dołączyć w dowolnym momencie
+              </Typography>
+            </Box>
+
+            <Divider sx={{ mb: 4 }}>
+              <Typography variant="body2" color="text.secondary" sx={{ px: 2 }}>
+                lub użyj tradycyjnego formularza
+              </Typography>
+            </Divider>
+
             <Typography variant="h6" fontWeight="600" gutterBottom sx={{ fontSize: { xs: '1.125rem', sm: '1.25rem' } }}>
               Wyślij wiadomość
             </Typography>

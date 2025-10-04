@@ -2,6 +2,7 @@ import type React from "react"
 import type { Metadata } from "next"
 import "./globals.css"
 import Providers from "../src/components/providers/Providers"
+import GoogleAnalytics from "@/components/GoogleAnalytics"
 
 export const metadata: Metadata = {
   title: "MapMaker.online - Profesjonalne mapy GIS",
@@ -49,6 +50,7 @@ export default function RootLayout({
   return (
     <html lang="pl">
       <body>
+        <GoogleAnalytics measurementId="G-8H03NRW1LR" />
         <Providers>
           {children}
         </Providers>

@@ -10,6 +10,7 @@ import { mapLogger } from '@/lib/logger';
 import DrawTools from './DrawTools';
 import Geocoder from './Geocoder';
 import MeasurementTools from './MeasurementTools';
+import IdentifyTool from './IdentifyTool';
 import SimpleDrawingToolbar from '../drawing/SimpleDrawingToolbar';
 import SimpleMeasurementToolbar from '../measurement/SimpleMeasurementToolbar';
 import MobileFAB from './MobileFAB';
@@ -134,6 +135,9 @@ const MapContainer: React.FC<MapContainerProps> = ({ children }) => {
 
         {/* Measurement Tools */}
         <MeasurementTools />
+
+        {/* Identify Tool */}
+        <IdentifyTool />
 
         {/* Dodatkowe komponenty (Markers, Popup) */}
         {children}

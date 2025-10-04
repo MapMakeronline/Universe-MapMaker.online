@@ -36,7 +36,7 @@ export default function LoginPage() {
   const [error, setError] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
-    email: '',
+    usernameOrEmail: '',
     password: '',
   });
 
@@ -56,7 +56,7 @@ export default function LoginPage() {
 
     try {
       const response = await authService.login({
-        username: formData.email, // Using email as username
+        username: formData.usernameOrEmail,
         password: formData.password,
       });
 
@@ -211,13 +211,13 @@ export default function LoginPage() {
 
                 <Box sx={{ mt: 4 }}>
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                    Nazwa użytkownika
+                    Nazwa użytkownika lub email
                   </Typography>
                   <TextField
                     fullWidth
-                    placeholder="Wpisz swoją nazwę użytkownika"
-                    value={formData.email}
-                    onChange={handleInputChange('email')}
+                    placeholder="Wpisz nazwę użytkownika lub adres email"
+                    value={formData.usernameOrEmail}
+                    onChange={handleInputChange('usernameOrEmail')}
                     disabled={isLoading}
                     sx={{
                       mb: 3,
@@ -265,7 +265,7 @@ export default function LoginPage() {
                     variant="contained"
                     size="large"
                     onClick={handleLogin}
-                    disabled={isLoading || !formData.email || !formData.password}
+                    disabled={isLoading || !formData.usernameOrEmail || !formData.password}
                     sx={{
                       mb: 3,
                       py: 1.5,

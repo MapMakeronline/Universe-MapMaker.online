@@ -16,14 +16,24 @@ const initialMeasurementState: MeasurementState = {
   activePoints: [],
 };
 
+interface IdentifyState {
+  isActive: boolean;
+}
+
+const initialIdentifyState: IdentifyState = {
+  isActive: false,
+};
+
 interface DrawAndMeasureState {
   draw: DrawState;
   measurement: MeasurementState;
+  identify: IdentifyState;
 }
 
 const initialState: DrawAndMeasureState = {
   draw: initialDrawState,
   measurement: initialMeasurementState,
+  identify: initialIdentifyState,
 };
 
 const drawSlice = createSlice({
@@ -88,6 +98,11 @@ const drawSlice = createSlice({
       state.measurement.measurements = [];
       state.measurement.activePoints = [];
     },
+
+    // Identify actions
+    setIdentifyMode: (state, action: PayloadAction<boolean>) => {
+      state.identify.isActive = action.payload;
+    },
   },
 });
 
@@ -105,6 +120,7 @@ export const {
   addMeasurement,
   removeMeasurement,
   clearAllMeasurements,
+  setIdentifyMode,
 } = drawSlice.actions;
 
 export default drawSlice.reducer;
