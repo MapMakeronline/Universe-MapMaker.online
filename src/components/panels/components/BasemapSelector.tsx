@@ -54,10 +54,13 @@ const BASEMAP_CONFIG = {
 export const BasemapSelector: React.FC<BasemapSelectorProps> = () => {
   const theme = useTheme();
   const dispatch = useAppDispatch();
-  const { mapStyle } = useAppSelector((state) => state.map);
+  const { mapStyleKey } = useAppSelector((state) => state.map);
 
-  const handleBasemapChange = (styleUrl: string) => {
-    dispatch(setMapStyle(styleUrl));
+  const handleBasemapChange = (key: string) => {
+    const style = MAP_STYLES[key];
+    if (style) {
+      dispatch(setMapStyle({ url: style.style, key }));
+    }
   };
 
   return (
@@ -82,7 +85,7 @@ export const BasemapSelector: React.FC<BasemapSelectorProps> = () => {
 
       <TextField
         select
-        value={mapStyle}
+        value={mapStyleKey || 'streets'}
         size="small"
         fullWidth
         onChange={(e) => handleBasemapChange(e.target.value)}
@@ -112,7 +115,7 @@ export const BasemapSelector: React.FC<BasemapSelectorProps> = () => {
         {Object.entries(MAP_STYLES).map(([key, style]) => (
           <MenuItem
             key={key}
-            value={style.style}
+            value={key}
             sx={{ fontSize: BASEMAP_CONFIG.typography.menuItem.fontSize }}
           >
             {style.name}

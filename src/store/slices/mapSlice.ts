@@ -10,6 +10,7 @@ const initialState: MapState = {
     pitch: 0,
   },
   mapStyle: 'mapbox://styles/mapbox/streets-v12',
+  mapStyleKey: 'streets',
   isLoaded: false,
   isFullscreen: false,
 };
@@ -21,8 +22,13 @@ const mapSlice = createSlice({
     setViewState: (state, action: PayloadAction<Partial<ViewState>>) => {
       state.viewState = { ...state.viewState, ...action.payload };
     },
-    setMapStyle: (state, action: PayloadAction<string>) => {
-      state.mapStyle = action.payload;
+    setMapStyle: (state, action: PayloadAction<string | { url: string; key: string }>) => {
+      if (typeof action.payload === 'string') {
+        state.mapStyle = action.payload;
+      } else {
+        state.mapStyle = action.payload.url;
+        state.mapStyleKey = action.payload.key;
+      }
     },
     setMapLoaded: (state, action: PayloadAction<boolean>) => {
       state.isLoaded = action.payload;

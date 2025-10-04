@@ -11,6 +11,7 @@ import DrawTools from './DrawTools';
 import Geocoder from './Geocoder';
 import MeasurementTools from './MeasurementTools';
 import IdentifyTool from './IdentifyTool';
+import Buildings3D from './Buildings3D';
 import SimpleDrawingToolbar from '../drawing/SimpleDrawingToolbar';
 import SimpleMeasurementToolbar from '../measurement/SimpleMeasurementToolbar';
 import MobileFAB from './MobileFAB';
@@ -138,6 +139,9 @@ const MapContainer: React.FC<MapContainerProps> = ({ children }) => {
 
         {/* Identify Tool */}
         <IdentifyTool />
+
+        {/* 3D Buildings */}
+        <Buildings3D />
 
         {/* Dodatkowe komponenty (Markers, Popup) */}
         {children}

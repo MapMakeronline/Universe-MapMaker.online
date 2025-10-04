@@ -40,6 +40,18 @@ export const MAP_STYLES: MapStyles = {
     name: 'Ciemny',
     style: 'mapbox://styles/mapbox/dark-v11',
   },
+  buildings3d: {
+    name: '3D Budynki',
+    style: 'mapbox://styles/mapbox/streets-v12',
+    enable3D: true,
+  },
+  full3d: {
+    name: '3D Pełny (Teren + Budynki)',
+    style: 'mapbox://styles/mapbox/streets-v12',
+    enable3D: true,
+    enableTerrain: true,
+    enableSky: true,
+  },
 };
 
 export const MAP_CONFIG = {

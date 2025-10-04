@@ -7,6 +7,7 @@ export interface MapState {
     pitch: number;
   };
   mapStyle: string;
+  mapStyleKey?: string; // Key to identify style in MAP_STYLES (e.g., 'full3d', 'buildings3d')
   isLoaded: boolean;
   isFullscreen: boolean;
 }
@@ -24,6 +25,9 @@ export interface MapStyles {
     name: string;
     style: string;
     preview?: string;
+    enable3D?: boolean;
+    enableTerrain?: boolean;
+    enableSky?: boolean;
   };
 }
 

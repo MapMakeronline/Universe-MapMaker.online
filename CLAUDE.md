@@ -141,9 +141,10 @@ Three primary slices control application state:
 
 1. **`mapSlice`** (`src/store/slices/mapSlice.ts`)
    - Map viewport: `viewState` (longitude, latitude, zoom, bearing, pitch)
-   - Map style selection
+   - Map style selection: `mapStyle` (URL), `mapStyleKey` (identifier)
    - Fullscreen state
    - Actions: `setViewState`, `setMapStyle`, `flyToLocation`, `setFullscreen`
+   - **Important:** `setMapStyle` accepts either string URL or `{ url: string, key: string }` object
 
 2. **`layersSlice`** (`src/store/slices/layersSlice.ts`)
    - Hierarchical layer tree with groups and individual layers
@@ -173,16 +174,31 @@ dispatch(addLayer({ id: '123', name: 'New Layer' }));
   - Initializes map with token from `src/lib/mapbox/config.ts`
   - Syncs Redux state with Mapbox instance
   - Handles layer rendering and interactions
+  - Includes Buildings3D component for 3D terrain and buildings
 
 **Panel System:**
 - `src/components/panels/LeftPanel.tsx` - **Primary UI component**
   - Hierarchical layer tree with drag-and-drop (@mui/x-tree-view)
   - Layer properties editor (opacity, color, visibility)
-  - Basemap selector
+  - Basemap selector (bottom of panel)
   - Action toolbar (add dataset, manage layers, etc.)
 
 - `src/components/panels/RightToolbar.tsx` - Tool palette
   - Drawing tools, measurement tools, fullscreen toggle
+
+**3D Map Features:**
+- `src/components/map/Buildings3D.tsx` - 3D terrain and buildings manager
+  - Automatically enables/disables 3D based on selected basemap style
+  - Supports three modes: 2D, 3D Buildings only, Full 3D (terrain + buildings + sky)
+  - Uses native Mapbox GL API via `mapRef.getMap()`
+  - Responsive pitch angles: 45° for zoom < 10, 60° for zoom ≥ 10
+
+- `src/lib/mapbox/map3d.ts` - 3D utilities module
+  - `add3DTerrain()` - Adds terrain elevation (Mapbox Terrain DEM)
+  - `add3DBuildings()` - Adds extruded building layer (minzoom: 15)
+  - `addSkyLayer()` - Adds atmospheric sky layer
+  - `enableFull3DMode()` - Enables all 3D features + camera angle
+  - `disableFull3DMode()` - Cleans up all 3D features
 
 **Drawing & Measurement:**
 - Uses `@mapbox/mapbox-gl-draw` for drawing functionality
@@ -236,8 +252,21 @@ Next.js configured with `output: 'standalone'` in `next.config.mjs` for optimize
 - **`src/lib/mapbox/config.ts`** - Mapbox settings
   - Token configuration with fallback
   - Default view state (Warsaw, Poland)
-  - Map style definitions (streets, satellite, outdoors, light, dark)
+  - Map style definitions with 3D support:
+    - `streets` - Standard street map (2D)
+    - `satellite` - Satellite imagery (2D)
+    - `outdoors` - Outdoor/terrain style (2D)
+    - `light` - Light theme (2D)
+    - `dark` - Dark theme (2D)
+    - `buildings3d` - Streets + 3D buildings only
+    - `full3d` - **Full 3D mode** (terrain + buildings + sky)
+  - Each style has `enable3D`, `enableTerrain`, `enableSky` flags
   - Map interaction config (doubleClickZoom: false for drawing tools)
+
+- **`src/lib/mapbox/map3d.ts`** - 3D terrain and buildings utilities
+  - Official Mapbox 3D implementation
+  - Functions for terrain, buildings, and sky layers
+  - Based on Mapbox GL JS documentation
 
 - **`server.js`** - Custom production server
   - Port: 3000 (or PORT env var)
@@ -249,6 +278,14 @@ Next.js configured with `output: 'standalone'` in `next.config.mjs` for optimize
 - Primary: Environment variable `NEXT_PUBLIC_MAPBOX_TOKEN` from `.env.local`
 - Fallback: Hardcoded in `src/lib/mapbox/config.ts` line 4
 - Runtime check in `MapContainer.tsx` useEffect (logs token status to console)
+
+**3D Map Implementation:**
+- BasemapSelector uses `mapStyleKey` (not URL) to identify styles
+- Buildings3D component gets native Mapbox GL instance via `mapRef.getMap()`
+- 3D features are cleaned up BEFORE style change to prevent ghost layers
+- Terrain visible at all zoom levels, buildings require zoom ≥ 15
+- Camera pitch adjusts automatically: 45° (zoom < 10), 60° (zoom ≥ 10)
+- Touch gestures for 3D enabled by default (dragRotate, touchRotate in MAP_CONFIG)
 
 **Double-Click Behavior:**
 - Map has `doubleClickZoom: false` to prevent conflicts with drawing tools
