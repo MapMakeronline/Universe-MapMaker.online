@@ -2,7 +2,6 @@ import type React from "react"
 import type { Metadata } from "next"
 import "./globals.css"
 import Providers from "../src/components/providers/Providers"
-import ErrorBoundary from "../src/components/ErrorBoundary"
 
 export const metadata: Metadata = {
   title: "Universe MapMaker - GIS",
@@ -17,11 +16,9 @@ export default function RootLayout({
   return (
     <html lang="pl">
       <body>
-        <ErrorBoundary showDetails={process.env.NODE_ENV === 'development'}>
-          <Providers>
-            {children}
-          </Providers>
-        </ErrorBoundary>
+        <Providers>
+          {children}
+        </Providers>
       </body>
     </html>
   )
