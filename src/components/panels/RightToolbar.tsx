@@ -2,9 +2,8 @@
 
 import type React from "react"
 import { useState } from "react"
-import { Paper, IconButton, Tooltip, Box, Menu, MenuItem, ListItemIcon, ListItemText, Divider } from "@mui/material"
+import { Paper, IconButton, Tooltip, Box, Menu, MenuItem, ListItemIcon, ListItemText, Divider, Typography, Avatar } from "@mui/material"
 import {
-  Home,
   LocationSearching,
   Edit,
   Category,
@@ -19,7 +18,11 @@ import {
   Email,
   Settings,
   Map,
+  AccountCircle,
+  Logout,
+  Home,
 } from "@mui/icons-material"
+import { useRouter } from "next/navigation"
 import { useAppDispatch, useAppSelector } from "@/store/hooks"
 import { setMeasurementMode, clearAllMeasurements } from "@/store/slices/drawSlice"
 import { setMapStyle } from "@/store/slices/mapSlice"
@@ -28,11 +31,13 @@ import { MAP_STYLES } from "@/lib/mapbox/config"
 const TOOLBAR_WIDTH = 56
 
 const RightToolbar: React.FC = () => {
+  const router = useRouter()
   const dispatch = useAppDispatch()
   const { measurement } = useAppSelector((state) => state.draw)
   const { mapStyle } = useAppSelector((state) => state.map)
 
   const [styleMenuAnchor, setStyleMenuAnchor] = useState<null | HTMLElement>(null)
+  const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null)
 
   const handleDistanceMeasure = () => {
     dispatch(
@@ -79,6 +84,33 @@ const RightToolbar: React.FC = () => {
     console.log("Add marker feature coming soon...")
   }
 
+  const handleUserMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setUserMenuAnchor(event.currentTarget)
+  }
+
+  const handleUserMenuClose = () => {
+    setUserMenuAnchor(null)
+  }
+
+  const handleGoToDashboard = () => {
+    router.push('/dashboard')
+    handleUserMenuClose()
+  }
+
+  const handleLogout = () => {
+    // TODO: Implement actual logout logic
+    console.log("Logout")
+    router.push('/login')
+    handleUserMenuClose()
+  }
+
+  // Mock user data - replace with actual user state from Redux/Auth
+  const currentUser = {
+    name: "Jan Kowalski",
+    email: "jan.kowalski@example.com",
+    isLoggedIn: true, // Change to false to see orange color
+  }
+
   interface Tool {
     id: string;
     icon?: any;
@@ -89,13 +121,6 @@ const RightToolbar: React.FC = () => {
   }
 
   const tools: Tool[] = [
-    {
-      id: "home",
-      icon: Home,
-      tooltip: "Strona główna",
-      onClick: () => console.log("Home"),
-      active: false,
-    },
     { id: "divider-1" },
     {
       id: "parcel-search",
@@ -231,6 +256,34 @@ const RightToolbar: React.FC = () => {
           },
         }}
       >
+        {/* User Avatar */}
+        <Tooltip title="Konto użytkownika" placement="left">
+          <IconButton
+            onClick={handleUserMenuOpen}
+            size="small"
+            sx={{
+              width: 40,
+              height: 40,
+              my: 0.5,
+              p: 0,
+            }}
+          >
+            <Avatar
+              sx={{
+                width: 36,
+                height: 36,
+                bgcolor: currentUser.isLoggedIn ? '#10b981' : '#f97316',
+                transition: 'all 0.3s ease',
+                '&:hover': {
+                  transform: 'scale(1.1)',
+                }
+              }}
+            >
+              <AccountCircle sx={{ fontSize: 24 }} />
+            </Avatar>
+          </IconButton>
+        </Tooltip>
+
         {tools.map((tool, index) => {
           if (tool.id.startsWith("divider")) {
             return (
@@ -323,6 +376,70 @@ const RightToolbar: React.FC = () => {
             <ListItemText>{style.name}</ListItemText>
           </MenuItem>
         ))}
+      </Menu>
+
+      {/* User Menu */}
+      <Menu
+        anchorEl={userMenuAnchor}
+        open={Boolean(userMenuAnchor)}
+        onClose={handleUserMenuClose}
+        anchorOrigin={{
+          vertical: "top",
+          horizontal: "left",
+        }}
+        transformOrigin={{
+          vertical: "top",
+          horizontal: "right",
+        }}
+        slotProps={{
+          paper: {
+            sx: {
+              minWidth: 240,
+              mt: 1,
+            }
+          }
+        }}
+      >
+        {/* User Info Header */}
+        <Box sx={{ px: 2, py: 1.5, borderBottom: 1, borderColor: 'divider' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <AccountCircle sx={{ fontSize: 40, color: 'primary.main' }} />
+            <Box>
+              <Typography variant="subtitle2" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
+                {currentUser.name}
+              </Typography>
+              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                {currentUser.email}
+              </Typography>
+            </Box>
+          </Box>
+        </Box>
+
+        <Divider />
+
+        {/* Menu Items */}
+        <MenuItem onClick={handleGoToDashboard}>
+          <ListItemIcon>
+            <Home fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Dashboard</ListItemText>
+        </MenuItem>
+
+        <MenuItem onClick={handleUserMenuClose}>
+          <ListItemIcon>
+            <Settings fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Ustawienia konta</ListItemText>
+        </MenuItem>
+
+        <Divider />
+
+        <MenuItem onClick={handleLogout}>
+          <ListItemIcon>
+            <Logout fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Wyloguj się</ListItemText>
+        </MenuItem>
       </Menu>
     </>
   )

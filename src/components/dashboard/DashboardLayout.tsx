@@ -62,6 +62,13 @@ export default function DashboardLayout({ children, currentPage, onPageChange }:
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const router = useRouter();
 
+  // Mock user data - replace with actual user state from Redux/Auth
+  const currentUser = {
+    name: "Jan Kowalski",
+    email: "jan.kowalski@example.com",
+    isLoggedIn: true,
+  };
+
   const open = isMobile ? mobileOpen : desktopOpen;
 
   const handleDrawerToggle = () => {
@@ -203,7 +210,17 @@ export default function DashboardLayout({ children, currentPage, onPageChange }:
               onClick={handleMenu}
               color="inherit"
             >
-              <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main' }}>
+              <Avatar
+                sx={{
+                  width: 32,
+                  height: 32,
+                  bgcolor: currentUser.isLoggedIn ? '#10b981' : '#f97316',
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    transform: 'scale(1.1)',
+                  }
+                }}
+              >
                 <AccountCircle />
               </Avatar>
             </IconButton>
@@ -221,25 +238,50 @@ export default function DashboardLayout({ children, currentPage, onPageChange }:
               }}
               open={Boolean(anchorEl)}
               onClose={handleCloseMenu}
+              slotProps={{
+                paper: {
+                  sx: {
+                    minWidth: 240,
+                    mt: 1,
+                  }
+                }
+              }}
             >
+              {/* User Info Header */}
+              <Box sx={{ px: 2, py: 1.5, borderBottom: 1, borderColor: 'divider' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                  <AccountCircle sx={{ fontSize: 40, color: currentUser.isLoggedIn ? '#10b981' : '#f97316' }} />
+                  <Box>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
+                      {currentUser.name}
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                      {currentUser.email}
+                    </Typography>
+                  </Box>
+                </Box>
+              </Box>
+
+              <Divider />
+
               <MenuItem onClick={handleCloseMenu}>
                 <ListItemIcon>
                   <Person fontSize="small" />
                 </ListItemIcon>
-                Profil
+                <ListItemText>Profil</ListItemText>
               </MenuItem>
               <MenuItem onClick={handleCloseMenu}>
                 <ListItemIcon>
                   <Settings fontSize="small" />
                 </ListItemIcon>
-                Ustawienia
+                <ListItemText>Ustawienia</ListItemText>
               </MenuItem>
               <Divider />
               <MenuItem onClick={handleLogout}>
                 <ListItemIcon>
                   <Logout fontSize="small" />
                 </ListItemIcon>
-                Wyloguj
+                <ListItemText>Wyloguj</ListItemText>
               </MenuItem>
             </Menu>
           </Box>

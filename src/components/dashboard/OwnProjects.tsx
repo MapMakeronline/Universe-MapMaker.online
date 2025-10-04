@@ -54,7 +54,9 @@ import {
   TableChart,
   Close,
   CloudUpload,
+  Login as LoginIcon,
 } from '@mui/icons-material';
+import { useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { setProjects, setLoading, setError, setSelectedProject } from '@/store/slices/dashboardSlice';
 import { dashboardService } from '@/lib/api/dashboard';
@@ -77,6 +79,7 @@ interface Project {
 export default function OwnProjects() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const router = useRouter();
   const dispatch = useAppDispatch();
   const { projects: apiProjects, dbInfo, isLoading, error } = useAppSelector((state) => state.dashboard);
 
@@ -497,11 +500,69 @@ export default function OwnProjects() {
       {/* Loading State */}
       {isLoading && <ProjectsGridSkeleton count={6} />}
 
-      {/* Error State */}
+      {/* Error / Unauthenticated State */}
       {error && !isLoading && (
-        <Alert severity="error" sx={{ mb: 3 }}>
-          {error}
-        </Alert>
+        <Dialog
+          open={true}
+          maxWidth="sm"
+          fullWidth
+          PaperProps={{
+            sx: {
+              borderRadius: 3,
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
+            }
+          }}
+        >
+          <DialogContent sx={{ textAlign: 'center', py: 5 }}>
+            <Box
+              sx={{
+                bgcolor: theme.palette.primary.main,
+                borderRadius: '50%',
+                p: 3,
+                display: 'inline-flex',
+                mb: 3,
+                boxShadow: `0 8px 24px ${theme.palette.primary.main}40`,
+              }}
+            >
+              <LoginIcon sx={{ fontSize: 56, color: 'white' }} />
+            </Box>
+            <Typography variant="h5" component="h2" sx={{ fontWeight: 700, mb: 2 }}>
+              Zaloguj się, aby zobaczyć swoje projekty
+            </Typography>
+            <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
+              Ta sekcja wymaga zalogowania do Twojego konta MapMaker
+            </Typography>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="center">
+              <Button
+                variant="contained"
+                size="large"
+                startIcon={<LoginIcon />}
+                onClick={() => router.push('/login')}
+                sx={{
+                  px: 4,
+                  py: 1.5,
+                  textTransform: 'none',
+                  fontWeight: 600,
+                }}
+              >
+                Zaloguj się
+              </Button>
+              <Button
+                variant="outlined"
+                size="large"
+                onClick={() => router.push('/register')}
+                sx={{
+                  px: 4,
+                  py: 1.5,
+                  textTransform: 'none',
+                  fontWeight: 600,
+                }}
+              >
+                Utwórz konto
+              </Button>
+            </Stack>
+          </DialogContent>
+        </Dialog>
       )}
 
       {/* Empty State */}
