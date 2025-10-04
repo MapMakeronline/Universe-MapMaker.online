@@ -10,7 +10,7 @@ const initialState: MapState = {
     pitch: 0,
   },
   mapStyle: 'mapbox://styles/mapbox/streets-v12',
-  mapStyleKey: 'streets',
+  mapStyleKey: 'full3d', // Default to Full 3D mode
   isLoaded: false,
   isFullscreen: false,
 };

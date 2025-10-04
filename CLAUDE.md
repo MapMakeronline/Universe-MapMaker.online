@@ -233,11 +233,14 @@ Next.js App Router (file-based):
 3. Region: `europe-central2` (all resources)
 
 **Environment Variables in Production:**
-Set in `cloudbuild.yaml` via `--set-env-vars`:
-- `NEXT_PUBLIC_MAPBOX_TOKEN` - Mapbox access token
+Set in `cloudbuild.yaml` via `--set-env-vars` and `--build-arg`:
+- `NEXT_PUBLIC_MAPBOX_TOKEN` - Mapbox access token (required for 3D terrain and buildings)
 - `NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN` - Alternative token name (compatibility)
+- `NEXT_PUBLIC_API_URL` - Backend API URL
 - `NODE_ENV=production`
 - `NEXT_TELEMETRY_DISABLED=1`
+
+**Note:** Mapbox token is passed both as build argument (for static optimization) and runtime environment variable (for client-side access). This ensures 3D features work correctly in production.
 
 **Standalone Build:**
 Next.js configured with `output: 'standalone'` in `next.config.mjs` for optimized Docker deployment.
@@ -277,15 +280,19 @@ Next.js configured with `output: 'standalone'` in `next.config.mjs` for optimize
 **Mapbox Token Loading:**
 - Primary: Environment variable `NEXT_PUBLIC_MAPBOX_TOKEN` from `.env.local`
 - Fallback: Hardcoded in `src/lib/mapbox/config.ts` line 4
+- Production: Passed via `cloudbuild.yaml` as build arg and env var
 - Runtime check in `MapContainer.tsx` useEffect (logs token status to console)
+- **Important:** Token must be valid for 3D terrain features (requires Mapbox GL JS v2.0+)
 
 **3D Map Implementation:**
+- **Default map:** Full 3D mode (terrain + buildings + sky) set in `mapSlice.ts` initial state
 - BasemapSelector uses `mapStyleKey` (not URL) to identify styles
 - Buildings3D component gets native Mapbox GL instance via `mapRef.getMap()`
 - 3D features are cleaned up BEFORE style change to prevent ghost layers
 - Terrain visible at all zoom levels, buildings require zoom ≥ 15
 - Camera pitch adjusts automatically: 45° (zoom < 10), 60° (zoom ≥ 10)
 - Touch gestures for 3D enabled by default (dragRotate, touchRotate in MAP_CONFIG)
+- Works on both local development and production (GCP Cloud Run)
 
 **Double-Click Behavior:**
 - Map has `doubleClickZoom: false` to prevent conflicts with drawing tools
