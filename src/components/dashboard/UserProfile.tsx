@@ -31,6 +31,7 @@ import {
   CheckCircle,
   Schedule,
 } from '@mui/icons-material';
+import LoginRequiredGuard from './LoginRequiredGuard';
 
 interface UserStats {
   totalProjects: number;
@@ -86,6 +87,11 @@ export default function UserProfile() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const storagePercentage = (mockUserStats.storageUsed / mockUserStats.storageLimit) * 100;
+
+  // Mock user authentication - replace with actual auth state
+  const currentUser = {
+    isLoggedIn: false, // Change to true to test logged-in state
+  };
 
   const StatCard = ({
     title,
@@ -150,16 +156,21 @@ export default function UserProfile() {
   );
 
   return (
-    <Box>
-      {/* Header */}
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" component="h1" fontWeight="700" gutterBottom sx={{ fontSize: { xs: '1.75rem', sm: '2.125rem' } }}>
-          Profil użytkownika
-        </Typography>
-        <Typography variant="body1" color="text.secondary" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
-          Zarządzaj swoim kontem i subskrypcją
-        </Typography>
-      </Box>
+    <LoginRequiredGuard
+      isLoggedIn={currentUser.isLoggedIn}
+      title="Zaloguj się, aby zobaczyć swój profil"
+      message="Ta sekcja wymaga zalogowania. Utwórz konto lub zaloguj się, aby zarządzać swoim profilem i subskrypcją."
+    >
+      <Box>
+        {/* Header */}
+        <Box sx={{ mb: 4 }}>
+          <Typography variant="h4" component="h1" fontWeight="700" gutterBottom sx={{ fontSize: { xs: '1.75rem', sm: '2.125rem' } }}>
+            Profil użytkownika
+          </Typography>
+          <Typography variant="body1" color="text.secondary" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+            Zarządzaj swoim kontem i subskrypcją
+          </Typography>
+        </Box>
 
       <Grid container spacing={3}>
         {/* User Info Card - Expanded */}
@@ -397,5 +408,6 @@ export default function UserProfile() {
         </Grid>
       </Grid>
     </Box>
+    </LoginRequiredGuard>
   );
 }

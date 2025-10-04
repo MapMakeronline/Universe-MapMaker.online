@@ -62,6 +62,7 @@ import { setProjects, setLoading, setError, setSelectedProject } from '@/store/s
 import { dashboardService } from '@/lib/api/dashboard';
 import type { Project as ApiProject } from '@/lib/api/dashboard';
 import { ProjectsGridSkeleton } from './ProjectCardSkeleton';
+import LoginRequiredGuard from './LoginRequiredGuard';
 
 interface Project {
   id: string;
@@ -537,7 +538,7 @@ export default function OwnProjects() {
                 variant="contained"
                 size="large"
                 startIcon={<LoginIcon />}
-                onClick={() => router.push('/login')}
+                onClick={() => router.push('/auth?tab=0')}
                 sx={{
                   px: 4,
                   py: 1.5,
@@ -550,7 +551,7 @@ export default function OwnProjects() {
               <Button
                 variant="outlined"
                 size="large"
-                onClick={() => router.push('/register')}
+                onClick={() => router.push('/auth?tab=1')}
                 sx={{
                   px: 4,
                   py: 1.5,
@@ -561,6 +562,17 @@ export default function OwnProjects() {
                 Utwórz konto
               </Button>
             </Stack>
+            <Button
+              variant="text"
+              onClick={() => router.push('/dashboard?tab=1')}
+              sx={{
+                mt: 3,
+                textTransform: 'none',
+                color: 'text.secondary',
+              }}
+            >
+              Wróć do projektów publicznych
+            </Button>
           </DialogContent>
         </Dialog>
       )}

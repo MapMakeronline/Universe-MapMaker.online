@@ -32,6 +32,7 @@ import {
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { updateUser } from '@/store/slices/authSlice';
 import { dashboardService } from '@/lib/api/dashboard';
+import LoginRequiredGuard from './LoginRequiredGuard';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -60,6 +61,11 @@ export default function UserSettings() {
   const { user } = useAppSelector((state) => state.auth);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
+  // Mock user authentication - replace with actual auth state
+  const currentUser = {
+    isLoggedIn: false, // Change to true to test logged-in state
+  };
 
   const [currentTab, setCurrentTab] = useState(0);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
@@ -206,11 +212,16 @@ export default function UserSettings() {
   };
 
   return (
-    <Box>
-      {/* Header */}
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" component="h1" fontWeight="700" gutterBottom sx={{ fontSize: { xs: '1.75rem', sm: '2.125rem' } }}>
-          Ustawienia
+    <LoginRequiredGuard
+      isLoggedIn={currentUser.isLoggedIn}
+      title="Zaloguj się, aby zmienić ustawienia"
+      message="Ta sekcja wymaga zalogowania. Utwórz konto lub zaloguj się, aby zarządzać ustawieniami swojego konta."
+    >
+      <Box>
+        {/* Header */}
+        <Box sx={{ mb: 4 }}>
+          <Typography variant="h4" component="h1" fontWeight="700" gutterBottom sx={{ fontSize: { xs: '1.75rem', sm: '2.125rem' } }}>
+            Ustawienia
         </Typography>
         <Typography variant="body1" color="text.secondary" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
           Zarządzaj ustawieniami swojego konta
@@ -545,5 +556,6 @@ export default function UserSettings() {
         </TabPanel>
       </Card>
     </Box>
+    </LoginRequiredGuard>
   );
 }
