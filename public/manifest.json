@@ -1,0 +1,48 @@
+{
+  "name": "MapMaker.online - Profesjonalne mapy GIS",
+  "short_name": "MapMaker",
+  "description": "Twórz, edytuj i udostępniaj dane przestrzenne online",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#f75e4c",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/logo2.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["productivity", "utilities"],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Mapa",
+      "short_name": "Mapa",
+      "description": "Otwórz edytor mapy",
+      "url": "/map",
+      "icons": [{ "src": "/logo2.svg", "sizes": "96x96" }]
+    },
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "Otwórz panel projektów",
+      "url": "/dashboard",
+      "icons": [{ "src": "/logo2.svg", "sizes": "96x96" }]
+    }
+  ]
+}
