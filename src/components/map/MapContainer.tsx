@@ -12,6 +12,7 @@ import Geocoder from './Geocoder';
 import MeasurementTools from './MeasurementTools';
 import SimpleDrawingToolbar from '../drawing/SimpleDrawingToolbar';
 import SimpleMeasurementToolbar from '../measurement/SimpleMeasurementToolbar';
+import MobileFAB from './MobileFAB';
 
 // Import CSS dla Mapbox GL
 import 'mapbox-gl/dist/mapbox-gl.css';
@@ -23,6 +24,7 @@ interface MapContainerProps {
 const MapContainer: React.FC<MapContainerProps> = ({ children }) => {
   const dispatch = useAppDispatch();
   const mapRef = useRef<MapRef>(null);
+  const geolocateControlRef = useRef<any>(null);
   const [tokenError, setTokenError] = useState<string>('');
 
   const { viewState, mapStyle, isFullscreen } = useAppSelector((state) => state.map);
@@ -105,6 +107,7 @@ const MapContainer: React.FC<MapContainerProps> = ({ children }) => {
 
         {/* Geolocation Control - lewy dolny róg, poniżej navigation */}
         <GeolocateControl
+          ref={geolocateControlRef}
           position="bottom-left"
           positionOptions={{ enableHighAccuracy: true }}
           trackUserLocation={true}
@@ -123,8 +126,8 @@ const MapContainer: React.FC<MapContainerProps> = ({ children }) => {
           unit="metric"
         />
 
-        {/* Geocoder - Search */}
-        <Geocoder />
+        {/* Geocoder - Search (disabled, now using SearchModal from RightToolbar) */}
+        {/* <Geocoder /> */}
 
         {/* Draw Tools */}
         <DrawTools />
@@ -139,6 +142,9 @@ const MapContainer: React.FC<MapContainerProps> = ({ children }) => {
       {/* Proste toolbary bez MUI - ukryte */}
       {/* <SimpleDrawingToolbar />
       <SimpleMeasurementToolbar /> */}
+
+      {/* Mobile FAB - Floating Action Button (działa na wszystkich urządzeniach) */}
+      <MobileFAB geolocateControlRef={geolocateControlRef} />
     </Box>
   );
 };

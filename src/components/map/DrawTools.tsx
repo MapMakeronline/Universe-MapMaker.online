@@ -114,6 +114,18 @@ const DrawTools: React.FC = () => {
       e.features.forEach((feature: any) => {
         dispatch(addDrawFeature(feature));
       });
+
+      // CONTINUOUS DRAWING: Po utworzeniu feature, reaktywuj ten sam tryb rysowania
+      // (dotyczy punktów - linie i poligony wymagają double-click aby zakończyć)
+      const currentMode = drawRef.current?.getMode();
+      if (currentMode === 'draw_point') {
+        drawLogger.log('🔄 DrawTools: Reactivating draw_point mode for continuous drawing');
+        setTimeout(() => {
+          if (drawRef.current) {
+            drawRef.current.changeMode('draw_point');
+          }
+        }, 10); // Minimalne opóźnienie, aby Mapbox GL Draw zakończył bieżące operacje
+      }
     };
 
     const handleDrawUpdate = (e: any) => {

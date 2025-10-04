@@ -19,6 +19,7 @@ import {
   ChevronRight as ChevronRightIcon,
   Lock as LockIcon
 } from '@mui/icons-material';
+import { BasemapSelector } from './BasemapSelector';
 // Types defined locally for now
 interface Warstwa {
   id: string;
@@ -116,6 +117,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   findParentGroup
 }) => {
   const theme = useTheme();
+  const [isPanelCollapsed, setIsPanelCollapsed] = React.useState(true); // Domyślnie zwinięty
   // Pomocnicze funkcje do renderowania elementów z konfiguracją
   const renderLabel = (text: string) => (
     <Typography sx={{ 
@@ -266,12 +268,14 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
         borderTop: `1px solid ${theme.palette.divider}`,
         display: 'flex',
         flexDirection: 'column',
-        height: PANEL_CONFIG.panel.height,
-        overflow: 'hidden'
+        height: isPanelCollapsed ? PANEL_CONFIG.panel.headerHeight : PANEL_CONFIG.panel.height,
+        overflow: 'hidden',
+        transition: 'height 0.3s ease-in-out'
       }}
     >
-      {/* Nagłówek panelu właściwości */}
+      {/* Nagłówek panelu właściwości - klikalny do collapse/expand */}
       <Box
+        onClick={() => setIsPanelCollapsed(!isPanelCollapsed)}
         sx={{
           display: 'flex',
           alignItems: 'center',
@@ -279,26 +283,39 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
           p: 0.5,
           borderBottom: `1px solid ${theme.palette.divider}`,
           bgcolor: theme.palette.background.default,
-          minHeight: PANEL_CONFIG.panel.headerHeight
+          minHeight: PANEL_CONFIG.panel.headerHeight,
+          cursor: 'pointer',
+          '&:hover': {
+            bgcolor: theme.palette.action.hover,
+          }
         }}
       >
-        <Typography
-          sx={{
-            color: theme.palette.text.primary,
-            fontSize: PANEL_CONFIG.typography.headerFontSize,
-            fontWeight: 500,
-            flex: 1
-          }}
-        >
-          {selectedLayer 
-            ? `Właściwości ${selectedLayer.typ === 'grupa' ? 'grupy' : 'warstwy'}`
-            : 'Właściwości projektu'
-          }
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flex: 1 }}>
+          {isPanelCollapsed ? (
+            <ChevronRightIcon sx={{ fontSize: PANEL_CONFIG.typography.iconSize, color: theme.palette.text.secondary }} />
+          ) : (
+            <ExpandMoreIcon sx={{ fontSize: PANEL_CONFIG.typography.iconSize, color: theme.palette.text.secondary }} />
+          )}
+          <Typography
+            sx={{
+              color: theme.palette.text.primary,
+              fontSize: PANEL_CONFIG.typography.headerFontSize,
+              fontWeight: 500,
+            }}
+          >
+            {selectedLayer
+              ? `Właściwości ${selectedLayer.typ === 'grupa' ? 'grupy' : 'warstwy'}`
+              : 'Właściwości projektu'
+            }
+          </Typography>
+        </Box>
         {selectedLayer && (
           <IconButton
             size="small"
-            onClick={onClosePanel}
+            onClick={(e) => {
+              e.stopPropagation(); // Zapobiega collapse przy kliknięciu Close
+              onClosePanel();
+            }}
             sx={{
               color: theme.palette.text.secondary,
               p: 0.5,
@@ -310,11 +327,11 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
         )}
       </Box>
 
-      {/* Zawartość panelu właściwości */}
+      {/* Zawartość panelu właściwości - scrollable */}
       <Box sx={{ flex: 1, p: `${PANEL_CONFIG.panel.contentPadding}px`, overflow: 'auto' }}>
         {selectedLayer ? (
-          <>
-            {/* WŁAŚCIWOŚCI GRUPY */}
+        <>
+          {/* WŁAŚCIWOŚCI GRUPY */}
             {selectedLayer.typ === 'grupa' ? (
               <>
                 {renderSection('grupa-informacje-ogolne', 'Informacje ogólne', (
@@ -675,6 +692,9 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
           </>
         )}
       </Box>
+
+      {/* Mapa podkładowa - ZAWSZE widoczna (nawet gdy panel collapsed) */}
+      <BasemapSelector />
     </Box>
   );
 };

@@ -7,7 +7,6 @@ import { Toolbar } from './components/Toolbar';
 import { SearchBar } from './components/SearchBar';
 import { LayerTree } from './components/LayerTree';
 import { PropertiesPanel } from './components/PropertiesPanel';
-import { BasemapSelector } from './components/BasemapSelector';
 import AddDatasetModal from './AddDatasetModal';
 import AddNationalLawModal from './AddNationalLawModal';
 import AddLayerModal from './AddLayerModal';
@@ -551,11 +550,6 @@ const LeftPanel: React.FC = () => {
             onManageLayer={() => console.log('Manage layer')}
             onLayerLabeling={() => console.log('Layer labeling')}
             findParentGroup={findParentGroup}
-          />
-
-          <BasemapSelector
-            selectedBasemap={selectedBasemap}
-            onBasemapChange={setSelectedBasemap}
           />
         </Box>
 

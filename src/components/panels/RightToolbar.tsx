@@ -28,9 +28,8 @@ import {
 import { useRouter } from "next/navigation"
 import { useAppDispatch, useAppSelector } from "@/store/hooks"
 import { setMeasurementMode, clearAllMeasurements } from "@/store/slices/drawSlice"
-import { setMapStyle } from "@/store/slices/mapSlice"
-import { MAP_STYLES } from "@/lib/mapbox/config"
 import { currentUser } from "@/lib/auth/mockUser"
+import SearchModal from "@/components/map/SearchModal"
 
 const TOOLBAR_WIDTH = 56
 
@@ -38,10 +37,9 @@ const RightToolbar: React.FC = () => {
   const router = useRouter()
   const dispatch = useAppDispatch()
   const { measurement } = useAppSelector((state) => state.draw)
-  const { mapStyle } = useAppSelector((state) => state.map)
 
-  const [styleMenuAnchor, setStyleMenuAnchor] = useState<null | HTMLElement>(null)
   const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null)
+  const [searchModalOpen, setSearchModalOpen] = useState(false)
 
   const handleDistanceMeasure = () => {
     dispatch(
@@ -63,19 +61,6 @@ const RightToolbar: React.FC = () => {
 
   const handleClearMeasurements = () => {
     dispatch(clearAllMeasurements())
-  }
-
-  const handleStyleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
-    setStyleMenuAnchor(event.currentTarget)
-  }
-
-  const handleStyleMenuClose = () => {
-    setStyleMenuAnchor(null)
-  }
-
-  const handleStyleChange = (styleUrl: string) => {
-    dispatch(setMapStyle(styleUrl))
-    handleStyleMenuClose()
   }
 
   const handleScreenshot = () => {
@@ -164,7 +149,7 @@ const RightToolbar: React.FC = () => {
       id: "search",
       icon: Search,
       tooltip: "Wyszukiwanie",
-      onClick: () => console.log("Search"),
+      onClick: () => setSearchModalOpen(true),
       active: false,
     },
     {
@@ -215,13 +200,6 @@ const RightToolbar: React.FC = () => {
       icon: Email,
       tooltip: "Kontakt",
       onClick: () => console.log("Contact"),
-      active: false,
-    },
-    {
-      id: "map-style",
-      icon: Map,
-      tooltip: "Zmień styl mapy",
-      onClick: (e) => handleStyleMenuOpen(e),
       active: false,
     },
     {
@@ -369,34 +347,6 @@ const RightToolbar: React.FC = () => {
         )}
       </Paper>
 
-      {/* Map Style Menu */}
-      <Menu
-        anchorEl={styleMenuAnchor}
-        open={Boolean(styleMenuAnchor)}
-        onClose={handleStyleMenuClose}
-        anchorOrigin={{
-          vertical: "center",
-          horizontal: "left",
-        }}
-        transformOrigin={{
-          vertical: "center",
-          horizontal: "right",
-        }}
-      >
-        {Object.entries(MAP_STYLES).map(([key, style]) => (
-          <MenuItem
-            key={key}
-            onClick={() => handleStyleChange(style.style)}
-            selected={mapStyle === style.style}
-          >
-            <ListItemIcon>
-              <Map fontSize="small" />
-            </ListItemIcon>
-            <ListItemText>{style.name}</ListItemText>
-          </MenuItem>
-        ))}
-      </Menu>
-
       {/* User Menu */}
       <Menu
         anchorEl={userMenuAnchor}
@@ -502,6 +452,12 @@ const RightToolbar: React.FC = () => {
           </>
         )}
       </Menu>
+
+      {/* Search Modal */}
+      <SearchModal
+        open={searchModalOpen}
+        onClose={() => setSearchModalOpen(false)}
+      />
     </>
   )
 }

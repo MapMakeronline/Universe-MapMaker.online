@@ -2,20 +2,21 @@
  * KOMPONENT BASEMAP SELECTOR - SELEKTOR MAP PODKŁADOWYCH
  *
  * Odpowiada za:
- * - Wybór mapy podkładowej (OpenStreetMap, Satellite, Terrain)
+ * - Wybór mapy podkładowej Mapbox (Ulice, Satelita, Outdoor, etc.)
  * - Wyświetlanie listy dostępnych map bazowych
- * - Przełączanie między różnymi dostawcami map
- * - Ustawienia jakości i poziomu detali mapy
- * - Interface do konfiguracji mapy bazowej
+ * - Przełączanie między różnymi stylami Mapbox
+ * - Synchronizacja z Redux store
  */
 'use client';
 
 import React from 'react';
 import { Box, Typography, TextField, MenuItem, useTheme } from '@mui/material';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { setMapStyle } from '@/store/slices/mapSlice';
+import { MAP_STYLES } from '@/lib/mapbox/config';
 
 interface BasemapSelectorProps {
-  selectedBasemap: string;
-  onBasemapChange: (basemap: string) => void;
+  // Props are now optional since we use Redux
 }
 
 // Obiekt konfiguracji dla wielkości i stylów selektora map podkładowych
@@ -50,11 +51,14 @@ const BASEMAP_CONFIG = {
   }
 } as const;
 
-export const BasemapSelector: React.FC<BasemapSelectorProps> = ({
-  selectedBasemap,
-  onBasemapChange
-}) => {
+export const BasemapSelector: React.FC<BasemapSelectorProps> = () => {
   const theme = useTheme();
+  const dispatch = useAppDispatch();
+  const { mapStyle } = useAppSelector((state) => state.map);
+
+  const handleBasemapChange = (styleUrl: string) => {
+    dispatch(setMapStyle(styleUrl));
+  };
 
   return (
     <Box
@@ -73,15 +77,15 @@ export const BasemapSelector: React.FC<BasemapSelectorProps> = ({
         color: theme.palette.text.primary,
         mb: BASEMAP_CONFIG.typography.title.marginBottom
       }}>
-        Wybór mapy podkładowej
+        Mapa podkładowa
       </Typography>
 
       <TextField
         select
-        value={selectedBasemap}
+        value={mapStyle}
         size="small"
         fullWidth
-        onChange={(e) => onBasemapChange(e.target.value)}
+        onChange={(e) => handleBasemapChange(e.target.value)}
         sx={{
           '& .MuiOutlinedInput-root': {
             backgroundColor: theme.palette.action.hover,
@@ -105,21 +109,15 @@ export const BasemapSelector: React.FC<BasemapSelectorProps> = ({
           }
         }}
       >
-        <MenuItem value="google-maps" sx={{ fontSize: BASEMAP_CONFIG.typography.menuItem.fontSize }}>
-          Google Maps
-        </MenuItem>
-        <MenuItem value="openstreetmap" sx={{ fontSize: BASEMAP_CONFIG.typography.menuItem.fontSize }}>
-          OpenStreetMap
-        </MenuItem>
-        <MenuItem value="satellite" sx={{ fontSize: BASEMAP_CONFIG.typography.menuItem.fontSize }}>
-          Satelita
-        </MenuItem>
-        <MenuItem value="terrain" sx={{ fontSize: BASEMAP_CONFIG.typography.menuItem.fontSize }}>
-          Teren
-        </MenuItem>
-        <MenuItem value="hybrid" sx={{ fontSize: BASEMAP_CONFIG.typography.menuItem.fontSize }}>
-          Hybrydowa
-        </MenuItem>
+        {Object.entries(MAP_STYLES).map(([key, style]) => (
+          <MenuItem
+            key={key}
+            value={style.style}
+            sx={{ fontSize: BASEMAP_CONFIG.typography.menuItem.fontSize }}
+          >
+            {style.name}
+          </MenuItem>
+        ))}
       </TextField>
 
       <Typography sx={{

@@ -43,12 +43,33 @@ interface PublicProject {
   views: number;
 }
 
+// Placeholder SVG dla projektów bez obrazka
+const placeholderImage = 'data:image/svg+xml;base64,' + btoa(`
+  <svg width="400" height="200" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" style="stop-color:#f75e4c;stop-opacity:0.8" />
+        <stop offset="100%" style="stop-color:#1c679d;stop-opacity:0.8" />
+      </linearGradient>
+    </defs>
+    <rect width="400" height="200" fill="url(#grad)"/>
+    <path d="M 50 150 L 100 100 L 150 120 L 200 80 L 250 110 L 300 70 L 350 90"
+          stroke="white" stroke-width="3" fill="none" opacity="0.6"/>
+    <circle cx="100" cy="100" r="6" fill="white" opacity="0.8"/>
+    <circle cx="200" cy="80" r="6" fill="white" opacity="0.8"/>
+    <circle cx="300" cy="70" r="6" fill="white" opacity="0.8"/>
+    <text x="200" y="100" font-family="Arial" font-size="16" fill="white" text-anchor="middle" opacity="0.7">
+      MapMaker.online
+    </text>
+  </svg>
+`);
+
 const mockPublicProjects: PublicProject[] = [
   {
     id: '1',
     title: 'ogrodzeniecsip',
     description: 'ogrodzenie',
-    image: '/api/placeholder/300/200',
+    image: placeholderImage,
     category: 'Infrastruktura',
     size: '25.4 MB',
     layers: 12,
@@ -61,7 +82,7 @@ const mockPublicProjects: PublicProject[] = [
     id: '2',
     title: 'UniejowMwMpzp',
     description: 'uniejow',
-    image: '/api/placeholder/300/200',
+    image: placeholderImage,
     category: 'Planowanie',
     size: '18.7 MB',
     layers: 8,
@@ -74,7 +95,7 @@ const mockPublicProjects: PublicProject[] = [
     id: '3',
     title: 'AugustowWMpzp',
     description: 'augustow',
-    image: '/api/placeholder/300/200',
+    image: placeholderImage,
     category: 'Planowanie',
     size: '32.1 MB',
     layers: 15,
@@ -87,7 +108,7 @@ const mockPublicProjects: PublicProject[] = [
     id: '4',
     title: 'Gmina Uniejów',
     description: 'Mapa gminy Uniejów z podziałem na sołectwa',
-    image: '/api/placeholder/300/200',
+    image: placeholderImage,
     category: 'Administracja',
     size: '28.9 MB',
     layers: 20,
@@ -100,7 +121,7 @@ const mockPublicProjects: PublicProject[] = [
     id: '5',
     title: 'Tereny inwestycyjne Augustów',
     description: 'Dostępne tereny pod inwestycje w Augustowie',
-    image: '/api/placeholder/300/200',
+    image: placeholderImage,
     category: 'Inwestycje',
     size: '15.2 MB',
     layers: 6,
@@ -113,7 +134,7 @@ const mockPublicProjects: PublicProject[] = [
     id: '6',
     title: 'Sieć wodociągowa Lublin',
     description: 'Mapa sieci wodociągowej miasta Lublin',
-    image: '/api/placeholder/300/200',
+    image: placeholderImage,
     category: 'Infrastruktura',
     size: '45.8 MB',
     layers: 25,
@@ -173,7 +194,7 @@ export default function PublicProjects() {
   const ProjectCard = ({ project }: { project: PublicProject }) => (
     <Card
       sx={{
-        height: '100%',
+        height: 480, // Stała wysokość dla wszystkich kart
         display: 'flex',
         flexDirection: 'column',
         cursor: 'pointer',
@@ -239,12 +260,34 @@ export default function PublicProjects() {
         </Box>
       </Box>
       
-      <CardContent sx={{ flexGrow: 1, p: 2 }}>
-        <Typography variant="h6" component="h3" gutterBottom fontWeight="600">
+      <CardContent sx={{ flexGrow: 1, p: 2, display: 'flex', flexDirection: 'column' }}>
+        <Typography
+          variant="h6"
+          component="h3"
+          gutterBottom
+          fontWeight="600"
+          sx={{
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
           {project.title}
         </Typography>
-        
-        <Typography variant="body2" color="text.secondary" gutterBottom>
+
+        <Typography
+          variant="body2"
+          color="text.secondary"
+          gutterBottom
+          sx={{
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            minHeight: '40px',
+          }}
+        >
           {project.description}
         </Typography>
 
