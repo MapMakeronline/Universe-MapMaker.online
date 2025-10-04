@@ -1,6 +1,6 @@
 'use client';
 
-import { Box, Button, Container, Typography, Card, CardContent, Stack, Grid } from '@mui/material';
+import { Box, Button, Container, Typography, Card, CardContent, Stack } from '@mui/material';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import {
@@ -204,10 +204,11 @@ export default function LandingPage() {
         </Box>
 
         {/* Action Cards */}
-        <Grid
-          container
-          spacing={{ xs: 2, md: 3 }}
+        <Box
           sx={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: { xs: 2, md: 3 },
             mb: { xs: 6, md: 10 },
             animation: 'fadeInUp 1s ease-out 0.8s both',
             '@keyframes fadeInUp': {
@@ -223,7 +224,7 @@ export default function LandingPage() {
           }}
         >
           {/* Register Card */}
-          <Grid xs={12} md={4}>
+          <Box sx={{ flex: { xs: '1 1 100%', md: '1 1 calc(33.333% - 16px)' } }}>
             <Card
               sx={{
                 height: '100%',
@@ -285,10 +286,10 @@ export default function LandingPage() {
                 </Button>
               </CardContent>
             </Card>
-          </Grid>
+          </Box>
 
           {/* Login Card */}
-          <Grid xs={12} md={4}>
+          <Box sx={{ flex: { xs: '1 1 100%', md: '1 1 calc(33.333% - 16px)' } }}>
             <Card
               sx={{
                 height: '100%',
@@ -350,10 +351,10 @@ export default function LandingPage() {
                 </Button>
               </CardContent>
             </Card>
-          </Grid>
+          </Box>
 
           {/* Public Projects Card */}
-          <Grid xs={12} md={4}>
+          <Box sx={{ flex: { xs: '1 1 100%', md: '1 1 calc(33.333% - 16px)' } }}>
             <Card
               sx={{
                 height: '100%',
@@ -420,8 +421,8 @@ export default function LandingPage() {
                 </Button>
               </CardContent>
             </Card>
-          </Grid>
-        </Grid>
+          </Box>
+        </Box>
 
         {/* Features Section */}
         <Box
@@ -458,9 +459,9 @@ export default function LandingPage() {
             Wszystko czego potrzebujesz do profesjonalnej pracy z mapami
           </Typography>
 
-          <Grid container spacing={{ xs: 3, md: 4 }}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: { xs: 3, md: 4 } }}>
             {features.map((feature, index) => (
-              <Grid key={index} xs={12} sm={6} md={4}>
+              <Box key={index} sx={{ flex: { xs: '1 1 100%', sm: '1 1 calc(50% - 12px)', md: '1 1 calc(33.333% - 21px)' } }}>
                 <Box
                   sx={{
                     textAlign: 'center',
@@ -482,9 +483,9 @@ export default function LandingPage() {
                     {feature.description}
                   </Typography>
                 </Box>
-              </Grid>
+              </Box>
             ))}
-          </Grid>
+          </Box>
         </Box>
 
         {/* Footer CTA */}
