@@ -223,7 +223,7 @@ export default function LandingPage() {
             },
           }}
         >
-          {/* Register Card */}
+          {/* Public Projects Card - FIRST */}
           <Box sx={{ flex: { xs: '1 1 100%', md: '1 1 calc(33.333% - 16px)' } }}>
             <Card
               sx={{
@@ -233,12 +233,13 @@ export default function LandingPage() {
                 transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
                 cursor: 'pointer',
                 boxShadow: '0 8px 24px rgba(0, 0, 0, 0.12)',
+                border: '2px solid #10b981',
                 '&:hover': {
                   transform: 'translateY(-12px)',
-                  boxShadow: '0 20px 48px rgba(0, 0, 0, 0.2)',
+                  boxShadow: '0 20px 48px rgba(16, 185, 129, 0.3)',
                 },
               }}
-              onClick={() => handleNavigate('/register')}
+              onClick={() => handleNavigate('/dashboard?tab=1')}
             >
               <CardContent
                 sx={{
@@ -252,37 +253,37 @@ export default function LandingPage() {
               >
                 <Box
                   sx={{
-                    bgcolor: theme.palette.primary.main,
+                    bgcolor: '#10b981',
                     borderRadius: '50%',
                     p: 2.5,
                     mb: 3,
-                    boxShadow: `0 8px 24px ${theme.palette.primary.main}40`,
+                    boxShadow: '0 8px 24px rgba(16, 185, 129, 0.25)',
                   }}
                 >
-                  <AccountCircleIcon sx={{ fontSize: 56, color: 'white' }} />
+                  <PublicIcon sx={{ fontSize: 56, color: 'white' }} />
                 </Box>
                 <Typography variant="h5" component="h2" sx={{ fontWeight: 700, mb: 2 }}>
-                  Nowy użytkownik
+                  Przeglądaj projekty
                 </Typography>
                 <Typography variant="body1" color="text.secondary" sx={{ mb: 3, flex: 1, lineHeight: 1.7 }}>
-                  Załóż darmowe konto i rozpocznij tworzenie profesjonalnych map geospatialnych
+                  Zobacz mapy stworzone przez społeczność. Bez logowania, bez zobowiązań.
                 </Typography>
                 <Button
                   variant="contained"
                   size="large"
                   fullWidth
                   sx={{
-                    bgcolor: theme.palette.primary.main,
-                    '&:hover': { bgcolor: theme.palette.primary.dark },
+                    bgcolor: '#10b981',
+                    '&:hover': { bgcolor: '#059669' },
                     py: 1.5,
                     fontSize: '1.05rem',
                     fontWeight: 700,
                     textTransform: 'none',
                     borderRadius: 2,
-                    boxShadow: `0 4px 14px ${theme.palette.primary.main}40`,
+                    boxShadow: '0 4px 14px rgba(16, 185, 129, 0.4)',
                   }}
                 >
-                  Zarejestruj się
+                  Przeglądaj mapy
                 </Button>
               </CardContent>
             </Card>
@@ -353,7 +354,7 @@ export default function LandingPage() {
             </Card>
           </Box>
 
-          {/* Public Projects Card */}
+          {/* Register Card */}
           <Box sx={{ flex: { xs: '1 1 100%', md: '1 1 calc(33.333% - 16px)' } }}>
             <Card
               sx={{
@@ -368,7 +369,7 @@ export default function LandingPage() {
                   boxShadow: '0 20px 48px rgba(0, 0, 0, 0.2)',
                 },
               }}
-              onClick={() => handleNavigate('/dashboard?tab=1')}
+              onClick={() => handleNavigate('/register')}
             >
               <CardContent
                 sx={{
@@ -382,32 +383,32 @@ export default function LandingPage() {
               >
                 <Box
                   sx={{
-                    bgcolor: '#10b981',
+                    bgcolor: theme.palette.primary.main,
                     borderRadius: '50%',
                     p: 2.5,
                     mb: 3,
-                    boxShadow: '0 8px 24px rgba(16, 185, 129, 0.25)',
+                    boxShadow: `0 8px 24px ${theme.palette.primary.main}40`,
                   }}
                 >
-                  <PublicIcon sx={{ fontSize: 56, color: 'white' }} />
+                  <AccountCircleIcon sx={{ fontSize: 56, color: 'white' }} />
                 </Box>
                 <Typography variant="h5" component="h2" sx={{ fontWeight: 700, mb: 2 }}>
-                  Publiczne projekty
+                  Twórz własne mapy
                 </Typography>
                 <Typography variant="body1" color="text.secondary" sx={{ mb: 3, flex: 1, lineHeight: 1.7 }}>
-                  Przeglądaj mapy udostępnione przez społeczność użytkowników
+                  Załóż darmowe konto i zacznij tworzyć profesjonalne mapy
                 </Typography>
                 <Button
                   variant="outlined"
                   size="large"
                   fullWidth
                   sx={{
-                    borderColor: '#10b981',
-                    color: '#10b981',
+                    borderColor: theme.palette.primary.main,
+                    color: theme.palette.primary.main,
                     borderWidth: 2,
                     '&:hover': {
-                      borderColor: '#059669',
-                      bgcolor: 'rgba(16, 185, 129, 0.08)',
+                      borderColor: theme.palette.primary.dark,
+                      bgcolor: `${theme.palette.primary.main}10`,
                       borderWidth: 2,
                     },
                     py: 1.5,
@@ -417,7 +418,7 @@ export default function LandingPage() {
                     borderRadius: 2,
                   }}
                 >
-                  Przeglądaj
+                  Zarejestruj się
                 </Button>
               </CardContent>
             </Card>
