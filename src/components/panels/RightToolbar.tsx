@@ -120,7 +120,10 @@ const RightToolbar: React.FC = () => {
     disabled?: boolean;
   }
 
-  const tools: Tool[] = [
+  // Tools requiring authentication
+  const authRequiredTools = ["parcel-search", "edit", "geometry-tools", "document", "georeference", "crop-mask"];
+
+  const allTools: Tool[] = [
     { id: "divider-1" },
     {
       id: "parcel-search",
@@ -222,6 +225,15 @@ const RightToolbar: React.FC = () => {
       active: false,
     },
   ]
+
+  // Filter tools based on authentication
+  const tools = allTools.filter(tool => {
+    if (tool.id?.startsWith('divider')) return true;
+    if (!currentUser.isLoggedIn && authRequiredTools.includes(tool.id!)) {
+      return false;
+    }
+    return true;
+  });
 
   return (
     <>

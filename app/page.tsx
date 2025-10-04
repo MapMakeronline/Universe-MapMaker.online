@@ -224,7 +224,7 @@ export default function LandingPage() {
           }}
         >
           {/* Public Projects Card - FIRST */}
-          <Box sx={{ flex: { xs: '1 1 100%', md: '1 1 calc(33.333% - 16px)' } }}>
+          <Box sx={{ flex: { xs: '1 1 100%', md: '1 1 calc(50% - 12px)' } }}>
             <Card
               sx={{
                 height: '100%',
@@ -289,8 +289,8 @@ export default function LandingPage() {
             </Card>
           </Box>
 
-          {/* Login Card */}
-          <Box sx={{ flex: { xs: '1 1 100%', md: '1 1 calc(33.333% - 16px)' } }}>
+          {/* Authentication Card - Login/Register Combined */}
+          <Box sx={{ flex: { xs: '1 1 100%', md: '1 1 calc(50% - 12px)' } }}>
             <Card
               sx={{
                 height: '100%',
@@ -304,7 +304,7 @@ export default function LandingPage() {
                   boxShadow: '0 20px 48px rgba(0, 0, 0, 0.2)',
                 },
               }}
-              onClick={() => handleNavigate('/login')}
+              onClick={() => handleNavigate('/auth')}
             >
               <CardContent
                 sx={{
@@ -328,10 +328,10 @@ export default function LandingPage() {
                   <LoginIcon sx={{ fontSize: 56, color: 'white' }} />
                 </Box>
                 <Typography variant="h5" component="h2" sx={{ fontWeight: 700, mb: 2 }}>
-                  Masz konto
+                  Twórz własne mapy
                 </Typography>
                 <Typography variant="body1" color="text.secondary" sx={{ mb: 3, flex: 1, lineHeight: 1.7 }}>
-                  Zaloguj się i kontynuuj pracę nad swoimi projektami mapowymi
+                  Zaloguj się lub załóż konto aby tworzyć profesjonalne mapy
                 </Typography>
                 <Button
                   variant="contained"
@@ -348,77 +348,7 @@ export default function LandingPage() {
                     boxShadow: `0 4px 14px ${theme.palette.secondary.main}40`,
                   }}
                 >
-                  Zaloguj się
-                </Button>
-              </CardContent>
-            </Card>
-          </Box>
-
-          {/* Register Card */}
-          <Box sx={{ flex: { xs: '1 1 100%', md: '1 1 calc(33.333% - 16px)' } }}>
-            <Card
-              sx={{
-                height: '100%',
-                display: 'flex',
-                flexDirection: 'column',
-                transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                cursor: 'pointer',
-                boxShadow: '0 8px 24px rgba(0, 0, 0, 0.12)',
-                '&:hover': {
-                  transform: 'translateY(-12px)',
-                  boxShadow: '0 20px 48px rgba(0, 0, 0, 0.2)',
-                },
-              }}
-              onClick={() => handleNavigate('/register')}
-            >
-              <CardContent
-                sx={{
-                  flex: 1,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  textAlign: 'center',
-                  p: { xs: 3, md: 4 },
-                }}
-              >
-                <Box
-                  sx={{
-                    bgcolor: theme.palette.primary.main,
-                    borderRadius: '50%',
-                    p: 2.5,
-                    mb: 3,
-                    boxShadow: `0 8px 24px ${theme.palette.primary.main}40`,
-                  }}
-                >
-                  <AccountCircleIcon sx={{ fontSize: 56, color: 'white' }} />
-                </Box>
-                <Typography variant="h5" component="h2" sx={{ fontWeight: 700, mb: 2 }}>
-                  Twórz własne mapy
-                </Typography>
-                <Typography variant="body1" color="text.secondary" sx={{ mb: 3, flex: 1, lineHeight: 1.7 }}>
-                  Załóż darmowe konto i zacznij tworzyć profesjonalne mapy
-                </Typography>
-                <Button
-                  variant="outlined"
-                  size="large"
-                  fullWidth
-                  sx={{
-                    borderColor: theme.palette.primary.main,
-                    color: theme.palette.primary.main,
-                    borderWidth: 2,
-                    '&:hover': {
-                      borderColor: theme.palette.primary.dark,
-                      bgcolor: `${theme.palette.primary.main}10`,
-                      borderWidth: 2,
-                    },
-                    py: 1.5,
-                    fontSize: '1.05rem',
-                    fontWeight: 700,
-                    textTransform: 'none',
-                    borderRadius: 2,
-                  }}
-                >
-                  Zarejestruj się
+                  Zaloguj / Zarejestruj
                 </Button>
               </CardContent>
             </Card>
