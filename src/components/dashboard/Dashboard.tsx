@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { ThemeProvider, CssBaseline } from '@mui/material';
 import { theme } from '@/lib/theme';
 import DashboardLayout from '../../../src/components/dashboard/DashboardLayout';
@@ -11,7 +12,17 @@ import UserSettings from '../../../src/components/dashboard/UserSettings';
 import Contact from '../../../src/components/dashboard/Contact';
 
 export default function Dashboard() {
-  const [currentPage, setCurrentPage] = useState('own');
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get('tab');
+
+  // Map tab parameter to page names: 0 = own, 1 = public
+  const getInitialPage = () => {
+    if (tabParam === '1') return 'public';
+    if (tabParam === '0') return 'own';
+    return 'own'; // Default
+  };
+
+  const [currentPage, setCurrentPage] = useState(getInitialPage());
 
   const renderCurrentPage = () => {
     switch (currentPage) {
