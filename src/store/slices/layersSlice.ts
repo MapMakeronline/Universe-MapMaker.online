@@ -167,16 +167,57 @@ const layersSlice = createSlice({
           return true;
         });
       };
-      
+
       state.layers = deleteLayerRecursive(state.layers, action.payload);
-      
+
       // If the deleted layer was active, clear the active layer
       if (state.activeLayerId === action.payload) {
         state.activeLayerId = undefined;
       }
-      
+
       // Remove from expanded groups if it was a group
       state.expandedGroups = state.expandedGroups.filter(id => id !== action.payload);
+    },
+    addDrawnLayer: (state, action: PayloadAction<{
+      name: string;
+      type: 'point' | 'line' | 'polygon';
+      features: any[];
+      color?: string;
+    }>) => {
+      const { name, type, features, color } = action.payload;
+
+      const iconMap = {
+        point: 'points' as const,
+        line: 'lines' as const,
+        polygon: 'polygon' as const,
+      };
+
+      const colorMap = {
+        point: '#f44336',
+        line: '#2196f3',
+        polygon: '#4caf50',
+      };
+
+      const newLayer: LayerNode = {
+        id: `drawn-${Date.now()}`,
+        name,
+        type: 'layer',
+        visible: true,
+        opacity: 1,
+        color: color || colorMap[type],
+        icon: iconMap[type],
+        sourceType: 'geojson',
+        data: {
+          type: 'FeatureCollection',
+          features,
+        },
+      };
+
+      // Dodaj warstwę na początek listy (na górze drzewa)
+      state.layers.unshift(newLayer);
+
+      // Ustaw jako aktywną warstwę
+      state.activeLayerId = newLayer.id;
     },
   },
 });
@@ -187,6 +228,7 @@ export const {
   toggleGroupExpanded,
   setActiveLayer,
   deleteLayer,
+  addDrawnLayer,
 } = layersSlice.actions;
 
 export default layersSlice.reducer;
