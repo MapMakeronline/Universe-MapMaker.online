@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import {
   Box,
   Container,
@@ -15,6 +15,7 @@ import {
   IconButton,
   InputAdornment,
   Link as MuiLink,
+  CircularProgress,
 } from '@mui/material';
 import {
   Visibility,
@@ -26,13 +27,20 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { useTheme } from '@mui/material/styles';
 
-export default function AuthPage() {
+// Force dynamic rendering for this page (uses useSearchParams)
+export const dynamic = 'force-dynamic';
+
+function AuthPageContent() {
   const router = useRouter();
   const theme = useTheme();
   const searchParams = useSearchParams();
-  const defaultTab = searchParams.get('tab') === 'register' ? 1 : 0;
 
-  const [activeTab, setActiveTab] = useState(defaultTab);
+  // Initialize tab from URL params, default to 0 (login)
+  const [activeTab, setActiveTab] = useState(() => {
+    const tab = searchParams.get('tab');
+    if (tab === '1' || tab === 'register') return 1;
+    return 0;
+  });
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
@@ -326,5 +334,17 @@ export default function AuthPage() {
         </Box>
       </Container>
     </Box>
+  );
+}
+
+export default function AuthPage() {
+  return (
+    <Suspense fallback={
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
+        <CircularProgress />
+      </Box>
+    }>
+      <AuthPageContent />
+    </Suspense>
   );
 }
