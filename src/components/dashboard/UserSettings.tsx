@@ -555,7 +555,7 @@ export default function UserSettings() {
           </CardContent>
         </TabPanel>
       </Card>
-    </Box>
+      </Box>
     </LoginRequiredGuard>
   );
 }

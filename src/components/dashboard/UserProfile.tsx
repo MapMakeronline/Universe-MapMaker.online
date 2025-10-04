@@ -407,7 +407,7 @@ export default function UserProfile() {
           </Card>
         </Grid>
       </Grid>
-    </Box>
+      </Box>
     </LoginRequiredGuard>
   );
 }

@@ -30,6 +30,7 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks"
 import { setMeasurementMode, clearAllMeasurements } from "@/store/slices/drawSlice"
 import { setMapStyle } from "@/store/slices/mapSlice"
 import { MAP_STYLES } from "@/lib/mapbox/config"
+import { currentUser } from "@/lib/auth/mockUser"
 
 const TOOLBAR_WIDTH = 56
 
