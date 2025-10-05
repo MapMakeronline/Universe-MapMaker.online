@@ -17,6 +17,12 @@ const Building3DInteraction = () => {
   // Use ref to always have current value in event handlers
   const isBuildingSelectModeActiveRef = useRef(isBuildingSelectModeActive);
 
+  // Long-press detection for mobile
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const longPressDurationMs = 500; // 500ms for long press
+  const touchStartPointRef = useRef<{ x: number; y: number } | null>(null);
+  const maxTouchMoveDistance = 10; // Maximum pixels allowed during long press
+
   useEffect(() => {
     isBuildingSelectModeActiveRef.current = isBuildingSelectModeActive;
   }, [isBuildingSelectModeActive]);
@@ -64,23 +70,23 @@ const Building3DInteraction = () => {
       map.getCanvas().style.cursor = features.length > 0 ? 'pointer' : '';
     };
 
-    // Handle click on 3D buildings
-    const onClick = (e: MapLayerMouseEvent) => {
-      console.log('🏢 BUILDING HANDLER: Click received', {
+    // Helper function to handle building selection (shared by click and long-press)
+    const handleBuildingSelection = (e: MapLayerMouseEvent) => {
+      console.log('🏢 BUILDING HANDLER: Selection triggered', {
         isBuildingMode: isBuildingSelectModeActiveRef.current,
         identifyActive: identify.isActive,
         measurementActive: measurement.isActive
       });
 
-      // Only handle clicks if building select mode is active AND other tools are not active
+      // Only handle if building select mode is active AND other tools are not active
       if (!isBuildingSelectModeActiveRef.current) {
-        mapLogger.log('🏢 Building click ignored - mode not active');
+        mapLogger.log('🏢 Building selection ignored - mode not active');
         return;
       }
 
       // Don't handle if identify or measurement tools are active
       if (identify.isActive || measurement.isActive) {
-        mapLogger.log('🏢 Building click ignored - other tool active');
+        mapLogger.log('🏢 Building selection ignored - other tool active');
         return;
       }
 
@@ -193,6 +199,85 @@ const Building3DInteraction = () => {
       }
     };
 
+    // Desktop click handler (immediate)
+    const onClick = (e: MapLayerMouseEvent) => {
+      const isTouchDevice = 'ontouchstart' in window;
+
+      // On desktop, handle click immediately
+      // On mobile, ignore click (only long-press works)
+      if (!isTouchDevice) {
+        handleBuildingSelection(e);
+      }
+    };
+
+    // Mobile touch handlers for long-press detection
+    const onTouchStart = (e: any) => {
+      const isTouchDevice = 'ontouchstart' in window;
+      if (!isTouchDevice || !isBuildingSelectModeActiveRef.current) {
+        return;
+      }
+
+      // Cancel any existing timer
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+      }
+
+      // Store touch start point
+      touchStartPointRef.current = {
+        x: e.point.x,
+        y: e.point.y
+      };
+
+      mapLogger.log('👆 Touch start for long-press detection', { point: e.point });
+
+      // Start long-press timer
+      longPressTimerRef.current = setTimeout(() => {
+        mapLogger.log('⏰ Long press triggered!');
+
+        // Trigger haptic feedback if available
+        if (navigator.vibrate) {
+          navigator.vibrate(50); // 50ms vibration
+        }
+
+        // Handle building selection
+        handleBuildingSelection(e);
+
+        // Clear refs
+        longPressTimerRef.current = null;
+        touchStartPointRef.current = null;
+      }, longPressDurationMs);
+    };
+
+    const onTouchMove = (e: any) => {
+      if (!longPressTimerRef.current || !touchStartPointRef.current) {
+        return;
+      }
+
+      // Calculate distance moved
+      const dx = e.point.x - touchStartPointRef.current.x;
+      const dy = e.point.y - touchStartPointRef.current.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      // If finger moved too much, cancel long-press
+      if (distance > maxTouchMoveDistance) {
+        mapLogger.log('🚫 Long-press cancelled - finger moved too much', { distance });
+        if (longPressTimerRef.current) {
+          clearTimeout(longPressTimerRef.current);
+          longPressTimerRef.current = null;
+        }
+        touchStartPointRef.current = null;
+      }
+    };
+
+    const onTouchEnd = () => {
+      // Cancel long-press timer if touch ended before timeout
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+        longPressTimerRef.current = null;
+      }
+      touchStartPointRef.current = null;
+    };
+
     // Wait for map to be fully loaded and 3d-buildings layer to be available
     let retryCount = 0;
     const maxRetries = 15; // Increased retry count
@@ -208,9 +293,17 @@ const Building3DInteraction = () => {
       }
 
       if (map.getLayer('3d-buildings')) {
+        // Desktop handlers
         map.on('mousemove', onMouseMove);
         map.on('click', onClick);
-        mapLogger.log('✅ 3D building interaction enabled', {
+
+        // Mobile touch handlers
+        map.on('touchstart', onTouchStart);
+        map.on('touchmove', onTouchMove);
+        map.on('touchend', onTouchEnd);
+        map.on('touchcancel', onTouchEnd);
+
+        mapLogger.log('✅ 3D building interaction enabled (desktop + mobile long-press)', {
           hasLayer: true,
           currentMode: isBuildingSelectModeActiveRef.current
         });
@@ -228,8 +321,20 @@ const Building3DInteraction = () => {
 
     return () => {
       mapLogger.log('🏢 Cleaning up 3D building interaction');
+
+      // Clear long-press timer
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+        longPressTimerRef.current = null;
+      }
+
+      // Remove event listeners
       map.off('mousemove', onMouseMove);
       map.off('click', onClick);
+      map.off('touchstart', onTouchStart);
+      map.off('touchmove', onTouchMove);
+      map.off('touchend', onTouchEnd);
+      map.off('touchcancel', onTouchEnd);
       map.getCanvas().style.cursor = '';
 
       // Clear all feature states
