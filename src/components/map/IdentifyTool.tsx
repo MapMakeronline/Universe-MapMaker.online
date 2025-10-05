@@ -134,7 +134,7 @@ const IdentifyTool = () => {
           dispatch(setAttributeModalOpen(true));
 
           // Update feature state for visual feedback
-          const prevSelectedId = selectedBuildingIdRef.current;
+          const prevSelectedId = selectedFeatureIdRef.current;
           if (prevSelectedId && prevSelectedId !== featureId) {
             // Remove previous selection
             try {
@@ -214,7 +214,7 @@ const IdentifyTool = () => {
       map.off('click', handleMapClick);
       map.getCanvas().style.cursor = '';
     };
-  }, [mapRef, identify.isActive, mapStyleKey, dispatch, buildings]);
+  }, [mapRef, identify.isActive, mapStyleKey, dispatch, features]);
 
   const handleCloseModal = () => {
     setModalOpen(false);
