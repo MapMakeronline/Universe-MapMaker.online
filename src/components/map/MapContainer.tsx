@@ -11,7 +11,7 @@ import DrawTools from './DrawTools';
 import MeasurementTools from './MeasurementTools';
 import IdentifyTool from './IdentifyTool';
 import Buildings3D from './Buildings3D';
-import Building3DInteraction, { useBuildingClickHandler } from './Building3DInteraction';
+import Building3DInteraction from './Building3DInteraction';
 import BuildingAttributesModal from './BuildingAttributesModal';
 import MobileFAB from './MobileFAB';
 
@@ -60,14 +60,8 @@ const MapContainer: React.FC<MapContainerProps> = ({ children }) => {
     mapRef.current?.resize();
   }, []);
 
-  // Use building click handler from Building3DInteraction
-  const handleBuildingClick = useBuildingClickHandler();
-
-  // Map click handler - delegates to building handler
-  const onClick = useCallback((event: any) => {
-    // Call building handler with features from interactiveLayerIds
-    handleBuildingClick(event);
-  }, [handleBuildingClick]);
+  // Building click handling is now done via direct layer listeners in Building3DInteraction
+  // No need for onClick or interactiveLayerIds here
 
   // Show error state
   if (tokenError) {
@@ -106,10 +100,8 @@ const MapContainer: React.FC<MapContainerProps> = ({ children }) => {
         onMove={onMove}
         onLoad={onLoad}
         onResize={onResize}
-        onClick={onClick}
         mapStyle={mapStyle}
         mapboxAccessToken={MAPBOX_TOKEN}
-        interactiveLayerIds={['3d-buildings']}
         {...MAP_CONFIG}
         style={{
           width: '100%',
