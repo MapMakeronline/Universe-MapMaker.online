@@ -12,6 +12,7 @@ import MeasurementTools from './MeasurementTools';
 import IdentifyTool from './IdentifyTool';
 import Buildings3D from './Buildings3D';
 import BuildingAttributesModal from './BuildingAttributesModal';
+import FeatureAttributesModal from './FeatureAttributesModal';
 import MobileFAB from './MobileFAB';
 
 // Import CSS dla Mapbox GL
@@ -161,6 +162,9 @@ const MapContainer: React.FC<MapContainerProps> = ({ children }) => {
 
       {/* Building Attributes Modal */}
       <BuildingAttributesModal />
+
+      {/* Universal Feature Attributes Modal */}
+      <FeatureAttributesModal />
 
       {/* Proste toolbary bez MUI - ukryte */}
       {/* <SimpleDrawingToolbar />

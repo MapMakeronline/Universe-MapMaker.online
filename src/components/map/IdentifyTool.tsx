@@ -5,8 +5,9 @@ import { useMap } from 'react-map-gl';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { mapLogger } from '@/lib/logger';
 import IdentifyModal from '../panels/IdentifyModal';
-import { addBuilding, selectBuilding, setAttributeModalOpen } from '@/store/slices/buildingsSlice';
+import { addFeature, selectFeature, setAttributeModalOpen } from '@/store/slices/featuresSlice';
 import { setDrawMode } from '@/store/slices/drawSlice';
+import type { MapFeature } from '@/store/slices/featuresSlice';
 
 interface FeatureProperty {
   key: string;
@@ -29,18 +30,18 @@ const IdentifyTool = () => {
   const { current: mapRef } = useMap();
   const dispatch = useAppDispatch();
   const { identify } = useAppSelector((state) => state.draw);
-  const { buildings, selectedBuildingId } = useAppSelector((state) => state.buildings);
+  const { features, selectedFeatureId } = useAppSelector((state) => state.features);
   const { mapStyleKey } = useAppSelector((state) => state.map);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [identifiedFeatures, setIdentifiedFeatures] = useState<IdentifiedFeature[]>([]);
   const [clickCoordinates, setClickCoordinates] = useState<[number, number] | undefined>();
 
-  const selectedBuildingIdRef = useRef(selectedBuildingId);
+  const selectedFeatureIdRef = useRef(selectedFeatureId);
 
   useEffect(() => {
-    selectedBuildingIdRef.current = selectedBuildingId;
-  }, [selectedBuildingId]);
+    selectedFeatureIdRef.current = selectedFeatureId;
+  }, [selectedFeatureId]);
 
   useEffect(() => {
     if (!mapRef) return;
@@ -102,7 +103,7 @@ const IdentifyTool = () => {
           }
 
           // Check if building already exists in store
-          let building = buildings[featureId];
+          let building = features[featureId];
 
           if (!building) {
             // Create new building entry from Mapbox feature
@@ -110,10 +111,14 @@ const IdentifyTool = () => {
               ? (firstFeature.geometry.coordinates as [number, number])
               : [e.lngLat.lng, e.lngLat.lat];
 
-            building = {
+            const mapFeature: MapFeature = {
               id: featureId,
+              type: 'building',
               name: firstFeature.properties?.name || `Budynek ${featureId}`,
+              layer: '3d-buildings',
+              sourceLayer: 'building',
               coordinates,
+              geometry: firstFeature.geometry,
               attributes: Object.entries(firstFeature.properties || {}).map(([key, value]) => ({
                 key,
                 value: value as string | number
@@ -121,11 +126,11 @@ const IdentifyTool = () => {
               selected: false,
             };
 
-            dispatch(addBuilding(building));
+            dispatch(addFeature(mapFeature));
           }
 
-          // Select building and open building modal
-          dispatch(selectBuilding(featureId));
+          // Select building and open universal feature modal
+          dispatch(selectFeature(featureId));
           dispatch(setAttributeModalOpen(true));
 
           // Update feature state for visual feedback

@@ -5,6 +5,7 @@ import drawReducer from './slices/drawSlice';
 import authReducer from './slices/authSlice';
 import dashboardReducer from './slices/dashboardSlice';
 import buildingsReducer from './slices/buildingsSlice';
+import featuresReducer from './slices/featuresSlice';
 
 // Create a makeStore function for Next.js App Router
 export const makeStore = () => {
@@ -16,6 +17,7 @@ export const makeStore = () => {
       auth: authReducer,
       dashboard: dashboardReducer,
       buildings: buildingsReducer,
+      features: featuresReducer,
     },
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware({

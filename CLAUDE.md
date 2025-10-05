@@ -244,6 +244,50 @@ dispatch(addLayer({ id: '123', name: 'New Layer' }));
   - Attribute management: addBuildingAttribute, updateBuildingAttribute, deleteBuildingAttribute
   - Modal state management
 
+**Universal Feature Editor (NEW!):**
+- `src/store/slices/featuresSlice.ts` - **Universal Redux slice for ALL map features**
+  - Supports: buildings, POI, points, lines, polygons, layers, custom objects
+  - Feature types: `'building' | 'poi' | 'point' | 'line' | 'polygon' | 'layer' | 'custom'`
+  - Full CRUD operations: add, update, delete, select
+  - Attribute management: add, update, delete attributes for any feature
+  - Batch operations: import/export features, clear by type
+  - Timestamps: createdAt, updatedAt automatically managed
+  - Filter by type for organized display
+
+- `src/components/map/FeatureAttributesModal.tsx` - **Universal attribute editor**
+  - Works with ALL feature types (not just buildings!)
+  - Icon and label based on feature type (building, POI, point, etc.)
+  - Editable name, coordinates display
+  - Custom attributes table with inline editing
+  - Add/edit/delete attributes
+  - Source layer information display
+  - Type-specific styling and icons
+  - Mobile-responsive (fullscreen on small devices)
+
+**Usage - How to make any object editable:**
+```typescript
+// In any component (e.g., IdentifyTool when clicking a feature)
+import { addFeature, selectFeature, setAttributeModalOpen } from '@/store/slices/featuresSlice';
+
+// Create a feature from any map object
+const feature: MapFeature = {
+  id: 'unique-id',
+  type: 'poi', // or 'building', 'point', 'line', 'polygon', 'layer', 'custom'
+  name: 'My POI',
+  coordinates: [lng, lat],
+  layer: 'poi-layer',
+  geometry: featureGeometry, // optional
+  attributes: [
+    { key: 'category', value: 'restaurant' },
+    { key: 'rating', value: 4.5 }
+  ]
+};
+
+dispatch(addFeature(feature));
+dispatch(selectFeature(feature.id));
+dispatch(setAttributeModalOpen(true)); // Opens FeatureAttributesModal
+```
+
 **Drawing & Measurement:**
 - Uses `@mapbox/mapbox-gl-draw` for drawing functionality
 - `mapbox-gl-draw-rectangle-mode` for rectangle drawing
