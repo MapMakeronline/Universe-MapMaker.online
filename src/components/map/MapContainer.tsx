@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useRef, useState, useEffect } from 'react';
+import React, { useCallback, useRef, useState, useEffect, useMemo } from 'react';
 import Map, { NavigationControl, GeolocateControl, FullscreenControl, ScaleControl, MapRef } from 'react-map-gl';
 import { Box, Alert } from '@mui/material';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
@@ -45,8 +45,14 @@ const MapContainer: React.FC<MapContainerProps> = ({ children }) => {
     }
   }, []);
 
+  // Throttle onMove to reduce Redux updates (max 10 updates per second)
+  const lastUpdateTime = useRef<number>(0);
   const onMove = useCallback((evt: any) => {
-    dispatch(setViewState(evt.viewState));
+    const now = Date.now();
+    if (now - lastUpdateTime.current > 100) { // Throttle: max 10 updates/sec
+      lastUpdateTime.current = now;
+      dispatch(setViewState(evt.viewState));
+    }
   }, [dispatch]);
 
   const onLoad = useCallback(() => {
@@ -116,6 +122,10 @@ const MapContainer: React.FC<MapContainerProps> = ({ children }) => {
           positionOptions={{ enableHighAccuracy: true }}
           trackUserLocation={true}
           showUserHeading={true}
+          fitBoundsOptions={{
+            maxZoom: 16,
+            duration: 1500, // Szybsza animacja (1.5s)
+          }}
         />
 
         {/* Fullscreen Control - lewy dolny róg, na dole */}

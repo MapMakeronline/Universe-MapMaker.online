@@ -46,6 +46,12 @@ const Building3DInteraction = () => {
         layers: ['3d-buildings']
       });
 
+      mapLogger.log('🏢 Building click handler fired:', {
+        featuresFound: features.length,
+        point: e.point,
+        lngLat: e.lngLat
+      });
+
       if (features.length === 0) {
         // Clicked on empty space - deselect
         dispatch(selectBuilding(null));
@@ -116,23 +122,35 @@ const Building3DInteraction = () => {
       }
     };
 
-    // Wait for map to be fully loaded
+    // Wait for map to be fully loaded and 3d-buildings layer to be available
+    let retryCount = 0;
+    const maxRetries = 15; // Increased retry count
+    const retryDelay = 300; // Reduced delay for faster checks
+
     const setupInteraction = () => {
+      if (!map.isStyleLoaded()) {
+        if (retryCount < maxRetries) {
+          retryCount++;
+          setTimeout(setupInteraction, retryDelay);
+        }
+        return;
+      }
+
       if (map.getLayer('3d-buildings')) {
         map.on('mousemove', onMouseMove);
         map.on('click', onClick);
         mapLogger.log('✅ 3D building interaction enabled');
+      } else if (retryCount < maxRetries) {
+        retryCount++;
+        mapLogger.log(`⏳ Waiting for 3d-buildings layer... (${retryCount}/${maxRetries})`);
+        setTimeout(setupInteraction, retryDelay);
       } else {
-        mapLogger.log('⚠️ 3d-buildings layer not found, retrying...');
-        setTimeout(setupInteraction, 500);
+        mapLogger.log('ℹ️ 3d-buildings layer not available. Interaction disabled.');
       }
     };
 
-    if (map.loaded() && map.isStyleLoaded()) {
-      setupInteraction();
-    } else {
-      map.once('style.load', setupInteraction);
-    }
+    // Start setup after a small delay to ensure Buildings3D component runs first
+    setTimeout(setupInteraction, 200);
 
     return () => {
       mapLogger.log('🏢 Cleaning up 3D building interaction');

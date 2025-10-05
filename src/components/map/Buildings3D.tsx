@@ -47,7 +47,7 @@ const Buildings3D = () => {
       // Check if current style has 3D enabled using mapStyleKey
       const currentStyle = mapStyleKey ? MAP_STYLES[mapStyleKey] : undefined;
 
-      mapLogger.log('🏢 Style loaded, checking 3D mode:', {
+      mapLogger.log('🏢 Style event fired, checking 3D mode:', {
         mapStyleKey,
         enable3D: currentStyle?.enable3D,
         enableTerrain: currentStyle?.enableTerrain,
@@ -62,17 +62,21 @@ const Buildings3D = () => {
 
           // Get current zoom to adjust pitch
           const currentZoom = map.getZoom();
-          const pitch = currentZoom < 10 ? 45 : 60; // Mniejszy kąt dla małego zoom
+          const pitch = currentZoom < 10 ? 45 : 60;
 
-          enableFull3DMode(map, {
-            terrainExaggeration: 1.5,
+          const success = enableFull3DMode(map, {
+            terrainExaggeration: 1.2,
             pitch: pitch,
             bearing: 0
           });
-          mapLogger.log(`✅ Full 3D mode enabled (pitch: ${pitch}°, zoom: ${currentZoom.toFixed(1)})`);
 
-          if (currentZoom < 15) {
-            mapLogger.log(`ℹ️ Zoom in to level 15+ to see 3D buildings. Current: ${currentZoom.toFixed(1)}`);
+          if (success) {
+            mapLogger.log(`✅ Full 3D mode enabled (pitch: ${pitch}°, zoom: ${currentZoom.toFixed(1)})`);
+            if (currentZoom < 15) {
+              mapLogger.log(`ℹ️ Zoom in to level 15+ to see 3D buildings. Current: ${currentZoom.toFixed(1)}`);
+            }
+          } else {
+            mapLogger.error('❌ Failed to enable full 3D mode');
           }
         } catch (e) {
           mapLogger.error('❌ Failed to enable full 3D mode:', e);
@@ -85,7 +89,7 @@ const Buildings3D = () => {
 
           // Get current zoom to adjust pitch
           const currentZoom = map.getZoom();
-          const pitch = currentZoom < 10 ? 45 : 60; // Mniejszy kąt dla małego zoom
+          const pitch = currentZoom < 10 ? 45 : 60;
 
           // Set pitch for 3D view
           map.easeTo({
@@ -95,12 +99,15 @@ const Buildings3D = () => {
           });
 
           // Add 3D buildings
-          add3DBuildings(map);
+          const success = add3DBuildings(map);
 
-          mapLogger.log(`✅ 3D buildings enabled (pitch: ${pitch}°, zoom: ${currentZoom.toFixed(1)})`);
-
-          if (currentZoom < 15) {
-            mapLogger.log(`ℹ️ Zoom in to level 15+ to see buildings. Current: ${currentZoom.toFixed(1)}`);
+          if (success) {
+            mapLogger.log(`✅ 3D buildings enabled (pitch: ${pitch}°, zoom: ${currentZoom.toFixed(1)})`);
+            if (currentZoom < 15) {
+              mapLogger.log(`ℹ️ Zoom in to level 15+ to see buildings. Current: ${currentZoom.toFixed(1)}`);
+            }
+          } else {
+            mapLogger.error('❌ Failed to add 3D buildings');
           }
         } catch (e) {
           mapLogger.error('❌ Failed to add 3D buildings:', e);
@@ -121,21 +128,29 @@ const Buildings3D = () => {
     // Clean up before style change
     cleanup3DFeatures();
 
-    // Handle initial load and style changes
-    if (map.loaded() && map.isStyleLoaded()) {
-      mapLogger.log('🗺️ Map already loaded, applying 3D settings');
+    // Apply 3D features when style is fully loaded
+    // Use 'style.load' event which fires when style is completely loaded
+    const handleStyleLoad = () => {
+      mapLogger.log('🗺️ Style fully loaded, applying 3D features');
       onStyleLoad();
+    };
+
+    // Check if map is already loaded
+    if (map.loaded() && map.isStyleLoaded()) {
+      mapLogger.log('🗺️ Map already loaded, applying 3D settings immediately');
+      // Small delay to ensure everything is ready
+      setTimeout(() => onStyleLoad(), 100);
     } else {
       mapLogger.log('🗺️ Waiting for map style to load');
-      map.once('style.load', onStyleLoad);
+      map.once('style.load', handleStyleLoad);
     }
 
     // Listen for future style changes
-    map.on('style.load', onStyleLoad);
+    map.on('style.load', handleStyleLoad);
 
     return () => {
       mapLogger.log('🏢 Cleaning up Buildings3D component');
-      map.off('style.load', onStyleLoad);
+      map.off('style.load', handleStyleLoad);
       try {
         disableFull3DMode(map);
       } catch (e) {

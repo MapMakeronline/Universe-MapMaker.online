@@ -272,6 +272,10 @@ export default function LandingPage() {
                   variant="contained"
                   size="large"
                   fullWidth
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleNavigate('/dashboard?tab=1');
+                  }}
                   sx={{
                     bgcolor: '#10b981',
                     '&:hover': { bgcolor: '#059669' },
@@ -337,6 +341,10 @@ export default function LandingPage() {
                   variant="contained"
                   size="large"
                   fullWidth
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleNavigate('/auth');
+                  }}
                   sx={{
                     bgcolor: theme.palette.secondary.main,
                     '&:hover': { bgcolor: theme.palette.secondary.dark },

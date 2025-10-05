@@ -18,72 +18,32 @@ import { drawLogger } from '@/lib/logger';
 import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';
 
 const DrawTools: React.FC = () => {
-  drawLogger.log('Component mounted/rendering');
-
   const { current: map } = useMap();
   const dispatch = useAppDispatch();
   const { draw } = useAppSelector((state) => state.draw);
   const drawRef = useRef<MapboxDraw | null>(null);
   const [isMapReady, setIsMapReady] = useState(false);
 
-  drawLogger.debug('Initial state check - map:', !!map, 'draw:', draw);
-
-  // Debug Redux state changes
-  useEffect(() => {
-    drawLogger.debug('Redux state changed:', {
-      mode: draw.mode,
-      isActive: draw.isActive,
-      featuresCount: draw.features.length,
-      mapAvailable: !!map,
-      mapReady: isMapReady,
-      drawRefExists: !!drawRef.current,
-    });
-  }, [draw, map, isMapReady]);
-
   // Check if map is ready
   useEffect(() => {
-    if (!map) {
-      drawLogger.log('🗺️ DrawTools: No map available for readiness check');
-      return;
-    }
+    if (!map) return;
 
-    drawLogger.log('🗺️ DrawTools: Checking map readiness...');
     const mapInstance = map.getMap();
 
-    const checkMapReady = () => {
-      drawLogger.log('🗺️ DrawTools: Style data event fired, checking if loaded...');
-      if (mapInstance.isStyleLoaded()) {
-        drawLogger.log('✅ DrawTools: Map style is loaded! Setting isMapReady = true');
-        setIsMapReady(true);
-      } else {
-        drawLogger.log('⏳ DrawTools: Map style still loading...');
-      }
-    };
-
     if (mapInstance.isStyleLoaded()) {
-      drawLogger.log('✅ DrawTools: Map style already loaded! Setting isMapReady = true');
       setIsMapReady(true);
     } else {
-      drawLogger.log('⏳ DrawTools: Map style not loaded yet, adding load listener');
-      // Używamy 'load' zamiast 'styledata' - bardziej niezawodne
-      mapInstance.on('load', () => {
-        drawLogger.log('✅ DrawTools: Map load event fired! Setting isMapReady = true');
-        setIsMapReady(true);
-      });
+      mapInstance.once('load', () => setIsMapReady(true));
 
-      // Fallback - jeśli event nie zadziała, spróbuj po 3 sekundach
-      setTimeout(() => {
+      // Fallback timeout
+      const timeout = setTimeout(() => {
         if (!mapInstance.isStyleLoaded()) {
-          drawLogger.log('⚠️ DrawTools: Timeout fallback - forcing map ready state');
           setIsMapReady(true);
         }
       }, 3000);
-    }
 
-    return () => {
-      mapInstance.off('styledata', checkMapReady);
-      mapInstance.off('load', checkMapReady);
-    };
+      return () => clearTimeout(timeout);
+    }
   }, [map]);
 
   // Initialize Mapbox GL Draw
@@ -148,26 +108,13 @@ const DrawTools: React.FC = () => {
       dispatch(setSelectedFeature(selectedId));
     };
 
-    // Basic map click handler to test if map events work at all
-    const handleMapClick = (e: any) => {
-      drawLogger.log('🗺️👆 DrawTools: Map clicked!', {
-        lng: e.lngLat.lng,
-        lat: e.lngLat.lat,
-        currentDrawMode: draw.mode,
-        drawRefExists: !!drawRef.current
-      });
-    };
-
     // Add event listeners
-    drawLogger.log('🎨 DrawTools: Adding event listeners...');
+    drawLogger.log('🎨 DrawTools: Adding event listeners (v2 - without global click handler)...');
     map.on('draw.create', handleDrawCreate);
     map.on('draw.update', handleDrawUpdate);
     map.on('draw.delete', handleDrawDelete);
     map.on('draw.selectionchange', handleDrawSelectionChange);
-
-    // Add basic map click listener to test if map events work at all
-    map.on('click', handleMapClick);
-    drawLogger.log('🎨 DrawTools: Event listeners added successfully');
+    drawLogger.log('✅ DrawTools: Event listeners added successfully (buildings interaction enabled)');
 
     return () => {
       // Cleanup
@@ -176,7 +123,6 @@ const DrawTools: React.FC = () => {
       map.off('draw.update', handleDrawUpdate);
       map.off('draw.delete', handleDrawDelete);
       map.off('draw.selectionchange', handleDrawSelectionChange);
-      map.off('click', handleMapClick);
 
       if (drawRef.current) {
         drawLogger.log('🎨 DrawTools: Removing draw control from map');

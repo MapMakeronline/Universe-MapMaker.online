@@ -62,14 +62,18 @@ const MobileFAB: React.FC<MobileFABProps> = ({ geolocateControlRef }) => {
             const { latitude, longitude } = position.coords;
             map?.flyTo({
               center: [longitude, latitude],
-              zoom: 15,
-              essential: true
+              zoom: 16,
+              duration: 1500, // Szybsza animacja (1.5s zamiast domyślnych ~2.5s)
+              essential: true,
+              curve: 1.2, // Mniejsza krzywizna = bardziej bezpośrednia trasa
+              speed: 1.5, // Szybsza prędkość animacji
             });
             setMode('draw-select');
             setSpeedDialOpen(true);
           },
           (error) => {
             console.error('Error getting location:', error);
+            alert('Nie można pobrać lokalizacji. Sprawdź uprawnienia przeglądarki.');
           }
         );
       }

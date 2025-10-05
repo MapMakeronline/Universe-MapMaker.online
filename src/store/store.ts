@@ -6,24 +6,30 @@ import authReducer from './slices/authSlice';
 import dashboardReducer from './slices/dashboardSlice';
 import buildingsReducer from './slices/buildingsSlice';
 
-export const store = configureStore({
-  reducer: {
-    map: mapReducer,
-    layers: layersReducer,
-    draw: drawReducer,
-    auth: authReducer,
-    dashboard: dashboardReducer,
-    buildings: buildingsReducer,
-  },
-  middleware: (getDefaultMiddleware) =>
-    getDefaultMiddleware({
-      serializableCheck: {
-        // Ignoruj nieserializowalne dane w Redux (np. funkcje z Mapbox)
-        ignoredActions: ['map/setViewState'],
-        ignoredPaths: ['map.mapInstance'],
-      },
-    }),
-});
+// Create a makeStore function for Next.js App Router
+export const makeStore = () => {
+  return configureStore({
+    reducer: {
+      map: mapReducer,
+      layers: layersReducer,
+      draw: drawReducer,
+      auth: authReducer,
+      dashboard: dashboardReducer,
+      buildings: buildingsReducer,
+    },
+    middleware: (getDefaultMiddleware) =>
+      getDefaultMiddleware({
+        serializableCheck: {
+          // Ignoruj nieserializowalne dane w Redux (np. funkcje z Mapbox)
+          ignoredActions: ['map/setViewState'],
+          ignoredPaths: ['map.mapInstance'],
+        },
+      }),
+  });
+};
 
-export type RootState = ReturnType<typeof store.getState>;
-export type AppDispatch = typeof store.dispatch;
+// Infer the type of makeStore
+export type AppStore = ReturnType<typeof makeStore>;
+// Infer the `RootState` and `AppDispatch` types from the store itself
+export type RootState = ReturnType<AppStore['getState']>;
+export type AppDispatch = AppStore['dispatch'];

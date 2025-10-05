@@ -55,7 +55,7 @@ export const MAP_STYLES: MapStyles = {
 };
 
 export const MAP_CONFIG = {
-  antialias: true,
+  antialias: false, // Wyłącz antialiasing dla lepszej wydajności
   attributionControl: false,
   doubleClickZoom: false,
   dragRotate: true,
@@ -64,4 +64,9 @@ export const MAP_CONFIG = {
   scrollZoom: true,
   touchZoom: true,
   touchRotate: true,
+  preserveDrawingBuffer: false, // Lepsze FPS
+  refreshExpiredTiles: false, // Nie odświeżaj automatycznie kafelków
+  renderWorldCopies: false, // Nie renderuj duplikatów świata
+  maxTileCacheSize: 50, // Mniejszy cache dla szybszego GC
+  fadeDuration: 150, // Skróć czas fade animacji (domyślnie 300ms)
 };

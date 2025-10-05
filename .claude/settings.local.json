@@ -31,7 +31,11 @@
       "Bash(claude mcp:*)",
       "Bash(cp:*)",
       "Bash(rm:*)",
-      "Bash(git rev-parse:*)"
+      "Bash(git rev-parse:*)",
+      "Bash(taskkill:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(set PORT=3001)"
     ],
     "deny": [],
     "ask": []

@@ -5,6 +5,7 @@ import Providers from "../src/components/providers/Providers"
 import GoogleAnalytics from "@/components/GoogleAnalytics"
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'),
   title: "MapMaker.online - Profesjonalne mapy GIS",
   description: "Twórz, edytuj i udostępniaj dane przestrzenne online. Narzędzia GIS, edycja map, eksport danych.",
   applicationName: "MapMaker.online",
