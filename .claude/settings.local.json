@@ -29,7 +29,9 @@
       "Bash(timeout:*)",
       "Bash(1)",
       "Bash(claude mcp:*)",
-      "Bash(cp:*)"
+      "Bash(cp:*)",
+      "Bash(rm:*)",
+      "Bash(git rev-parse:*)"
     ],
     "deny": [],
     "ask": []

@@ -1,5 +1,15 @@
 # Google Cloud Build configuration for Cloud Run deployment
 steps:
+  # Step 0: Get commit message for labeling
+  - name: 'gcr.io/cloud-builders/git'
+    id: 'get-commit-message'
+    entrypoint: 'sh'
+    args:
+      - '-c'
+      - |
+        git log -1 --pretty=%s > /workspace/commit_message.txt
+        echo "Commit message: $(cat /workspace/commit_message.txt)"
+
   # Step 1: Build the Docker image with build args
   - name: 'gcr.io/cloud-builders/docker'
     id: 'build-image'

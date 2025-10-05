@@ -256,10 +256,8 @@ export default function DashboardLayout({ children, currentPage, onPageChange }:
                 }
               }}
             >
-              {currentUser.isLoggedIn ? (
-                <>
-                  {/* Logged In User Menu */}
-                  <Box sx={{ px: 2, py: 1.5, borderBottom: 1, borderColor: 'divider' }}>
+              {currentUser.isLoggedIn ? [
+                  <Box key="header" sx={{ px: 2, py: 1.5, borderBottom: 1, borderColor: 'divider' }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                       <AccountCircle sx={{ fontSize: 40, color: '#10b981' }} />
                       <Box>
@@ -271,40 +269,37 @@ export default function DashboardLayout({ children, currentPage, onPageChange }:
                         </Typography>
                       </Box>
                     </Box>
-                  </Box>
+                  </Box>,
 
-                  <Divider />
+                  <Divider key="divider-1" />,
 
-                  <MenuItem onClick={handleGoToDashboard}>
+                  <MenuItem key="dashboard" onClick={handleGoToDashboard}>
                     <ListItemIcon>
                       <DashboardIcon fontSize="small" />
                     </ListItemIcon>
                     <ListItemText>Dashboard</ListItemText>
-                  </MenuItem>
-                  <MenuItem onClick={() => { handleCloseMenu(); onPageChange('profile'); }}>
+                  </MenuItem>,
+                  <MenuItem key="profile" onClick={() => { handleCloseMenu(); onPageChange('profile'); }}>
                     <ListItemIcon>
                       <Person fontSize="small" />
                     </ListItemIcon>
                     <ListItemText>Profil</ListItemText>
-                  </MenuItem>
-                  <MenuItem onClick={() => { handleCloseMenu(); onPageChange('settings'); }}>
+                  </MenuItem>,
+                  <MenuItem key="settings" onClick={() => { handleCloseMenu(); onPageChange('settings'); }}>
                     <ListItemIcon>
                       <Settings fontSize="small" />
                     </ListItemIcon>
                     <ListItemText>Ustawienia</ListItemText>
-                  </MenuItem>
-                  <Divider />
-                  <MenuItem onClick={handleLogout}>
+                  </MenuItem>,
+                  <Divider key="divider-2" />,
+                  <MenuItem key="logout" onClick={handleLogout}>
                     <ListItemIcon>
                       <Logout fontSize="small" />
                     </ListItemIcon>
                     <ListItemText>Wyloguj</ListItemText>
                   </MenuItem>
-                </>
-              ) : (
-                <>
-                  {/* Guest User Menu */}
-                  <Box sx={{ px: 2, py: 1.5, borderBottom: 1, borderColor: 'divider' }}>
+              ] : [
+                  <Box key="header" sx={{ px: 2, py: 1.5, borderBottom: 1, borderColor: 'divider' }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                       <AccountCircle sx={{ fontSize: 40, color: '#f97316' }} />
                       <Box>
@@ -316,37 +311,36 @@ export default function DashboardLayout({ children, currentPage, onPageChange }:
                         </Typography>
                       </Box>
                     </Box>
-                  </Box>
+                  </Box>,
 
-                  <Divider />
+                  <Divider key="divider-1" />,
 
-                  <MenuItem onClick={handleLogin}>
+                  <MenuItem key="login" onClick={handleLogin}>
                     <ListItemIcon>
                       <Logout fontSize="small" sx={{ transform: 'scaleX(-1)' }} />
                     </ListItemIcon>
                     <ListItemText>Zaloguj się</ListItemText>
-                  </MenuItem>
-                  <MenuItem onClick={handleRegister}>
+                  </MenuItem>,
+                  <MenuItem key="register" onClick={handleRegister}>
                     <ListItemIcon>
                       <Person fontSize="small" />
                     </ListItemIcon>
                     <ListItemText>Zarejestruj się</ListItemText>
-                  </MenuItem>
-                  <Divider />
-                  <MenuItem onClick={() => { handleCloseMenu(); onPageChange('public'); }}>
+                  </MenuItem>,
+                  <Divider key="divider-2" />,
+                  <MenuItem key="public" onClick={() => { handleCloseMenu(); onPageChange('public'); }}>
                     <ListItemIcon>
                       <Public fontSize="small" />
                     </ListItemIcon>
                     <ListItemText>Projekty publiczne</ListItemText>
-                  </MenuItem>
-                  <MenuItem onClick={() => { handleCloseMenu(); onPageChange('contact'); }}>
+                  </MenuItem>,
+                  <MenuItem key="contact" onClick={() => { handleCloseMenu(); onPageChange('contact'); }}>
                     <ListItemIcon>
                       <ContactMail fontSize="small" />
                     </ListItemIcon>
                     <ListItemText>Kontakt</ListItemText>
                   </MenuItem>
-                </>
-              )}
+              ]}
             </Menu>
           </Box>
         </Toolbar>

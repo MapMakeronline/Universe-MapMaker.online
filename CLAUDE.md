@@ -193,12 +193,37 @@ dispatch(addLayer({ id: '123', name: 'New Layer' }));
   - Uses native Mapbox GL API via `mapRef.getMap()`
   - Responsive pitch angles: 45° for zoom < 10, 60° for zoom ≥ 10
 
+- `src/components/map/Building3DInteraction.tsx` - 3D building click handler
+  - Captures clicks on 3D buildings using `queryRenderedFeatures()`
+  - Creates building entries with attributes from Mapbox feature properties
+  - Manages feature state for visual selection (highlighted in primary color)
+  - Opens attribute modal on building click
+
+- `src/components/map/BuildingAttributesModal.tsx` - Building attribute editor
+  - Displays building name, coordinates, and custom attributes in a table
+  - Supports adding, editing, and deleting attributes
+  - Inline editing with save/cancel actions
+  - Follows standard modal design pattern
+
+- `src/components/panels/components/BuildingsPanel.tsx` - Buildings list in layer tree
+  - Shows all clicked 3D buildings in a collapsible panel
+  - Displays building count badge
+  - Quick access to edit/delete buildings
+  - Integrated into LeftPanel above LayerTree
+
 - `src/lib/mapbox/map3d.ts` - 3D utilities module
   - `add3DTerrain()` - Adds terrain elevation (Mapbox Terrain DEM)
-  - `add3DBuildings()` - Adds extruded building layer (minzoom: 15)
+  - `add3DBuildings()` - Adds extruded building layer (minzoom: 15) with feature state support
   - `addSkyLayer()` - Adds atmospheric sky layer
   - `enableFull3DMode()` - Enables all 3D features + camera angle
   - `disableFull3DMode()` - Cleans up all 3D features
+  - Buildings layer supports feature-state for selection highlighting
+
+- `src/store/slices/buildingsSlice.ts` - Redux state for 3D buildings
+  - Stores building data: id, name, coordinates, attributes, selected state
+  - Actions: addBuilding, updateBuilding, deleteBuilding, selectBuilding
+  - Attribute management: addBuildingAttribute, updateBuildingAttribute, deleteBuildingAttribute
+  - Modal state management
 
 **Drawing & Measurement:**
 - Uses `@mapbox/mapbox-gl-draw` for drawing functionality

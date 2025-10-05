@@ -67,7 +67,7 @@ export function add3DBuildings(map: mapboxgl.Map) {
     map.removeLayer('3d-buildings');
   }
 
-  // Add 3D buildings layer
+  // Add 3D buildings layer with feature state support for selection
   map.addLayer(
     {
       id: '3d-buildings',
@@ -77,7 +77,13 @@ export function add3DBuildings(map: mapboxgl.Map) {
       type: 'fill-extrusion',
       minzoom: 15,
       paint: {
-        'fill-extrusion-color': '#aaa',
+        // Highlight selected building
+        'fill-extrusion-color': [
+          'case',
+          ['boolean', ['feature-state', 'selected'], false],
+          '#f75e4c', // Primary color for selected
+          '#aaa' // Default gray
+        ],
 
         // Use an 'interpolate' expression to add a smooth transition effect to
         // the buildings as the user zooms in
@@ -99,7 +105,12 @@ export function add3DBuildings(map: mapboxgl.Map) {
           15.05,
           ['get', 'min_height']
         ],
-        'fill-extrusion-opacity': 0.6
+        'fill-extrusion-opacity': [
+          'case',
+          ['boolean', ['feature-state', 'selected'], false],
+          0.9, // More opaque when selected
+          0.6  // Default opacity
+        ]
       }
     },
     firstSymbolId // Insert layer before labels

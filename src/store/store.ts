@@ -4,6 +4,7 @@ import layersReducer from './slices/layersSlice';
 import drawReducer from './slices/drawSlice';
 import authReducer from './slices/authSlice';
 import dashboardReducer from './slices/dashboardSlice';
+import buildingsReducer from './slices/buildingsSlice';
 
 export const store = configureStore({
   reducer: {
@@ -12,6 +13,7 @@ export const store = configureStore({
     draw: drawReducer,
     auth: authReducer,
     dashboard: dashboardReducer,
+    buildings: buildingsReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

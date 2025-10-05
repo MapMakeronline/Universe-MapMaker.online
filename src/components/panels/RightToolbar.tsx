@@ -32,8 +32,6 @@ import { currentUser } from "@/lib/auth/mockUser"
 import SearchModal from "@/components/map/SearchModal"
 import MeasurementModal from "@/components/panels/MeasurementModal"
 import ExportPDFModal, { type ExportConfig } from "@/components/panels/ExportPDFModal"
-import { exportMapToPDF } from "@/lib/mapbox/pdfExport"
-import { useMap } from "react-map-gl"
 
 const TOOLBAR_WIDTH = 56
 
@@ -41,7 +39,6 @@ const RightToolbar: React.FC = () => {
   const router = useRouter()
   const dispatch = useAppDispatch()
   const { measurement, identify } = useAppSelector((state) => state.draw)
-  const { current: map } = useMap()
 
   const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null)
   const [searchModalOpen, setSearchModalOpen] = useState(false)
@@ -75,11 +72,9 @@ const RightToolbar: React.FC = () => {
   }
 
   const handleExportPDF = async (config: ExportConfig) => {
-    if (!map) {
-      console.error('Map instance not available')
-      return
-    }
-    await exportMapToPDF(map, config)
+    // TODO: Implement PDF export - needs access to map instance
+    console.log('PDF Export requested with config:', config)
+    alert('Funkcja eksportu PDF będzie dostępna wkrótce!')
   }
 
   const handleAddMarker = () => {
@@ -387,10 +382,8 @@ const RightToolbar: React.FC = () => {
           }
         }}
       >
-        {currentUser.isLoggedIn ? (
-          <>
-            {/* Logged In User Menu */}
-            <Box sx={{ px: 2, py: 1.5, borderBottom: 1, borderColor: 'divider' }}>
+        {currentUser.isLoggedIn ? [
+            <Box key="header" sx={{ px: 2, py: 1.5, borderBottom: 1, borderColor: 'divider' }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                 <AccountCircle sx={{ fontSize: 40, color: '#10b981' }} />
                 <Box>
@@ -402,37 +395,34 @@ const RightToolbar: React.FC = () => {
                   </Typography>
                 </Box>
               </Box>
-            </Box>
+            </Box>,
 
-            <Divider />
+            <Divider key="divider-1" />,
 
-            <MenuItem onClick={handleGoToDashboard}>
+            <MenuItem key="dashboard" onClick={handleGoToDashboard}>
               <ListItemIcon>
                 <Home fontSize="small" />
               </ListItemIcon>
               <ListItemText>Dashboard</ListItemText>
-            </MenuItem>
+            </MenuItem>,
 
-            <MenuItem onClick={handleUserMenuClose}>
+            <MenuItem key="settings" onClick={handleUserMenuClose}>
               <ListItemIcon>
                 <Settings fontSize="small" />
               </ListItemIcon>
               <ListItemText>Ustawienia konta</ListItemText>
-            </MenuItem>
+            </MenuItem>,
 
-            <Divider />
+            <Divider key="divider-2" />,
 
-            <MenuItem onClick={handleLogout}>
+            <MenuItem key="logout" onClick={handleLogout}>
               <ListItemIcon>
                 <Logout fontSize="small" />
               </ListItemIcon>
               <ListItemText>Wyloguj się</ListItemText>
             </MenuItem>
-          </>
-        ) : (
-          <>
-            {/* Guest User Menu */}
-            <Box sx={{ px: 2, py: 1.5, borderBottom: 1, borderColor: 'divider' }}>
+        ] : [
+            <Box key="header" sx={{ px: 2, py: 1.5, borderBottom: 1, borderColor: 'divider' }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                 <AccountCircle sx={{ fontSize: 40, color: '#f97316' }} />
                 <Box>
@@ -444,31 +434,30 @@ const RightToolbar: React.FC = () => {
                   </Typography>
                 </Box>
               </Box>
-            </Box>
+            </Box>,
 
-            <Divider />
+            <Divider key="divider-1" />,
 
-            <MenuItem onClick={handleLogin}>
+            <MenuItem key="login" onClick={handleLogin}>
               <ListItemIcon>
                 <Logout fontSize="small" sx={{ transform: 'scaleX(-1)' }} />
               </ListItemIcon>
               <ListItemText>Zaloguj się</ListItemText>
-            </MenuItem>
-            <MenuItem onClick={handleRegister}>
+            </MenuItem>,
+            <MenuItem key="register" onClick={handleRegister}>
               <ListItemIcon>
                 <Person fontSize="small" />
               </ListItemIcon>
               <ListItemText>Zarejestruj się</ListItemText>
-            </MenuItem>
-            <Divider />
-            <MenuItem onClick={handleGoToDashboard}>
+            </MenuItem>,
+            <Divider key="divider-2" />,
+            <MenuItem key="dashboard" onClick={handleGoToDashboard}>
               <ListItemIcon>
                 <Home fontSize="small" />
               </ListItemIcon>
               <ListItemText>Dashboard</ListItemText>
             </MenuItem>
-          </>
-        )}
+        ]}
       </Menu>
 
       {/* Search Modal */}
