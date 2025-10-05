@@ -24,6 +24,7 @@ interface IdentifiedFeature {
 const IdentifyTool = () => {
   const { current: map } = useMap();
   const { identify } = useAppSelector((state) => state.draw);
+  const { isBuildingSelectModeActive } = useAppSelector((state) => state.buildings);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [identifiedFeatures, setIdentifiedFeatures] = useState<IdentifiedFeature[]>([]);
@@ -33,6 +34,14 @@ const IdentifyTool = () => {
     if (!map) return;
 
     const handleMapClick = (e: any) => {
+      console.log('🔍 IDENTIFY HANDLER: Click received', { isActive: identify.isActive, isBuildingMode: isBuildingSelectModeActive });
+
+      // Priority check: Building select mode has highest priority
+      if (isBuildingSelectModeActive) {
+        console.log('🔍 IDENTIFY: Skipping - building mode active');
+        return; // Don't stopPropagation - let Building3DInteraction handle it
+      }
+
       // Only handle clicks when identify mode is active
       if (!identify.isActive) return;
 
@@ -88,7 +97,7 @@ const IdentifyTool = () => {
       map.off('click', handleMapClick);
       map.getCanvas().style.cursor = '';
     };
-  }, [map, identify.isActive]);
+  }, [map, identify.isActive, isBuildingSelectModeActive]);
 
   const handleCloseModal = () => {
     setModalOpen(false);

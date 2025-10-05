@@ -2,6 +2,7 @@
 
 import type React from "react"
 import { useState } from "react"
+import { useMap } from 'react-map-gl'
 import { Paper, IconButton, Tooltip, Box, Menu, MenuItem, ListItemIcon, ListItemText, Divider, Typography, Avatar } from "@mui/material"
 import {
   LocationSearching,
@@ -24,10 +25,12 @@ import {
   Person,
   Public,
   ContactMail,
+  Apartment,
 } from "@mui/icons-material"
 import { useRouter } from "next/navigation"
 import { useAppDispatch, useAppSelector } from "@/store/hooks"
 import { setMeasurementMode, clearAllMeasurements, setIdentifyMode } from "@/store/slices/drawSlice"
+import { setBuildingSelectMode } from "@/store/slices/buildingsSlice"
 import { currentUser } from "@/lib/auth/mockUser"
 import SearchModal from "@/components/map/SearchModal"
 import MeasurementModal from "@/components/panels/MeasurementModal"
@@ -38,7 +41,9 @@ const TOOLBAR_WIDTH = 56
 const RightToolbar: React.FC = () => {
   const router = useRouter()
   const dispatch = useAppDispatch()
+  const { current: map } = useMap()
   const { measurement, identify } = useAppSelector((state) => state.draw)
+  const { isBuildingSelectModeActive } = useAppSelector((state) => state.buildings)
 
   const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null)
   const [searchModalOpen, setSearchModalOpen] = useState(false)
@@ -116,6 +121,32 @@ const RightToolbar: React.FC = () => {
     dispatch(setIdentifyMode(!identify.isActive))
   }
 
+  const handleBuildingSelect = () => {
+    dispatch(setBuildingSelectMode(!isBuildingSelectModeActive))
+  }
+
+  const handleGeolocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords
+          map?.flyTo({
+            center: [longitude, latitude],
+            zoom: 16,
+            duration: 1500,
+            essential: true,
+          })
+        },
+        (error) => {
+          console.error('Geolocation error:', error)
+          alert('Nie można pobrać lokalizacji. Sprawdź uprawnienia przeglądarki.')
+        }
+      )
+    } else {
+      alert('Geolokalizacja nie jest wspierana przez Twoją przeglądarkę.')
+    }
+  }
+
   interface Tool {
     id: string;
     icon?: any;
@@ -126,7 +157,7 @@ const RightToolbar: React.FC = () => {
   }
 
   // Tools requiring authentication
-  const authRequiredTools = ["parcel-search", "edit", "geometry-tools", "document", "georeference", "crop-mask"];
+  const authRequiredTools = ["parcel-search", "edit", "geometry-tools", "document", "crop-mask"];
 
   const allTools: Tool[] = [
     { id: "divider-1" },
@@ -173,6 +204,13 @@ const RightToolbar: React.FC = () => {
       active: identify.isActive,
     },
     {
+      id: "building-select",
+      icon: Apartment,
+      tooltip: "Wybór budynku 3D",
+      onClick: handleBuildingSelect,
+      active: isBuildingSelectModeActive,
+    },
+    {
       id: "export-pdf",
       icon: PictureAsPdf,
       tooltip: "Eksportuj mapę do PDF",
@@ -187,10 +225,10 @@ const RightToolbar: React.FC = () => {
       active: false,
     },
     {
-      id: "georeference",
+      id: "geolocation",
       icon: MyLocation,
-      tooltip: "Georeferencja",
-      onClick: () => console.log("My location"),
+      tooltip: "Moja lokalizacja",
+      onClick: handleGeolocation,
       active: false,
     },
     {

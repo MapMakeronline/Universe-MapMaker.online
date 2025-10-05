@@ -19,6 +19,7 @@ import {
   Box,
   Typography,
   Tooltip,
+  useMediaQuery,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import AddIcon from '@mui/icons-material/Add';
@@ -39,6 +40,7 @@ import type { BuildingAttribute } from '@/store/slices/buildingsSlice';
 const BuildingAttributesModal = () => {
   const theme = useTheme();
   const dispatch = useAppDispatch();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { isAttributeModalOpen, selectedBuildingId, buildings } = useAppSelector(
     (state) => state.buildings
   );
@@ -122,12 +124,14 @@ const BuildingAttributesModal = () => {
       onClose={handleClose}
       maxWidth="md"
       fullWidth
+      fullScreen={isMobile}
       PaperProps={{
         sx: {
-          borderRadius: '8px',
+          borderRadius: isMobile ? 0 : '8px',
           boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
-          maxWidth: '800px',
-          width: '90%',
+          maxWidth: isMobile ? '100%' : '800px',
+          width: isMobile ? '100%' : '90%',
+          m: isMobile ? 0 : 2,
         }
       }}
     >
@@ -163,8 +167,8 @@ const BuildingAttributesModal = () => {
       <DialogContent
         sx={{
           bgcolor: '#f7f9fc',
-          px: 3,
-          py: 3,
+          px: isMobile ? 2 : 3,
+          py: isMobile ? 2 : 3,
         }}
       >
         {/* Building Name */}
@@ -253,10 +257,11 @@ const BuildingAttributesModal = () => {
           component={Paper}
           sx={{
             mb: 2,
-            maxHeight: '400px',
+            maxHeight: isMobile ? '50vh' : '400px',
             borderRadius: '4px',
+            overflowX: 'auto',
             '& .MuiTable-root': {
-              minWidth: 650
+              minWidth: isMobile ? '100%' : 650
             }
           }}
         >
@@ -371,8 +376,8 @@ const BuildingAttributesModal = () => {
       <DialogActions
         sx={{
           bgcolor: '#f7f9fc',
-          px: 3,
-          pb: 3,
+          px: isMobile ? 2 : 3,
+          pb: isMobile ? 2 : 3,
           pt: 0,
           gap: 2,
           justifyContent: 'flex-end',
@@ -381,6 +386,7 @@ const BuildingAttributesModal = () => {
         <Button
           onClick={handleClose}
           variant="contained"
+          fullWidth={isMobile}
           sx={{
             bgcolor: theme.palette.primary.main,
             '&:hover': { bgcolor: theme.palette.primary.dark },

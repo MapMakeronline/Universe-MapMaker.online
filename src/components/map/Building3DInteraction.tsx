@@ -37,7 +37,7 @@ const Building3DInteraction = () => {
       return;
     }
 
-    mapLogger.log('🏢 Initializing 3D building interaction', {
+    mapLogger.log('🏢 Initializing 3D building interaction (mobile-optimized)', {
       isBuildingSelectModeActive,
       is3DMode
     });
@@ -66,30 +66,34 @@ const Building3DInteraction = () => {
 
     // Handle click on 3D buildings
     const onClick = (e: MapLayerMouseEvent) => {
+      console.log('🏢 BUILDING HANDLER: Click received', {
+        isBuildingMode: isBuildingSelectModeActiveRef.current,
+        identifyActive: identify.isActive,
+        measurementActive: measurement.isActive
+      });
+
       // Only handle clicks if building select mode is active AND other tools are not active
       if (!isBuildingSelectModeActiveRef.current) {
-        mapLogger.log('🏢 Building click ignored - mode not active', {
-          refValue: isBuildingSelectModeActiveRef.current
-        });
+        mapLogger.log('🏢 Building click ignored - mode not active');
         return;
       }
 
       // Don't handle if identify or measurement tools are active
       if (identify.isActive || measurement.isActive) {
-        mapLogger.log('🏢 Building click ignored - other tool active', {
-          identify: identify.isActive,
-          measurement: measurement.isActive
-        });
+        mapLogger.log('🏢 Building click ignored - other tool active');
         return;
       }
 
-      // Query with larger radius to work around accuracy circle and improve mobile experience
-      // Use a 15px radius box around the click point
+      // Query with larger radius for better mobile touch accuracy
+      // Mobile: 20px radius, Desktop: 15px radius
+      const isTouchDevice = 'ontouchstart' in window;
+      const radius = isTouchDevice ? 20 : 15;
+
       const bbox: [number, number, number, number] = [
-        e.point.x - 15,
-        e.point.y - 15,
-        e.point.x + 15,
-        e.point.y + 15
+        e.point.x - radius,
+        e.point.y - radius,
+        e.point.x + radius,
+        e.point.y + radius
       ];
 
       const features = map.queryRenderedFeatures(bbox, {
@@ -106,7 +110,9 @@ const Building3DInteraction = () => {
         modeActive: isBuildingSelectModeActiveRef.current,
         zoom: currentZoom,
         has3DLayer: !!has3DLayer,
-        minZoomForBuildings: 15
+        minZoomForBuildings: 15,
+        isTouchDevice: 'ontouchstart' in window,
+        searchRadius: radius
       });
 
       if (features.length === 0) {
@@ -155,8 +161,8 @@ const Building3DInteraction = () => {
       dispatch(selectBuilding(featureId));
       dispatch(setAttributeModalOpen(true));
 
-      // Disable building select mode after selection (auto-deactivate)
-      dispatch(setBuildingSelectMode(false));
+      // Keep building select mode active (user can select multiple buildings)
+      // User must manually disable via RightToolbar button
 
       // Update feature state for visual feedback
       if (selectedBuildingId && selectedBuildingId !== featureId) {

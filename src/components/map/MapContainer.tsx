@@ -8,14 +8,11 @@ import { setViewState, setMapLoaded, setFullscreen } from '@/store/slices/mapSli
 import { MAPBOX_TOKEN, MAP_CONFIG } from '@/lib/mapbox/config';
 import { mapLogger } from '@/lib/logger';
 import DrawTools from './DrawTools';
-import Geocoder from './Geocoder';
 import MeasurementTools from './MeasurementTools';
 import IdentifyTool from './IdentifyTool';
 import Buildings3D from './Buildings3D';
 import Building3DInteraction from './Building3DInteraction';
 import BuildingAttributesModal from './BuildingAttributesModal';
-import SimpleDrawingToolbar from '../drawing/SimpleDrawingToolbar';
-import SimpleMeasurementToolbar from '../measurement/SimpleMeasurementToolbar';
 import MobileFAB from './MobileFAB';
 
 // Import CSS dla Mapbox GL
@@ -120,8 +117,9 @@ const MapContainer: React.FC<MapContainerProps> = ({ children }) => {
           ref={geolocateControlRef}
           position="bottom-left"
           positionOptions={{ enableHighAccuracy: true }}
-          trackUserLocation={true}
-          showUserHeading={true}
+          trackUserLocation={false}
+          showUserLocation={false}
+          showUserHeading={false}
           fitBoundsOptions={{
             maxZoom: 16,
             duration: 1500, // Szybsza animacja (1.5s)
@@ -170,7 +168,7 @@ const MapContainer: React.FC<MapContainerProps> = ({ children }) => {
       <SimpleMeasurementToolbar /> */}
 
       {/* Mobile FAB - Floating Action Button (działa na wszystkich urządzeniach) */}
-      <MobileFAB geolocateControlRef={geolocateControlRef} />
+      <MobileFAB />
     </Box>
   );
 };

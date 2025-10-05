@@ -64,8 +64,13 @@ body {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
 }
 
-/* Hide GeolocateControl accuracy circle - it blocks 3D building clicks */
-.mapboxgl-user-location-accuracy-circle {
+/* Disable ALL GeolocateControl overlays - they block 3D building clicks */
+.mapboxgl-user-location-accuracy-circle,
+.mapboxgl-user-location-dot,
+.mapboxgl-user-location-heading,
+.mapboxgl-user-location-show-heading,
+.mapboxgl-user-location {
   display: none !important;
   pointer-events: none !important;
+  visibility: hidden !important;
 }

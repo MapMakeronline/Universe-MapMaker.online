@@ -18,6 +18,7 @@ const MeasurementTools: React.FC = () => {
   const { current: map } = useMap();
   const dispatch = useAppDispatch();
   const { measurement } = useAppSelector((state) => state.draw);
+  const { isBuildingSelectModeActive } = useAppSelector((state) => state.buildings);
   const [isMapReady, setIsMapReady] = useState(false);
 
   // Check if map is ready
@@ -48,6 +49,13 @@ const MeasurementTools: React.FC = () => {
 
     const handleMapClick = (e: any) => {
       const { isDistanceMode, isAreaMode, activePoints } = measurement;
+      console.log('📏 MEASUREMENT HANDLER: Click received', { isDistanceMode, isAreaMode, isBuildingMode: isBuildingSelectModeActive });
+
+      // Priority check: Building select mode has highest priority
+      if (isBuildingSelectModeActive) {
+        console.log('📏 MEASUREMENT: Skipping - building mode active');
+        return; // Don't stopPropagation - let Building3DInteraction handle it
+      }
 
       if (!isDistanceMode && !isAreaMode) return;
 
@@ -100,7 +108,7 @@ const MeasurementTools: React.FC = () => {
       map.off('click', handleMapClick);
       map.off('dblclick', handleDoubleClick);
     };
-  }, [map, isMapReady, dispatch, measurement]);
+  }, [map, isMapReady, dispatch, measurement, isBuildingSelectModeActive]);
 
   // Add measurement lines/polygons to map
   useEffect(() => {
