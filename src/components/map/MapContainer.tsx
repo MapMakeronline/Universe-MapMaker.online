@@ -60,11 +60,24 @@ const MapContainer: React.FC<MapContainerProps> = ({ children }) => {
     mapRef.current?.resize();
   }, []);
 
-  // Map click handler for features
+  // Map click handler for features - dispatches custom event for child components
   const onClick = useCallback((event: any) => {
-    // This will be handled by child components (Building3DInteraction, IdentifyTool, etc.)
-    // Event will have 'features' property if interactiveLayerIds is set
-  }, []);
+    // Dispatch custom event with features from interactiveLayerIds
+    // This allows child components to receive React Map GL events
+    if (mapRef.current) {
+      const map = mapRef.current.getMap();
+      // Create custom event with features
+      const customEvent = new CustomEvent('reactmapgl:click', {
+        detail: {
+          ...event,
+          features: event.features || [],
+          point: event.point,
+          lngLat: event.lngLat
+        }
+      });
+      map.fire('click', customEvent.detail as any);
+    }
+  }, [mapRef]);
 
   // Show error state
   if (tokenError) {
