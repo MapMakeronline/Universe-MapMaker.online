@@ -27,7 +27,7 @@ const MobileFAB: React.FC<MobileFABProps> = () => {
   const theme = useTheme();
   const { current: map } = useMap();
   const dispatch = useAppDispatch();
-  const { draw } = useAppSelector((state) => state.draw);
+  const { draw, identify } = useAppSelector((state) => state.draw);
 
   // Responsywność - na mobile (sm i poniżej) toolbar jest przewijalny, więc FAB może być bliżej prawej krawędzi
   // Na desktop (md i powyżej) FAB musi ustąpić prawemu toolbarowi
@@ -37,6 +37,17 @@ const MobileFAB: React.FC<MobileFABProps> = () => {
   const [mode, setMode] = useState<FABMode>('draw-select');
   const [selectedDrawType, setSelectedDrawType] = useState<DrawType>(null);
   const [speedDialOpen, setSpeedDialOpen] = useState(false);
+
+  // Reset drawing mode when identify is activated
+  useEffect(() => {
+    if (identify.isActive && mode === 'drawing') {
+      console.log('🔍 MobileFAB: Identify active - resetting drawing mode');
+      dispatch(setDrawMode('simple_select'));
+      setMode('draw-select');
+      setSelectedDrawType(null);
+      setSpeedDialOpen(false);
+    }
+  }, [identify.isActive, mode, dispatch]);
 
   const handleDrawTypeSelect = (type: DrawType) => {
     setSelectedDrawType(type);
@@ -101,6 +112,11 @@ const MobileFAB: React.FC<MobileFABProps> = () => {
   };
 
   const renderFAB = () => {
+    // HIDE FAB when identify mode is active (prevents blocking identify tool)
+    if (identify.isActive) {
+      return null;
+    }
+
     switch (mode) {
       case 'draw-select':
         return (

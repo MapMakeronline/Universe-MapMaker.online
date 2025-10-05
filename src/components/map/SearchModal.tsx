@@ -22,7 +22,7 @@ import {
 import { useMap } from 'react-map-gl';
 import { useAppDispatch } from '@/store/hooks';
 import { flyToLocation } from '@/store/slices/mapSlice';
-import { MAPBOX_TOKEN } from '@/lib/mapbox/config';
+import { searchPlaces, type SearchResult as MapboxSearchResult } from '@/lib/mapbox/search';
 import { useTheme } from '@mui/material/styles';
 
 interface SearchModalProps {
@@ -30,13 +30,8 @@ interface SearchModalProps {
   onClose: () => void;
 }
 
-interface SearchResult {
-  id: string;
-  place_name: string;
-  center: [number, number];
-  place_type: string[];
-  text: string;
-}
+// Using SearchResult from lib/mapbox/search
+type SearchResult = MapboxSearchResult;
 
 const SearchModal: React.FC<SearchModalProps> = ({ open, onClose }) => {
   const theme = useTheme();
@@ -61,17 +56,20 @@ const SearchModal: React.FC<SearchModalProps> = ({ open, onClose }) => {
     searchTimeoutRef.current = setTimeout(async () => {
       setLoading(true);
       try {
-        const response = await fetch(
-          `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(searchQuery)}.json?` +
-          `access_token=${MAPBOX_TOKEN}&` +
-          `proximity=21.0122,52.2297&` +
-          `country=pl&` +
-          `language=pl&` +
-          `limit=5`
-        );
+        // Get current map center for proximity bias
+        const center = map?.getCenter();
+        const proximity: [number, number] = center
+          ? [center.lng, center.lat]
+          : [21.0122, 52.2297]; // Warsaw default
 
-        const data = await response.json();
-        setResults(data.features || []);
+        const features = await searchPlaces(searchQuery, {
+          proximity,
+          country: ['pl'],
+          language: 'pl',
+          limit: 5,
+        });
+
+        setResults(features);
       } catch (error) {
         console.error('Search error:', error);
         setResults([]);
@@ -88,11 +86,14 @@ const SearchModal: React.FC<SearchModalProps> = ({ open, onClose }) => {
   }, [searchQuery]);
 
   const handleResultClick = (result: SearchResult) => {
+    const [lng, lat] = result.center;
+
     dispatch(flyToLocation({
-      longitude: result.center[0],
-      latitude: result.center[1],
-      zoom: 14,
+      longitude: lng,
+      latitude: lat,
+      zoom: 16,
     }));
+
     onClose();
     setSearchQuery('');
     setResults([]);

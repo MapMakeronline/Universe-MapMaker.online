@@ -193,14 +193,30 @@ dispatch(addLayer({ id: '123', name: 'New Layer' }));
   - Uses native Mapbox GL API via `mapRef.getMap()`
   - Responsive pitch angles: 45° for zoom < 10, 60° for zoom ≥ 10
 
-- `src/components/map/Building3DInteraction.tsx` - 3D building interaction handler
-  - **Uses React Map GL's `interactiveLayerIds` for automatic feature detection**
-  - Works identically on desktop (click) and mobile (tap) - no custom touch handling needed
-  - Features automatically populated via `event.features` from `interactiveLayerIds={['3d-buildings']}`
-  - Haptic feedback (vibration) on building selection (mobile)
-  - Manages feature state for visual selection (highlighted in primary color)
-  - Opens attribute modal on building click/tap
-  - **IMPORTANT:** Do NOT use native Mapbox `map.on('touchstart')` - use React Map GL events!
+- `src/components/map/IdentifyTool.tsx` - **Unified Identify Tool (including 3D buildings)**
+  - **Single tool for identifying ALL map features** - layers, 3D buildings, POIs, etc.
+  - Uses bbox query pattern with **12px tolerance** (increased from 8px for better building detection)
+  - Automatically detects 3D buildings in `buildings3d` and `full3d` map styles
+  - **Smart feature detection:** Finds first `3d-buildings` layer, skips labels and other layers
+  - **When 3D building is clicked:**
+    - Creates/updates building entry in Redux store
+    - Opens `BuildingAttributesModal` for editing
+    - Applies feature-state highlighting (primary color)
+    - Triggers haptic feedback on mobile (vibration)
+  - **When regular feature is clicked:**
+    - Opens `IdentifyModal` with feature properties
+    - Filters out `3d-buildings` from results (prevents duplicates)
+  - **Active only when Identify mode is enabled** via RightToolbar button
+  - **Automatically disables drawing mode** when activated (prevents conflicts on mobile)
+  - Cursor changes to "help" when active
+  - **IMPORTANT:** Use native Mapbox `map.on('click')` with bbox query, NOT React Map GL's onClick
+
+- `src/components/map/MobileFAB.tsx` - Mobile drawing tools (FAB = Floating Action Button)
+  - **Automatically hides when Identify mode is active** (prevents blocking)
+  - Resets drawing mode when Identify is activated
+  - SpeedDial with drawing options: Point, Line, Polygon
+  - Positioned to avoid RightToolbar overlap
+  - Responsive positioning (closer to edge on mobile)
 
 - `src/components/map/BuildingAttributesModal.tsx` - Building attribute editor
   - Displays building name, coordinates, and custom attributes in a table
@@ -232,6 +248,39 @@ dispatch(addLayer({ id: '123', name: 'New Layer' }));
 - Uses `@mapbox/mapbox-gl-draw` for drawing functionality
 - `mapbox-gl-draw-rectangle-mode` for rectangle drawing
 - Turf.js (`@turf/turf`) for geospatial calculations
+
+**Mapbox Search Integration:**
+- `src/lib/mapbox/search.ts` - Mapbox Geocoding API utilities
+  - `searchPlaces()` - Search for places, addresses, POI
+  - `reverseGeocode()` - Convert coordinates to address
+  - `searchByCategory()` - Search by POI category
+  - Pre-configured with Universe-MapMaker token
+  - Supports proximity bias, country filtering, language selection
+  - Returns SearchResult[] with GeoJSON coordinates
+  - Popular categories: restaurant, cafe, hotel, museum, park, hospital, school, etc.
+
+- `src/components/map/SearchModal.tsx` - Place search with autocomplete
+  - Debounced search (300ms) for better UX
+  - Proximity bias to current map center
+  - Poland-focused results (`country=pl`, `language=pl`)
+  - Displays place name, full address, and location icon
+  - Flies to location on result click (zoom: 16)
+
+- `src/components/map/MapboxSearchModal.tsx` - Advanced search modal (3 tabs)
+  - **Tab 1: Wyszukiwanie** - General place/address search
+  - **Tab 2: Kategorie** - Category search (restaurants, hotels, museums)
+  - **Tab 3: Geokodowanie** - Reverse geocoding (coordinates → address)
+  - Integration with `src/lib/mapbox/search.ts`
+
+**MCP Mapbox Available Tools** (configured in `.claude/mcp.json`):
+- `search-and-geocode` - Find POIs, brands, geocode addresses
+- `category-search` - Search by place type/category
+- `reverse-geocode` - Convert coordinates to addresses
+- `directions` - Route planning and navigation
+- `isochrone` - Reachable areas within time/distance
+- `matrix` - Travel time/distance between multiple points
+- `static-map-image` - Generate static map images
+- Token: `pk.eyJ1IjoibWFwbWFrZXItb25saW5lIiwiYSI6ImNtZ2U3NHN5MzFmNzIybHF0MGp4eHVoYzkifQ.bYL5OZhuqokHHHWuOwdeIA`
 
 ### TypeScript Path Aliases
 

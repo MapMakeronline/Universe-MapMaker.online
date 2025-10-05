@@ -30,7 +30,6 @@ import {
 import { useRouter } from "next/navigation"
 import { useAppDispatch, useAppSelector } from "@/store/hooks"
 import { setMeasurementMode, clearAllMeasurements, setIdentifyMode } from "@/store/slices/drawSlice"
-import { setBuildingSelectMode } from "@/store/slices/buildingsSlice"
 import { currentUser } from "@/lib/auth/mockUser"
 import SearchModal from "@/components/map/SearchModal"
 import MeasurementModal from "@/components/panels/MeasurementModal"
@@ -43,7 +42,6 @@ const RightToolbar: React.FC = () => {
   const dispatch = useAppDispatch()
   const { current: map } = useMap()
   const { measurement, identify } = useAppSelector((state) => state.draw)
-  const { isBuildingSelectModeActive } = useAppSelector((state) => state.buildings)
 
   const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null)
   const [searchModalOpen, setSearchModalOpen] = useState(false)
@@ -121,10 +119,6 @@ const RightToolbar: React.FC = () => {
     dispatch(setIdentifyMode(!identify.isActive))
   }
 
-  const handleBuildingSelect = () => {
-    dispatch(setBuildingSelectMode(!isBuildingSelectModeActive))
-  }
-
   const handleGeolocation = () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -199,16 +193,9 @@ const RightToolbar: React.FC = () => {
     {
       id: "identify",
       icon: Info,
-      tooltip: "Identyfikacja obiektu",
+      tooltip: "Identyfikacja obiektu (także budynki 3D)",
       onClick: handleIdentify,
       active: identify.isActive,
-    },
-    {
-      id: "building-select",
-      icon: Apartment,
-      tooltip: "Wybór budynku 3D",
-      onClick: handleBuildingSelect,
-      active: isBuildingSelectModeActive,
     },
     {
       id: "export-pdf",

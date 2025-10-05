@@ -35,7 +35,10 @@
       "Bash(taskkill:*)",
       "Bash(netstat:*)",
       "Bash(findstr:*)",
-      "Bash(set PORT=3001)"
+      "Bash(set PORT=3001)",
+      "Bash(powershell:*)",
+      "Read(//c/Users/mestw/AppData/Roaming/Claude/**)",
+      "Bash(dir:*)"
     ],
     "deny": [],
     "ask": []
