@@ -60,6 +60,12 @@ const MapContainer: React.FC<MapContainerProps> = ({ children }) => {
     mapRef.current?.resize();
   }, []);
 
+  // Map click handler for features
+  const onClick = useCallback((event: any) => {
+    // This will be handled by child components (Building3DInteraction, IdentifyTool, etc.)
+    // Event will have 'features' property if interactiveLayerIds is set
+  }, []);
+
   // Show error state
   if (tokenError) {
     return (
@@ -97,8 +103,10 @@ const MapContainer: React.FC<MapContainerProps> = ({ children }) => {
         onMove={onMove}
         onLoad={onLoad}
         onResize={onResize}
+        onClick={onClick}
         mapStyle={mapStyle}
         mapboxAccessToken={MAPBOX_TOKEN}
+        interactiveLayerIds={['3d-buildings']}
         {...MAP_CONFIG}
         style={{
           width: '100%',

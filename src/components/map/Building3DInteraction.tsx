@@ -3,10 +3,23 @@
 import { useEffect, useRef } from 'react';
 import { useMap } from 'react-map-gl';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { addBuilding, selectBuilding, setAttributeModalOpen, setBuildingSelectMode } from '@/store/slices/buildingsSlice';
+import { addBuilding, selectBuilding, setAttributeModalOpen } from '@/store/slices/buildingsSlice';
 import { mapLogger } from '@/lib/logger';
 import type { MapLayerMouseEvent } from 'mapbox-gl';
 
+/**
+ * Building3DInteraction Component
+ *
+ * Handles click/touch interactions with 3D buildings using React Map GL's
+ * interactiveLayerIds feature. This provides automatic feature detection
+ * for both desktop and mobile devices.
+ *
+ * How it works:
+ * 1. MapContainer sets interactiveLayerIds={['3d-buildings']}
+ * 2. Click events automatically include event.features with building data
+ * 3. Works on BOTH desktop (click) and mobile (touch) automatically
+ * 4. No need for manual queryRenderedFeatures or touch detection
+ */
 const Building3DInteraction = () => {
   const { current: mapRef } = useMap();
   const dispatch = useAppDispatch();
@@ -16,12 +29,6 @@ const Building3DInteraction = () => {
 
   // Use ref to always have current value in event handlers
   const isBuildingSelectModeActiveRef = useRef(isBuildingSelectModeActive);
-
-  // Long-press detection for mobile
-  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const longPressDurationMs = 500; // 500ms for long press
-  const touchStartPointRef = useRef<{ x: number; y: number } | null>(null);
-  const maxTouchMoveDistance = 10; // Maximum pixels allowed during long press
 
   useEffect(() => {
     isBuildingSelectModeActiveRef.current = isBuildingSelectModeActive;
@@ -43,92 +50,47 @@ const Building3DInteraction = () => {
       return;
     }
 
-    mapLogger.log('🏢 Initializing 3D building interaction (mobile-optimized)', {
+    mapLogger.log('🏢 Initializing 3D building interaction (React Map GL events)', {
       isBuildingSelectModeActive,
       is3DMode
     });
 
-    // Change cursor on hover over 3D buildings
-    const onMouseMove = (e: MapLayerMouseEvent) => {
-      // Only show pointer cursor if building select mode is active
-      if (!isBuildingSelectModeActiveRef.current) {
-        return;
-      }
-
-      // Use smaller bbox for cursor (more precise visual feedback)
-      const bbox: [number, number, number, number] = [
-        e.point.x - 5,
-        e.point.y - 5,
-        e.point.x + 5,
-        e.point.y + 5
-      ];
-
-      const features = map.queryRenderedFeatures(bbox, {
-        layers: ['3d-buildings']
-      });
-
-      map.getCanvas().style.cursor = features.length > 0 ? 'pointer' : '';
-    };
-
-    // Helper function to handle building selection (shared by click and long-press)
-    const handleBuildingSelection = (e: MapLayerMouseEvent) => {
-      console.log('🏢 BUILDING HANDLER: Selection triggered', {
+    // Handle click on 3D buildings
+    // This event comes from React Map GL's onClick prop in MapContainer
+    // Features are automatically populated via interactiveLayerIds
+    const handleMapClick = (e: MapLayerMouseEvent) => {
+      mapLogger.log('🏢 Map click event received', {
         isBuildingMode: isBuildingSelectModeActiveRef.current,
         identifyActive: identify.isActive,
-        measurementActive: measurement.isActive
+        measurementActive: measurement.isActive,
+        hasFeatures: !!(e as any).features && (e as any).features.length > 0
       });
 
-      // Only handle if building select mode is active AND other tools are not active
+      // Only handle clicks if building select mode is active AND other tools are not active
       if (!isBuildingSelectModeActiveRef.current) {
-        mapLogger.log('🏢 Building selection ignored - mode not active');
+        mapLogger.log('🏢 Building click ignored - mode not active');
         return;
       }
 
       // Don't handle if identify or measurement tools are active
       if (identify.isActive || measurement.isActive) {
-        mapLogger.log('🏢 Building selection ignored - other tool active');
+        mapLogger.log('🏢 Building click ignored - other tool active');
         return;
       }
 
-      // Query with larger radius for better mobile touch accuracy
-      // Mobile: 20px radius, Desktop: 15px radius
-      const isTouchDevice = 'ontouchstart' in window;
-      const radius = isTouchDevice ? 20 : 15;
+      // Check if we have features from interactiveLayerIds
+      const features = (e as any).features;
 
-      const bbox: [number, number, number, number] = [
-        e.point.x - radius,
-        e.point.y - radius,
-        e.point.x + radius,
-        e.point.y + radius
-      ];
+      if (!features || features.length === 0) {
+        // Clicked on empty space - deselect
+        dispatch(selectBuilding(null));
 
-      const features = map.queryRenderedFeatures(bbox, {
-        layers: ['3d-buildings']
-      });
-
-      const currentZoom = map.getZoom();
-      const has3DLayer = map.getLayer('3d-buildings');
-
-      mapLogger.log('🏢 Building click handler fired:', {
-        featuresFound: features.length,
-        point: e.point,
-        lngLat: e.lngLat,
-        modeActive: isBuildingSelectModeActiveRef.current,
-        zoom: currentZoom,
-        has3DLayer: !!has3DLayer,
-        minZoomForBuildings: 15,
-        isTouchDevice: 'ontouchstart' in window,
-        searchRadius: radius
-      });
-
-      if (features.length === 0) {
         // Check if zoom is too low
+        const currentZoom = map.getZoom();
         if (currentZoom < 15) {
           mapLogger.log('⚠️ Zoom too low for 3D buildings. Current:', currentZoom, 'Required: 15+');
           alert(`Przybliż mapę do poziomu zoom 15 lub wyżej aby zobaczyć budynki 3D.\n\nAktualny zoom: ${currentZoom.toFixed(1)}`);
         }
-        // Clicked on empty space - deselect
-        dispatch(selectBuilding(null));
         return;
       }
 
@@ -137,8 +99,14 @@ const Building3DInteraction = () => {
 
       mapLogger.log('🏢 Clicked on 3D building:', {
         id: featureId,
-        properties: feature.properties
+        properties: feature.properties,
+        fromInteractiveLayer: true
       });
+
+      // Trigger haptic feedback on mobile
+      if (navigator.vibrate) {
+        navigator.vibrate(50); // 50ms vibration
+      }
 
       // Check if building already exists in store
       let building = buildings[featureId];
@@ -199,142 +167,30 @@ const Building3DInteraction = () => {
       }
     };
 
-    // Desktop click handler (immediate)
-    const onClick = (e: MapLayerMouseEvent) => {
-      const isTouchDevice = 'ontouchstart' in window;
-
-      // On desktop, handle click immediately
-      // On mobile, ignore click (only long-press works)
-      if (!isTouchDevice) {
-        handleBuildingSelection(e);
-      }
-    };
-
-    // Mobile touch handlers for long-press detection
-    const onTouchStart = (e: any) => {
-      const isTouchDevice = 'ontouchstart' in window;
-      if (!isTouchDevice || !isBuildingSelectModeActiveRef.current) {
+    // Change cursor on hover over 3D buildings (optional enhancement)
+    const handleMouseMove = (e: MapLayerMouseEvent) => {
+      if (!isBuildingSelectModeActiveRef.current) {
         return;
       }
 
-      // Cancel any existing timer
-      if (longPressTimerRef.current) {
-        clearTimeout(longPressTimerRef.current);
-      }
-
-      // Store touch start point
-      touchStartPointRef.current = {
-        x: e.point.x,
-        y: e.point.y
-      };
-
-      mapLogger.log('👆 Touch start for long-press detection', { point: e.point });
-
-      // Start long-press timer
-      longPressTimerRef.current = setTimeout(() => {
-        mapLogger.log('⏰ Long press triggered!');
-
-        // Trigger haptic feedback if available
-        if (navigator.vibrate) {
-          navigator.vibrate(50); // 50ms vibration
-        }
-
-        // Handle building selection
-        handleBuildingSelection(e);
-
-        // Clear refs
-        longPressTimerRef.current = null;
-        touchStartPointRef.current = null;
-      }, longPressDurationMs);
+      const features = (e as any).features;
+      map.getCanvas().style.cursor = features && features.length > 0 ? 'pointer' : '';
     };
 
-    const onTouchMove = (e: any) => {
-      if (!longPressTimerRef.current || !touchStartPointRef.current) {
-        return;
-      }
+    // Attach event listeners to map
+    map.on('click', handleMapClick as any);
+    map.on('mousemove', handleMouseMove as any);
 
-      // Calculate distance moved
-      const dx = e.point.x - touchStartPointRef.current.x;
-      const dy = e.point.y - touchStartPointRef.current.y;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-
-      // If finger moved too much, cancel long-press
-      if (distance > maxTouchMoveDistance) {
-        mapLogger.log('🚫 Long-press cancelled - finger moved too much', { distance });
-        if (longPressTimerRef.current) {
-          clearTimeout(longPressTimerRef.current);
-          longPressTimerRef.current = null;
-        }
-        touchStartPointRef.current = null;
-      }
-    };
-
-    const onTouchEnd = () => {
-      // Cancel long-press timer if touch ended before timeout
-      if (longPressTimerRef.current) {
-        clearTimeout(longPressTimerRef.current);
-        longPressTimerRef.current = null;
-      }
-      touchStartPointRef.current = null;
-    };
-
-    // Wait for map to be fully loaded and 3d-buildings layer to be available
-    let retryCount = 0;
-    const maxRetries = 15; // Increased retry count
-    const retryDelay = 300; // Reduced delay for faster checks
-
-    const setupInteraction = () => {
-      if (!map.isStyleLoaded()) {
-        if (retryCount < maxRetries) {
-          retryCount++;
-          setTimeout(setupInteraction, retryDelay);
-        }
-        return;
-      }
-
-      if (map.getLayer('3d-buildings')) {
-        // Desktop handlers
-        map.on('mousemove', onMouseMove);
-        map.on('click', onClick);
-
-        // Mobile touch handlers
-        map.on('touchstart', onTouchStart);
-        map.on('touchmove', onTouchMove);
-        map.on('touchend', onTouchEnd);
-        map.on('touchcancel', onTouchEnd);
-
-        mapLogger.log('✅ 3D building interaction enabled (desktop + mobile long-press)', {
-          hasLayer: true,
-          currentMode: isBuildingSelectModeActiveRef.current
-        });
-      } else if (retryCount < maxRetries) {
-        retryCount++;
-        mapLogger.log(`⏳ Waiting for 3d-buildings layer... (${retryCount}/${maxRetries})`);
-        setTimeout(setupInteraction, retryDelay);
-      } else {
-        mapLogger.log('ℹ️ 3d-buildings layer not available. Interaction disabled.');
-      }
-    };
-
-    // Start setup after a small delay to ensure Buildings3D component runs first
-    setTimeout(setupInteraction, 200);
+    mapLogger.log('✅ 3D building interaction enabled (React Map GL with interactiveLayerIds)', {
+      currentMode: isBuildingSelectModeActiveRef.current
+    });
 
     return () => {
       mapLogger.log('🏢 Cleaning up 3D building interaction');
 
-      // Clear long-press timer
-      if (longPressTimerRef.current) {
-        clearTimeout(longPressTimerRef.current);
-        longPressTimerRef.current = null;
-      }
-
       // Remove event listeners
-      map.off('mousemove', onMouseMove);
-      map.off('click', onClick);
-      map.off('touchstart', onTouchStart);
-      map.off('touchmove', onTouchMove);
-      map.off('touchend', onTouchEnd);
-      map.off('touchcancel', onTouchEnd);
+      map.off('click', handleMapClick as any);
+      map.off('mousemove', handleMouseMove as any);
       map.getCanvas().style.cursor = '';
 
       // Clear all feature states
@@ -350,7 +206,7 @@ const Building3DInteraction = () => {
         }
       }
     };
-  }, [mapRef, mapStyleKey, dispatch, selectedBuildingId, buildings]);
+  }, [mapRef, mapStyleKey, dispatch, selectedBuildingId, buildings, identify.isActive, measurement.isActive]);
 
   return null;
 };
