@@ -166,10 +166,41 @@ const IdentifyTool = () => {
           return;
         }
 
-        // Transform regular features to our format (exclude 3D buildings already shown)
-        const transformed: IdentifiedFeature[] = features
-          .filter(f => f.layer?.id !== '3d-buildings') // Skip buildings, already handled
-          .map((feature: any) => {
+        // Handle regular features (non-3D buildings)
+        const regularFeatures = features.filter(f => f.layer?.id !== '3d-buildings');
+
+        if (regularFeatures.length > 0) {
+          // For the first feature, create a MapFeature and store it
+          const firstFeature = regularFeatures[0];
+          const featureId = firstFeature.id?.toString() || `feature-${Date.now()}`;
+
+          // Check if feature already exists in store
+          if (!features[featureId]) {
+            const coordinates: [number, number] = firstFeature.geometry?.type === 'Point'
+              ? (firstFeature.geometry.coordinates as [number, number])
+              : [e.lngLat.lng, e.lngLat.lat];
+
+            const mapFeature: MapFeature = {
+              id: featureId,
+              type: 'poi', // Default type for regular features
+              name: firstFeature.properties?.name || firstFeature.layer?.id || 'Nieznany obiekt',
+              layer: firstFeature.layer?.id,
+              sourceLayer: firstFeature.sourceLayer,
+              coordinates,
+              geometry: firstFeature.geometry,
+              attributes: Object.entries(firstFeature.properties || {}).map(([key, value]) => ({
+                key,
+                value: value as string | number
+              })),
+              selected: false,
+            };
+
+            dispatch(addFeature(mapFeature));
+          }
+        }
+
+        // Transform regular features for IdentifyModal display (exclude 3D buildings already handled)
+        const transformed: IdentifiedFeature[] = regularFeatures.map((feature: any) => {
           const properties: FeatureProperty[] = Object.entries(feature.properties || {}).map(
             ([key, value]) => ({
               key,
