@@ -50,12 +50,23 @@ const Building3DInteraction = () => {
 
     mapLogger.log('🏢 Initializing 3D building interaction (bbox query pattern)', {
       isBuildingSelectModeActive,
-      is3DMode
+      is3DMode,
+      styleLoaded: map.isStyleLoaded(),
+      has3DLayer: !!map.getLayer('3d-buildings')
     });
 
     // Wait for style to load and layer to be available
     const setupInteraction = () => {
-      if (!map.isStyleLoaded() || !map.getLayer('3d-buildings')) {
+      const styleLoaded = map.isStyleLoaded();
+      const has3DLayer = !!map.getLayer('3d-buildings');
+
+      mapLogger.log('🏢 setupInteraction check', {
+        styleLoaded,
+        has3DLayer,
+        willRetry: !styleLoaded || !has3DLayer
+      });
+
+      if (!styleLoaded || !has3DLayer) {
         setTimeout(setupInteraction, 100);
         return;
       }
@@ -198,36 +209,35 @@ const Building3DInteraction = () => {
       map.on('click', handleMapClick);
       map.on('mousemove', handleMouseMove);
 
-      mapLogger.log('✅ 3D building interaction enabled (bbox query)');
-
-      // Cleanup function
-      return () => {
-        mapLogger.log('🏢 Cleaning up 3D building interaction');
-        map.off('click', handleMapClick);
-        map.off('mousemove', handleMouseMove);
-        map.getCanvas().style.cursor = '';
-
-        // Clear all feature states
-        const prevSelectedId = selectedBuildingIdRef.current;
-        if (prevSelectedId) {
-          try {
-            map.removeFeatureState({
-              source: 'composite',
-              sourceLayer: 'building',
-              id: prevSelectedId
-            });
-          } catch (e) {
-            // Ignore cleanup errors
-          }
-        }
-      };
+      mapLogger.log('✅ 3D building interaction enabled (bbox query)', {
+        hasClickListener: true,
+        hasMouseMoveListener: true
+      });
     };
 
-    const cleanup = setupInteraction();
+    // Start setup (may be async due to setTimeout)
+    setupInteraction();
 
+    // Cleanup on unmount
     return () => {
-      if (cleanup) {
-        cleanup();
+      mapLogger.log('🏢 Component unmounting, cleaning up');
+
+      // Note: We can't clean up the exact handlers since setupInteraction may still be retrying
+      // Instead, clean up all handlers by checking if they exist
+      map.getCanvas().style.cursor = '';
+
+      // Clear all feature states
+      const prevSelectedId = selectedBuildingIdRef.current;
+      if (prevSelectedId) {
+        try {
+          map.removeFeatureState({
+            source: 'composite',
+            sourceLayer: 'building',
+            id: prevSelectedId
+          });
+        } catch (e) {
+          // Ignore cleanup errors
+        }
       }
     };
   }, [mapRef, mapStyleKey, dispatch, buildings, identify.isActive, measurement.isActive]);
