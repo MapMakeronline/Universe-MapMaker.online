@@ -193,11 +193,14 @@ dispatch(addLayer({ id: '123', name: 'New Layer' }));
   - Uses native Mapbox GL API via `mapRef.getMap()`
   - Responsive pitch angles: 45° for zoom < 10, 60° for zoom ≥ 10
 
-- `src/components/map/Building3DInteraction.tsx` - 3D building click handler
-  - Captures clicks on 3D buildings using `queryRenderedFeatures()`
-  - Creates building entries with attributes from Mapbox feature properties
+- `src/components/map/Building3DInteraction.tsx` - 3D building interaction handler
+  - **Uses React Map GL's `interactiveLayerIds` for automatic feature detection**
+  - Works identically on desktop (click) and mobile (tap) - no custom touch handling needed
+  - Features automatically populated via `event.features` from `interactiveLayerIds={['3d-buildings']}`
+  - Haptic feedback (vibration) on building selection (mobile)
   - Manages feature state for visual selection (highlighted in primary color)
-  - Opens attribute modal on building click
+  - Opens attribute modal on building click/tap
+  - **IMPORTANT:** Do NOT use native Mapbox `map.on('touchstart')` - use React Map GL events!
 
 - `src/components/map/BuildingAttributesModal.tsx` - Building attribute editor
   - Displays building name, coordinates, and custom attributes in a table
@@ -318,6 +321,21 @@ Next.js configured with `output: 'standalone'` in `next.config.mjs` for optimize
 - Camera pitch adjusts automatically: 45° (zoom < 10), 60° (zoom ≥ 10)
 - Touch gestures for 3D enabled by default (dragRotate, touchRotate in MAP_CONFIG)
 - Works on both local development and production (GCP Cloud Run)
+
+**React Map GL Event Handling (CRITICAL for Mobile):**
+- **ALWAYS use React Map GL's event props** (`onClick`, `onMouseMove`, etc.) instead of native Mapbox events
+- **MapContainer must include `interactiveLayerIds`** prop to enable automatic feature detection:
+  ```typescript
+  <Map
+    interactiveLayerIds={['3d-buildings', 'other-layers']}
+    onClick={handleClick}
+  />
+  ```
+- When `interactiveLayerIds` is set, click/touch events automatically include `event.features`
+- **DO NOT use** `map.on('touchstart')`, `map.on('click')` for feature interaction
+- **DO use** React Map GL events which work identically on desktop and mobile
+- Example: `map.on('click', handler)` receives events from React Map GL's `onClick` prop
+- Features are auto-queried - no need for manual `queryRenderedFeatures()`
 
 **Double-Click Behavior:**
 - Map has `doubleClickZoom: false` to prevent conflicts with drawing tools
@@ -775,15 +793,58 @@ The application supports the following mobile gestures:
    - Double-tap zoom (quick zoom in)
 
 2. **3D Building Selection:**
-   - **Desktop:** Single click on building
-   - **Mobile:** Long-press (500ms) on building
+   - **Desktop:** Single click on building → opens modal
+   - **Mobile:** Single tap on building → opens modal (same as desktop!)
    - Haptic feedback (vibration) on successful selection
-   - Movement detection: cancels if finger moves >10px
+   - **No long-press required** - React Map GL handles touch automatically
 
 3. **Other Tools:**
    - Drawing tools: tap to add points
    - Measurement: tap to add measurement points
    - Identify: tap on features to identify
+
+### React Map GL Interactive Layers Example
+
+**Proper way to implement feature click/tap handling:**
+
+```typescript
+// MapContainer.tsx
+import Map from 'react-map-gl';
+
+<Map
+  interactiveLayerIds={['3d-buildings', 'poi-layer', 'custom-layer']}
+  onClick={handleClick}
+>
+  {/* Map children */}
+</Map>
+
+// Building3DInteraction.tsx or similar component
+const handleMapClick = (e: MapLayerMouseEvent) => {
+  // event.features is automatically populated from interactiveLayerIds!
+  const features = (e as any).features;
+
+  if (!features || features.length === 0) {
+    // No feature clicked
+    return;
+  }
+
+  const feature = features[0];
+  console.log('Clicked feature:', feature.id, feature.properties);
+
+  // Handle feature selection
+  // Works on both desktop (click) and mobile (tap)!
+};
+
+// Attach handler via native Mapbox API (receives React events)
+map.on('click', handleMapClick);
+```
+
+**Key benefits:**
+- ✅ Automatic feature detection (no manual `queryRenderedFeatures`)
+- ✅ Works identically on desktop and mobile
+- ✅ Cleaner code (React wrapper handles complexity)
+- ✅ Type-safe with TypeScript
+- ✅ Better performance (React optimized)
 
 ### Testing Mobile Functionality
 
