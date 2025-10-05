@@ -9,13 +9,16 @@ import {
   Place,
   Timeline,
   Polyline,
+  Apartment,
+  Close,
 } from '@mui/icons-material';
 import { useMap } from 'react-map-gl';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { setDrawMode } from '@/store/slices/drawSlice';
 import { addDrawnLayer } from '@/store/slices/layersSlice';
+import { setBuildingSelectMode } from '@/store/slices/buildingsSlice';
 
-type FABMode = 'location' | 'draw-select' | 'drawing';
+type FABMode = 'location' | 'draw-select' | 'drawing' | 'building-select';
 type DrawType = 'point' | 'line' | 'polygon' | null;
 
 // Szerokość prawego toolbara + marginesy
@@ -31,6 +34,7 @@ const MobileFAB: React.FC<MobileFABProps> = ({ geolocateControlRef }) => {
   const { current: map } = useMap();
   const dispatch = useAppDispatch();
   const { draw } = useAppSelector((state) => state.draw);
+  const { isBuildingSelectModeActive } = useAppSelector((state) => state.buildings);
 
   // Responsywność - na mobile (sm i poniżej) toolbar jest przewijalny, więc FAB może być bliżej prawej krawędzi
   // Na desktop (md i powyżej) FAB musi ustąpić prawemu toolbarowi
@@ -40,6 +44,15 @@ const MobileFAB: React.FC<MobileFABProps> = ({ geolocateControlRef }) => {
   const [mode, setMode] = useState<FABMode>('location');
   const [selectedDrawType, setSelectedDrawType] = useState<DrawType>(null);
   const [speedDialOpen, setSpeedDialOpen] = useState(false);
+
+  // Sync local mode state with Redux building select mode
+  useEffect(() => {
+    if (!isBuildingSelectModeActive && mode === 'building-select') {
+      // Building was selected, go back to draw-select menu
+      setMode('draw-select');
+      setSpeedDialOpen(true);
+    }
+  }, [isBuildingSelectModeActive, mode]);
 
   const handleLocationClick = () => {
     // Użyj natywnego GeolocateControl z Mapbox jeśli dostępny
@@ -202,6 +215,16 @@ const MobileFAB: React.FC<MobileFABProps> = ({ geolocateControlRef }) => {
               tooltipTitle="Poligon"
               onClick={() => handleDrawTypeSelect('polygon')}
             />
+            <SpeedDialAction
+              key="building"
+              icon={<Apartment />}
+              tooltipTitle="Budynek 3D"
+              onClick={() => {
+                setMode('building-select');
+                setSpeedDialOpen(false);
+                dispatch(setBuildingSelectMode(true));
+              }}
+            />
           </SpeedDial>
         );
 
@@ -234,6 +257,27 @@ const MobileFAB: React.FC<MobileFABProps> = ({ geolocateControlRef }) => {
               <Check />
             </Fab>
           </Box>
+        );
+
+      case 'building-select':
+        return (
+          <Fab
+            color="error"
+            onClick={() => {
+              setMode('draw-select');
+              setSpeedDialOpen(true);
+              dispatch(setBuildingSelectMode(false));
+            }}
+            sx={{
+              position: 'fixed',
+              bottom: 80,
+              right: fabRightPosition,
+              zIndex: 1300,
+              transition: 'right 0.3s ease-in-out',
+            }}
+          >
+            <Close />
+          </Fab>
         );
 
       default:

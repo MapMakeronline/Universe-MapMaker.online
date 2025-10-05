@@ -17,12 +17,14 @@ export interface BuildingsState {
   buildings: Record<string, Building>;
   selectedBuildingId: string | null;
   isAttributeModalOpen: boolean;
+  isBuildingSelectModeActive: boolean;
 }
 
 const initialState: BuildingsState = {
   buildings: {},
   selectedBuildingId: null,
   isAttributeModalOpen: false,
+  isBuildingSelectModeActive: false,
 };
 
 const buildingsSlice = createSlice({
@@ -88,6 +90,9 @@ const buildingsSlice = createSlice({
     setAttributeModalOpen: (state, action: PayloadAction<boolean>) => {
       state.isAttributeModalOpen = action.payload;
     },
+    setBuildingSelectMode: (state, action: PayloadAction<boolean>) => {
+      state.isBuildingSelectModeActive = action.payload;
+    },
   },
 });
 
@@ -100,6 +105,7 @@ export const {
   addBuildingAttribute,
   deleteBuildingAttribute,
   setAttributeModalOpen,
+  setBuildingSelectMode,
 } = buildingsSlice.actions;
 
 export default buildingsSlice.reducer;

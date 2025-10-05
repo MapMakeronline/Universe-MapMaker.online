@@ -63,3 +63,9 @@ body {
   border-radius: 8px !important;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
 }
+
+/* Hide GeolocateControl accuracy circle - it blocks 3D building clicks */
+.mapboxgl-user-location-accuracy-circle {
+  display: none !important;
+  pointer-events: none !important;
+}
