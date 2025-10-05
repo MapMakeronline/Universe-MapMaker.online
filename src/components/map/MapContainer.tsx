@@ -11,7 +11,7 @@ import DrawTools from './DrawTools';
 import MeasurementTools from './MeasurementTools';
 import IdentifyTool from './IdentifyTool';
 import Buildings3D from './Buildings3D';
-import Building3DInteraction from './Building3DInteraction';
+import Building3DInteraction, { useBuildingClickHandler } from './Building3DInteraction';
 import BuildingAttributesModal from './BuildingAttributesModal';
 import MobileFAB from './MobileFAB';
 
@@ -60,24 +60,14 @@ const MapContainer: React.FC<MapContainerProps> = ({ children }) => {
     mapRef.current?.resize();
   }, []);
 
-  // Map click handler for features - dispatches custom event for child components
+  // Use building click handler from Building3DInteraction
+  const handleBuildingClick = useBuildingClickHandler();
+
+  // Map click handler - delegates to building handler
   const onClick = useCallback((event: any) => {
-    // Dispatch custom event with features from interactiveLayerIds
-    // This allows child components to receive React Map GL events
-    if (mapRef.current) {
-      const map = mapRef.current.getMap();
-      // Create custom event with features
-      const customEvent = new CustomEvent('reactmapgl:click', {
-        detail: {
-          ...event,
-          features: event.features || [],
-          point: event.point,
-          lngLat: event.lngLat
-        }
-      });
-      map.fire('click', customEvent.detail as any);
-    }
-  }, [mapRef]);
+    // Call building handler with features from interactiveLayerIds
+    handleBuildingClick(event);
+  }, [handleBuildingClick]);
 
   // Show error state
   if (tokenError) {
