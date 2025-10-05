@@ -9,10 +9,9 @@ import { mapLogger } from '@/lib/logger';
 /**
  * Building3DInteraction Component
  *
- * SIMPLIFIED: Uses direct Mapbox GL event listener on '3d-buildings' layer.
- * This is the recommended approach from Mapbox documentation.
- *
- * Key change: map.on('click', '3d-buildings') instead of React Map GL onClick
+ * Best-practice implementation using queryRenderedFeatures with bbox tolerance.
+ * Better for mobile (8px pad around tap point).
+ * Based on production-tested pattern.
  */
 const Building3DInteraction = () => {
   const { current: mapRef } = useMap();
@@ -21,12 +20,17 @@ const Building3DInteraction = () => {
   const { mapStyleKey } = useAppSelector((state) => state.map);
   const { identify, measurement } = useAppSelector((state) => state.draw);
 
-  // Use ref to always have current value in event handlers
+  // Use refs to always have current values in event handlers
   const isBuildingSelectModeActiveRef = useRef(isBuildingSelectModeActive);
+  const selectedBuildingIdRef = useRef(selectedBuildingId);
 
   useEffect(() => {
     isBuildingSelectModeActiveRef.current = isBuildingSelectModeActive;
   }, [isBuildingSelectModeActive]);
+
+  useEffect(() => {
+    selectedBuildingIdRef.current = selectedBuildingId;
+  }, [selectedBuildingId]);
 
   useEffect(() => {
     if (!mapRef) {
@@ -44,7 +48,7 @@ const Building3DInteraction = () => {
       return;
     }
 
-    mapLogger.log('🏢 Initializing 3D building interaction (direct layer listener)', {
+    mapLogger.log('🏢 Initializing 3D building interaction (bbox query pattern)', {
       isBuildingSelectModeActive,
       is3DMode
     });
@@ -56,24 +60,16 @@ const Building3DInteraction = () => {
         return;
       }
 
-      // Change cursor on hover
-      const handleMouseEnter = () => {
-        if (isBuildingSelectModeActiveRef.current) {
-          map.getCanvas().style.cursor = 'pointer';
-        }
-      };
+      mapLogger.log('✅ 3D buildings layer found, setting up handlers');
 
-      const handleMouseLeave = () => {
-        map.getCanvas().style.cursor = '';
-      };
-
-      // Handle click on 3D buildings - features are AUTOMATICALLY available!
-      const handleClick = (e: any) => {
-        mapLogger.log('🏢 Building clicked', {
+      // Handle map click with bbox query (better for mobile - 8px tolerance)
+      const handleMapClick = (e: any) => {
+        mapLogger.log('🏢 Map click event', {
+          point: e.point,
+          lngLat: e.lngLat,
           isBuildingMode: isBuildingSelectModeActiveRef.current,
           identifyActive: identify.isActive,
-          measurementActive: measurement.isActive,
-          featuresCount: e.features?.length || 0
+          measurementActive: measurement.isActive
         });
 
         // Only handle clicks if building select mode is active
@@ -88,9 +84,25 @@ const Building3DInteraction = () => {
           return;
         }
 
-        const feature = e.features?.[0];
+        // Query with bbox tolerance (8px pad - better for mobile)
+        const pad = 8;
+        const bbox: [[number, number], [number, number]] = [
+          [e.point.x - pad, e.point.y - pad],
+          [e.point.x + pad, e.point.y + pad],
+        ];
+
+        const features = map.queryRenderedFeatures(bbox, {
+          layers: ['3d-buildings']
+        });
+
+        mapLogger.log('🏢 Query results', {
+          featuresCount: features.length,
+          bbox
+        });
+
+        const feature = features[0];
         if (!feature) {
-          mapLogger.log('🏢 No feature found in click event');
+          mapLogger.log('🏢 No building found in click area');
           return;
         }
 
@@ -134,13 +146,14 @@ const Building3DInteraction = () => {
         dispatch(setAttributeModalOpen(true));
 
         // Update feature state for visual feedback
-        if (selectedBuildingId && selectedBuildingId !== featureId) {
+        const prevSelectedId = selectedBuildingIdRef.current;
+        if (prevSelectedId && prevSelectedId !== featureId) {
           // Remove previous selection
           try {
             map.removeFeatureState({
               source: 'composite',
               sourceLayer: 'building',
-              id: selectedBuildingId
+              id: prevSelectedId
             });
           } catch (e) {
             // Ignore errors if feature doesn't exist
@@ -162,28 +175,46 @@ const Building3DInteraction = () => {
         }
       };
 
-      // Attach event listeners DIRECTLY to the layer
-      map.on('mouseenter', '3d-buildings', handleMouseEnter);
-      map.on('mouseleave', '3d-buildings', handleMouseLeave);
-      map.on('click', '3d-buildings', handleClick);
+      // Handle mouse move for cursor change (desktop only)
+      const handleMouseMove = (e: any) => {
+        if (!isBuildingSelectModeActiveRef.current) {
+          return;
+        }
 
-      mapLogger.log('✅ 3D building interaction enabled (direct layer listeners)');
+        const pad = 8;
+        const bbox: [[number, number], [number, number]] = [
+          [e.point.x - pad, e.point.y - pad],
+          [e.point.x + pad, e.point.y + pad],
+        ];
+
+        const features = map.queryRenderedFeatures(bbox, {
+          layers: ['3d-buildings']
+        });
+
+        map.getCanvas().style.cursor = features.length > 0 ? 'pointer' : '';
+      };
+
+      // Attach event listeners to map (not layer)
+      map.on('click', handleMapClick);
+      map.on('mousemove', handleMouseMove);
+
+      mapLogger.log('✅ 3D building interaction enabled (bbox query)');
 
       // Cleanup function
       return () => {
         mapLogger.log('🏢 Cleaning up 3D building interaction');
-        map.off('mouseenter', '3d-buildings', handleMouseEnter);
-        map.off('mouseleave', '3d-buildings', handleMouseLeave);
-        map.off('click', '3d-buildings', handleClick);
+        map.off('click', handleMapClick);
+        map.off('mousemove', handleMouseMove);
         map.getCanvas().style.cursor = '';
 
         // Clear all feature states
-        if (selectedBuildingId) {
+        const prevSelectedId = selectedBuildingIdRef.current;
+        if (prevSelectedId) {
           try {
             map.removeFeatureState({
               source: 'composite',
               sourceLayer: 'building',
-              id: selectedBuildingId
+              id: prevSelectedId
             });
           } catch (e) {
             // Ignore cleanup errors
@@ -199,7 +230,7 @@ const Building3DInteraction = () => {
         cleanup();
       }
     };
-  }, [mapRef, mapStyleKey, dispatch, selectedBuildingId, buildings, identify.isActive, measurement.isActive]);
+  }, [mapRef, mapStyleKey, dispatch, buildings, identify.isActive, measurement.isActive]);
 
   return null;
 };
