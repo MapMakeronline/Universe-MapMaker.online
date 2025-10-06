@@ -8,12 +8,32 @@ Professional Mapbox-powered mapping application built with Next.js 15+, deployed
 
 ## ✨ Features
 
-- **Interactive Mapbox GL JS Map** - Smooth, responsive mapping experience
+### Core Mapping
+- **Interactive Mapbox GL JS Map** - Smooth, responsive mapping experience with WebGL2 support
+- **3D Terrain & Buildings** - Full 3D mode with terrain elevation, extruded buildings, and atmospheric sky
 - **Real-time Coordinates** - Live position and zoom level display
+- **Drawing & Measurement Tools** - Draw polygons, lines, points, rectangles; measure distances and areas
+- **Layer Management** - Hierarchical layer tree with drag-and-drop, visibility controls, and property editing
+
+### Mobile & PWA Optimization
+- **📱 Perfect Mobile Touch** - Tap detection with drag vs tap discrimination (8px tolerance)
+- **🎯 No Gesture Conflicts** - Works seamlessly with pinch-zoom, pan, and rotate
+- **✅ PWA Support** - Full Progressive Web App with standalone mode detection
+- **📐 iOS Safe Area** - Proper viewport handling with 100dvh and -webkit-fill-available
+- **🔄 Auto-Resize** - Handles orientation changes and viewport adjustments
+- **⚡ Haptic Feedback** - Vibration feedback on mobile interactions
+
+### Feature Identification & Editing
+- **Universal Feature Editor** - Edit attributes for ALL map objects (buildings, POI, layers, points)
+- **3D Building Selection** - Click/tap 3D buildings to view and edit properties
+- **Smart Tap Detection** - `touchstart`/`touchend` pattern with fallback for PWA
+- **Attribute Management** - Add, edit, delete custom attributes for any feature
+- **Redux State Sync** - Auto-save all clicked features to global store
+
+### Infrastructure
 - **Token Management** - Secure API-based token delivery for production
-- **Mobile Optimized** - Touch-friendly controls and responsive design
-- **Google Cloud Run** - Scalable, serverless deployment
-- **Modern Stack** - Next.js 15+, React 19, TypeScript
+- **Google Cloud Run** - Scalable, serverless deployment with auto-scaling
+- **Modern Stack** - Next.js 15+, React 19, TypeScript, Redux Toolkit
 - **User Authentication** - Complete auth system with registration, login, and profile management
 - **Backend Integration** - Django REST API with PostgreSQL per-user databases
 
@@ -52,9 +72,12 @@ The heart of the application's user interface, organized by functionality:
 src/components/
 │
 ├── 📁 map/                          # 🗺️ Map Components
-│   ├── MapContainer.tsx            # Main Mapbox map container
+│   ├── MapContainer.tsx            # Main Mapbox map container with PWA detection
 │   ├── DrawTools.tsx               # Drawing tools integration
-│   ├── Geocoder.tsx                # Address search functionality
+│   ├── IdentifyTool.tsx            # Feature identification with tap detection
+│   ├── Buildings3D.tsx             # 3D terrain and buildings manager
+│   ├── FeatureAttributesModal.tsx  # Universal feature attribute editor
+│   ├── TapTest.tsx                 # Mobile tap detection testing tool
 │   └── MeasurementTools.tsx        # Distance/area measurement tools
 │
 ├── 📁 panels/                       # 📊 Side Panels
@@ -100,7 +123,9 @@ src/store/
 └── 📁 slices/               # State slices (modular state)
     ├── mapSlice.ts         # Map state (zoom, center, style)
     ├── layersSlice.ts      # Layer management (list, visibility, properties)
-    └── drawSlice.ts        # Drawing state (geometries, active tool)
+    ├── drawSlice.ts        # Drawing state (geometries, active tool)
+    ├── featuresSlice.ts    # Universal feature store (buildings, POI, all objects)
+    └── buildingsSlice.ts   # 3D buildings state (deprecated, use featuresSlice)
 ```
 
 **How State Works:**
@@ -337,6 +362,18 @@ style: 'mapbox://styles/mapbox/streets-v12'
 - Check browser console for errors
 - Verify Mapbox token starts with `pk.`
 - Test API endpoint: `/api/mapbox/token`
+
+**Mobile tap not working (PWA)**
+- Check if TapTest overlay shows (top of map)
+- Open browser console and tap map - look for `✅ CLICK` or `📱 TOUCHEND` logs
+- If you see `🔄 DRAG` logs, reduce finger movement (8px tolerance)
+- Ensure viewport meta includes `viewport-fit=cover` for iOS
+- Verify `touch-action: none` is set on `.mapboxgl-canvas`
+
+**Pinch-zoom conflicts**
+- Long-press removed - now uses tap detection only
+- Tap = clean touch <8px movement
+- Drag = movement >8px (ignored for identify)
 
 **Build failures**
 - Clear `.next` folder: `rm -rf .next`

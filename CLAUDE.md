@@ -137,7 +137,7 @@ const theme = useTheme();
 
 ### State Management (Redux Toolkit)
 
-Three primary slices control application state:
+Five primary slices control application state:
 
 1. **`mapSlice`** (`src/store/slices/mapSlice.ts`)
    - Map viewport: `viewState` (longitude, latitude, zoom, bearing, pitch)
@@ -156,6 +156,19 @@ Three primary slices control application state:
    - Drawing mode state (polygon, line, point, rectangle)
    - Active drawing geometries
    - Measurement tools state
+   - Identify tool state
+
+4. **`featuresSlice`** (`src/store/slices/featuresSlice.ts`) - **NEW: Universal Feature Store**
+   - Stores ALL editable map features (buildings, POI, points, lines, polygons, layers, custom)
+   - Feature types: `'building' | 'poi' | 'point' | 'line' | 'polygon' | 'layer' | 'custom'`
+   - Attribute management: add/update/delete custom attributes
+   - Auto-save clicked features from Identify tool
+   - Actions: `addFeature`, `updateFeature`, `deleteFeature`, `selectFeature`, `addFeatureAttribute`
+   - **Replaces buildingsSlice for new implementations**
+
+5. **`buildingsSlice`** (`src/store/slices/buildingsSlice.ts`) - **DEPRECATED**
+   - Legacy 3D buildings state
+   - Use `featuresSlice` for new code
 
 **Accessing State:**
 ```typescript
@@ -687,6 +700,197 @@ Test at these viewport widths:
 - 768px (iPad)
 - 1024px (iPad Pro)
 - 1440px (Desktop)
+
+## Mobile Touch Optimization & PWA Requirements
+
+**CRITICAL:** Mobile map interactions require proper viewport and touch-action configuration for PWA support.
+
+### Viewport Configuration (Next.js 15+)
+
+**REQUIRED in `app/layout.tsx`:**
+```typescript
+import type { Viewport } from "next"
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
+  themeColor: '#f75e4c',
+  viewportFit: 'cover', // iOS PWA - safe area support
+}
+```
+
+**Why critical:**
+- Without viewport, mobile browsers treat app as desktop site
+- Touch events scaled/ignored → map interactions impossible
+- PWA won't work on mobile devices
+- iOS safe area issues in standalone mode
+
+### Touch Action CSS
+
+**REQUIRED in `app/globals.css`:**
+```css
+html, body {
+  height: 100%;
+  touch-action: pan-x pan-y;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+#__next {
+  height: 100dvh; /* New mobile viewport height */
+  height: 100vh; /* Fallback */
+}
+
+/* iOS PWA support */
+@supports (-webkit-touch-callout: none) {
+  #__next {
+    height: -webkit-fill-available;
+  }
+}
+
+.mapboxgl-canvas,
+.mapboxgl-canvas-container {
+  touch-action: none !important; /* Mapbox receives ALL touch events */
+  outline: none;
+}
+```
+
+### Tap Detection Pattern (No Pinch-Zoom Conflicts)
+
+**IMPORTANT:** Never use long-press for identification - conflicts with pinch-zoom!
+
+**Proper implementation (`IdentifyTool.tsx`):**
+```typescript
+// Track touch start for tap vs drag detection
+let touchStartPt: { x: number; y: number } | null = null;
+
+// 1) Desktop/Mobile: click handler (works after tap on mobile when no drag/pinch)
+map.on('click', handleMapClick);
+
+// 2) Mobile fallback: touchstart/touchend pattern (tap vs drag detection)
+map.on('touchstart', (e: any) => {
+  if (e.points?.length === 1) {
+    touchStartPt = { x: e.point.x, y: e.point.y };
+  }
+});
+
+map.on('touchend', (e: any) => {
+  if (e.points?.length !== 1 || !touchStartPt) {
+    touchStartPt = null;
+    return;
+  }
+
+  // Check if user moved finger (drag vs tap)
+  const dx = Math.abs(e.point.x - touchStartPt.x);
+  const dy = Math.abs(e.point.y - touchStartPt.y);
+  const moved = Math.max(dx, dy) > 8; // 8px tolerance
+
+  touchStartPt = null;
+
+  if (moved) return; // Was a drag, not a tap
+
+  // Clean tap detected - trigger identify
+  handleMapClick(e);
+});
+```
+
+**Why this works:**
+- ✅ `click` fires after tap when no drag/pinch
+- ✅ `touchend` fallback catches PWA edge cases
+- ✅ 8px tolerance prevents accidental triggers
+- ✅ No preventDefault → no gesture conflicts
+- ✅ Single-finger detection → ignores pinch
+
+### PWA Detection & Viewport Resize
+
+**MapContainer.tsx pattern:**
+```typescript
+useEffect(() => {
+  if (!mapRef.current) return;
+  const map = mapRef.current.getMap();
+
+  // Detect PWA/standalone mode
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+    || (window.navigator as any).standalone === true;
+
+  if (isStandalone) {
+    console.log('📱 PWA detected - enabling full gesture interaction');
+    map.scrollZoom.enable();
+    map.dragRotate.enable();
+    map.touchZoomRotate.enable();
+  }
+
+  // Mobile viewport resize handlers
+  const handleViewportResize = () => map.resize();
+
+  window.addEventListener('orientationchange', handleViewportResize);
+  window.visualViewport?.addEventListener('resize', handleViewportResize);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) map.resize();
+  });
+
+  return () => {
+    window.removeEventListener('orientationchange', handleViewportResize);
+    window.visualViewport?.removeEventListener('resize', handleViewportResize);
+  };
+}, [mapRef]);
+```
+
+### Map Configuration
+
+**`src/lib/mapbox/config.ts`:**
+```typescript
+export const MAP_CONFIG = {
+  clickTolerance: 5, // Better mobile tap accuracy (pixels)
+  doubleClickZoom: false, // Avoid conflicts with drawing tools
+  touchZoom: true,
+  touchRotate: true,
+  dragRotate: true,
+  // ... other config
+};
+```
+
+### Testing Tools
+
+**TapTest.tsx** - Mobile tap detection testing:
+- Shows floating overlay: "🧪 Tap Test Active"
+- Desktop: Click → `✅ CLICK` log
+- Mobile: Tap → `📱 TOUCHEND` log
+- Drag: Movement >8px → `🔄 DRAG` log (ignored)
+- Haptic feedback on successful tap
+
+**Console debugging:**
+```javascript
+// IdentifyTool logs:
+🔍 Identify: Click/Tap received
+🔍 Clean tap detected (touchend fallback)
+🔍 Touch moved - ignoring (drag, not tap)
+
+// MapContainer logs:
+📱 PWA detected - enabling full gesture interaction
+📐 Viewport changed - resizing map
+👁️ Page visible - resizing map
+```
+
+### Common Mobile Issues & Fixes
+
+**Issue: Tap not working in PWA**
+- Check TapTest overlay visibility
+- Look for console logs: `✅ CLICK` or `📱 TOUCHEND`
+- If only `🔄 DRAG` appears: reduce finger movement
+- Verify `touch-action: none` on canvas
+
+**Issue: Pinch-zoom conflicts**
+- Don't use long-press for any functionality
+- Use tap detection (touchstart → touchend with <8px movement)
+- Never call `preventDefault()` on touch events globally
+
+**Issue: iOS PWA viewport issues**
+- Ensure `viewportFit: 'cover'` in layout.tsx
+- Use `100dvh` with `-webkit-fill-available` fallback
+- Add resize listeners for orientation changes
 
 ## Live Deployment
 
