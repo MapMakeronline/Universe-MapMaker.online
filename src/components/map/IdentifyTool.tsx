@@ -56,16 +56,18 @@ const IdentifyTool = () => {
     dispatch(setDrawMode('simple_select'));
     mapLogger.log('🔍 Identify: Disabled drawing mode (switched to simple_select)');
 
+    // Track touch start for tap vs drag detection (mobile)
+    let touchStartPt: { x: number; y: number } | null = null;
+
     const handleMapClick = (e: any) => {
-      mapLogger.log('🔍 Identify: Click received', {
+      mapLogger.log('🔍 Identify: Click/Tap received', {
         isActive: identify.isActive,
         point: e.point,
         lngLat: e.lngLat
       });
 
-      // Query with bbox tolerance (12px pad for buildings, 8px was too small)
-      // Bigger bbox helps catch buildings when clicking near edges
-      const pad = 12;
+      // Query with bbox tolerance (8px pad for better mobile hit detection)
+      const pad = 8;
       const bbox: [[number, number], [number, number]] = [
         [e.point.x - pad, e.point.y - pad],
         [e.point.x + pad, e.point.y + pad],
@@ -230,16 +232,40 @@ const IdentifyTool = () => {
       }
     };
 
-    // Add click handler (desktop)
+    // 1) Desktop/Mobile: click handler (works after tap on mobile when no drag/pinch)
     map.on('click', handleMapClick);
 
-    // MOBILE FIX: Add touchend fallback for PWA (sometimes click is blocked)
-    const handleTouchEnd = (e: any) => {
-      // Only handle single-finger tap (not pinch/multi-touch)
+    // 2) Mobile fallback: touchstart/touchend pattern (tap vs drag detection)
+    const handleTouchStart = (e: any) => {
       if (e.points?.length === 1) {
-        handleMapClick(e);
+        touchStartPt = { x: e.point.x, y: e.point.y };
       }
     };
+
+    const handleTouchEnd = (e: any) => {
+      if (e.points?.length !== 1 || !touchStartPt) {
+        touchStartPt = null;
+        return;
+      }
+
+      // Check if user moved finger (drag vs tap)
+      const dx = Math.abs(e.point.x - touchStartPt.x);
+      const dy = Math.abs(e.point.y - touchStartPt.y);
+      const moved = Math.max(dx, dy) > 8; // 8px tolerance
+
+      touchStartPt = null;
+
+      if (moved) {
+        mapLogger.log('🔍 Touch moved - ignoring (drag, not tap)');
+        return; // Was a drag, not a tap
+      }
+
+      // Clean tap detected - trigger identify
+      mapLogger.log('🔍 Clean tap detected (touchend fallback)');
+      handleMapClick(e);
+    };
+
+    map.on('touchstart', handleTouchStart);
     map.on('touchend', handleTouchEnd);
 
     // Change cursor when identify mode is active
@@ -252,6 +278,7 @@ const IdentifyTool = () => {
     // Cleanup
     return () => {
       map.off('click', handleMapClick);
+      map.off('touchstart', handleTouchStart);
       map.off('touchend', handleTouchEnd);
       map.getCanvas().style.cursor = '';
     };

@@ -14,7 +14,7 @@ import Buildings3D from './Buildings3D';
 import BuildingAttributesModal from './BuildingAttributesModal';
 import FeatureAttributesModal from './FeatureAttributesModal';
 import MobileFAB from './MobileFAB';
-import LongPressTest from './LongPressTest';
+import TapTest from './TapTest';
 
 // Import CSS dla Mapbox GL
 import 'mapbox-gl/dist/mapbox-gl.css';
@@ -199,8 +199,8 @@ const MapContainer: React.FC<MapContainerProps> = ({ children }) => {
         {/* 3D Buildings */}
         <Buildings3D />
 
-        {/* Long Press Test - Testowa funkcja długiego kliknięcia */}
-        <LongPressTest />
+        {/* Tap Test - Testowa funkcja wykrywania tap/click (bez konfliktu z pinch-zoom) */}
+        <TapTest />
 
         {/* Dodatkowe komponenty (Markers, Popup) */}
         {children}
