@@ -71,19 +71,19 @@ const IdentifyTool = () => {
         [e.point.x + pad, e.point.y + pad],
       ];
 
-      const features = map.queryRenderedFeatures(bbox);
+      const queriedFeatures = map.queryRenderedFeatures(bbox);
 
       mapLogger.log('🔍 Identify: Found features', {
-        count: features.length,
+        count: queriedFeatures.length,
         bbox
       });
 
-      if (features.length > 0) {
+      if (queriedFeatures.length > 0) {
         // Check if we're in 3D mode and if ANY feature is a 3D building
         const is3DMode = mapStyleKey === 'buildings3d' || mapStyleKey === 'full3d';
 
         // Find first 3D building in features (skip labels and other layers)
-        const buildingFeature = features.find(f => f.layer?.id === '3d-buildings');
+        const buildingFeature = queriedFeatures.find(f => f.layer?.id === '3d-buildings');
         const is3DBuilding = is3DMode && buildingFeature;
 
         if (is3DBuilding) {
@@ -167,7 +167,7 @@ const IdentifyTool = () => {
         }
 
         // Handle regular features (non-3D buildings)
-        const regularFeatures = features.filter(f => f.layer?.id !== '3d-buildings');
+        const regularFeatures = queriedFeatures.filter(f => f.layer?.id !== '3d-buildings');
 
         if (regularFeatures.length > 0) {
           // For the first feature, create a MapFeature and store it
@@ -230,8 +230,17 @@ const IdentifyTool = () => {
       }
     };
 
-    // Add click handler
+    // Add click handler (desktop)
     map.on('click', handleMapClick);
+
+    // MOBILE FIX: Add touchend fallback for PWA (sometimes click is blocked)
+    const handleTouchEnd = (e: any) => {
+      // Only handle single-finger tap (not pinch/multi-touch)
+      if (e.points?.length === 1) {
+        handleMapClick(e);
+      }
+    };
+    map.on('touchend', handleTouchEnd);
 
     // Change cursor when identify mode is active
     if (identify.isActive) {
@@ -243,6 +252,7 @@ const IdentifyTool = () => {
     // Cleanup
     return () => {
       map.off('click', handleMapClick);
+      map.off('touchend', handleTouchEnd);
       map.getCanvas().style.cursor = '';
     };
   }, [mapRef, identify.isActive, mapStyleKey, dispatch, features]);

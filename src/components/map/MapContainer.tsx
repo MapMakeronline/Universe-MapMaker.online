@@ -14,6 +14,7 @@ import Buildings3D from './Buildings3D';
 import BuildingAttributesModal from './BuildingAttributesModal';
 import FeatureAttributesModal from './FeatureAttributesModal';
 import MobileFAB from './MobileFAB';
+import LongPressTest from './LongPressTest';
 
 // Import CSS dla Mapbox GL
 import 'mapbox-gl/dist/mapbox-gl.css';
@@ -59,6 +60,48 @@ const MapContainer: React.FC<MapContainerProps> = ({ children }) => {
   const onResize = useCallback(() => {
     mapRef.current?.resize();
   }, []);
+
+  // PWA detection and mobile viewport fixes
+  useEffect(() => {
+    if (!mapRef.current) return;
+
+    const map = mapRef.current.getMap();
+    if (!map) return;
+
+    // Detect PWA/standalone mode
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+      || (window.navigator as any).standalone === true;
+
+    if (isStandalone) {
+      mapLogger.log('📱 PWA detected - enabling full gesture interaction');
+      // In PWA mode, ensure smooth interactions
+      map.scrollZoom.enable();
+      map.dragRotate.enable();
+      map.touchZoomRotate.enable();
+    }
+
+    // Mobile viewport resize handlers (iOS address bar, orientation)
+    const handleViewportResize = () => {
+      mapLogger.log('📐 Viewport changed - resizing map');
+      map.resize();
+    };
+
+    // Listen to various resize events
+    window.addEventListener('orientationchange', handleViewportResize);
+    window.visualViewport?.addEventListener('resize', handleViewportResize);
+
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) {
+        mapLogger.log('👁️ Page visible - resizing map');
+        map.resize();
+      }
+    });
+
+    return () => {
+      window.removeEventListener('orientationchange', handleViewportResize);
+      window.visualViewport?.removeEventListener('resize', handleViewportResize);
+    };
+  }, [mapRef]);
 
   // Building click handling is now done via direct layer listeners in Building3DInteraction
   // No need for onClick or interactiveLayerIds here
@@ -155,6 +198,9 @@ const MapContainer: React.FC<MapContainerProps> = ({ children }) => {
 
         {/* 3D Buildings */}
         <Buildings3D />
+
+        {/* Long Press Test - Testowa funkcja długiego kliknięcia */}
+        <LongPressTest />
 
         {/* Dodatkowe komponenty (Markers, Popup) */}
         {children}

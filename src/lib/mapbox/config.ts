@@ -64,6 +64,7 @@ export const MAP_CONFIG = {
   scrollZoom: true,
   touchZoom: true,
   touchRotate: true,
+  clickTolerance: 5, // Better mobile tap detection (pixels)
   preserveDrawingBuffer: false, // Lepsze FPS
   refreshExpiredTiles: false, // Nie odświeżaj automatycznie kafelków
   renderWorldCopies: false, // Nie renderuj duplikatów świata

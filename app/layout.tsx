@@ -10,6 +10,7 @@ export const viewport: Viewport = {
   maximumScale: 5,
   userScalable: true,
   themeColor: '#f75e4c',
+  viewportFit: 'cover', // iOS PWA - extends to safe area
 }
 
 export const metadata: Metadata = {

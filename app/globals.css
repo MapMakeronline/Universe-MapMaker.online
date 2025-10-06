@@ -13,6 +13,7 @@ html,
 body {
   max-width: 100vw;
   overflow-x: hidden;
+  height: 100%;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
     "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
     sans-serif;
@@ -25,7 +26,15 @@ body {
 }
 
 #__next {
-  height: 100vh;
+  height: 100dvh; /* New mobile viewport height */
+  height: 100vh; /* Fallback for older browsers */
+}
+
+/* iOS PWA support - prevent address bar issues */
+@supports (-webkit-touch-callout: none) {
+  #__next {
+    height: -webkit-fill-available;
+  }
 }
 
 /* Mapbox GL styles */
@@ -36,7 +45,8 @@ body {
   user-select: none;
 }
 
-.mapboxgl-canvas {
+.mapboxgl-canvas,
+.mapboxgl-canvas-container {
   /* Ensure canvas receives touch events */
   touch-action: none !important;
   outline: none;
