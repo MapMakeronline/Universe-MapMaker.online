@@ -2,6 +2,16 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Code Quality Standards
+
+**IMPORTANT:** Before writing or modifying any code, verify that the implementation follows current best practices and standards from **context7.com MCP** (Model Context Protocol).
+
+When writing code:
+1. Check if the pattern/approach aligns with latest standards from context7.com
+2. Use MCP-based tools when available (prefix: `mcp__`)
+3. Ensure code follows modern TypeScript/React best practices
+4. Validate against current Next.js App Router patterns
+
 ## Development Commands
 
 ```bash
