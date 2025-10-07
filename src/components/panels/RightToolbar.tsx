@@ -30,7 +30,6 @@ import {
 import { useRouter } from "next/navigation"
 import { useAppDispatch, useAppSelector } from "@/store/hooks"
 import { setMeasurementMode, clearAllMeasurements, setIdentifyMode } from "@/store/slices/drawSlice"
-import { currentUser } from "@/lib/auth/mockUser"
 import SearchModal from "@/components/map/SearchModal"
 import MeasurementModal from "@/components/panels/MeasurementModal"
 import ExportPDFModal, { type ExportConfig } from "@/components/panels/ExportPDFModal"
@@ -42,6 +41,7 @@ const RightToolbar: React.FC = () => {
   const dispatch = useAppDispatch()
   const { current: map } = useMap()
   const { measurement, identify } = useAppSelector((state) => state.draw)
+  const { user, isAuthenticated } = useAppSelector((state) => state.auth)
 
   const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null)
   const [searchModalOpen, setSearchModalOpen] = useState(false)
@@ -252,7 +252,7 @@ const RightToolbar: React.FC = () => {
   // Filter tools based on authentication
   const tools = allTools.filter(tool => {
     if (tool.id?.startsWith('divider')) return true;
-    if (!currentUser.isLoggedIn && authRequiredTools.includes(tool.id!)) {
+    if (!isAuthenticated && authRequiredTools.includes(tool.id!)) {
       return false;
     }
     return true;
@@ -307,7 +307,7 @@ const RightToolbar: React.FC = () => {
               sx={{
                 width: 36,
                 height: 36,
-                bgcolor: currentUser.isLoggedIn ? '#10b981' : '#f97316',
+                bgcolor: isAuthenticated ? '#10b981' : '#f97316',
                 transition: 'all 0.3s ease',
                 '&:hover': {
                   transform: 'scale(1.1)',
@@ -407,16 +407,16 @@ const RightToolbar: React.FC = () => {
           }
         }}
       >
-        {currentUser.isLoggedIn ? [
+        {isAuthenticated && user ? [
             <Box key="header" sx={{ px: 2, py: 1.5, borderBottom: 1, borderColor: 'divider' }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                 <AccountCircle sx={{ fontSize: 40, color: '#10b981' }} />
                 <Box>
                   <Typography variant="subtitle2" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
-                    {currentUser.name}
+                    {user.first_name && user.last_name ? `${user.first_name} ${user.last_name}` : user.username}
                   </Typography>
                   <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                    {currentUser.email}
+                    {user.email}
                   </Typography>
                 </Box>
               </Box>

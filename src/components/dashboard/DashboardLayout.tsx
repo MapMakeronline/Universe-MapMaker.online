@@ -520,7 +520,7 @@ export default function DashboardLayout({ children, currentPage, onPageChange }:
           </List>
 
           <Box sx={{ mt: 4, px: 2 }}>
-            {currentUser.isLoggedIn ? (
+            {isAuthenticated ? (
               <ListItemButton
                 onClick={handleLogout}
                 sx={{
