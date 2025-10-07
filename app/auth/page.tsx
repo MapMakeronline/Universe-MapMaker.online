@@ -27,6 +27,9 @@ import {
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { useTheme } from '@mui/material/styles';
+import { authService } from '@/lib/api/auth';
+import { useAppDispatch } from '@/store/hooks';
+import { setAuth, setLoading } from '@/store/slices/authSlice';
 
 // Force dynamic rendering for this page (uses useSearchParams)
 export const dynamic = 'force-dynamic';
@@ -35,6 +38,7 @@ function AuthPageContent() {
   const router = useRouter();
   const theme = useTheme();
   const searchParams = useSearchParams();
+  const dispatch = useAppDispatch();
 
   // Initialize tab from URL params, default to 0 (login)
   const [activeTab, setActiveTab] = useState(() => {
@@ -66,28 +70,30 @@ function AuthPageContent() {
     e.preventDefault();
     setError('');
     setIsLoading(true);
+    dispatch(setLoading(true));
 
     try {
       if (activeTab === 0) {
         // Login
-        const { authService } = await import('@/lib/api/auth');
-        const { setAuth, setLoading } = await import('@/store/slices/authSlice');
-        const { useAppDispatch } = await import('@/store/hooks');
-
         const response = await authService.login({
           username: formData.email,
           password: formData.password,
         });
 
+        // Save auth state to Redux
+        dispatch(setAuth({
+          user: response.user,
+          token: response.token,
+        }));
+
         // Redirect to dashboard after successful login
         router.push('/dashboard');
       } else {
         // Register
-        const { authService } = await import('@/lib/api/auth');
-
         if (formData.password !== formData.confirmPassword) {
           setError('Hasła nie są identyczne');
           setIsLoading(false);
+          dispatch(setLoading(false));
           return;
         }
 
@@ -108,6 +114,12 @@ function AuthPageContent() {
           username: formData.email,
           password: formData.password,
         });
+
+        // Save auth state to Redux
+        dispatch(setAuth({
+          user: response.user,
+          token: response.token,
+        }));
 
         router.push('/dashboard');
       }
@@ -130,6 +142,7 @@ function AuthPageContent() {
       }
     } finally {
       setIsLoading(false);
+      dispatch(setLoading(false));
     }
   };
 
