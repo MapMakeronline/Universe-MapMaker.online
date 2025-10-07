@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -20,6 +20,7 @@ import {
   useTheme,
   alpha,
   useMediaQuery,
+  CircularProgress,
 } from '@mui/material';
 import {
   Search,
@@ -28,6 +29,9 @@ import {
   Storage,
   Person,
 } from '@mui/icons-material';
+import { dashboardService } from '@/lib/api/dashboard';
+import type { Project as ApiProject } from '@/lib/api/dashboard';
+import { ProjectsGridSkeleton } from './ProjectCardSkeleton';
 
 interface PublicProject {
   id: string;
@@ -159,11 +163,50 @@ export default function PublicProjects() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Wszystkie');
   const [currentPage, setCurrentPage] = useState(1);
+  const [publicProjects, setPublicProjects] = useState<PublicProject[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const projectsPerPage = 6;
 
-  const filteredProjects = mockPublicProjects.filter(project => {
+  // Fetch public projects on mount
+  useEffect(() => {
+    const fetchPublicProjects = async () => {
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const response = await dashboardService.getPublicProjects();
+
+        // Map API projects to UI format
+        const mappedProjects: PublicProject[] = response.projects.map((proj: ApiProject) => ({
+          id: proj.project_name,
+          title: proj.custom_project_name || proj.project_name,
+          description: proj.description || 'Projekt publiczny',
+          image: proj.logoExists ? `/api/logos/${proj.project_name}` : placeholderImage,
+          category: proj.categories || 'Inne',
+          size: '0 MB', // TODO: Get from backend if available
+          layers: 0, // TODO: Get from backend if available
+          lastModified: `${proj.project_date} ${proj.project_time}`,
+          owner: 'Użytkownik', // TODO: Get from backend if available
+          ownerAvatar: proj.custom_project_name?.charAt(0).toUpperCase() || 'U',
+          views: 0, // TODO: Get from backend if available
+        }));
+
+        setPublicProjects(mappedProjects);
+      } catch (err: any) {
+        console.error('Failed to fetch public projects:', err);
+        setError(err.message || 'Nie udało się pobrać projektów publicznych');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPublicProjects();
+  }, []);
+
+  const filteredProjects = publicProjects.filter(project => {
     const matchesSearch = project.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          project.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          project.owner.toLowerCase().includes(searchTerm.toLowerCase());
@@ -381,22 +424,48 @@ export default function PublicProjects() {
         </FormControl>
       </Box>
 
+      {/* Loading State */}
+      {isLoading && <ProjectsGridSkeleton count={6} />}
+
+      {/* Error State */}
+      {error && !isLoading && (
+        <Box
+          sx={{
+            textAlign: 'center',
+            py: 8,
+            color: 'text.secondary',
+          }}
+        >
+          <Public sx={{ fontSize: 64, mb: 2, opacity: 0.5, color: 'error.main' }} />
+          <Typography variant="h6" gutterBottom color="error">
+            Wystąpił błąd
+          </Typography>
+          <Typography variant="body2">
+            {error}
+          </Typography>
+        </Box>
+      )}
+
       {/* Results info */}
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Znaleziono {filteredProjects.length} projektów
-      </Typography>
+      {!isLoading && !error && (
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+          Znaleziono {filteredProjects.length} projektów
+        </Typography>
+      )}
 
       {/* Projects Grid */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        {currentProjects.map((project) => (
-          <Grid item xs={12} sm={6} md={4} key={project.id}>
-            <ProjectCard project={project} />
-          </Grid>
-        ))}
-      </Grid>
+      {!isLoading && !error && (
+        <Grid container spacing={3} sx={{ mb: 4 }}>
+          {currentProjects.map((project) => (
+            <Grid item xs={12} sm={6} md={4} key={project.id}>
+              <ProjectCard project={project} />
+            </Grid>
+          ))}
+        </Grid>
+      )}
 
       {/* Pagination */}
-      {totalPages > 1 && (
+      {!isLoading && !error && totalPages > 1 && (
         <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
           <Pagination
             count={totalPages}
@@ -409,7 +478,7 @@ export default function PublicProjects() {
       )}
 
       {/* Empty state */}
-      {filteredProjects.length === 0 && (
+      {!isLoading && !error && filteredProjects.length === 0 && (
         <Box
           sx={{
             textAlign: 'center',
@@ -422,7 +491,9 @@ export default function PublicProjects() {
             Nie znaleziono projektów
           </Typography>
           <Typography variant="body2">
-            Spróbuj zmienić kryteria wyszukiwania
+            {publicProjects.length === 0
+              ? 'Brak projektów publicznych'
+              : 'Spróbuj zmienić kryteria wyszukiwania'}
           </Typography>
         </Box>
       )}

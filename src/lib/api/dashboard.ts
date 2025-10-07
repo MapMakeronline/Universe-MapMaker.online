@@ -215,14 +215,26 @@ class DashboardService {
     return response.json();
   }
 
-  async deleteProject(projectName: string, removePermanently: boolean = false): Promise<{ success: boolean; message: string }> {
-    const response = await fetch(`${API_URL}/api/projects/remove/`, {
-      method: 'POST',
+  async deleteProject(projectName: string): Promise<{ success: boolean; message: string }> {
+    const response = await fetch(`${API_URL}/dashboard/projects/delete/?project=${encodeURIComponent(projectName)}`, {
+      method: 'DELETE',
       headers: this.getAuthHeader(),
-      body: JSON.stringify({
-        project: projectName,
-        remove_permanently: removePermanently
-      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw error;
+    }
+
+    return response.json();
+  }
+
+  async getPublicProjects(): Promise<{ success: boolean; projects: Project[]; count: number }> {
+    const response = await fetch(`${API_URL}/dashboard/projects/public/`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
     });
 
     if (!response.ok) {

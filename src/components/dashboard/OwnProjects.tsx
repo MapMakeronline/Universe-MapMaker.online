@@ -213,11 +213,29 @@ export default function OwnProjects() {
     }
   };
 
+  const fetchProjects = async () => {
+    dispatch(setLoading(true));
+    dispatch(setError(null));
+
+    try {
+      const response = await dashboardService.getProjects();
+      dispatch(setProjects({
+        projects: response.list_of_projects,
+        dbInfo: response.db_info,
+      }));
+    } catch (err: any) {
+      console.error('Failed to fetch projects:', err);
+      dispatch(setError(err.error || 'Nie udało się pobrać projektów'));
+    } finally {
+      dispatch(setLoading(false));
+    }
+  };
+
   const handleDeleteProject = async () => {
     if (!projectToDelete) return;
 
     try {
-      await dashboardService.deleteProject(projectToDelete, false);
+      await dashboardService.deleteProject(projectToDelete);
 
       // Refresh projects list
       await fetchProjects();
