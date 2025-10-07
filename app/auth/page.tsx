@@ -16,6 +16,7 @@ import {
   InputAdornment,
   Link as MuiLink,
   CircularProgress,
+  Alert,
 } from '@mui/material';
 import {
   Visibility,
@@ -48,26 +49,93 @@ function AuthPageContent() {
     name: '',
     confirmPassword: '',
   });
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setActiveTab(newValue);
+    setError('');
   };
 
   const handleInputChange = (field: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [field]: event.target.value });
+    if (error) setError('');
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement actual authentication logic
-    console.log('Auth submit:', activeTab === 0 ? 'Login' : 'Register', formData);
-    router.push('/dashboard');
+    setError('');
+    setIsLoading(true);
+
+    try {
+      if (activeTab === 0) {
+        // Login
+        const { authService } = await import('@/lib/api/auth');
+        const { setAuth, setLoading } = await import('@/store/slices/authSlice');
+        const { useAppDispatch } = await import('@/store/hooks');
+
+        const response = await authService.login({
+          username: formData.email,
+          password: formData.password,
+        });
+
+        // Redirect to dashboard after successful login
+        router.push('/dashboard');
+      } else {
+        // Register
+        const { authService } = await import('@/lib/api/auth');
+
+        if (formData.password !== formData.confirmPassword) {
+          setError('Hasła nie są identyczne');
+          setIsLoading(false);
+          return;
+        }
+
+        const [firstName, ...lastNameParts] = formData.name.trim().split(' ');
+        const lastName = lastNameParts.join(' ');
+
+        await authService.register({
+          username: formData.email.split('@')[0], // Generate username from email
+          email: formData.email,
+          password: formData.password,
+          password_confirm: formData.confirmPassword,
+          first_name: firstName,
+          last_name: lastName,
+        });
+
+        // After successful registration, log in automatically
+        const response = await authService.login({
+          username: formData.email,
+          password: formData.password,
+        });
+
+        router.push('/dashboard');
+      }
+    } catch (err: any) {
+      console.error('Auth error:', err);
+      if (err.non_field_errors) {
+        setError(Array.isArray(err.non_field_errors) ? err.non_field_errors[0] : err.non_field_errors);
+      } else if (err.email) {
+        setError(Array.isArray(err.email) ? err.email[0] : err.email);
+      } else if (err.username) {
+        setError(Array.isArray(err.username) ? err.username[0] : err.username);
+      } else if (err.password) {
+        setError(Array.isArray(err.password) ? err.password[0] : err.password);
+      } else if (err.detail) {
+        setError(err.detail);
+      } else if (err.message) {
+        setError(err.message);
+      } else {
+        setError('Wystąpił błąd. Spróbuj ponownie.');
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleGoogleAuth = () => {
     // TODO: Implement Google OAuth
     console.log('Google OAuth');
-    router.push('/dashboard');
   };
 
   return (
@@ -161,6 +229,12 @@ function AuthPageContent() {
           </Tabs>
 
           <CardContent sx={{ px: 4, pb: 4 }}>
+            {error && (
+              <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError('')}>
+                {error}
+              </Alert>
+            )}
+
             <form onSubmit={handleSubmit}>
               {/* Register: Name Field */}
               {activeTab === 1 && (
@@ -177,12 +251,13 @@ function AuthPageContent() {
               {/* Email Field */}
               <TextField
                 fullWidth
-                label="Email"
-                type="email"
+                label={activeTab === 0 ? "Email lub nazwa użytkownika" : "Email"}
+                type={activeTab === 0 ? "text" : "email"}
                 value={formData.email}
                 onChange={handleInputChange('email')}
                 margin="normal"
                 required
+                disabled={isLoading}
               />
 
               {/* Password Field */}
@@ -194,12 +269,14 @@ function AuthPageContent() {
                 onChange={handleInputChange('password')}
                 margin="normal"
                 required
+                disabled={isLoading}
                 InputProps={{
                   endAdornment: (
                     <InputAdornment position="end">
                       <IconButton
                         onClick={() => setShowPassword(!showPassword)}
                         edge="end"
+                        disabled={isLoading}
                       >
                         {showPassword ? <VisibilityOff /> : <Visibility />}
                       </IconButton>
@@ -218,6 +295,7 @@ function AuthPageContent() {
                   onChange={handleInputChange('confirmPassword')}
                   margin="normal"
                   required
+                  disabled={isLoading}
                 />
               )}
 
@@ -246,6 +324,7 @@ function AuthPageContent() {
                 variant="contained"
                 fullWidth
                 size="large"
+                disabled={isLoading}
                 sx={{
                   mt: 3,
                   mb: 2,
@@ -259,7 +338,11 @@ function AuthPageContent() {
                   textTransform: 'none',
                 }}
               >
-                {activeTab === 0 ? 'Zaloguj się' : 'Zarejestruj się'}
+                {isLoading ? (
+                  <CircularProgress size={24} color="inherit" />
+                ) : (
+                  activeTab === 0 ? 'Zaloguj się' : 'Zarejestruj się'
+                )}
               </Button>
 
               {/* Divider */}
