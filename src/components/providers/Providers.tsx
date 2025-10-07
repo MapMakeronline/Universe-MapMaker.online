@@ -7,6 +7,7 @@ import { CssBaseline } from '@mui/material';
 import { makeStore, AppStore } from '@/store/store';
 import { theme } from '@/lib/theme';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import AuthProvider from '@/components/auth/AuthProvider';
 
 interface ProvidersProps {
   children: React.ReactNode;
@@ -24,10 +25,12 @@ export default function Providers({ children }: ProvidersProps) {
   return (
     <ErrorBoundary showDetails={isDevelopment}>
       <Provider store={storeRef.current}>
-        <ThemeProvider theme={theme}>
-          <CssBaseline />
-          {children}
-        </ThemeProvider>
+        <AuthProvider>
+          <ThemeProvider theme={theme}>
+            <CssBaseline />
+            {children}
+          </ThemeProvider>
+        </AuthProvider>
       </Provider>
     </ErrorBoundary>
   );
