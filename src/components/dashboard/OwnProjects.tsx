@@ -183,17 +183,46 @@ export default function OwnProjects() {
     }
   };
 
-  const handleCreateProject = () => {
-    console.log('Creating project:', newProjectData);
-    // Here you would call your create project API
-    setNewProjectDialogOpen(false);
-    setNewProjectData({
-      name: '',
-      subdomain: '',
-      keywords: '',
-      description: '',
-      categories: [],
-    });
+  const handleCreateProject = async () => {
+    if (!newProjectData.name.trim()) {
+      alert('Nazwa projektu jest wymagana');
+      return;
+    }
+
+    try {
+      dispatch(setLoading(true));
+
+      await dashboardService.createProject({
+        project_name: newProjectData.name,
+        custom_project_name: newProjectData.subdomain || newProjectData.name,
+        category: newProjectData.categories.join(', ') || 'Inne',
+        description: newProjectData.description,
+        keywords: newProjectData.keywords,
+        is_public: false,
+      });
+
+      // Refresh projects list
+      const response = await dashboardService.getProjects();
+      dispatch(setProjects({ projects: response.list_of_projects, dbInfo: response.db_info }));
+
+      // Close dialog and reset form
+      setNewProjectDialogOpen(false);
+      setNewProjectData({
+        name: '',
+        subdomain: '',
+        keywords: '',
+        description: '',
+        categories: [],
+      });
+
+      alert('Projekt został pomyślnie utworzony!');
+    } catch (error: any) {
+      console.error('Error creating project:', error);
+      dispatch(setError(error.message || 'Nie udało się utworzyć projektu'));
+      alert(error.message || 'Błąd podczas tworzenia projektu');
+    } finally {
+      dispatch(setLoading(false));
+    }
   };
 
   const handleCategoryChange = (category: string) => {

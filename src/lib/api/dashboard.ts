@@ -29,6 +29,15 @@ export interface ProjectsResponse {
   db_info: DbInfo;
 }
 
+export interface CreateProjectData {
+  project_name: string;
+  custom_project_name?: string;
+  category?: string;
+  description?: string;
+  keywords?: string;
+  is_public?: boolean;
+}
+
 export interface UpdateProjectData {
   project: string;
   custom_project_name?: string;
@@ -86,6 +95,21 @@ class DashboardService {
     const response = await fetch(`${API_URL}/dashboard/projects/`, {
       method: 'GET',
       headers: this.getAuthHeader(),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw error;
+    }
+
+    return response.json();
+  }
+
+  async createProject(data: CreateProjectData): Promise<{ success: boolean; message: string; project: Project }> {
+    const response = await fetch(`${API_URL}/dashboard/projects/create/`, {
+      method: 'POST',
+      headers: this.getAuthHeader(),
+      body: JSON.stringify(data),
     });
 
     if (!response.ok) {
