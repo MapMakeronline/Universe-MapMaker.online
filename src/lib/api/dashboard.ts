@@ -71,6 +71,20 @@ export interface ContactFormData {
   message: string;
 }
 
+export interface UserProfile {
+  id: number;
+  username: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  address: string;
+  city: string;
+  zip_code: string;
+  nip: string;
+  company_name: string;
+  theme: string;
+}
+
 class DashboardService {
   private getAuthHeader(): HeadersInit {
     const token = this.getToken();
@@ -89,6 +103,20 @@ class DashboardService {
       return localStorage.getItem('authToken');
     }
     return null;
+  }
+
+  async getProfile(): Promise<UserProfile> {
+    const response = await fetch(`${API_URL}/dashboard/profile/`, {
+      method: 'GET',
+      headers: this.getAuthHeader(),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw error;
+    }
+
+    return response.json();
   }
 
   async getProjects(): Promise<ProjectsResponse> {

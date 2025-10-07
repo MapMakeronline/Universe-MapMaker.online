@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -19,6 +19,7 @@ import {
   useTheme,
   alpha,
   useMediaQuery,
+  CircularProgress,
 } from '@mui/material';
 import {
   Person,
@@ -33,6 +34,7 @@ import {
 } from '@mui/icons-material';
 import LoginRequiredGuard from './LoginRequiredGuard';
 import { useAppSelector } from '@/store/hooks';
+import { dashboardService, UserProfile as UserProfileData } from '@/lib/api/dashboard';
 
 interface UserStats {
   totalProjects: number;
@@ -90,7 +92,36 @@ export default function UserProfile() {
   const storagePercentage = (mockUserStats.storageUsed / mockUserStats.storageLimit) * 100;
 
   // Get auth state from Redux
-  const { isAuthenticated } = useAppSelector(state => state.auth);
+  const { isAuthenticated, user } = useAppSelector(state => state.auth);
+
+  // State for user profile data
+  const [profileData, setProfileData] = useState<UserProfileData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch user profile on mount
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!isAuthenticated) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        const data = await dashboardService.getProfile();
+        setProfileData(data);
+        setError(null);
+      } catch (err: any) {
+        console.error('Failed to fetch profile:', err);
+        setError('Nie udało się pobrać danych profilu');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProfile();
+  }, [isAuthenticated]);
 
   const StatCard = ({
     title,
@@ -154,6 +185,22 @@ export default function UserProfile() {
     </Card>
   );
 
+  // Get user display name
+  const getDisplayName = () => {
+    if (profileData?.first_name && profileData?.last_name) {
+      return `${profileData.first_name} ${profileData.last_name}`;
+    }
+    if (profileData?.company_name) {
+      return profileData.company_name;
+    }
+    return profileData?.username || user?.username || 'User';
+  };
+
+  const getUserInitial = () => {
+    const displayName = getDisplayName();
+    return displayName.charAt(0).toUpperCase();
+  };
+
   return (
     <LoginRequiredGuard
       isLoggedIn={isAuthenticated}
@@ -171,6 +218,23 @@ export default function UserProfile() {
           </Typography>
         </Box>
 
+        {/* Loading State */}
+        {isLoading && (
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
+            <CircularProgress />
+          </Box>
+        )}
+
+        {/* Error State */}
+        {error && !isLoading && (
+          <Box sx={{ textAlign: 'center', py: 4 }}>
+            <Typography color="error">{error}</Typography>
+          </Box>
+        )}
+
+        {/* Profile Content */}
+        {!isLoading && !error && profileData && (
+
       <Grid container spacing={3}>
         {/* User Info Card - Expanded */}
         <Grid item xs={12} md={6}>
@@ -187,14 +251,14 @@ export default function UserProfile() {
                     mb: { xs: 2, sm: 0 },
                   }}
                 >
-                  T
+                  {getUserInitial()}
                 </Avatar>
                 <Box sx={{ flexGrow: 1 }}>
                   <Typography variant="h5" fontWeight="700" gutterBottom sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
-                    Terenyinwestycyjne
+                    {getDisplayName()}
                   </Typography>
                   <Typography variant="body1" color="text.secondary" gutterBottom sx={{ fontSize: { xs: '0.875rem', sm: '1rem' }, wordBreak: 'break-all' }}>
-                    terenyinwest@gmail.com
+                    {profileData.email}
                   </Typography>
                   <Chip
                     icon={<CheckCircle />}
@@ -406,6 +470,7 @@ export default function UserProfile() {
           </Card>
         </Grid>
       </Grid>
+        )}
       </Box>
     </LoginRequiredGuard>
   );
