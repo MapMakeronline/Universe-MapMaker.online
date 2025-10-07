@@ -214,6 +214,60 @@ class DashboardService {
 
     return response.json();
   }
+
+  async deleteProject(projectName: string, removePermanently: boolean = false): Promise<{ success: boolean; message: string }> {
+    const response = await fetch(`${API_URL}/api/projects/remove/`, {
+      method: 'POST',
+      headers: this.getAuthHeader(),
+      body: JSON.stringify({
+        project: projectName,
+        remove_permanently: removePermanently
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw error;
+    }
+
+    return response.json();
+  }
+
+  async toggleProjectPublish(projectName: string, publish: boolean): Promise<{ success: boolean; message: string }> {
+    const response = await fetch(`${API_URL}/api/projects/publish`, {
+      method: 'POST',
+      headers: this.getAuthHeader(),
+      body: JSON.stringify({
+        project: projectName,
+        publish: publish
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw error;
+    }
+
+    return response.json();
+  }
+
+  async exportProject(projectName: string, projectType: 'qgs' | 'qgz' = 'qgs'): Promise<Blob> {
+    const response = await fetch(`${API_URL}/api/projects/export`, {
+      method: 'POST',
+      headers: this.getAuthHeader(),
+      body: JSON.stringify({
+        project: projectName,
+        project_type: projectType
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw error;
+    }
+
+    return response.blob();
+  }
 }
 
 export const dashboardService = new DashboardService();

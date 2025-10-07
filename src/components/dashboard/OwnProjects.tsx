@@ -146,9 +146,9 @@ export default function OwnProjects() {
 
 
 
-  const handleProjectAction = (action: string, projectId: string) => {
+  const handleProjectAction = async (action: string, projectId: string) => {
     console.log(`${action} project:`, projectId);
-    
+
     switch (action) {
       case 'database':
         setDialogProjectId(projectId);
@@ -165,6 +165,12 @@ export default function OwnProjects() {
         setDialogProjectId(projectId);
         setSettingsDialogOpen(true);
         break;
+      case 'publish':
+        await handleTogglePublish(projectId);
+        break;
+      case 'export':
+        await handleExportProject(projectId);
+        break;
       default:
         console.log(`Action ${action} not implemented yet`);
     }
@@ -174,12 +180,53 @@ export default function OwnProjects() {
     setNewProjectDialogOpen(true);
   };
 
-  const handleDeleteProject = () => {
-    if (projectToDelete) {
-      console.log('Deleting project:', projectToDelete);
-      // Here you would call your delete API
+  const handleTogglePublish = async (projectName: string) => {
+    try {
+      const project = apiProjects.find(p => p.project_name === projectName);
+      if (!project) return;
+
+      const newPublishState = !project.published;
+      await dashboardService.toggleProjectPublish(projectName, newPublishState);
+
+      // Refresh projects list
+      await fetchProjects();
+    } catch (error: any) {
+      console.error('Failed to toggle publish:', error);
+      alert(error.message || 'Nie udało się zmienić statusu publikacji');
+    }
+  };
+
+  const handleExportProject = async (projectName: string) => {
+    try {
+      const blob = await dashboardService.exportProject(projectName, 'qgs');
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${projectName}.qgs`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error: any) {
+      console.error('Failed to export project:', error);
+      alert(error.message || 'Nie udało się wyeksportować projektu');
+    }
+  };
+
+  const handleDeleteProject = async () => {
+    if (!projectToDelete) return;
+
+    try {
+      await dashboardService.deleteProject(projectToDelete, false);
+
+      // Refresh projects list
+      await fetchProjects();
+
       setDeleteDialogOpen(false);
       setProjectToDelete(null);
+    } catch (error: any) {
+      console.error('Failed to delete project:', error);
+      alert(error.message || 'Nie udało się usunąć projektu');
     }
   };
 
@@ -478,6 +525,12 @@ export default function OwnProjects() {
           <Upload fontSize="small" />
         </ListItemIcon>
         <ListItemText>Importuj projekt</ListItemText>
+      </MenuItem>
+      <MenuItem onClick={() => handleCardProjectAction('export')}>
+        <ListItemIcon>
+          <GetApp fontSize="small" />
+        </ListItemIcon>
+        <ListItemText>Eksportuj projekt</ListItemText>
       </MenuItem>
       <MenuItem onClick={() => handleCardProjectAction('delete')} sx={{ color: 'error.main' }}>
         <ListItemIcon>
