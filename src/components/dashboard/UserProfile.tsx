@@ -290,9 +290,9 @@ export default function UserProfile() {
             <Grid item xs={6}>
               <StatCard
                 title="Projekty"
-                value={mockUserStats.totalProjects}
+                value={profileData.statistics?.total_projects || 0}
                 icon={<ViewModule color="primary" fontSize={isMobile ? 'small' : 'medium'} />}
-                subtitle={`${mockUserStats.publicProjects} publicznych`}
+                subtitle={`${profileData.statistics?.public_projects || 0} publicznych`}
               />
             </Grid>
             <Grid item xs={6}>

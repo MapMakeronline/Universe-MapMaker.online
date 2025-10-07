@@ -83,6 +83,11 @@ export interface UserProfile {
   nip: string;
   company_name: string;
   theme: string;
+  statistics?: {
+    total_projects: number;
+    public_projects: number;
+    private_projects: number;
+  };
 }
 
 class DashboardService {
