@@ -1,6 +1,6 @@
 // Auth API service for Django backend communication
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://geocraft-production.up.railway.app';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://universe-mapmaker-backend-production.up.railway.app';
 
 export interface LoginCredentials {
   username: string; // email will be used as username
