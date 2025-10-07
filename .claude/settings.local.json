@@ -49,7 +49,9 @@
       "Bash(railway unlink:*)",
       "Bash(railway up:*)",
       "Bash(railway:*)",
-      "Bash(echo:*)"
+      "Bash(echo:*)",
+      "Read(//c/Users/user/Desktop/Universe-Mapmaker/Universe-Mapmaker-Backend/**)",
+      "Bash(python:*)"
     ],
     "deny": [],
     "ask": []

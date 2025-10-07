@@ -35,8 +35,10 @@ import {
   Logout,
   ChevronLeft,
   Dashboard as DashboardIcon,
+  Login,
 } from '@mui/icons-material';
-import { currentUser } from '@/lib/auth/mockUser';
+import { useAppSelector, useAppDispatch } from '@/store/hooks';
+import { clearAuth } from '@/store/slices/authSlice';
 
 const drawerWidth = 280;
 
@@ -62,6 +64,10 @@ export default function DashboardLayout({ children, currentPage, onPageChange }:
   const [desktopOpen, setDesktopOpen] = useState(true);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const router = useRouter();
+  const dispatch = useAppDispatch();
+
+  // Get auth state from Redux
+  const { user, isAuthenticated } = useAppSelector(state => state.auth);
 
   const open = isMobile ? mobileOpen : desktopOpen;
 
@@ -83,6 +89,7 @@ export default function DashboardLayout({ children, currentPage, onPageChange }:
 
   const handleLogout = () => {
     handleCloseMenu();
+    dispatch(clearAuth());
     router.push('/auth?tab=0');
   };
 
@@ -223,7 +230,7 @@ export default function DashboardLayout({ children, currentPage, onPageChange }:
                 sx={{
                   width: 32,
                   height: 32,
-                  bgcolor: currentUser.isLoggedIn ? '#10b981' : '#f97316',
+                  bgcolor: isAuthenticated ? '#10b981' : '#f97316',
                   transition: 'all 0.3s ease',
                   '&:hover': {
                     transform: 'scale(1.1)',
@@ -256,16 +263,16 @@ export default function DashboardLayout({ children, currentPage, onPageChange }:
                 }
               }}
             >
-              {currentUser.isLoggedIn ? [
+              {isAuthenticated && user ? [
                   <Box key="header" sx={{ px: 2, py: 1.5, borderBottom: 1, borderColor: 'divider' }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                       <AccountCircle sx={{ fontSize: 40, color: '#10b981' }} />
                       <Box>
                         <Typography variant="subtitle2" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
-                          {currentUser.name}
+                          {user.first_name && user.last_name ? `${user.first_name} ${user.last_name}` : user.username}
                         </Typography>
                         <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                          {currentUser.email}
+                          {user.email}
                         </Typography>
                       </Box>
                     </Box>
@@ -317,7 +324,7 @@ export default function DashboardLayout({ children, currentPage, onPageChange }:
 
                   <MenuItem key="login" onClick={handleLogin}>
                     <ListItemIcon>
-                      <Logout fontSize="small" sx={{ transform: 'scaleX(-1)' }} />
+                      <Login fontSize="small" />
                     </ListItemIcon>
                     <ListItemText>Zaloguj się</ListItemText>
                   </MenuItem>,

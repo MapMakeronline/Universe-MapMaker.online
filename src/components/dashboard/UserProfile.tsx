@@ -32,6 +32,7 @@ import {
   Schedule,
 } from '@mui/icons-material';
 import LoginRequiredGuard from './LoginRequiredGuard';
+import { useAppSelector } from '@/store/hooks';
 
 interface UserStats {
   totalProjects: number;
@@ -88,10 +89,8 @@ export default function UserProfile() {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const storagePercentage = (mockUserStats.storageUsed / mockUserStats.storageLimit) * 100;
 
-  // Mock user authentication - replace with actual auth state
-  const currentUser = {
-    isLoggedIn: false, // Change to true to test logged-in state
-  };
+  // Get auth state from Redux
+  const { isAuthenticated } = useAppSelector(state => state.auth);
 
   const StatCard = ({
     title,
@@ -157,7 +156,7 @@ export default function UserProfile() {
 
   return (
     <LoginRequiredGuard
-      isLoggedIn={currentUser.isLoggedIn}
+      isLoggedIn={isAuthenticated}
       title="Zaloguj się, aby zobaczyć swój profil"
       message="Ta sekcja wymaga zalogowania. Utwórz konto lub zaloguj się, aby zarządzać swoim profilem i subskrypcją."
     >

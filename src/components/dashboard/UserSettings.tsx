@@ -58,14 +58,9 @@ function TabPanel(props: TabPanelProps) {
 
 export default function UserSettings() {
   const dispatch = useAppDispatch();
-  const { user } = useAppSelector((state) => state.auth);
+  const { user, isAuthenticated } = useAppSelector((state) => state.auth);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-
-  // Mock user authentication - replace with actual auth state
-  const currentUser = {
-    isLoggedIn: false, // Change to true to test logged-in state
-  };
 
   const [currentTab, setCurrentTab] = useState(0);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
@@ -213,7 +208,7 @@ export default function UserSettings() {
 
   return (
     <LoginRequiredGuard
-      isLoggedIn={currentUser.isLoggedIn}
+      isLoggedIn={isAuthenticated}
       title="Zaloguj się, aby zmienić ustawienia"
       message="Ta sekcja wymaga zalogowania. Utwórz konto lub zaloguj się, aby zarządzać ustawieniami swojego konta."
     >
