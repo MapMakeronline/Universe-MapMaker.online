@@ -84,9 +84,7 @@ export default function OwnProjects() {
   const dispatch = useAppDispatch();
   const { projects: apiProjects, dbInfo, isLoading, error } = useAppSelector((state) => state.dashboard);
 
-  const [databaseDialogOpen, setDatabaseDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [newProjectDialogOpen, setNewProjectDialogOpen] = useState(false);
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
@@ -150,26 +148,13 @@ export default function OwnProjects() {
     console.log(`${action} project:`, projectId);
 
     switch (action) {
-      case 'database':
-        setDialogProjectId(projectId);
-        setDatabaseDialogOpen(true);
-        break;
       case 'delete':
         setProjectToDelete(projectId);
         setDeleteDialogOpen(true);
         break;
-      case 'import':
-        setImportDialogOpen(true);
-        break;
       case 'settings':
         setDialogProjectId(projectId);
         setSettingsDialogOpen(true);
-        break;
-      case 'publish':
-        await handleTogglePublish(projectId);
-        break;
-      case 'export':
-        await handleExportProject(projectId);
         break;
       default:
         console.log(`Action ${action} not implemented yet`);
@@ -178,39 +163,6 @@ export default function OwnProjects() {
 
   const handleNewProject = () => {
     setNewProjectDialogOpen(true);
-  };
-
-  const handleTogglePublish = async (projectName: string) => {
-    try {
-      const project = apiProjects.find(p => p.project_name === projectName);
-      if (!project) return;
-
-      const newPublishState = !project.published;
-      await dashboardService.toggleProjectPublish(projectName, newPublishState);
-
-      // Refresh projects list
-      await fetchProjects();
-    } catch (error: any) {
-      console.error('Failed to toggle publish:', error);
-      alert(error.message || 'Nie udało się zmienić statusu publikacji');
-    }
-  };
-
-  const handleExportProject = async (projectName: string) => {
-    try {
-      const blob = await dashboardService.exportProject(projectName, 'qgs');
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${projectName}.qgs`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    } catch (error: any) {
-      console.error('Failed to export project:', error);
-      alert(error.message || 'Nie udało się wyeksportować projektu');
-    }
   };
 
   const fetchProjects = async () => {
@@ -312,11 +264,6 @@ export default function OwnProjects() {
     console.log('Saving project settings:', editProjectData);
     // Tutaj będzie API call do zapisu zmian
     setSettingsDialogOpen(false);
-    setDialogProjectId(null);
-  };
-
-  const handleCloseDatabaseDialog = () => {
-    setDatabaseDialogOpen(false);
     setDialogProjectId(null);
   };
 
@@ -510,45 +457,11 @@ export default function OwnProjects() {
         }
       }}
     >
-      {project.isPublic && (
-        <MenuItem onClick={() => handleCardProjectAction('published-view')}>
-          <ListItemIcon>
-            <Language fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>Mapa w wersji opublikowanej</ListItemText>
-        </MenuItem>
-      )}
       <MenuItem onClick={() => handleCardProjectAction('settings')}>
         <ListItemIcon>
           <Settings fontSize="small" />
         </ListItemIcon>
         <ListItemText>Ustawienia</ListItemText>
-      </MenuItem>
-      <MenuItem onClick={() => handleCardProjectAction('database')}>
-        <ListItemIcon>
-          <TableChart fontSize="small" />
-        </ListItemIcon>
-        <ListItemText>Baza danych</ListItemText>
-      </MenuItem>
-      <MenuItem onClick={() => handleCardProjectAction('publish')}>
-        <ListItemIcon>
-          <Public fontSize="small" />
-        </ListItemIcon>
-        <ListItemText>
-          {project.isPublic ? 'Cofnij publikację' : 'Publikacja mapy'}
-        </ListItemText>
-      </MenuItem>
-      <MenuItem onClick={() => handleCardProjectAction('import')}>
-        <ListItemIcon>
-          <Upload fontSize="small" />
-        </ListItemIcon>
-        <ListItemText>Importuj projekt</ListItemText>
-      </MenuItem>
-      <MenuItem onClick={() => handleCardProjectAction('export')}>
-        <ListItemIcon>
-          <GetApp fontSize="small" />
-        </ListItemIcon>
-        <ListItemText>Eksportuj projekt</ListItemText>
       </MenuItem>
       <MenuItem onClick={() => handleCardProjectAction('delete')} sx={{ color: 'error.main' }}>
         <ListItemIcon>
@@ -709,126 +622,6 @@ export default function OwnProjects() {
         <Add />
       </Fab>
 
-      {/* Database Dialog */}
-      <Dialog
-        open={databaseDialogOpen}
-        onClose={handleCloseDatabaseDialog}
-        maxWidth="sm"
-        fullWidth
-        fullScreen={isMobile}
-      >
-        <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontWeight: 600 }}>
-          Baza danych
-          <IconButton onClick={handleCloseDatabaseDialog} size="small" aria-label="Zamknij">
-            <Close />
-          </IconButton>
-        </DialogTitle>
-        <Divider />
-        <DialogContent sx={{ pt: 3 }}>
-          {dialogProjectId && (() => {
-            const project = mockProjects.find(p => p.id === dialogProjectId);
-            if (!project) return null;
-            
-            // Placeholder database info - można łatwo zmienić później
-            const dbInfo = {
-              dbName: `db_${project.title.toLowerCase().replace(/\s+/g, '_')}`,
-              createdDate: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toLocaleDateString('pl-PL', {
-                day: '2-digit',
-                month: '2-digit',
-                year: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit'
-              }),
-              host: `db-${project.id}.mapmaker.online`,
-              port: 5432,
-              username: `user_${project.id}_${project.title.toLowerCase().slice(0, 8)}`,
-              password: `***${Math.random().toString(36).substring(2, 8)}***`,
-              schema: `schema_${project.category.toLowerCase()}`,
-              tables: Math.floor(Math.random() * 15) + 5,
-              size: project.size
-            };
-            
-            return (
-              <Stack spacing={2}>
-                <Box>
-                  <Typography variant="body2" color="text.secondary" gutterBottom>
-                    Nazwa bazy danych:
-                  </Typography>
-                  <Typography variant="body1" fontWeight="500" sx={{ fontFamily: 'monospace' }}>
-                    {dbInfo.dbName}
-                  </Typography>
-                </Box>
-                <Box>
-                  <Typography variant="body2" color="text.secondary" gutterBottom>
-                    Projekt utworzony:
-                  </Typography>
-                  <Typography variant="body1" fontWeight="500">
-                    {dbInfo.createdDate}
-                  </Typography>
-                </Box>
-                <Box>
-                  <Typography variant="body2" color="text.secondary" gutterBottom>
-                    Host:
-                  </Typography>
-                  <Typography variant="body1" fontWeight="500" sx={{ fontFamily: 'monospace' }}>
-                    {dbInfo.host}
-                  </Typography>
-                </Box>
-                <Box>
-                  <Typography variant="body2" color="text.secondary" gutterBottom>
-                    Port:
-                  </Typography>
-                  <Typography variant="body1" fontWeight="500">
-                    {dbInfo.port}
-                  </Typography>
-                </Box>
-                <Box>
-                  <Typography variant="body2" color="text.secondary" gutterBottom>
-                    Login:
-                  </Typography>
-                  <Typography variant="body1" fontWeight="500" sx={{ fontFamily: 'monospace' }}>
-                    {dbInfo.username}
-                  </Typography>
-                </Box>
-                <Box>
-                  <Typography variant="body2" color="text.secondary" gutterBottom>
-                    Hasło:
-                  </Typography>
-                  <Typography variant="body1" fontWeight="500" sx={{ fontFamily: 'monospace' }}>
-                    {dbInfo.password}
-                  </Typography>
-                </Box>
-                <Divider />
-                <Box>
-                  <Typography variant="body2" color="text.secondary" gutterBottom>
-                    Schema:
-                  </Typography>
-                  <Typography variant="body1" fontWeight="500" sx={{ fontFamily: 'monospace' }}>
-                    {dbInfo.schema}
-                  </Typography>
-                </Box>
-                <Box>
-                  <Typography variant="body2" color="text.secondary" gutterBottom>
-                    Liczba tabel:
-                  </Typography>
-                  <Typography variant="body1" fontWeight="500">
-                    {dbInfo.tables}
-                  </Typography>
-                </Box>
-                <Box>
-                  <Typography variant="body2" color="text.secondary" gutterBottom>
-                    Rozmiar bazy:
-                  </Typography>
-                  <Typography variant="body1" fontWeight="500">
-                    {dbInfo.size}
-                  </Typography>
-                </Box>
-              </Stack>
-            );
-          })()}
-        </DialogContent>
-      </Dialog>
-
       {/* Delete Confirmation Dialog */}
       <Dialog
         open={deleteDialogOpen}
@@ -860,57 +653,6 @@ export default function OwnProjects() {
           </Button>
           <Button onClick={handleDeleteProject} variant="contained" color="error">
             Usuń
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Import Project Dialog */}
-      <Dialog
-        open={importDialogOpen}
-        onClose={() => setImportDialogOpen(false)}
-        maxWidth="md"
-        fullWidth
-        fullScreen={isMobile}
-      >
-        <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontWeight: 600 }}>
-          Importuj projekt
-          <IconButton onClick={() => setImportDialogOpen(false)} size="small">
-            <Close />
-          </IconButton>
-        </DialogTitle>
-        <Divider />
-        <DialogContent sx={{ pt: 3 }}>
-          <Box
-            sx={{
-              border: '2px dashed',
-              borderColor: 'primary.main',
-              borderRadius: 2,
-              p: 4,
-              textAlign: 'center',
-              bgcolor: alpha(theme.palette.primary.main, 0.05),
-            }}
-          >
-            <CloudUpload sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} />
-            <Typography variant="h6" gutterBottom>
-              Upuść plik tutaj lub kliknij, aby wybrać z dysku
-            </Typography>
-            <Typography variant="body2" color="text.secondary" gutterBottom>
-              Pliki niestandardowe (*.qgs,*.qgz)
-            </Typography>
-            <Button variant="outlined" sx={{ mt: 2 }}>
-              Wybierz pliki
-            </Button>
-          </Box>
-          <Alert severity="info" sx={{ mt: 2 }}>
-            Obsługiwane formaty: QGS, QGZ (pliki projektów QGIS)
-          </Alert>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 3 }}>
-          <Button onClick={() => setImportDialogOpen(false)} color="inherit">
-            Anuluj
-          </Button>
-          <Button variant="contained">
-            Importuj
           </Button>
         </DialogActions>
       </Dialog>
