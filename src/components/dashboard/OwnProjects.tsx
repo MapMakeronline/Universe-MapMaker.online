@@ -260,11 +260,31 @@ export default function OwnProjects() {
     }));
   };
 
-  const handleSaveProjectSettings = () => {
-    console.log('Saving project settings:', editProjectData);
-    // Tutaj będzie API call do zapisu zmian
-    setSettingsDialogOpen(false);
-    setDialogProjectId(null);
+  const handleSaveProjectSettings = async () => {
+    if (!dialogProjectId) return;
+
+    try {
+      await dashboardService.updateProject({
+        project: dialogProjectId,
+        custom_project_name: editProjectData.name,
+        domain: editProjectData.subdomain.split('.')[0], // Extract subdomain part
+        keywords: editProjectData.keywords,
+        description: editProjectData.description,
+        category: editProjectData.categories[0] || 'Inne',
+        is_public: editProjectData.isPublic,
+      });
+
+      // Refresh projects list
+      await fetchProjects();
+
+      setSettingsDialogOpen(false);
+      setDialogProjectId(null);
+
+      alert('Ustawienia projektu zostały zapisane!');
+    } catch (error: any) {
+      console.error('Failed to save project settings:', error);
+      alert(error.message || 'Nie udało się zapisać ustawień projektu');
+    }
   };
 
   const handleCloseSettingsDialog = () => {
@@ -275,19 +295,19 @@ export default function OwnProjects() {
   // Załaduj dane projektu przy otwieraniu dialogu ustawień
   useEffect(() => {
     if (settingsDialogOpen && dialogProjectId) {
-      const project = mockProjects.find(p => p.id === dialogProjectId);
-      if (project) {
+      const apiProject = apiProjects.find(p => p.project_name === dialogProjectId);
+      if (apiProject) {
         setEditProjectData({
-          name: project.title,
-          subdomain: `${project.title.toLowerCase().replace(/\s+/g, '')}.mapmaker.online`,
-          keywords: `${project.category}, mapa, projekt`,
-          description: project.description,
-          categories: [project.category],
-          isPublic: project.isPublic,
+          name: apiProject.custom_project_name || apiProject.project_name,
+          subdomain: apiProject.domain_name || apiProject.project_name.toLowerCase().replace(/\s+/g, ''),
+          keywords: apiProject.keywords || '',
+          description: apiProject.description || '',
+          categories: [apiProject.categories || 'Inne'],
+          isPublic: apiProject.published,
         });
       }
     }
-  }, [settingsDialogOpen, dialogProjectId]);
+  }, [settingsDialogOpen, dialogProjectId, apiProjects]);
 
   const ProjectCard = ({ project }: { project: Project }) => {
     const [cardMenuAnchor, setCardMenuAnchor] = useState<null | HTMLElement>(null);
@@ -848,13 +868,13 @@ export default function OwnProjects() {
             </Box>
 
             {dialogProjectId && (() => {
-              const project = mockProjects.find(p => p.id === dialogProjectId);
-              return project ? (
+              const apiProject = apiProjects.find(p => p.project_name === dialogProjectId);
+              const project = projects.find(p => p.id === dialogProjectId);
+              return project && apiProject ? (
                 <Alert severity="info">
                   <Typography variant="body2">
                     <strong>Ostatnia modyfikacja:</strong> {project.lastModified}<br />
-                    <strong>Rozmiar:</strong> {project.size}<br />
-                    <strong>Liczba warstw:</strong> {project.layers}
+                    <strong>Status:</strong> {apiProject.published ? 'Publiczny' : 'Prywatny'}
                   </Typography>
                 </Alert>
               ) : null;

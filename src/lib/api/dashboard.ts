@@ -45,6 +45,7 @@ export interface UpdateProjectData {
   keywords?: string;
   description?: string;
   category?: string;
+  is_public?: boolean;
 }
 
 export interface UpdateProfileData {
