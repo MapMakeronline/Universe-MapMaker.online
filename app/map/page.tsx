@@ -11,6 +11,7 @@ import { setSelectedProject } from '@/store/slices/dashboardSlice';
 import { loadLayers, resetLayers } from '@/store/slices/layersSlice';
 import { setViewState, setMapStyle } from '@/store/slices/mapSlice';
 import { dashboardService } from '@/lib/api/dashboard';
+import { MAP_STYLES } from '@/lib/mapbox/config';
 
 export default function MapPage() {
   const searchParams = useSearchParams();
@@ -57,7 +58,23 @@ export default function MapPage() {
         // Load map state (viewport + style)
         if (projectData.map_state) {
           dispatch(setViewState(projectData.map_state.viewState));
-          dispatch(setMapStyle(projectData.map_state.mapStyle));
+
+          // Resolve style key to Mapbox URL
+          const styleKey = projectData.map_state.mapStyle as keyof typeof MAP_STYLES;
+          if (styleKey && MAP_STYLES[styleKey]) {
+            // Use the object form with both URL and key
+            dispatch(setMapStyle({
+              url: MAP_STYLES[styleKey].style,
+              key: styleKey,
+            }));
+          } else {
+            // Fallback to full3d if style key is invalid
+            console.warn(`Invalid style key: ${styleKey}, falling back to full3d`);
+            dispatch(setMapStyle({
+              url: MAP_STYLES.full3d.style,
+              key: 'full3d',
+            }));
+          }
         }
 
         // TODO: Load features (3D buildings, POI, etc.)
