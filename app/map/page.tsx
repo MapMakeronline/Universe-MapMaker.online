@@ -8,6 +8,9 @@ import LeftPanel from '@/components/panels/LeftPanel';
 import RightToolbar from '@/components/panels/RightToolbar';
 import { useAppDispatch } from '@/store/hooks';
 import { setSelectedProject } from '@/store/slices/dashboardSlice';
+import { loadLayers, resetLayers } from '@/store/slices/layersSlice';
+import { setViewState, setMapStyle } from '@/store/slices/mapSlice';
+import { dashboardService } from '@/lib/api/dashboard';
 
 export default function MapPage() {
   const searchParams = useSearchParams();
@@ -30,16 +33,26 @@ export default function MapPage() {
         setIsLoading(true);
         setError(null);
 
+        // Reset previous project data
+        dispatch(resetLayers());
+
         // Set selected project in Redux
         dispatch(setSelectedProject(projectName));
 
-        // TODO: Fetch project data from backend
-        // const projectData = await dashboardService.getProjectData(projectName);
-        // dispatch(loadLayers(projectData.layers));
-        // dispatch(loadMapState(projectData.mapState));
+        // Fetch project data from backend
+        const projectData = await dashboardService.getProjectData(projectName);
 
-        // For now, just simulate loading
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Load layers into Redux
+        dispatch(loadLayers(projectData.layers));
+
+        // Load map state (viewport + style)
+        if (projectData.map_state) {
+          dispatch(setViewState(projectData.map_state.viewState));
+          dispatch(setMapStyle(projectData.map_state.mapStyle));
+        }
+
+        // TODO: Load features (3D buildings, POI, etc.)
+        // dispatch(loadFeatures(projectData.features));
 
         setIsLoading(false);
       } catch (err: any) {

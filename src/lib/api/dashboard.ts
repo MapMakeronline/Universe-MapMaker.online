@@ -281,6 +281,37 @@ class DashboardService {
 
     return response.blob();
   }
+
+  async getProjectData(projectName: string): Promise<{
+    success: boolean;
+    project_name: string;
+    custom_project_name: string;
+    layers: any[];
+    map_state: {
+      viewState: {
+        longitude: number;
+        latitude: number;
+        zoom: number;
+        bearing: number;
+        pitch: number;
+      };
+      mapStyle: string;
+    };
+    features: any[];
+    created_at: string;
+  }> {
+    const response = await fetch(`${API_URL}/dashboard/projects/${encodeURIComponent(projectName)}/`, {
+      method: 'GET',
+      headers: this.getAuthHeader(),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw error;
+    }
+
+    return response.json();
+  }
 }
 
 export const dashboardService = new DashboardService();
