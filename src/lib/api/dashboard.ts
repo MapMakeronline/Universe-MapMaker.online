@@ -1,6 +1,6 @@
 // Dashboard API service for Django backend communication
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://universe-mapmaker-backend-production.up.railway.app';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://34.0.251.33';
 
 export interface Project {
   project_name: string;
