@@ -1,112 +1,12 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { LayersState, LayerNode } from '@/types/layers';
 
-const mockLayers: LayerNode[] = [
-  {
-    id: 'poi-group',
-    name: 'Punkty POI',
-    type: 'group',
-    visible: true,
-    opacity: 1,
-    icon: 'folder',
-    children: [
-      {
-        id: 'restaurants',
-        name: 'Restauracje',
-        type: 'layer',
-        visible: true,
-        opacity: 1,
-        color: '#ff5722',
-        icon: 'points',
-        sourceType: 'vector',
-      },
-      {
-        id: 'hotels',
-        name: 'Hotele',
-        type: 'layer',
-        visible: false,
-        opacity: 0.8,
-        color: '#2196f3',
-        icon: 'points',
-        sourceType: 'vector',
-      },
-    ],
-  },
-  {
-    id: 'buildings',
-    name: 'Budynki',
-    type: 'layer',
-    visible: true,
-    opacity: 0.7,
-    color: '#9e9e9e',
-    icon: 'buildings',
-    sourceType: 'vector',
-  },
-  {
-    id: 'infrastructure',
-    name: 'Infrastruktura',
-    type: 'group',
-    visible: true,
-    opacity: 1,
-    icon: 'folder',
-    children: [
-      {
-        id: 'roads',
-        name: 'Drogi',
-        type: 'layer',
-        visible: true,
-        opacity: 1,
-        color: '#424242',
-        icon: 'roads',
-        sourceType: 'vector',
-      },
-      {
-        id: 'railways',
-        name: 'Koleje',
-        type: 'layer',
-        visible: false,
-        opacity: 1,
-        color: '#795548',
-        icon: 'roads',
-        sourceType: 'vector',
-      },
-    ],
-  },
-  {
-    id: 'nature',
-    name: 'Środowisko',
-    type: 'group',
-    visible: true,
-    opacity: 1,
-    icon: 'folder',
-    children: [
-      {
-        id: 'green-areas',
-        name: 'Tereny zielone',
-        type: 'layer',
-        visible: true,
-        opacity: 0.6,
-        color: '#4caf50',
-        icon: 'green',
-        sourceType: 'vector',
-      },
-      {
-        id: 'water-bodies',
-        name: 'Zbiorniki wodne',
-        type: 'layer',
-        visible: true,
-        opacity: 0.8,
-        color: '#2196f3',
-        icon: 'water',
-        sourceType: 'vector',
-      },
-    ],
-  },
-];
+// Mock layers removed - projects start with empty layer tree
+// Layers will be loaded from backend API per project
 
 const initialState: LayersState = {
-  layers: mockLayers,
-  expandedGroups: ['poi-group', 'infrastructure', 'nature'],
+  layers: [], // Empty by default - loaded per project from backend
+  expandedGroups: [],
   activeLayerId: undefined,
 };
 
@@ -219,6 +119,30 @@ const layersSlice = createSlice({
       // Ustaw jako aktywną warstwę
       state.activeLayerId = newLayer.id;
     },
+    // Load layers from backend (replaces current layers)
+    loadLayers: (state, action: PayloadAction<LayerNode[]>) => {
+      state.layers = action.payload;
+      // Auto-expand all groups
+      const expandedIds: string[] = [];
+      const extractGroupIds = (layers: LayerNode[]) => {
+        layers.forEach(layer => {
+          if (layer.type === 'group') {
+            expandedIds.push(layer.id);
+            if (layer.children) {
+              extractGroupIds(layer.children);
+            }
+          }
+        });
+      };
+      extractGroupIds(action.payload);
+      state.expandedGroups = expandedIds;
+    },
+    // Reset layers to empty (for switching projects)
+    resetLayers: (state) => {
+      state.layers = [];
+      state.expandedGroups = [];
+      state.activeLayerId = undefined;
+    },
   },
 });
 
@@ -229,6 +153,8 @@ export const {
   setActiveLayer,
   deleteLayer,
   addDrawnLayer,
+  loadLayers,
+  resetLayers,
 } = layersSlice.actions;
 
 export default layersSlice.reducer;

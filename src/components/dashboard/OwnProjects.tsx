@@ -343,7 +343,7 @@ export default function OwnProjects() {
             border: '1px solid',
             borderColor: 'divider',
           }}
-          onClick={() => window.location.href = '/map'}
+          onClick={() => window.location.href = `/map?project=${encodeURIComponent(project.id)}`}
         >
           <Box sx={{ position: 'relative' }}>
             <CardMedia
