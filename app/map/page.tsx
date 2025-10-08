@@ -6,7 +6,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import MapContainer from '@/components/map/MapContainer';
 import LeftPanel from '@/components/panels/LeftPanel';
 import RightToolbar from '@/components/panels/RightToolbar';
-import { useAppDispatch } from '@/store/hooks';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { setSelectedProject } from '@/store/slices/dashboardSlice';
 import { loadLayers, resetLayers } from '@/store/slices/layersSlice';
 import { setViewState, setMapStyle } from '@/store/slices/mapSlice';
@@ -16,6 +16,7 @@ export default function MapPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const dispatch = useAppDispatch();
+  const { isAuthenticated } = useAppSelector((state) => state.auth);
   const projectName = searchParams.get('project');
 
   const [isLoading, setIsLoading] = useState(true);
@@ -23,6 +24,14 @@ export default function MapPage() {
 
   useEffect(() => {
     const loadProjectData = async () => {
+      // Check authentication first
+      if (!isAuthenticated) {
+        console.warn('User not authenticated, redirecting to login...');
+        setError('Musisz być zalogowany. Przekierowanie do logowania...');
+        setTimeout(() => router.push('/auth?tab=0'), 2000);
+        return;
+      }
+
       if (!projectName) {
         setError('Nie wybrano projektu. Przekierowanie do dashboardu...');
         setTimeout(() => router.push('/dashboard'), 2000);
@@ -57,13 +66,21 @@ export default function MapPage() {
         setIsLoading(false);
       } catch (err: any) {
         console.error('Failed to load project:', err);
+
+        // Handle 401 Unauthorized specifically
+        if (err.status === 401 || err.message?.includes('401')) {
+          setError('Sesja wygasła. Przekierowanie do logowania...');
+          setTimeout(() => router.push('/auth?tab=0'), 2000);
+          return;
+        }
+
         setError(err.message || 'Nie udało się załadować projektu');
         setIsLoading(false);
       }
     };
 
     loadProjectData();
-  }, [projectName, dispatch, router]);
+  }, [projectName, dispatch, router, isAuthenticated]);
 
   if (isLoading) {
     return (
