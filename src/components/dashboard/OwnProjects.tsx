@@ -1,3 +1,9 @@
+// ⚠️ DEPRECATED: This component is deprecated and will be removed in a future version.
+// Please use OwnProjectsIntegrated.tsx instead.
+// Migration guide: OwnProjectsIntegrated uses Entity Adapter selectors from projectsSlice
+//
+// @deprecated Use OwnProjectsIntegrated from './OwnProjectsIntegrated'
+
 'use client';
 
 import React, { useRef, useState, useEffect } from 'react';

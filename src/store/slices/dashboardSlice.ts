@@ -1,3 +1,13 @@
+// ⚠️ DEPRECATED: This slice is deprecated and will be removed in a future version.
+// Please use @/store/slices/projectsSlice instead.
+// Migration guide: Use Entity Adapter selectors from projectsSlice:
+//   - selectAllProjects (replaces state.dashboard.projects)
+//   - selectProjectsLoading (replaces state.dashboard.isLoading)
+//   - selectProjectsError (replaces state.dashboard.error)
+//   - selectDbInfo (replaces state.dashboard.dbInfo)
+//
+// @deprecated Use projectsSlice with Entity Adapter
+
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { Project, DbInfo } from '@/lib/api/dashboard';
 
