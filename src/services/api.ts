@@ -1,5 +1,5 @@
 // API Configuration and Base Client
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://34.0.251.33';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.universemapmaker.online';
 
 export interface ApiError {
   message: string;

@@ -1,6 +1,6 @@
 // Auth API service for Django backend communication
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://34.0.251.33';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.universemapmaker.online';
 
 export interface LoginCredentials {
   username: string; // email will be used as username
