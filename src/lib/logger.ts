@@ -30,6 +30,14 @@ class Logger {
     };
   }
 
+  /**
+   * Force enable logging (for critical operations in production)
+   */
+  enablePermanent() {
+    this.config.enabled = true;
+    return this;
+  }
+
   private formatMessage(level: LogLevel, args: any[]): any[] {
     const parts: any[] = [];
 
@@ -140,10 +148,11 @@ export const logger = new Logger();
 
 /**
  * Domain-specific loggers
+ * Critical loggers are enabled in production for debugging
  */
-export const mapLogger = new Logger({ prefix: '🗺️ MAP' });
-export const reduxLogger = new Logger({ prefix: '🔴 REDUX' });
-export const apiLogger = new Logger({ prefix: '🌐 API' });
+export const mapLogger = new Logger({ prefix: '🗺️ MAP' }).enablePermanent();
+export const reduxLogger = new Logger({ prefix: '🔴 REDUX' }).enablePermanent();
+export const apiLogger = new Logger({ prefix: '🌐 API' }).enablePermanent();
 export const drawLogger = new Logger({ prefix: '✏️ DRAW' });
 export const layerLogger = new Logger({ prefix: '📊 LAYER' });
 
