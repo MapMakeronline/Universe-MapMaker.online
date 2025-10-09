@@ -179,7 +179,15 @@ export default function OwnProjectsIntegrated() {
           <Box sx={{ display: 'flex', gap: 2 }}>
             <Button
               variant="outlined"
-              onClick={() => dispatch(fetchProjects())}
+              onClick={async () => {
+                console.log('🔄 Manual refresh button clicked');
+                try {
+                  const result = await dispatch(fetchProjects()).unwrap();
+                  console.log('✅ Fetch result:', result);
+                } catch (error) {
+                  console.error('❌ Fetch error:', error);
+                }
+              }}
               sx={{
                 borderRadius: 2,
                 textTransform: 'none',

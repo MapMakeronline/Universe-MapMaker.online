@@ -39,15 +39,15 @@ export const fetchProjects = createAsyncThunk(
   'projects/fetchProjects',
   async (_, { rejectWithValue }) => {
     try {
-      mapLogger.info('Fetching projects from backend...');
+      console.log('🗺️ MAP Fetching projects from backend...');
       const response = await projectsApi.getProjects();
-      mapLogger.info('Projects fetched:', {
+      console.log('🗺️ MAP Projects fetched:', {
         count: response.list_of_projects?.length || 0,
         projects: response.list_of_projects?.map(p => p.project_name),
       });
       return response;
     } catch (error: any) {
-      mapLogger.error('Failed to fetch projects:', error);
+      console.error('🗺️ MAP Failed to fetch projects:', error);
       return rejectWithValue(error.message || 'Failed to fetch projects');
     }
   }
