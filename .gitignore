@@ -41,3 +41,9 @@ backup-*/
 # legacy folders
 mapmaker_test-main/
 docs/backend/
+
+# Playwright
+/test-results/
+/playwright-report/
+/playwright/.cache/
+.env.test
