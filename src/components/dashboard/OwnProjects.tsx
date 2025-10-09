@@ -128,8 +128,8 @@ export default function OwnProjects() {
     fetchProjects();
   }, [dispatch]);
 
-  // Map API projects to UI format
-  const projects: Project[] = apiProjects.map((proj) => ({
+  // Map API projects to UI format (with safety check)
+  const projects: Project[] = (apiProjects || []).map((proj) => ({
     id: proj.project_name,
     title: proj.custom_project_name || proj.project_name,
     description: proj.description || 'Projekt własny',
@@ -209,12 +209,13 @@ export default function OwnProjects() {
     try {
       dispatch(setLoading(true));
 
+      // Backend expects: project, domain, projectDescription, keywords, category
       await dashboardService.createProject({
-        project_name: newProjectData.name,
-        custom_project_name: newProjectData.subdomain || newProjectData.name,
-        category: newProjectData.categories.join(', ') || 'Inne',
-        description: newProjectData.description,
+        project: newProjectData.name,
+        domain: newProjectData.subdomain || newProjectData.name.toLowerCase().replace(/\s+/g, ''),
+        projectDescription: newProjectData.description,
         keywords: newProjectData.keywords,
+        category: newProjectData.categories[0] || 'Inne', // Backend expects string, not array
         is_public: false,
       });
 
