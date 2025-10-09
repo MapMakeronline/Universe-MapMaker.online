@@ -179,6 +179,62 @@ src/store/
    dispatch(addLayer({ id: '123', name: 'New Layer' }))
    ```
 
+#### 🌐 `src/lib/api/` - Backend Communication
+
+**⚠️ REFACTORED (Phase 1 Complete)** - Unified API architecture for maintainability:
+
+```
+src/lib/api/
+│
+├── client.ts                  # ⭐ Centralized HTTP client (error handling, auth)
+├── unified-projects.ts        # ✅ NEW - Projects API (23 methods)
+├── unified-user.ts            # ✅ NEW - User & profile API (4 methods)
+├── types.ts                   # TypeScript types for API
+│
+└── 🚫 DEPRECATED (marked for removal):
+    ├── projects.ts            # Use unified-projects.ts instead
+    └── dashboard.ts           # Use unified-projects.ts + unified-user.ts instead
+```
+
+**Unified API Services:**
+
+1. **`unified-projects.ts`** - Single source for all project operations:
+   - Core: `getProjects()`, `createProject()`, `updateProject()`, `deleteProject()`
+   - Visibility: `togglePublish()`, `getPublicProjects()`
+   - Import/Export: `exportProject()`, `importQGS()`, `importQGZ()`
+   - Metadata: `updateLogo()`, `setMetadata()`, `getThumbnailUrl()`
+   - Domain: `checkSubdomainAvailability()`, `changeDomain()`
+   - Layers: `getLayersOrder()`, `changeLayersOrder()`
+   - Utils: `searchProjects()`, `reloadProject()`, `repairProject()`
+
+2. **`unified-user.ts`** - User profile and settings:
+   - `getProfile()`, `updateProfile()`
+   - `changePassword()`, `sendContactForm()`
+
+3. **`client.ts`** - Centralized HTTP client:
+   - Automatic authentication headers
+   - Structured error handling (`ApiError` class)
+   - Consistent logging (`mapLogger` integration)
+   - FormData support for file uploads
+
+**Usage Example:**
+```typescript
+import { unifiedProjectsApi } from '@/lib/api/unified-projects';
+import { unifiedUserApi } from '@/lib/api/unified-user';
+
+// Fetch projects
+const response = await unifiedProjectsApi.getProjects();
+
+// Get user profile
+const profile = await unifiedUserApi.getProfile();
+```
+
+**Migration Notes:**
+- Phase 1 complete (23% code reduction)
+- Old APIs still work (backward compatible)
+- See [CODE-QUALITY-AUDIT.md](./CODE-QUALITY-AUDIT.md) for full details
+- See [REFACTORING-PHASE1-COMPLETE.md](./REFACTORING-PHASE1-COMPLETE.md) for completion report
+
 #### 🛠️ `src/lib/` - Utility Libraries
 
 Helper functions and configurations:
