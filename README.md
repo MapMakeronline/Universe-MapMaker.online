@@ -141,7 +141,7 @@ src/components/
 
 #### 💾 `src/store/` - State Management
 
-Redux-based state management for application-wide data:
+**⚠️ REFACTORED (Phase 2 Complete)** - Entity Adapter for O(1) performance:
 
 ```
 src/store/
@@ -150,12 +150,21 @@ src/store/
 ├── hooks.ts                 # 🪝 Typed Redux hooks (useAppSelector, useAppDispatch)
 │
 └── 📁 slices/               # State slices (modular state)
+    ├── projectsSlice.ts    # ✅ Projects (Entity Adapter, O(1) lookups)
     ├── mapSlice.ts         # Map state (zoom, center, style)
     ├── layersSlice.ts      # Layer management (list, visibility, properties)
     ├── drawSlice.ts        # Drawing state (geometries, active tool)
+    ├── authSlice.ts        # Authentication state
     ├── featuresSlice.ts    # Universal feature store (buildings, POI, all objects)
-    └── buildingsSlice.ts   # 3D buildings state (deprecated, use featuresSlice)
+    ├── buildingsSlice.ts   # 3D buildings state (deprecated, use featuresSlice)
+    └── dashboardSlice.ts   # ⚠️ DEPRECATED (use projectsSlice instead)
 ```
+
+**Key Features:**
+- `projectsSlice` uses **Entity Adapter** for normalized state (O(1) lookups/updates/deletes)
+- Memoized selectors with `createSelector` for performance
+- Typed hooks (`useAppSelector`, `useAppDispatch`) for TypeScript safety
+- Single source of truth for project state
 
 **How State Works:**
 
@@ -181,7 +190,7 @@ src/store/
 
 #### 🌐 `src/lib/api/` - Backend Communication
 
-**⚠️ REFACTORED (Phase 1 Complete)** - Unified API architecture for maintainability:
+**⚠️ REFACTORED (Phase 1 & 2 Complete)** - Unified API + Entity Adapter Redux:
 
 ```
 src/lib/api/
@@ -230,10 +239,12 @@ const profile = await unifiedUserApi.getProfile();
 ```
 
 **Migration Notes:**
-- Phase 1 complete (23% code reduction)
-- Old APIs still work (backward compatible)
-- See [CODE-QUALITY-AUDIT.md](./CODE-QUALITY-AUDIT.md) for full details
-- See [REFACTORING-PHASE1-COMPLETE.md](./REFACTORING-PHASE1-COMPLETE.md) for completion report
+- ✅ Phase 1 complete (23% API code reduction) - [Report](./REFACTORING-PHASE1-COMPLETE.md)
+- ✅ Phase 2 complete (Entity Adapter, O(1) lookups) - [Report](./REFACTORING-PHASE2-COMPLETE.md)
+- Old APIs deprecated but still work (backward compatible)
+- **Redux State:** `state.projects` now uses Entity Adapter (normalized, O(1) operations)
+- **Selectors:** Use `selectAllProjects`, `selectProjectById` from projectsSlice
+- See [CODE-QUALITY-AUDIT.md](./CODE-QUALITY-AUDIT.md) for full refactoring plan
 
 #### 🛠️ `src/lib/` - Utility Libraries
 
