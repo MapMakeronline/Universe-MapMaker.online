@@ -29,7 +29,7 @@ import {
   Language,
 } from '@mui/icons-material';
 import type { Project } from '@/lib/api/types';
-import { projectsApi } from '@/lib/api/projects';
+import { unifiedProjectsApi as projectsApi } from '@/lib/api/unified-projects';
 
 interface ProjectCardProps {
   project: Project;

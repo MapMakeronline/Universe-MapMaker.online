@@ -3,7 +3,6 @@ import mapReducer from './slices/mapSlice';
 import layersReducer from './slices/layersSlice';
 import drawReducer from './slices/drawSlice';
 import authReducer from './slices/authSlice';
-// import dashboardReducer from './slices/dashboardSlice'; // DEPRECATED: Use projectsReducer instead
 import buildingsReducer from './slices/buildingsSlice';
 import featuresReducer from './slices/featuresSlice';
 import projectsReducer from './slices/projectsSlice';
@@ -17,7 +16,6 @@ export const makeStore = () => {
       layers: layersReducer,
       draw: drawReducer,
       auth: authReducer,
-      // dashboard: dashboardReducer, // DEPRECATED: Removed in Phase 2 (use projects instead)
       buildings: buildingsReducer,
       features: featuresReducer,
       projects: projectsReducer,

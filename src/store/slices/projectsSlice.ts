@@ -55,11 +55,24 @@ const initialState: ProjectsState = projectsAdapter.getInitialState({
 });
 
 // ============================================================================
-// Async Thunks
+// Async Thunks (DEPRECATED - Use RTK Query hooks from @/store/api/projectsApi)
+// ============================================================================
+// ⚠️ DEPRECATED: These async thunks are kept for backward compatibility only.
+// New code should use RTK Query hooks:
+// - useGetProjectsQuery() instead of dispatch(fetchProjects())
+// - useCreateProjectMutation() instead of dispatch(createProject())
+// - useDeleteProjectMutation() instead of dispatch(deleteProject())
+// - useTogglePublishMutation() instead of dispatch(togglePublishProject())
+//
+// See: src/store/api/projectsApi.ts for RTK Query implementation
+// See: src/components/dashboard/OwnProjectsRTK.tsx for usage example
+//
+// These will be removed in a future version.
 // ============================================================================
 
 /**
  * Fetch all projects for the authenticated user
+ * @deprecated Use useGetProjectsQuery() from @/store/api/projectsApi instead
  */
 export const fetchProjects = createAsyncThunk(
   'projects/fetchProjects',

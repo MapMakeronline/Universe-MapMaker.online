@@ -7,10 +7,10 @@ import MapContainer from '@/components/map/MapContainer';
 import LeftPanel from '@/components/panels/LeftPanel';
 import RightToolbar from '@/components/panels/RightToolbar';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { setSelectedProject } from '@/store/slices/dashboardSlice';
+import { setCurrentProject } from '@/store/slices/projectsSlice';
 import { loadLayers, resetLayers } from '@/store/slices/layersSlice';
 import { setViewState, setMapStyle } from '@/store/slices/mapSlice';
-import { dashboardService } from '@/lib/api/dashboard';
+import { unifiedProjectsApi } from '@/lib/api/unified-projects';
 import { MAP_STYLES } from '@/lib/mapbox/config';
 
 export default function MapPage() {
@@ -46,11 +46,11 @@ export default function MapPage() {
         // Reset previous project data
         dispatch(resetLayers());
 
-        // Set selected project in Redux
-        dispatch(setSelectedProject(projectName));
-
         // Fetch project data from backend
-        const projectData = await dashboardService.getProjectData(projectName);
+        const projectData = await unifiedProjectsApi.getProjectData(projectName);
+
+        // Set current project in Redux
+        dispatch(setCurrentProject(projectData as any));
 
         // Load layers into Redux
         dispatch(loadLayers(projectData.layers));
