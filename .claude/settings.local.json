@@ -93,7 +93,16 @@
       "Bash(git clone:*)",
       "Bash(gcloud projects describe:*)",
       "Bash(screenshot.bat http://localhost:3000/dashboard screenshots/dashboard-empty-state.png)",
-      "Bash(npx playwright screenshot:*)"
+      "Bash(npx playwright screenshot:*)",
+      "Bash(gcloud run revisions list:*)",
+      "Bash(git clean:*)",
+      "Bash(if exist nul del nul)",
+      "Bash(gcloud run revisions describe:*)",
+      "Bash(awk:*)",
+      "Bash(gcloud artifacts repositories list:*)",
+      "Bash(gcloud sql databases:*)",
+      "Bash(screenshot.bat https://universemapmaker.online/dashboard screenshots/dashboard-projects-fixed.png)",
+      "Bash(cd:*)"
     ],
     "deny": [],
     "ask": []

@@ -1,6 +1,7 @@
 // Redux slice for managing QGIS projects from GeoCraft backend
-// REFACTORED: Now uses unified API service
-import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+// REFACTORED Phase 1: Now uses unified API service
+// REFACTORED Phase 2: Now uses Entity Adapter for normalized state
+import { createSlice, createAsyncThunk, createEntityAdapter, createSelector, PayloadAction } from '@reduxjs/toolkit';
 import { unifiedProjectsApi } from '@/lib/api/unified-projects';
 import type {
   Project,
@@ -10,9 +11,34 @@ import type {
   DbInfo,
 } from '@/lib/api/types';
 import { mapLogger } from '@/lib/logger';
+import type { RootState } from '../store';
 
-interface ProjectsState {
-  projects: Project[];
+// ============================================================================
+// Entity Adapter Configuration
+// ============================================================================
+
+/**
+ * Entity Adapter for normalized project state
+ * Benefits:
+ * - O(1) lookups by project_name instead of O(n) array searches
+ * - Automatic CRUD operations
+ * - Built-in selectors for common queries
+ * - Prevents duplicate entries
+ */
+const projectsAdapter = createEntityAdapter<Project>({
+  selectId: (project) => project.project_name,
+  sortComparer: (a, b) => {
+    // Sort by date (newest first), fallback to name
+    const dateCompare = b.project_date.localeCompare(a.project_date);
+    return dateCompare !== 0 ? dateCompare : a.project_name.localeCompare(b.project_name);
+  },
+});
+
+// ============================================================================
+// State Interface
+// ============================================================================
+
+interface ProjectsState extends ReturnType<typeof projectsAdapter.getInitialState> {
   currentProject: Project | null;
   dbInfo: DbInfo | null;
   isLoading: boolean;
@@ -20,14 +46,13 @@ interface ProjectsState {
   lastFetch: number | null;
 }
 
-const initialState: ProjectsState = {
-  projects: [],
+const initialState: ProjectsState = projectsAdapter.getInitialState({
   currentProject: null,
   dbInfo: null,
   isLoading: false,
   error: null,
   lastFetch: null,
-};
+});
 
 // ============================================================================
 // Async Thunks
@@ -203,7 +228,8 @@ const projectsSlice = createSlice({
       })
       .addCase(fetchProjects.fulfilled, (state, action: PayloadAction<ProjectsResponse>) => {
         state.isLoading = false;
-        state.projects = action.payload.list_of_projects;
+        // Use entity adapter to set all projects (replaces array, maintains normalization)
+        projectsAdapter.setAll(state, action.payload.list_of_projects);
         state.dbInfo = action.payload.db_info;
         state.lastFetch = Date.now();
         mapLogger.info(`Fetched ${action.payload.list_of_projects.length} projects`);
@@ -298,22 +324,64 @@ export const {
 export default projectsSlice.reducer;
 
 // ============================================================================
-// Selectors
+// Selectors (Entity Adapter + Memoized)
 // ============================================================================
 
-export const selectProjects = (state: { projects: ProjectsState }) => state.projects.projects;
-export const selectCurrentProject = (state: { projects: ProjectsState }) => state.projects.currentProject;
-export const selectDbInfo = (state: { projects: ProjectsState }) => state.projects.dbInfo;
-export const selectProjectsLoading = (state: { projects: ProjectsState }) => state.projects.isLoading;
-export const selectProjectsError = (state: { projects: ProjectsState }) => state.projects.error;
-export const selectLastFetch = (state: { projects: ProjectsState }) => state.projects.lastFetch;
+/**
+ * Export entity adapter selectors
+ * These provide O(1) lookups and are automatically memoized
+ */
+export const {
+  selectAll: selectAllProjects,        // Get all projects as sorted array
+  selectById: selectProjectById,       // Get project by ID (O(1) lookup!)
+  selectIds: selectProjectIds,         // Get all project IDs
+  selectEntities: selectProjectEntities, // Get projects as { [id]: Project } map
+  selectTotal: selectTotalProjects,    // Get total count
+} = projectsAdapter.getSelectors<RootState>((state) => state.projects);
 
-// Memoized selectors
-export const selectProjectByName = (projectName: string) => (state: { projects: ProjectsState }) =>
-  state.projects.projects.find((p) => p.project_name === projectName);
+/**
+ * Basic state selectors
+ */
+export const selectCurrentProject = (state: RootState) => state.projects.currentProject;
+export const selectDbInfo = (state: RootState) => state.projects.dbInfo;
+export const selectProjectsLoading = (state: RootState) => state.projects.isLoading;
+export const selectProjectsError = (state: RootState) => state.projects.error;
+export const selectLastFetch = (state: RootState) => state.projects.lastFetch;
 
-export const selectPublishedProjects = (state: { projects: ProjectsState }) =>
-  state.projects.projects.filter((p) => p.published);
+/**
+ * Memoized selectors using createSelector for performance
+ * These only recompute when dependencies change
+ */
 
-export const selectUnpublishedProjects = (state: { projects: ProjectsState }) =>
-  state.projects.projects.filter((p) => !p.published);
+// Select published projects (memoized)
+export const selectPublishedProjects = createSelector(
+  [selectAllProjects],
+  (projects) => projects.filter((p) => p.published)
+);
+
+// Select unpublished/private projects (memoized)
+export const selectUnpublishedProjects = createSelector(
+  [selectAllProjects],
+  (projects) => projects.filter((p) => !p.published)
+);
+
+// Select projects by category (memoized)
+export const selectProjectsByCategory = (category: string) =>
+  createSelector([selectAllProjects], (projects) =>
+    projects.filter((p) => p.categories === category)
+  );
+
+// Select project count by status (memoized)
+export const selectProjectCounts = createSelector([selectAllProjects], (projects) => ({
+  total: projects.length,
+  published: projects.filter((p) => p.published).length,
+  unpublished: projects.filter((p) => !p.published).length,
+}));
+
+/**
+ * Backward compatibility selectors
+ * For components still using old selector names
+ */
+export const selectProjects = selectAllProjects; // Legacy alias
+export const selectProjectByName = (projectName: string) => (state: RootState) =>
+  selectProjectById(state, projectName); // Legacy alias with different signature
