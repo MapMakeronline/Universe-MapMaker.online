@@ -167,22 +167,38 @@ export default function OwnProjectsIntegrated() {
           </Typography>
         </Box>
         {isAuthenticated && (
-          <Button
-            variant="contained"
-            startIcon={<Add />}
-            size="large"
-            onClick={handleCreateProject}
-            sx={{
-              borderRadius: 2,
-              textTransform: 'none',
-              px: 3,
-              py: 1.5,
-              fontWeight: 600,
-              display: { xs: 'none', sm: 'flex' },
-            }}
-          >
-            Nowy projekt
-          </Button>
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <Button
+              variant="outlined"
+              onClick={() => dispatch(fetchProjects())}
+              sx={{
+                borderRadius: 2,
+                textTransform: 'none',
+                px: 3,
+                py: 1.5,
+                fontWeight: 600,
+                display: { xs: 'none', sm: 'flex' },
+              }}
+            >
+              Odśwież
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={<Add />}
+              size="large"
+              onClick={handleCreateProject}
+              sx={{
+                borderRadius: 2,
+                textTransform: 'none',
+                px: 3,
+                py: 1.5,
+                fontWeight: 600,
+                display: { xs: 'none', sm: 'flex' },
+              }}
+            >
+              Nowy projekt
+            </Button>
+          </Box>
         )}
       </Box>
 
