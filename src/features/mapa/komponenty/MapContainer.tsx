@@ -14,7 +14,6 @@ import IdentifyTool from './IdentifyTool';
 import Buildings3D from './Buildings3D';
 import FeatureAttributesModal from '@/features/warstwy/modale/FeatureAttributesModal';
 import MobileFAB from './MobileFAB';
-import TapTest from './TapTest';
 
 // Import CSS dla Mapbox GL
 import 'mapbox-gl/dist/mapbox-gl.css';
@@ -198,9 +197,6 @@ const MapContainer: React.FC<MapContainerProps> = ({ children }) => {
 
         {/* 3D Buildings */}
         <Buildings3D />
-
-        {/* Tap Test - Testowa funkcja wykrywania tap/click (bez konfliktu z pinch-zoom) */}
-        <TapTest />
 
         {/* Dodatkowe komponenty (Markers, Popup) */}
         {children}
