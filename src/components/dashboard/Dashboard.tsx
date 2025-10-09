@@ -10,6 +10,7 @@ import PublicProjects from '../../../src/components/dashboard/PublicProjects';
 import UserProfile from '../../../src/components/dashboard/UserProfile';
 import UserSettings from '../../../src/components/dashboard/UserSettings';
 import Contact from '../../../src/components/dashboard/Contact';
+import AdminPanel from '../../../src/components/dashboard/AdminPanel';
 
 export default function Dashboard() {
   const searchParams = useSearchParams();
@@ -38,6 +39,8 @@ export default function Dashboard() {
         return <UserProfile />; // For now, redirect to profile
       case 'contact':
         return <Contact />;
+      case 'admin':
+        return <AdminPanel />;
       default:
         return <OwnProjects />;
     }

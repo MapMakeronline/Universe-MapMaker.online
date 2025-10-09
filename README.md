@@ -266,6 +266,72 @@ npm run start    # Start production server
 npm run lint     # Code linting
 ```
 
+### Browser Testing & Screenshots
+
+**IMPORTANT:** Always test UI changes using automated screenshots before committing!
+
+#### Screenshot Tools (Windows)
+
+Two automated screenshot scripts are available:
+
+**1. Command Prompt / Git Bash:**
+```cmd
+screenshot.bat                                          # Screenshots http://localhost:3000
+screenshot.bat http://localhost:3000/dashboard          # Screenshots dashboard page
+screenshot.bat http://localhost:3000/map test-map.png   # Custom output filename
+screenshot.bat https://universemapmaker.online          # Test production site
+```
+
+**2. PowerShell:**
+```powershell
+.\screenshot.ps1 http://localhost:3000/dashboard
+powershell -ExecutionPolicy Bypass -File screenshot.ps1 "http://localhost:3000/auth"
+```
+
+#### How Screenshot Tool Works
+
+- **Automatic Playwright Installation** - Installs Playwright if not present
+- **Full-Page Capture** - 1920x1080 viewport, full-page screenshots
+- **Timestamp Filenames** - Auto-generates filenames like `test-2025-10-09-143022.png`
+- **Network Idle Detection** - Waits for all content to load before screenshot
+- **Output Directory** - Saves to `screenshots/` folder (gitignored)
+- **Interactive** - Prompts to open screenshot after capture
+
+#### When to Use Screenshots
+
+✅ **Before committing UI changes** - Verify visual appearance
+✅ **After adding new components** - Ensure proper rendering
+✅ **When debugging layout issues** - Compare expected vs actual
+✅ **For documentation** - Capture current state of features
+✅ **Testing on production** - Verify deployment succeeded
+✅ **Mobile responsive testing** - Test different viewport sizes
+
+#### Testing Workflow
+
+1. **Make UI changes** in your code
+2. **Save and rebuild** - Next.js auto-reloads on dev server
+3. **Run screenshot tool** - `screenshot.bat http://localhost:3000/dashboard`
+4. **Review screenshot** - Opens automatically or check `screenshots/` folder
+5. **Iterate or commit** - Fix issues or commit when satisfied
+
+#### Examples
+
+```bash
+# Test login page
+screenshot.bat http://localhost:3000/auth login-test.png
+
+# Test admin dashboard (requires authentication)
+screenshot.bat http://localhost:3000/dashboard?tab=admin admin-panel.png
+
+# Test map view
+screenshot.bat http://localhost:3000/map map-view.png
+
+# Test production deployment
+screenshot.bat https://universemapmaker.online production-home.png
+```
+
+**Pro Tip:** Screenshots are saved with timestamps, so you can compare before/after changes without overwriting files!
+
 ### Core Component
 The main map is implemented in `app/page.tsx`:
 

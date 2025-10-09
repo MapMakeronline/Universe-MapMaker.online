@@ -24,7 +24,67 @@ npm run lint         # Run ESLint
 # Cloud Deployment
 gcloud builds submit --region=europe-central2 --config=cloudbuild.yaml --substitutions=COMMIT_SHA=$(git rev-parse HEAD)
 gcloud run services describe universe-mapmaker --region=europe-central2
+
+# Browser Testing (Screenshots)
+.\screenshot.bat                                    # Screenshot localhost:3000 (Windows CMD)
+.\screenshot.bat http://localhost:3000/dashboard    # Screenshot specific page
+.\screenshot.ps1 http://localhost:3000              # PowerShell version
+powershell -ExecutionPolicy Bypass -File screenshot.ps1 "http://localhost:3000/dashboard"
 ```
+
+## Testing & Browser Preview
+
+**IMPORTANT:** Always test UI changes using automated screenshots before committing. This ensures visual regression detection and proper rendering.
+
+### Screenshot Testing Tool
+
+Two automated screenshot scripts are available for Windows:
+
+1. **screenshot.bat** (Command Prompt / Git Bash)
+   ```cmd
+   screenshot.bat [url] [output-file]
+
+   # Examples:
+   screenshot.bat                                          # Screenshots http://localhost:3000
+   screenshot.bat http://localhost:3000/dashboard          # Screenshots dashboard page
+   screenshot.bat http://localhost:3000/map test-map.png   # Custom output filename
+   ```
+
+2. **screenshot.ps1** (PowerShell)
+   ```powershell
+   .\screenshot.ps1 [url] [output-file]
+
+   # Examples:
+   .\screenshot.ps1 http://localhost:3000/auth
+   powershell -ExecutionPolicy Bypass -File screenshot.ps1 "http://localhost:3000/dashboard"
+   ```
+
+### How Screenshot Tool Works
+
+- Uses Playwright (automatically installs if missing)
+- Captures full-page screenshots at 1920x1080 resolution
+- Saves to `screenshots/` directory with timestamp
+- Supports both local development and production URLs
+- Network idle wait ensures all content is loaded
+- Prompts to open screenshot after capture
+
+### When to Use Screenshots
+
+1. **Before committing UI changes** - Verify visual appearance
+2. **After adding new components** - Ensure proper rendering
+3. **When debugging layout issues** - Compare expected vs actual
+4. **For documentation** - Capture current state of features
+5. **Testing on production** - Verify deployment succeeded
+6. **Mobile responsive testing** - Test different viewport sizes
+
+### Production Testing
+
+Test on live domain:
+```bash
+screenshot.bat https://universemapmaker.online/dashboard admin-panel-test.png
+```
+
+Screenshots are saved to `screenshots/` folder (gitignored by default).
 
 ## Environment Setup
 

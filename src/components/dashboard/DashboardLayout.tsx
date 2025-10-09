@@ -36,6 +36,7 @@ import {
   ChevronLeft,
   Dashboard as DashboardIcon,
   Login,
+  AdminPanelSettings,
 } from '@mui/icons-material';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { clearAuth } from '@/store/slices/authSlice';
@@ -68,6 +69,9 @@ export default function DashboardLayout({ children, currentPage, onPageChange }:
 
   // Get auth state from Redux
   const { user, isAuthenticated } = useAppSelector(state => state.auth);
+
+  // Check if user is admin
+  const isAdmin = user?.email?.includes('@universemapmaker.online') || user?.username === 'admin';
 
   const open = isMobile ? mobileOpen : desktopOpen;
 
@@ -427,6 +431,56 @@ export default function DashboardLayout({ children, currentPage, onPageChange }:
             ))}
           </List>
 
+          {isAdmin && (
+            <>
+              <Typography
+                variant="overline"
+                sx={{
+                  px: 3,
+                  py: 1,
+                  mt: 2,
+                  color: 'text.secondary',
+                  fontWeight: 600,
+                  letterSpacing: 1,
+                }}
+              >
+                ADMINISTRACJA
+              </Typography>
+              <List sx={{ px: 2 }}>
+                <ListItem disablePadding sx={{ mb: 0.5 }}>
+                  <ListItemButton
+                    onClick={() => onPageChange('admin')}
+                    selected={currentPage === 'admin'}
+                    sx={{
+                      borderRadius: 2,
+                      '&.Mui-selected': {
+                        bgcolor: 'primary.main',
+                        color: 'white',
+                        '&:hover': {
+                          bgcolor: 'primary.dark',
+                        },
+                        '& .MuiListItemIcon-root': {
+                          color: 'white',
+                        },
+                      },
+                      '&:hover': {
+                        bgcolor: alpha(theme.palette.primary.main, 0.08),
+                      },
+                    }}
+                  >
+                    <ListItemIcon>
+                      <AdminPanelSettings />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary="Panel Admina"
+                      primaryTypographyProps={{ fontWeight: 500 }}
+                    />
+                  </ListItemButton>
+                </ListItem>
+              </List>
+            </>
+          )}
+
           <Typography
             variant="overline"
             sx={{
@@ -464,7 +518,7 @@ export default function DashboardLayout({ children, currentPage, onPageChange }:
                   }}
                 >
                   <ListItemIcon>{item.icon}</ListItemIcon>
-                  <ListItemText 
+                  <ListItemText
                     primary={item.label}
                     primaryTypographyProps={{ fontWeight: 500 }}
                   />
