@@ -102,7 +102,11 @@
       "Bash(gcloud artifacts repositories list:*)",
       "Bash(gcloud sql databases:*)",
       "Bash(screenshot.bat https://universemapmaker.online/dashboard screenshots/dashboard-projects-fixed.png)",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "Bash(screenshot.bat http://localhost:3002 screenshots/refactor-test-home.png)",
+      "Bash(docker:*)",
+      "Bash(wc:*)",
+      "Bash(.screenshot.bat http://localhost:3003/dashboard screenshots/qgis-import-test.png)"
     ],
     "deny": [],
     "ask": []
