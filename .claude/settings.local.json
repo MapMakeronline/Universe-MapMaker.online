@@ -110,7 +110,8 @@
       "Bash(xargs:*)",
       "Bash(bash:*)",
       "Bash(tee:*)",
-      "Bash(kill:*)"
+      "Bash(kill:*)",
+      "Bash(tree:*)"
     ],
     "deny": [],
     "ask": []
