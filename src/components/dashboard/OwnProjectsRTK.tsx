@@ -94,6 +94,27 @@ export default function OwnProjectsRTK() {
     }
   };
 
+  const handleImportQGIS = async (file: File, projectName: string) => {
+    try {
+      // Import via unified API (not RTK Query)
+      const { unifiedProjectsApi } = await import('@/lib/api/unified-projects');
+      await unifiedProjectsApi.importQGISProject(file, projectName);
+
+      setSnackbar({
+        open: true,
+        message: `Projekt QGIS "${projectName}" został zaimportowany pomyślnie!`,
+        severity: 'success',
+      });
+      setCreateDialogOpen(false);
+
+      // Manually refetch projects after import
+      refetch();
+    } catch (error: any) {
+      // Error will be handled by CreateProjectDialog
+      throw error;
+    }
+  };
+
   const handleDeleteProject = (project: Project) => {
     setProjectToDelete(project);
     setDeleteDialogOpen(true);
@@ -295,6 +316,7 @@ export default function OwnProjectsRTK() {
         open={createDialogOpen}
         onClose={() => setCreateDialogOpen(false)}
         onCreate={handleProjectCreated}
+        onImportQGIS={handleImportQGIS}
       />
 
       <DeleteProjectDialog

@@ -358,6 +358,45 @@ class UnifiedProjectsService {
       ...options,
     });
   }
+
+  /**
+   * Import QGIS project from .qgz file
+   * POST /projects/import/qgz/
+   */
+  async importQGZProject(file: File, projectName: string): Promise<any> {
+    const formData = new FormData();
+    formData.append('project', projectName);
+    formData.append('qgz', file);
+
+    return apiClient.post('/projects/import/qgz/', formData);
+  }
+
+  /**
+   * Import QGIS project from .qgs file
+   * POST /projects/import/qgs/
+   */
+  async importQGSProject(file: File, projectName: string): Promise<any> {
+    const formData = new FormData();
+    formData.append('project', projectName);
+    formData.append('qgs', file);
+
+    return apiClient.post('/projects/import/qgs/', formData);
+  }
+
+  /**
+   * Import QGIS project (auto-detects file type)
+   */
+  async importQGISProject(file: File, projectName: string): Promise<any> {
+    const extension = file.name.split('.').pop()?.toLowerCase();
+
+    if (extension === 'qgz') {
+      return this.importQGZProject(file, projectName);
+    } else if (extension === 'qgs') {
+      return this.importQGSProject(file, projectName);
+    } else {
+      throw new Error('Unsupported file format. Please use .qgz or .qgs files.');
+    }
+  }
 }
 
 // Export singleton instance
