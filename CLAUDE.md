@@ -12,6 +12,35 @@ When writing code:
 3. Ensure code follows modern TypeScript/React best practices
 4. Validate against current Next.js App Router patterns
 
+### Code Cleanup Strategy
+
+**Goal:** Gradual refactoring towards optimal, backend-integrated code.
+
+**Current State:**
+- ⚠️ Duplicate code exists (acknowledged, being addressed)
+- ⚠️ Some non-working features (legacy code)
+- ✅ Active refactoring in progress (RTK Query migration completed)
+
+**Refactoring Principles:**
+1. **Backend-First Integration** - Always verify backend endpoints before implementing
+2. **Incremental Cleanup** - Small, testable changes over big rewrites
+3. **No Breaking Changes** - Maintain working features during refactoring
+4. **Optimal Code Only** - Follow RTK Query, Entity Adapter, modern patterns
+5. **Delete Dead Code** - Remove unused components/functions immediately
+
+**Recent Refactoring Completed:**
+- ✅ Phase 1: API Consolidation (23% code reduction)
+- ✅ Phase 2: Entity Adapter (O(1) lookups, normalized state)
+- ✅ Phase 3: RTK Query Migration (85% less boilerplate)
+- ✅ Phase 4: Dead Code Removal (~2945 lines deleted)
+
+**Before Adding Features:**
+1. Check if backend endpoint exists
+2. Verify database schema supports the feature
+3. Check QGIS Server if map layers involved
+4. Use existing patterns (don't create new ones)
+5. Delete old implementations when replacing them
+
 ## Development Commands
 
 ```bash
@@ -86,7 +115,51 @@ screenshot.bat https://universemapmaker.online/dashboard admin-panel-test.png
 
 Screenshots are saved to `screenshots/` folder (gitignored by default).
 
-## Environment Setup
+## Architecture Overview
+
+**CRITICAL:** Before making any changes, verify integration with all system components:
+
+### System Components
+
+1. **PostgreSQL Database (Google Cloud SQL)**
+   - Primary data store for all application data
+   - Location: Google Cloud SQL instance
+   - Always verify schema changes with backend team
+
+2. **Backend API (Django REST Framework)**
+   - Base URL: `https://api.universemapmaker.online/`
+   - Django REST Framework with Token authentication
+   - Handles: projects, users, layers, QGIS import
+   - Check endpoints before implementing features
+
+3. **QGIS Server (WMS/WFS/OWS)**
+   - Endpoint: `https://api.universemapmaker.online/ows`
+   - Serves map layers via OGC standards (WMS, WFS, WCS)
+   - Used for rendering map layers in frontend
+
+4. **Frontend (Next.js on Cloud Run)**
+   - Production: `https://universemapmaker.online`
+   - Local development: `http://localhost:3000` (MUST use port 3000 for CORS)
+   - React 19 + Next.js 15 + Redux Toolkit
+
+### Development Workflow
+
+**IMPORTANT:** Always follow this sequence when implementing features:
+
+1. **Check Database Schema** - Verify table structure in PostgreSQL
+2. **Check Backend API** - Confirm endpoint exists and payload format
+3. **Check QGIS Server** - If map layers involved, verify OWS endpoint
+4. **Implement Frontend** - Only after confirming backend integration
+5. **Test Locally on Port 3000** - Backend CORS requires localhost:3000
+6. **Test on Production** - Verify on live Cloud Run deployment
+
+### Port Requirements
+
+- **Local Development:** MUST run on `http://localhost:3000`
+- **Backend CORS:** Only allows `localhost:3000` (not 3001, 3002, 3003, etc.)
+- If port 3000 is occupied, kill the process and restart
+
+### Environment Setup
 
 **Local Development:**
 Create `.env.local` in project root:
@@ -97,8 +170,10 @@ NEXT_PUBLIC_API_URL=https://api.universemapmaker.online
 
 **Production Environment:**
 - Backend API: `https://api.universemapmaker.online`
+- QGIS Server: `https://api.universemapmaker.online/ows`
 - Frontend: `https://universemapmaker.online`
 - SSL: ✅ Active (Google-managed certificates)
+- Database: Google Cloud SQL (PostgreSQL)
 
 **Fallback Configuration:**
 If `.env.local` is missing:
