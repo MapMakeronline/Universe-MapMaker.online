@@ -2,14 +2,38 @@
 
 Professional Mapbox-powered mapping application built with Next.js 15+, deployed on Google Cloud Run.
 
-## 🚀 Live Demo
+## 🚀 Live Demo & Environments
 
-**Production Frontend**: [https://universemapmaker.online](https://universemapmaker.online)
-**Production API**: [https://api.universemapmaker.online](https://api.universemapmaker.online)
+### **Production URLs**
 
-**Alternative URLs:**
-- Frontend (Cloud Run direct): [https://universe-mapmaker-vs4lfmh3ma-lm.a.run.app](https://universe-mapmaker-vs4lfmh3ma-lm.a.run.app)
-- Backend (GCP VM): 34.0.251.33:8000 (HTTPS via Nginx)
+| Environment | URL | Status | Deployment |
+|-------------|-----|--------|------------|
+| **Frontend** | [https://universemapmaker.online](https://universemapmaker.online) | ✅ Live | Auto (Cloud Build) |
+| **Backend API** | [https://api.universemapmaker.online](https://api.universemapmaker.online) | ✅ Live | Manual (VM) |
+| **QGIS Server** | https://api.universemapmaker.online/ows | ✅ Live | Manual (VM) |
+
+### **Infrastructure**
+
+- **Frontend**: Google Cloud Run (europe-central2) - Auto-scales 0-5 instances
+- **Backend**: GCP VM `universe-backend` (IP: 34.0.251.33) - Docker Compose (Django + QGIS Server + Nginx)
+- **Database**: Cloud SQL PostgreSQL `geocraft-postgres` (IP: 34.116.133.97)
+- **Storage**: Persistent Disk 50GB SSD (`/mnt/qgis-projects`)
+
+### **How to Deploy Changes**
+
+**Frontend (Automatic):**
+```bash
+git push origin main  # Cloud Build auto-deploys to universemapmaker.online
+```
+
+**Backend (Manual):**
+```bash
+gcloud compute ssh universe-backend --zone=europe-central2-a
+cd ~/Universe-Mapmaker-Backend && git pull
+docker-compose -f docker-compose.production.yml up -d --build
+```
+
+📖 **Full deployment guide:** See [DEPLOYMENT.md](DEPLOYMENT.md)
 
 ## ✨ Features
 

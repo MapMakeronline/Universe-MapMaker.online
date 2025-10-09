@@ -1,165 +1,89 @@
-// Auth API service for Django backend communication
+// Auth API service - unified with apiClient
+// All authentication endpoints for Django backend
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.universemapmaker.online';
-
-export interface LoginCredentials {
-  username: string; // email will be used as username
-  password: string;
-}
-
-export interface RegisterData {
-  username: string; // email will be used as username
-  email: string;
-  password: string;
-  password_confirm: string;
-  first_name: string;
-  last_name: string;
-  address?: string;
-  city?: string;
-  zip_code?: string;
-  nip?: string;
-  company_name?: string;
-}
-
-export interface User {
-  id: number;
-  username: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  address?: string;
-  city?: string;
-  zip_code?: string;
-  nip?: string;
-  company_name?: string;
-  theme?: string;
-}
-
-export interface AuthResponse {
-  token: string;
-  user: User;
-}
-
-export interface ApiError {
-  [key: string]: string[] | string;
-}
+import { apiClient } from './client';
+import type { User, AuthResponse, LoginCredentials, RegisterData } from './types';
 
 class AuthService {
-  private getAuthHeader(): HeadersInit {
-    const token = this.getToken();
-    return token
-      ? {
-          'Content-Type': 'application/json',
-          Authorization: `Token ${token}`,
-        }
-      : {
-          'Content-Type': 'application/json',
-        };
-  }
-
+  /**
+   * Register a new user
+   * Backend: POST /auth/register
+   */
   async register(data: RegisterData): Promise<AuthResponse> {
-    const response = await fetch(`${API_URL}/auth/register`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data),
-    });
+    const response = await apiClient.post<AuthResponse>('/auth/register', data);
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw error;
+    // Save token to localStorage via apiClient
+    if (response.token) {
+      apiClient.setToken(response.token);
     }
 
-    const result = await response.json();
-
-    // Save token to localStorage
-    if (result.token) {
-      this.setToken(result.token);
-    }
-
-    return result;
+    return response;
   }
 
+  /**
+   * Login user
+   * Backend: POST /auth/login
+   */
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
-    const response = await fetch(`${API_URL}/auth/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(credentials),
-    });
+    const response = await apiClient.post<AuthResponse>('/auth/login', credentials);
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw error;
+    // Save token to localStorage via apiClient
+    if (response.token) {
+      apiClient.setToken(response.token);
     }
 
-    const result = await response.json();
-
-    // Save token to localStorage
-    if (result.token) {
-      this.setToken(result.token);
-    }
-
-    return result;
+    return response;
   }
 
+  /**
+   * Logout user (invalidates token on backend)
+   * Backend: POST /auth/logout
+   */
   async logout(): Promise<void> {
-    const token = this.getToken();
-
-    if (!token) {
-      return;
-    }
-
     try {
-      await fetch(`${API_URL}/auth/logout`, {
-        method: 'POST',
-        headers: this.getAuthHeader(),
-      });
+      await apiClient.post('/auth/logout');
     } finally {
-      // Always remove token from localStorage
-      this.removeToken();
+      // Always remove token from localStorage, even if backend request fails
+      apiClient.removeToken();
     }
   }
 
+  /**
+   * Get current user profile
+   * Backend: GET /auth/profile
+   */
   async getProfile(): Promise<User> {
-    const response = await fetch(`${API_URL}/auth/profile`, {
-      method: 'GET',
-      headers: this.getAuthHeader(),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw error;
-    }
-
-    return response.json();
+    return apiClient.get<User>('/auth/profile');
   }
 
-  // Token management
-  setToken(token: string): void {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('authToken', token);
-    }
-  }
-
-  getToken(): string | null {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('authToken');
-    }
-    return null;
-  }
-
-  removeToken(): void {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('authToken');
-    }
-  }
-
+  /**
+   * Check if user is authenticated
+   */
   isAuthenticated(): boolean {
-    return !!this.getToken();
+    return apiClient.isAuthenticated();
+  }
+
+  /**
+   * Get current auth token
+   */
+  getToken(): string | null {
+    return apiClient.isAuthenticated() ? localStorage.getItem('authToken') : null;
+  }
+
+  /**
+   * Manually set auth token (e.g., after external login)
+   */
+  setToken(token: string): void {
+    apiClient.setToken(token);
+  }
+
+  /**
+   * Manually remove auth token
+   */
+  removeToken(): void {
+    apiClient.removeToken();
   }
 }
 
+// Export singleton instance
 export const authService = new AuthService();

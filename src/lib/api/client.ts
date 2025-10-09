@@ -236,6 +236,23 @@ class ApiClient {
   setBaseURL(url: string): void {
     this.baseURL = url;
   }
+
+  // Token management methods
+  setToken(token: string): void {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('authToken', token);
+    }
+  }
+
+  removeToken(): void {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('authToken');
+    }
+  }
+
+  isAuthenticated(): boolean {
+    return !!this.getToken();
+  }
 }
 
 // Export singleton instance

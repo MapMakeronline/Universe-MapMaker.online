@@ -71,7 +71,7 @@ export interface CreateProjectData {
   domain: string; // Backend expects "domain" not "custom_project_name"
   projectDescription?: string; // Backend expects "projectDescription" not "description"
   keywords?: string;
-  category?: string; // Backend service.py uses "category" (singular)
+  categories?: string[]; // Backend serializers.py uses ListField (array of strings)
 }
 
 export interface UpdateProjectData {

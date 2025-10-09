@@ -34,17 +34,19 @@ class ProjectsService {
 
   /**
    * Delete a project
+   * Backend: POST /api/projects/remove/
    */
   async deleteProject(projectName: string): Promise<{ success: boolean; message: string }> {
-    return apiClient.post('/api/projects/remove/', { project_name: projectName });
+    return apiClient.post('/api/projects/remove/', { project: projectName });
   }
 
   /**
    * Publish/unpublish a project
+   * Backend: POST /api/projects/app/publish or /api/projects/app/unpublish
    */
   async publishProject(projectName: string, publish: boolean): Promise<{ success: boolean }> {
     const endpoint = publish ? '/api/projects/app/publish' : '/api/projects/app/unpublish';
-    return apiClient.post(endpoint, { project_name: projectName });
+    return apiClient.post(endpoint, { project: projectName });
   }
 
   /**
@@ -81,12 +83,13 @@ class ProjectsService {
 
   /**
    * Import QGS project file
+   * Backend: POST /api/projects/import/qgs/
    */
   async importQGS(file: File, projectName?: string): Promise<{ success: boolean; message: string }> {
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('qgs', file);
     if (projectName) {
-      formData.append('project_name', projectName);
+      formData.append('project', projectName);
     }
 
     return apiClient.post('/api/projects/import/qgs/', formData);
@@ -94,12 +97,13 @@ class ProjectsService {
 
   /**
    * Import QGZ project file (compressed)
+   * Backend: POST /api/projects/import/qgz/
    */
   async importQGZ(file: File, projectName?: string): Promise<{ success: boolean; message: string }> {
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('qgz', file);
     if (projectName) {
-      formData.append('project_name', projectName);
+      formData.append('project', projectName);
     }
 
     return apiClient.post('/api/projects/import/qgz/', formData);
@@ -151,10 +155,11 @@ class ProjectsService {
 
   /**
    * Upload project logo
+   * Backend: POST /api/projects/logo/update/
    */
   async updateLogo(projectName: string, logo: File): Promise<{ success: boolean }> {
     const formData = new FormData();
-    formData.append('project_name', projectName);
+    formData.append('project', projectName);
     formData.append('logo', logo);
 
     return apiClient.post('/api/projects/logo/update/', formData);
@@ -162,6 +167,7 @@ class ProjectsService {
 
   /**
    * Set project metadata (description, keywords, etc.)
+   * Backend: POST /api/projects/metadata
    */
   async setMetadata(
     projectName: string,
@@ -172,7 +178,7 @@ class ProjectsService {
     }
   ): Promise<{ success: boolean }> {
     return apiClient.post('/api/projects/metadata', {
-      project_name: projectName,
+      project: projectName,
       ...metadata,
     });
   }

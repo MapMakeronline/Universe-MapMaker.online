@@ -3,15 +3,34 @@
 ## Production Architecture
 
 ```
-Frontend (Google Cloud Run)
-https://universemapmaker.online (34.111.222.132)
-    ↓
-Backend API (GCP VM + Docker)
-https://api.universemapmaker.online (34.111.222.132)
-    ├── Django (port 8000) - REST API
-    └── QGIS Server (port 8080) - OWS services
-    ↓
-PostgreSQL (GCP VM)
+┌─────────────────────────────────────┐
+│  Frontend (Cloud Run)               │
+│  https://universemapmaker.online    │
+│  region: europe-central2            │
+└─────────────┬───────────────────────┘
+              │ HTTPS
+              ↓
+┌─────────────────────────────────────┐
+│  Backend VM (universe-backend)      │
+│  https://api.universemapmaker.online│
+│  IP: 34.0.251.33                    │
+│  zone: europe-central2-a            │
+│                                     │
+│  ├─ Nginx (443, 80)                │
+│  │  └─ SSL: Let's Encrypt           │
+│  ├─ Django (8000) - REST API        │
+│  └─ QGIS Server (8080) - /ows       │
+└──────────┬──────────────────────────┘
+           │
+           ├───────────────────────────┐
+           │                           │
+           ↓                           ↓
+┌──────────────────────┐   ┌──────────────────────┐
+│  Cloud SQL           │   │  Persistent Disk     │
+│  geocraft-postgres   │   │  /mnt/qgis-projects  │
+│  IP: 34.116.133.97   │   │  50 GB SSD           │
+│  PostgreSQL+PostGIS  │   │  QGS files, layers   │
+└──────────────────────┘   └──────────────────────┘
 ```
 
 ## Environments
@@ -50,10 +69,31 @@ PostgreSQL (GCP VM)
   - `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`
   - `SECRET_KEY`
 
-### **Database - PostgreSQL + PostGIS**
-- **Host:** Internal (same VM or separate)
-- **Port:** 5432
-- **Engine:** PostGIS (PostgreSQL + GIS extensions)
+### **Database - Cloud SQL (PostgreSQL + PostGIS)**
+- **Instance:** `geocraft-postgres`
+- **Region:** `europe-central2` (Warsaw, Poland)
+- **Public IP:** `34.116.133.97`
+- **Port:** `5432`
+- **Engine:** PostgreSQL with PostGIS extension
+- **Connection:** Backend VM connects via private IP (VPC peering)
+- **Purpose:**
+  - Main database: User accounts, projects metadata, layers, domains
+  - User-specific databases: Auto-created per user (PostGIS enabled)
+
+### **Storage - Persistent Disk on VM**
+- **Mount Point:** `/mnt/qgis-projects`
+- **Size:** 50 GB (SSD)
+- **Type:** `pd-ssd`
+- **Purpose:** QGS/QGZ project files, thumbnails, vector data, rasters
+- **Structure:**
+  ```
+  /mnt/qgis-projects/
+  ├── {project_name}/
+  │   ├── project.qgs
+  │   ├── layers/
+  │   ├── thumbnails/
+  │   └── documents/
+  ```
 
 ## Deployment Process
 
