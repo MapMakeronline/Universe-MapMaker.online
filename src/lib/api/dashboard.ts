@@ -1,4 +1,12 @@
 // Dashboard API service for Django backend communication
+//
+// ⚠️ DEPRECATED: This file is deprecated and will be removed in a future version.
+// Please use the following unified APIs instead:
+// - For projects: @/lib/api/unified-projects
+// - For users: @/lib/api/unified-user
+// Migration guide: See CODE-QUALITY-AUDIT.md Phase 1
+//
+// @deprecated Use unifiedProjectsApi and unifiedUserApi from unified APIs
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.universemapmaker.online';
 

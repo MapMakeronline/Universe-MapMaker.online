@@ -1,5 +1,11 @@
 // Projects API service for GeoCraft Backend
 // Handles project CRUD operations, import/export, and publishing
+//
+// ⚠️ DEPRECATED: This file is deprecated and will be removed in a future version.
+// Please use @/lib/api/unified-projects instead.
+// Migration guide: See CODE-QUALITY-AUDIT.md Phase 1
+//
+// @deprecated Use unifiedProjectsApi from '@/lib/api/unified-projects'
 
 import { apiClient } from './client';
 import type {
