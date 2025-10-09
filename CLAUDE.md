@@ -121,37 +121,84 @@ Screenshots are saved to `screenshots/` folder (gitignored by default).
 
 ### System Components
 
-1. **PostgreSQL Database (Google Cloud SQL)**
+1. **PostgreSQL Database (Google Cloud SQL with PostGIS)**
    - Primary data store for all application data
    - Location: Google Cloud SQL instance
+   - Schema: Django models in `geocraft_api/models/`
+   - Key tables:
+     - `ProjectItem` - Projects (name, published, user, domain, category, metadata)
+     - `Domain` - Project domains (unique URLs)
+     - `Layer` - Map layers with PostGIS geometry
+     - `CustomUser` - User accounts
    - Always verify schema changes with backend team
 
 2. **Backend API (Django REST Framework)**
    - Base URL: `https://api.universemapmaker.online/`
    - Django REST Framework with Token authentication
-   - Handles: projects, users, layers, QGIS import
-   - Check endpoints before implementing features
+   - Routing structure:
+     - `/api/projects/*` - Project CRUD, QGIS import
+     - `/dashboard/*` - Dashboard data (projects list, public projects)
+     - `/auth/*` - Authentication endpoints
+   - Check endpoints in `geocraft_api/*/urls.py` before implementing features
+   - **IMPORTANT:** All project endpoints need `/api/` prefix!
 
 3. **QGIS Server (WMS/WFS/OWS)**
    - Endpoint: `https://api.universemapmaker.online/ows`
    - Serves map layers via OGC standards (WMS, WFS, WCS)
    - Used for rendering map layers in frontend
 
-4. **Frontend (Next.js on Cloud Run)**
+4. **Storage FASE (QGIS Project Files)**
+   - Location: VM filesystem at `~/mapmaker/server/qgs/`
+   - Stores .qgs and .qgz project files
+   - Thumbnails: `~/mapmaker/server/qgs/thumbnails`
+   - Accessible via VM with GCP SDK/CLI
+   - **IMPORTANT:** QGS files are NOT in Cloud Storage - they're on the VM!
+
+5. **Frontend (Next.js on Cloud Run)**
    - Production: `https://universemapmaker.online`
    - Local development: `http://localhost:3000` (MUST use port 3000 for CORS)
    - React 19 + Next.js 15 + Redux Toolkit
+
+### GCP SDK & CLI Access
+
+**Access Level:** Full access to Google Cloud Platform via SDK and CLI
+
+**Available Operations:**
+- `gcloud sql` - Database queries and management (Cloud SQL PostgreSQL)
+- `gcloud compute ssh` - SSH into VM to access Storage FASE files
+- `gcloud run` - Deploy and manage Cloud Run services
+- `gcloud builds` - Trigger Cloud Build deployments
+- `gcloud logging` - View application logs
+
+**Common GCP Commands:**
+```bash
+# Database access
+gcloud sql connect [instance-name] --user=postgres
+
+# SSH to VM (for Storage FASE access)
+gcloud compute ssh [vm-name] --zone=europe-central2-a
+
+# View backend logs
+gcloud logging read "resource.type=gce_instance" --limit=50
+
+# Deploy frontend
+gcloud builds submit --region=europe-central2 --config=cloudbuild.yaml
+```
+
+**Request Access:** If any GCP operation fails due to permissions, request access immediately.
 
 ### Development Workflow
 
 **IMPORTANT:** Always follow this sequence when implementing features:
 
-1. **Check Database Schema** - Verify table structure in PostgreSQL
-2. **Check Backend API** - Confirm endpoint exists and payload format
+1. **Check Database Schema** - Verify table structure in PostgreSQL via GCP SDK
+2. **Check Backend API** - Confirm endpoint exists in `geocraft_api/*/urls.py`
 3. **Check QGIS Server** - If map layers involved, verify OWS endpoint
-4. **Implement Frontend** - Only after confirming backend integration
-5. **Test Locally on Port 3000** - Backend CORS requires localhost:3000
-6. **Test on Production** - Verify on live Cloud Run deployment
+4. **Check Storage FASE** - If QGS files involved, SSH to VM and check `~/mapmaker/server/qgs/`
+5. **Implement Frontend** - Only after confirming backend integration
+6. **Test Locally on Port 3000** - Backend CORS requires localhost:3000
+7. **Push to GitHub** - All latest code goes to `git push origin main`
+8. **Test on Production** - Verify on live Cloud Run deployment
 
 ### Port Requirements
 

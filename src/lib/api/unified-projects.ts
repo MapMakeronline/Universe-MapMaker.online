@@ -361,26 +361,26 @@ class UnifiedProjectsService {
 
   /**
    * Import QGIS project from .qgz file
-   * POST /projects/import/qgz/
+   * POST /api/projects/import/qgz/
    */
   async importQGZProject(file: File, projectName: string): Promise<any> {
     const formData = new FormData();
     formData.append('project', projectName);
     formData.append('qgz', file);
 
-    return apiClient.post('/projects/import/qgz/', formData);
+    return apiClient.post('/api/projects/import/qgz/', formData);
   }
 
   /**
    * Import QGIS project from .qgs file
-   * POST /projects/import/qgs/
+   * POST /api/projects/import/qgs/
    */
   async importQGSProject(file: File, projectName: string): Promise<any> {
     const formData = new FormData();
     formData.append('project', projectName);
     formData.append('qgs', file);
 
-    return apiClient.post('/projects/import/qgs/', formData);
+    return apiClient.post('/api/projects/import/qgs/', formData);
   }
 
   /**
