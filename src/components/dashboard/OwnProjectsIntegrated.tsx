@@ -39,6 +39,11 @@ export default function OwnProjectsIntegrated() {
   const { projects, isLoading, error } = useAppSelector((state) => state.projects);
   const { isAuthenticated } = useAppSelector((state) => state.auth);
 
+  // Debug: log Redux state
+  useEffect(() => {
+    console.log('📊 Redux State - projects:', projects.length, 'isAuthenticated:', isAuthenticated);
+  }, [projects, isAuthenticated]);
+
   // Local UI state
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -51,8 +56,12 @@ export default function OwnProjectsIntegrated() {
 
   // Fetch projects on mount
   useEffect(() => {
+    console.log('🔍 OwnProjectsIntegrated useEffect - isAuthenticated:', isAuthenticated);
     if (isAuthenticated) {
+      console.log('🚀 Dispatching fetchProjects()...');
       dispatch(fetchProjects());
+    } else {
+      console.log('⚠️ Not authenticated, skipping fetchProjects');
     }
   }, [dispatch, isAuthenticated]);
 
