@@ -206,11 +206,13 @@ const projectsSlice = createSlice({
       state.error = null;
     },
     updateProjectInList: (state, action: PayloadAction<Partial<Project> & { project_name: string }>) => {
-      const index = state.projects.findIndex(
-        (p) => p.project_name === action.payload.project_name
-      );
-      if (index !== -1) {
-        state.projects[index] = { ...state.projects[index], ...action.payload };
+      // Use Entity Adapter's updateOne for O(1) update
+      const existingProject = state.entities[action.payload.project_name];
+      if (existingProject) {
+        projectsAdapter.updateOne(state, {
+          id: action.payload.project_name,
+          changes: action.payload,
+        });
 
         // Update current project if it's the one being updated
         if (state.currentProject?.project_name === action.payload.project_name) {
@@ -277,11 +279,14 @@ const projectsSlice = createSlice({
       })
       .addCase(deleteProject.fulfilled, (state, action) => {
         state.isLoading = false;
+        // Use Entity Adapter to remove the project (O(1) deletion)
+        projectsAdapter.removeOne(state, action.meta.arg);
+
         // Clear current project if it was deleted
         if (state.currentProject?.project_name === action.meta.arg) {
           state.currentProject = null;
         }
-        // Projects list will be refreshed by fetchProjects
+        // Note: fetchProjects is still dispatched for backend sync
       })
       .addCase(deleteProject.rejected, (state, action) => {
         state.isLoading = false;

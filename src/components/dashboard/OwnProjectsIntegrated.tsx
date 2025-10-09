@@ -22,6 +22,9 @@ import {
   deleteProject as deleteProjectThunk,
   togglePublishProject,
   setCurrentProject,
+  selectAllProjects,
+  selectProjectsLoading,
+  selectProjectsError,
 } from '@/store/slices/projectsSlice';
 import { ProjectsGridSkeleton } from './ProjectCardSkeleton';
 import { ProjectCard } from './ProjectCard';
@@ -35,8 +38,10 @@ export default function OwnProjectsIntegrated() {
   const router = useRouter();
   const dispatch = useAppDispatch();
 
-  // Redux state
-  const { projects, isLoading, error } = useAppSelector((state) => state.projects);
+  // Redux state - using Entity Adapter selectors
+  const projects = useAppSelector(selectAllProjects);
+  const isLoading = useAppSelector(selectProjectsLoading);
+  const error = useAppSelector(selectProjectsError);
   const { isAuthenticated } = useAppSelector((state) => state.auth);
 
   // Debug: log Redux state
