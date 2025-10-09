@@ -217,24 +217,40 @@ gcloud builds submit --region=europe-central2 --config=cloudbuild.yaml
 
 ### Backend Documentation
 
-**CRITICAL:** Complete backend documentation available in backend repository.
+**CRITICAL:** Complete backend documentation available in backend repository and frontend docs folder.
 
-**Location:** `Universe-Mapmaker-Backend/README.md`
+**Documentation Locations:**
+- **`Universe-Mapmaker-Backend/README.md`** - System architecture, deployment, all modules
+- **`docs/backend/projects_api_docs.md`** - Complete Projects API documentation (THIS REPO!)
 
-**Key Information:**
-- Complete system architecture (Django + QGIS Server + PostgreSQL)
-- Production infrastructure details (VM, Cloud Storage, Railway PostgreSQL)
-- All modules explained (projects, layers, groups, dashboard, auth)
-- API endpoints reference
-- Database models and schema
-- Docker deployment configuration
+**Projects API Documentation (docs/backend/projects_api_docs.md):**
+- **60+ endpoints** for project management
+- Complete request/response examples for each endpoint
+- Error codes and handling
+- File formats and validation rules
+- QGIS import/export processes (QGS, QGZ)
+- Publication and domain management
+- Logo and thumbnail generation
+- Document management
+- Search and filtering
+- Wypis (land registry) features
+- Basemap configuration
 
-**IMPORTANT:** Always check `README.md` in backend repo before implementing frontend features:
+**Key Project Management Concepts:**
+1. **Project Creation** - Creates PostgreSQL database + QGS file
+2. **QGIS Import** - Imports .qgs/.qgz files, extracts layers to PostGIS
+3. **Project Structure** - QGS file + tree.json + logo + styles + documents
+4. **Publication** - Publishes to GeoServer (WMS/WFS)
+5. **Domains** - Each project gets unique subdomain
+6. **Ownership** - Only owner can publish/delete/change domain
+
+**IMPORTANT:** Always check backend docs before implementing features:
 1. Understand module structure (`geocraft_api/*/`)
-2. Read `service.py` files for business logic
-3. Check `serializers.py` for request/response formats
-4. Verify database models in `models/` folder
-5. Test endpoints with curl before frontend integration
+2. **Read `docs/backend/projects_api_docs.md`** for Projects API details
+3. Read `service.py` files for business logic (195KB for projects!)
+4. Check `serializers.py` for request/response formats
+5. Verify database models in `models/` folder
+6. Test endpoints with curl before frontend integration
 
 **Production Infrastructure (from README.md):**
 - **VM**: `universe-backend` (34.0.251.33, europe-central2-a)
