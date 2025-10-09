@@ -30,11 +30,11 @@ export interface ProjectsResponse {
 }
 
 export interface CreateProjectData {
-  project_name: string;
-  custom_project_name?: string;
-  category?: string;
-  description?: string;
+  project: string; // Backend expects "project" not "project_name"
+  domain: string; // Backend expects "domain" not "custom_project_name"
+  projectDescription?: string; // Backend expects "projectDescription" not "description"
   keywords?: string;
+  category?: string; // Backend service.py uses "category" (singular)
   is_public?: boolean;
 }
 

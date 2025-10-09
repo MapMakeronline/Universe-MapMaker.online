@@ -3,7 +3,7 @@
 
 import { mapLogger } from '@/lib/logger';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://geocraft-production.up.railway.app';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.universemapmaker.online';
 
 export interface ApiErrorResponse {
   [key: string]: string[] | string;
