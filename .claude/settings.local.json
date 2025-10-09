@@ -106,7 +106,8 @@
       "Bash(screenshot.bat http://localhost:3002 screenshots/refactor-test-home.png)",
       "Bash(docker:*)",
       "Bash(wc:*)",
-      "Bash(.screenshot.bat http://localhost:3003/dashboard screenshots/qgis-import-test.png)"
+      "Bash(.screenshot.bat http://localhost:3003/dashboard screenshots/qgis-import-test.png)",
+      "Bash(xargs:*)"
     ],
     "deny": [],
     "ask": []
