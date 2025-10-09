@@ -107,7 +107,10 @@
       "Bash(docker:*)",
       "Bash(wc:*)",
       "Bash(.screenshot.bat http://localhost:3003/dashboard screenshots/qgis-import-test.png)",
-      "Bash(xargs:*)"
+      "Bash(xargs:*)",
+      "Bash(bash:*)",
+      "Bash(tee:*)",
+      "Bash(kill:*)"
     ],
     "deny": [],
     "ask": []

@@ -3,15 +3,15 @@
 import React, { useEffect, useState } from 'react';
 import { Box, CircularProgress, Alert, Typography } from '@mui/material';
 import { useSearchParams, useRouter } from 'next/navigation';
-import MapContainer from '@/components/map/MapContainer';
-import LeftPanel from '@/components/panels/LeftPanel';
-import RightToolbar from '@/components/panels/RightToolbar';
-import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { setCurrentProject } from '@/store/slices/projectsSlice';
-import { loadLayers, resetLayers } from '@/store/slices/layersSlice';
-import { setViewState, setMapStyle } from '@/store/slices/mapSlice';
-import { unifiedProjectsApi } from '@/lib/api/unified-projects';
-import { MAP_STYLES } from '@/lib/mapbox/config';
+import MapContainer from '@/features/mapa/komponenty/MapContainer';
+import LeftPanel from '@/features/warstwy/komponenty/LeftPanel';
+import RightToolbar from '@/features/narzedzia/RightToolbar';
+import { useAppDispatch, useAppSelector } from '@/redux/hooks';
+import { setCurrentProject } from '@/redux/slices/projectsSlice';
+import { loadLayers, resetLayers } from '@/redux/slices/layersSlice';
+import { setViewState, setMapStyle } from '@/redux/slices/mapSlice';
+import { unifiedProjectsApi } from '@/api/endpointy/unified-projects';
+import { MAP_STYLES } from '@/mapbox/config';
 
 export default function MapPage() {
   const searchParams = useSearchParams();

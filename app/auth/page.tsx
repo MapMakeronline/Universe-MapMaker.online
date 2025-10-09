@@ -27,9 +27,9 @@ import {
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { useTheme } from '@mui/material/styles';
-import { authService } from '@/lib/api/auth';
-import { useAppDispatch } from '@/store/hooks';
-import { setAuth, setLoading } from '@/store/slices/authSlice';
+import { authService } from '@/api/endpointy/auth';
+import { useAppDispatch } from '@/redux/hooks';
+import { setAuth, setLoading } from '@/redux/slices/authSlice';
 
 // Force dynamic rendering for this page (uses useSearchParams)
 export const dynamic = 'force-dynamic';
