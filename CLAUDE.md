@@ -215,6 +215,55 @@ gcloud builds submit --region=europe-central2 --config=cloudbuild.yaml
 
 **Request Access:** If any GCP operation fails due to permissions, request access immediately.
 
+### Backend Documentation
+
+**CRITICAL:** Complete backend documentation available in backend repository.
+
+**Location:** `Universe-Mapmaker-Backend/README.md`
+
+**Key Information:**
+- Complete system architecture (Django + QGIS Server + PostgreSQL)
+- Production infrastructure details (VM, Cloud Storage, Railway PostgreSQL)
+- All modules explained (projects, layers, groups, dashboard, auth)
+- API endpoints reference
+- Database models and schema
+- Docker deployment configuration
+
+**IMPORTANT:** Always check `README.md` in backend repo before implementing frontend features:
+1. Understand module structure (`geocraft_api/*/`)
+2. Read `service.py` files for business logic
+3. Check `serializers.py` for request/response formats
+4. Verify database models in `models/` folder
+5. Test endpoints with curl before frontend integration
+
+**Production Infrastructure (from README.md):**
+- **VM**: `universe-backend` (34.0.251.33, europe-central2-a)
+- **Django**: Port 8000 (via Nginx at `https://api.universemapmaker.online`)
+- **QGIS Server**: Port 8080 (via Nginx at `https://api.universemapmaker.online/ows`)
+- **Database**: Railway PostgreSQL (`centerbeam.proxy.rlwy.net:38178`)
+- **Storage FASE**: Cloud Storage `gs://universe-qgis-projects` mounted at `/mnt/qgis-projects`
+- **Frontend**: Cloud Run `https://universemapmaker.online`
+
+**SSH to Backend VM:**
+```bash
+gcloud compute ssh universe-backend --zone=europe-central2-a --project=universe-mapmaker
+```
+
+**Docker Containers on VM:**
+```bash
+# View running containers
+sudo docker ps
+
+# Django logs
+sudo docker logs -f universe-mapmaker-backend_django_1
+
+# QGIS Server logs
+sudo docker logs -f universe-mapmaker-backend_qgis-server_1
+
+# Restart Django
+sudo docker restart universe-mapmaker-backend_django_1
+```
+
 ### Development Workflow
 
 **IMPORTANT:** Always follow this sequence when implementing features:

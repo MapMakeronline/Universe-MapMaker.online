@@ -4,6 +4,32 @@ Complete list of all Django backend endpoints for systematic RTK Query integrati
 
 **Base URL:** `https://api.universemapmaker.online`
 
+## 📚 Backend Documentation Reference
+
+**IMPORTANT:** Complete backend documentation available at:
+- **`Universe-Mapmaker-Backend/README.md`** - Full system architecture, deployment, modules
+- `geocraft_api/*/service.py` - Business logic for each module (projects, layers, groups)
+- `geocraft_api/*/serializers.py` - Request/response formats for all endpoints
+- `geocraft_api/models/` - Database schema (ProjectItem, Layer, CustomUser, etc.)
+
+**Production Infrastructure (from README.md):**
+- **VM**: universe-backend (34.0.251.33, europe-central2-a)
+- **Database**: Railway PostgreSQL (centerbeam.proxy.rlwy.net:38178) with PostGIS
+- **Storage FASE**: Cloud Storage `gs://universe-qgis-projects` mounted at `/mnt/qgis-projects`
+- **Django API**: Port 8000 → `https://api.universemapmaker.online/api/*`
+- **QGIS Server**: Port 8080 → `https://api.universemapmaker.online/ows`
+- **Frontend**: Cloud Run → `https://universemapmaker.online`
+
+**Key Backend Modules:**
+| Module | File | Size | Description |
+|--------|------|------|-------------|
+| Projects | `geocraft_api/projects/service.py` | 195KB | Project CRUD, QGS generation, import/export |
+| Layers | `geocraft_api/layers/service.py` | 183KB | Layer import, styling, PostGIS operations |
+| Groups | `geocraft_api/groups/service.py` | 144KB | Group management, INSPIRE groups |
+| Layer DB | `geocraft_api/layers/db_utils.py` | 80KB | PostGIS operations, spatial queries |
+| Serializers | `geocraft_api/serializers.py` | 77KB | Main API serializers |
+| DAO | `geocraft_api/dao.py` | 41KB | Database access layer |
+
 ## Legend
 
 - ✅ **Integrated** - RTK Query slice exists and tested
