@@ -54,14 +54,14 @@ export function CreateProjectDialog({ open, onClose, onCreate }: CreateProjectDi
   const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
-      // Dashboard API expects different field names than /api/projects/create/
+      // CreateProjectData uses: project, domain, projectDescription
+      // projectsApi will transform to dashboard format internally
       await onCreate({
-        project_name: formData.project,           // Dashboard: "project_name"
-        custom_project_name: formData.domain,     // Dashboard: "custom_project_name"
-        description: formData.projectDescription, // Dashboard: "description"
+        project: formData.project,
+        domain: formData.domain,
+        projectDescription: formData.projectDescription,
         keywords: formData.keywords,
-        category: selectedCategories.length > 0 ? selectedCategories[0] : 'Inne',
-        is_public: false,
+        categories: selectedCategories.length > 0 ? [selectedCategories[0]] : ['Inne'],
       });
       // Reset form
       setFormData({
