@@ -6,7 +6,7 @@ import { ThemeProvider, CssBaseline } from '@mui/material';
 import { theme } from '@/lib/theme';
 import DashboardLayout from '../../../src/components/dashboard/DashboardLayout';
 // Phase 3: Using RTK Query version
-import OwnProjects from '../../../src/components/dashboard/OwnProjectsRTK';
+import OwnProjects from '../../../src/components/dashboard/OwnProjects';
 import PublicProjects from '../../../src/components/dashboard/PublicProjects';
 import UserProfile from '../../../src/components/dashboard/UserProfile';
 import UserSettings from '../../../src/components/dashboard/UserSettings';

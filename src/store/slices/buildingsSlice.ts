@@ -1,3 +1,21 @@
+/**
+ * @deprecated This slice is deprecated. Use featuresSlice instead.
+ *
+ * **Migration Guide:**
+ * - Replace addBuilding() with addFeature({ type: 'building', ... })
+ * - Replace state.buildings.buildings with state.features.features.filter(f => f.type === 'building')
+ * - Replace selectBuilding() with selectFeature()
+ *
+ * **Reason:** featuresSlice provides a universal feature management system
+ * that handles buildings, POI, points, lines, polygons, and custom objects.
+ *
+ * **Status:** This slice will be removed after migration of all components:
+ * - BuildingAttributesModal.tsx
+ * - Building3DInteraction.tsx
+ * - BuildingsPanel.tsx
+ *
+ * @see src/store/slices/featuresSlice.ts
+ */
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
 export interface BuildingAttribute {

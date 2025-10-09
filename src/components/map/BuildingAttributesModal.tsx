@@ -1,4 +1,16 @@
+/**
+ * @deprecated This component is deprecated. Use FeatureAttributesModal instead.
+ *
+ * **Migration:** Replace usage with FeatureAttributesModal which supports ALL feature types,
+ * not just buildings. FeatureAttributesModal handles buildings, POI, points, lines, polygons, etc.
+ *
+ * **This component only handles 3D buildings** and uses the deprecated buildingsSlice.
+ *
+ * @see src/components/map/FeatureAttributesModal.tsx
+ * @see src/store/slices/featuresSlice.ts
+ */
 'use client';
+
 
 import { useState } from 'react';
 import {
