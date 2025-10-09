@@ -1,5 +1,7 @@
 import React from 'react';
-import { Typography, Box, IconButton } from '@mui/material';
+import Typography from '@mui/material/Typography';
+import Box from '@mui/material/Box';
+import IconButton from '@mui/material/IconButton';
 import { Close as CloseIcon } from '@mui/icons-material';
 import { SxProps, Theme } from '@mui/material/styles';
 

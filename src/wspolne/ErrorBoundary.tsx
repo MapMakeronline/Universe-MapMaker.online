@@ -1,8 +1,14 @@
 'use client';
 
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { Box, Typography, Button, Paper, Container } from '@mui/material';
-import { ErrorOutline, Refresh, Home } from '@mui/icons-material';
+import Box from '@mui/material/Box';
+import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
+import Paper from '@mui/material/Paper';
+import Container from '@mui/material/Container';
+import ErrorOutline from '@mui/icons-material/ErrorOutline';
+import Refresh from '@mui/icons-material/Refresh';
+import Home from '@mui/icons-material/Home';
 import { logger } from '@/narzedzia/logger';
 
 interface Props {

@@ -1,36 +1,32 @@
 'use client';
 
 import React, { useState } from 'react';
-import {
-  Box,
-  Typography,
-  Card,
-  CardContent,
-  TextField,
-  Button,
-  Grid,
-  Tabs,
-  Tab,
-  Alert,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
-  Divider,
-  CircularProgress,
-  useTheme,
-  useMediaQuery,
-} from '@mui/material';
-import {
-  ContactMail,
-  Info,
-  Business,
-  Email,
-  Phone,
-  LocationOn,
-  Send,
-  VideoCall,
-} from '@mui/icons-material';
+import Box from '@mui/material/Box';
+import Typography from '@mui/material/Typography';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import TextField from '@mui/material/TextField';
+import Button from '@mui/material/Button';
+import Grid from '@mui/material/Grid';
+import Tabs from '@mui/material/Tabs';
+import Tab from '@mui/material/Tab';
+import Alert from '@mui/material/Alert';
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import ListItemIcon from '@mui/material/ListItemIcon';
+import ListItemText from '@mui/material/ListItemText';
+import Divider from '@mui/material/Divider';
+import CircularProgress from '@mui/material/CircularProgress';
+import { useTheme } from '@mui/material/styles';
+import { useMediaQuery } from '@mui/material';
+import ContactMail from '@mui/icons-material/ContactMail';
+import Info from '@mui/icons-material/Info';
+import Business from '@mui/icons-material/Business';
+import Email from '@mui/icons-material/Email';
+import Phone from '@mui/icons-material/Phone';
+import LocationOn from '@mui/icons-material/LocationOn';
+import Send from '@mui/icons-material/Send';
+import VideoCall from '@mui/icons-material/VideoCall';
 import { unifiedUserApi } from '@/api/endpointy/unified-user';
 
 interface TabPanelProps {

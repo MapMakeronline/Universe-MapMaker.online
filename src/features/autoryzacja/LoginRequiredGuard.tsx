@@ -1,12 +1,10 @@
 'use client';
 
 import React from 'react';
-import {
-  Typography,
-  Button,
-  Stack,
-  Box,
-} from '@mui/material';
+import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
+import Stack from '@mui/material/Stack';
+import Box from '@mui/material/Box';
 import { Login as LoginIcon } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import { useTheme } from '@mui/material';

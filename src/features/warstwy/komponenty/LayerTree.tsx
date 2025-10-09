@@ -12,13 +12,15 @@
 'use client';
 
 import React from 'react';
-import { Box, Typography, IconButton, Tooltip, useTheme } from '@mui/material';
-import {
-  Folder as FolderIcon,
-  Layers as LayersIcon,
-  MyLocation as PrzyblizDoWarstwyIcon,
-  TableView as CalendarTodayIcon
-} from '@mui/icons-material';
+import Box from '@mui/material/Box';
+import Typography from '@mui/material/Typography';
+import IconButton from '@mui/material/IconButton';
+import Tooltip from '@mui/material/Tooltip';
+import { useTheme } from '@mui/material/styles';
+import FolderIcon from '@mui/icons-material/Folder';
+import LayersIcon from '@mui/icons-material/Layers';
+import PrzyblizDoWarstwyIcon from '@mui/icons-material/MyLocation';
+import CalendarTodayIcon from '@mui/icons-material/TableView';
 // Types
 interface Warstwa {
   id: string;

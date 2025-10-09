@@ -3,29 +3,31 @@
 'use client';
 
 import React, { useState } from 'react';
-import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Button,
-  Box,
-  Typography,
-  Grid,
-  Checkbox,
-  FormControlLabel,
-  IconButton,
-  Divider,
-  Stack,
-  useMediaQuery,
-  useTheme,
-  Tabs,
-  Tab,
-  Alert,
-  Chip,
-} from '@mui/material';
-import { Close, Add, CloudUpload, InsertDriveFile, CheckCircle } from '@mui/icons-material';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import TextField from '@mui/material/TextField';
+import Button from '@mui/material/Button';
+import Box from '@mui/material/Box';
+import Typography from '@mui/material/Typography';
+import Grid from '@mui/material/Grid';
+import Checkbox from '@mui/material/Checkbox';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import IconButton from '@mui/material/IconButton';
+import Divider from '@mui/material/Divider';
+import Stack from '@mui/material/Stack';
+import { useMediaQuery } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
+import Tabs from '@mui/material/Tabs';
+import Tab from '@mui/material/Tab';
+import Alert from '@mui/material/Alert';
+import Chip from '@mui/material/Chip';
+import Close from '@mui/icons-material/Close';
+import Add from '@mui/icons-material/Add';
+import CloudUpload from '@mui/icons-material/CloudUpload';
+import InsertDriveFile from '@mui/icons-material/InsertDriveFile';
+import CheckCircle from '@mui/icons-material/CheckCircle';
 import type { CreateProjectData } from '@/api/typy/types';
 
 interface CreateProjectDialogProps {

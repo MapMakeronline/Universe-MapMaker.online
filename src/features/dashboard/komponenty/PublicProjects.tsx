@@ -1,34 +1,30 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import {
-  Box,
-  Typography,
-  Card,
-  CardContent,
-  CardMedia,
-  Grid,
-  Chip,
-  Avatar,
-  TextField,
-  InputAdornment,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Pagination,
-  useTheme,
-  alpha,
-  useMediaQuery,
-  CircularProgress,
-} from '@mui/material';
-import {
-  Search,
-  Public,
-  ViewModule,
-  Storage,
-  Person,
-} from '@mui/icons-material';
+import Box from '@mui/material/Box';
+import Typography from '@mui/material/Typography';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import CardMedia from '@mui/material/CardMedia';
+import Grid from '@mui/material/Grid';
+import Chip from '@mui/material/Chip';
+import Avatar from '@mui/material/Avatar';
+import TextField from '@mui/material/TextField';
+import InputAdornment from '@mui/material/InputAdornment';
+import FormControl from '@mui/material/FormControl';
+import InputLabel from '@mui/material/InputLabel';
+import Select from '@mui/material/Select';
+import MenuItem from '@mui/material/MenuItem';
+import Pagination from '@mui/material/Pagination';
+import { useTheme } from '@mui/material/styles';
+import { alpha } from '@mui/material/styles';
+import { useMediaQuery } from '@mui/material';
+import CircularProgress from '@mui/material/CircularProgress';
+import Search from '@mui/icons-material/Search';
+import Public from '@mui/icons-material/Public';
+import ViewModule from '@mui/icons-material/ViewModule';
+import Storage from '@mui/icons-material/Storage';
+import Person from '@mui/icons-material/Person';
 import { unifiedProjectsApi } from '@/api/endpointy/unified-projects';
 import type { Project as ApiProject } from '@/api/typy/types';
 import { ProjectsGridSkeleton } from './ProjectCardSkeleton';

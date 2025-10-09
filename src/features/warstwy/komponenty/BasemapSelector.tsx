@@ -10,7 +10,11 @@
 'use client';
 
 import React from 'react';
-import { Box, Typography, TextField, MenuItem, useTheme } from '@mui/material';
+import Box from '@mui/material/Box';
+import Typography from '@mui/material/Typography';
+import TextField from '@mui/material/TextField';
+import MenuItem from '@mui/material/MenuItem';
+import { useTheme } from '@mui/material/styles';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import { setMapStyle } from '@/redux/slices/mapSlice';
 import { MAP_STYLES } from '@/mapbox/config';

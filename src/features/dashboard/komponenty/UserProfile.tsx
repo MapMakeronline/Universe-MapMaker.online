@@ -1,37 +1,33 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import {
-  Box,
-  Typography,
-  Card,
-  CardContent,
-  Grid,
-  Avatar,
-  Button,
-  LinearProgress,
-  Chip,
-  Divider,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemIcon,
-  useTheme,
-  alpha,
-  useMediaQuery,
-  CircularProgress,
-} from '@mui/material';
-import {
-  Person,
-  Storage,
-  ViewModule,
-  Public,
-  Lock,
-  TrendingUp,
-  CalendarToday,
-  CheckCircle,
-  Schedule,
-} from '@mui/icons-material';
+import Box from '@mui/material/Box';
+import Typography from '@mui/material/Typography';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import Grid from '@mui/material/Grid';
+import Avatar from '@mui/material/Avatar';
+import Button from '@mui/material/Button';
+import LinearProgress from '@mui/material/LinearProgress';
+import Chip from '@mui/material/Chip';
+import Divider from '@mui/material/Divider';
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import ListItemText from '@mui/material/ListItemText';
+import ListItemIcon from '@mui/material/ListItemIcon';
+import { useTheme } from '@mui/material/styles';
+import { alpha } from '@mui/material/styles';
+import { useMediaQuery } from '@mui/material';
+import CircularProgress from '@mui/material/CircularProgress';
+import Person from '@mui/icons-material/Person';
+import Storage from '@mui/icons-material/Storage';
+import ViewModule from '@mui/icons-material/ViewModule';
+import Public from '@mui/icons-material/Public';
+import Lock from '@mui/icons-material/Lock';
+import TrendingUp from '@mui/icons-material/TrendingUp';
+import CalendarToday from '@mui/icons-material/CalendarToday';
+import CheckCircle from '@mui/icons-material/CheckCircle';
+import Schedule from '@mui/icons-material/Schedule';
 import LoginRequiredGuard from '@/features/autoryzacja/LoginRequiredGuard';
 import { useAppSelector } from '@/redux/hooks';
 import { unifiedUserApi, UserProfile as UserProfileData } from '@/api/endpointy/unified-user';

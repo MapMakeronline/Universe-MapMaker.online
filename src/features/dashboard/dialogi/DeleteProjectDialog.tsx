@@ -2,22 +2,21 @@
 'use client';
 
 import React, { useState } from 'react';
-import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  Typography,
-  Checkbox,
-  FormControlLabel,
-  IconButton,
-  Divider,
-  Alert,
-  useMediaQuery,
-  useTheme,
-} from '@mui/material';
-import { Close, Warning } from '@mui/icons-material';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import Button from '@mui/material/Button';
+import Typography from '@mui/material/Typography';
+import Checkbox from '@mui/material/Checkbox';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import IconButton from '@mui/material/IconButton';
+import Divider from '@mui/material/Divider';
+import Alert from '@mui/material/Alert';
+import { useMediaQuery } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
+import Close from '@mui/icons-material/Close';
+import Warning from '@mui/icons-material/Warning';
 import type { Project } from '@/api/typy/types';
 
 interface DeleteProjectDialogProps {

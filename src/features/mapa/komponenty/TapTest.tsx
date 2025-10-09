@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useMap } from 'react-map-gl';
 import type { MapLayerMouseEvent } from 'react-map-gl';
-import { Box, Alert, Snackbar } from '@mui/material';
+import Box from '@mui/material/Box';
+import Alert from '@mui/material/Alert';
+import Snackbar from '@mui/material/Snackbar';
 
 /**
  * TapTest - Testowa funkcja wykrywania tap/click na mapie

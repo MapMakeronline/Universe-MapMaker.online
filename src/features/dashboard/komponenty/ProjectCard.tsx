@@ -2,32 +2,28 @@
 'use client';
 
 import React, { useState } from 'react';
-import {
-  Card,
-  CardContent,
-  CardMedia,
-  Typography,
-  Box,
-  Chip,
-  IconButton,
-  Menu,
-  MenuItem,
-  ListItemIcon,
-  ListItemText,
-  alpha,
-  Avatar,
-  useTheme,
-} from '@mui/material';
-import {
-  MoreVert,
-  Public,
-  Lock,
-  ViewModule,
-  Storage,
-  Delete,
-  Settings,
-  Language,
-} from '@mui/icons-material';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import CardMedia from '@mui/material/CardMedia';
+import Typography from '@mui/material/Typography';
+import Box from '@mui/material/Box';
+import Chip from '@mui/material/Chip';
+import IconButton from '@mui/material/IconButton';
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
+import ListItemIcon from '@mui/material/ListItemIcon';
+import ListItemText from '@mui/material/ListItemText';
+import { alpha } from '@mui/material/styles';
+import Avatar from '@mui/material/Avatar';
+import { useTheme } from '@mui/material/styles';
+import MoreVert from '@mui/icons-material/MoreVert';
+import Public from '@mui/icons-material/Public';
+import Lock from '@mui/icons-material/Lock';
+import ViewModule from '@mui/icons-material/ViewModule';
+import Storage from '@mui/icons-material/Storage';
+import Delete from '@mui/icons-material/Delete';
+import Settings from '@mui/icons-material/Settings';
+import Language from '@mui/icons-material/Language';
 import type { Project } from '@/api/typy/types';
 import { unifiedProjectsApi as projectsApi } from '@/api/endpointy/unified-projects';
 

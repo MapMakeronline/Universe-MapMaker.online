@@ -14,7 +14,9 @@
 
 import React, { useCallback, useRef, useState, useEffect, useMemo, lazy, Suspense, memo } from 'react';
 import Map, { NavigationControl, GeolocateControl, FullscreenControl, ScaleControl, MapRef } from 'react-map-gl';
-import { Box, Alert, CircularProgress } from '@mui/material';
+import Box from '@mui/material/Box';
+import Alert from '@mui/material/Alert';
+import CircularProgress from '@mui/material/CircularProgress';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import { setViewState, setMapLoaded } from '@/redux/slices/mapSlice';
 import { MAPBOX_TOKEN } from '@/mapbox/config';

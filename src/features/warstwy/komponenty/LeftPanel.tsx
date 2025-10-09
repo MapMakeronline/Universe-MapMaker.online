@@ -1,8 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Box, IconButton, useTheme } from '@mui/material';
-import { Menu as MenuIcon, Close as CloseIcon } from '@mui/icons-material';
+import Box from '@mui/material/Box';
+import IconButton from '@mui/material/IconButton';
+import { useTheme } from '@mui/material/styles';
+import MenuIcon from '@mui/icons-material/Menu';
+import CloseIcon from '@mui/icons-material/Close';
 import { Toolbar } from './Toolbar';
 import { SearchBar } from './SearchBar';
 import { LayerTree } from './LayerTree';

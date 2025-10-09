@@ -1,34 +1,30 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import {
-  Box,
-  Typography,
-  Card,
-  CardContent,
-  TextField,
-  Button,
-  Grid,
-  Tabs,
-  Tab,
-  Switch,
-  FormControlLabel,
-  Divider,
-  Alert,
-  IconButton,
-  InputAdornment,
-  CircularProgress,
-  useTheme,
-  useMediaQuery,
-} from '@mui/material';
-import {
-  Person,
-  Security,
-  Notifications,
-  Visibility,
-  VisibilityOff,
-  Save,
-} from '@mui/icons-material';
+import Box from '@mui/material/Box';
+import Typography from '@mui/material/Typography';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import TextField from '@mui/material/TextField';
+import Button from '@mui/material/Button';
+import Grid from '@mui/material/Grid';
+import Tabs from '@mui/material/Tabs';
+import Tab from '@mui/material/Tab';
+import Switch from '@mui/material/Switch';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import Divider from '@mui/material/Divider';
+import Alert from '@mui/material/Alert';
+import IconButton from '@mui/material/IconButton';
+import InputAdornment from '@mui/material/InputAdornment';
+import CircularProgress from '@mui/material/CircularProgress';
+import { useTheme } from '@mui/material/styles';
+import { useMediaQuery } from '@mui/material';
+import Person from '@mui/icons-material/Person';
+import Security from '@mui/icons-material/Security';
+import Notifications from '@mui/icons-material/Notifications';
+import Visibility from '@mui/icons-material/Visibility';
+import VisibilityOff from '@mui/icons-material/VisibilityOff';
+import Save from '@mui/icons-material/Save';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import { updateUser } from '@/redux/slices/authSlice';
 import { unifiedUserApi } from '@/api/endpointy/unified-user';

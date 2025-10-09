@@ -12,12 +12,13 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { Box, IconButton, Tooltip, useTheme } from '@mui/material';
-import {
-  FilterList as FilterListIcon,
-  ExpandMore as ExpandMoreIcon,
-  ExpandLess as ExpandLessIcon
-} from '@mui/icons-material';
+import Box from '@mui/material/Box';
+import IconButton from '@mui/material/IconButton';
+import Tooltip from '@mui/material/Tooltip';
+import { useTheme } from '@mui/material/styles';
+import FilterListIcon from '@mui/icons-material/FilterList';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 
 type FilterType = 'wszystko' | 'wektor' | 'raster' | 'wms';
 

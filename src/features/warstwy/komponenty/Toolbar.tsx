@@ -12,18 +12,19 @@
 'use client';
 
 import React from 'react';
-import { Box, IconButton, Tooltip, useTheme } from '@mui/material';
-import {
-  Public as PublicIcon,
-  Map as MapIcon,
-  AddToPhotos as AddToPhotosIcon,
-  Publish as PublishIcon,
-  CreateNewFolder as AddIcon,
-  DeleteForever as ClearIcon,
-  Forum as ChatIcon,
-  FolderSpecial as StarIcon,
-  Edit as EditIcon
-} from '@mui/icons-material';
+import Box from '@mui/material/Box';
+import IconButton from '@mui/material/IconButton';
+import Tooltip from '@mui/material/Tooltip';
+import { useTheme } from '@mui/material/styles';
+import PublicIcon from '@mui/icons-material/Public';
+import MapIcon from '@mui/icons-material/Map';
+import AddToPhotosIcon from '@mui/icons-material/AddToPhotos';
+import PublishIcon from '@mui/icons-material/Publish';
+import AddIcon from '@mui/icons-material/CreateNewFolder';
+import ClearIcon from '@mui/icons-material/DeleteForever';
+import ChatIcon from '@mui/icons-material/Forum';
+import StarIcon from '@mui/icons-material/FolderSpecial';
+import EditIcon from '@mui/icons-material/Edit';
 
 interface Warstwa {
   id: string;

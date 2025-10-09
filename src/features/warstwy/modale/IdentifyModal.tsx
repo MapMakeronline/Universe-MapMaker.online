@@ -1,28 +1,24 @@
 'use client';
 
 import React from 'react';
-import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Box,
-  Typography,
-  Button,
-  IconButton,
-  Table,
-  TableBody,
-  TableRow,
-  TableCell,
-  Chip,
-  useTheme,
-  Divider,
-} from '@mui/material';
-import {
-  Close as CloseIcon,
-  Layers as LayersIcon,
-  LocationOn as LocationOnIcon,
-} from '@mui/icons-material';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import Box from '@mui/material/Box';
+import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
+import Table from '@mui/material/Table';
+import TableBody from '@mui/material/TableBody';
+import TableRow from '@mui/material/TableRow';
+import TableCell from '@mui/material/TableCell';
+import Chip from '@mui/material/Chip';
+import { useTheme } from '@mui/material/styles';
+import Divider from '@mui/material/Divider';
+import CloseIcon from '@mui/icons-material/Close';
+import LayersIcon from '@mui/icons-material/Layers';
+import LocationOnIcon from '@mui/icons-material/LocationOn';
 
 interface FeatureProperty {
   key: string;

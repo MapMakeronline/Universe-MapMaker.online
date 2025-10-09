@@ -12,13 +12,14 @@
 'use client';
 
 import React from 'react';
-import { Box, Typography, IconButton, useTheme } from '@mui/material';
-import {
-  Close as CloseIcon,
-  ExpandMore as ExpandMoreIcon,
-  ChevronRight as ChevronRightIcon,
-  Lock as LockIcon
-} from '@mui/icons-material';
+import Box from '@mui/material/Box';
+import Typography from '@mui/material/Typography';
+import IconButton from '@mui/material/IconButton';
+import { useTheme } from '@mui/material/styles';
+import CloseIcon from '@mui/icons-material/Close';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import LockIcon from '@mui/icons-material/Lock';
 import { BasemapSelector } from './BasemapSelector';
 // Types defined locally for now
 interface Warstwa {

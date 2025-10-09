@@ -1,43 +1,39 @@
 'use client';
 
 import React, { useState, ReactNode } from 'react';
-import {
-  Box,
-  Drawer,
-  AppBar,
-  Toolbar,
-  List,
-  Typography,
-  Divider,
-  IconButton,
-  ListItem,
-  ListItemButton,
-  ListItemIcon,
-  ListItemText,
-  Avatar,
-  Menu,
-  MenuItem,
-  useTheme,
-  alpha,
-  useMediaQuery,
-} from '@mui/material';
+import Box from '@mui/material/Box';
+import Drawer from '@mui/material/Drawer';
+import AppBar from '@mui/material/AppBar';
+import Toolbar from '@mui/material/Toolbar';
+import List from '@mui/material/List';
+import Typography from '@mui/material/Typography';
+import Divider from '@mui/material/Divider';
+import IconButton from '@mui/material/IconButton';
+import ListItem from '@mui/material/ListItem';
+import ListItemButton from '@mui/material/ListItemButton';
+import ListItemIcon from '@mui/material/ListItemIcon';
+import ListItemText from '@mui/material/ListItemText';
+import Avatar from '@mui/material/Avatar';
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
+import { useTheme } from '@mui/material/styles';
+import { alpha } from '@mui/material/styles';
+import { useMediaQuery } from '@mui/material';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import {
-  Menu as MenuIcon,
-  Home,
-  Public,
-  Person,
-  Settings,
-  Payments,
-  ContactMail,
-  AccountCircle,
-  Logout,
-  ChevronLeft,
-  Dashboard as DashboardIcon,
-  Login,
-  AdminPanelSettings,
-} from '@mui/icons-material';
+import MenuIcon from '@mui/icons-material/Menu';
+import Home from '@mui/icons-material/Home';
+import Public from '@mui/icons-material/Public';
+import Person from '@mui/icons-material/Person';
+import Settings from '@mui/icons-material/Settings';
+import Payments from '@mui/icons-material/Payments';
+import ContactMail from '@mui/icons-material/ContactMail';
+import AccountCircle from '@mui/icons-material/AccountCircle';
+import Logout from '@mui/icons-material/Logout';
+import ChevronLeft from '@mui/icons-material/ChevronLeft';
+import DashboardIcon from '@mui/icons-material/Dashboard';
+import Login from '@mui/icons-material/Login';
+import AdminPanelSettings from '@mui/icons-material/AdminPanelSettings';
 import { useAppSelector, useAppDispatch } from '@/redux/hooks';
 import { clearAuth } from '@/redux/slices/authSlice';
 

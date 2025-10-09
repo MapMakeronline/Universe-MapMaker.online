@@ -5,16 +5,15 @@
 'use client';
 
 import React, { useState } from 'react';
-import {
-  Box,
-  Typography,
-  Button,
-  Snackbar,
-  Alert,
-  useMediaQuery,
-  useTheme,
-} from '@mui/material';
-import { Add, Login as LoginIcon } from '@mui/icons-material';
+import Box from '@mui/material/Box';
+import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
+import Snackbar from '@mui/material/Snackbar';
+import Alert from '@mui/material/Alert';
+import { useMediaQuery } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
+import Add from '@mui/icons-material/Add';
+import LoginIcon from '@mui/icons-material/Login';
 import { useRouter } from 'next/navigation';
 import { useAppSelector, useAppDispatch } from '@/redux/hooks';
 import { setCurrentProject } from '@/redux/slices/projectsSlice';
