@@ -44,16 +44,33 @@
 
 1. **Backend Setup**
    ```bash
-   # Ensure backend is running at:
-   # Local: http://localhost:8000
-   # Or Railway: https://geocraft-production.up.railway.app
+   # Production Backend (HTTPS with SSL):
+   https://api.universemapmaker.online
+
+   # Local Development (if running backend locally):
+   http://localhost:8000
    ```
 
 2. **Environment Variables**
    Create `.env.local` in project root:
    ```env
-   NEXT_PUBLIC_API_URL=http://localhost:8000
-   NEXT_PUBLIC_MAPBOX_TOKEN=your_mapbox_token_here
+   # Production (default)
+   NEXT_PUBLIC_API_URL=https://api.universemapmaker.online
+   NEXT_PUBLIC_MAPBOX_TOKEN=pk.eyJ1IjoibWFwbWFrZXItb25saW5lIiwiYSI6ImNtZzN3bm8wYTBwaXIybHM5dDlpc3YwOTQifQ.8Hrv97gishqnvI_h7PiqlQ
+
+   # Local Development (optional)
+   # NEXT_PUBLIC_API_URL=http://localhost:8000
+   ```
+
+**Note:** If `.env.local` is missing, the app will use fallback URL from `src/lib/api/client.ts` (line 6): `https://api.universemapmaker.online`
+
+3. **Testing Infrastructure**
+   ```bash
+   # Basic API integration tests (no auth required)
+   node test-login.js
+
+   # Full login flow test (requires valid credentials)
+   node test-login-full.js <username> <password>
    ```
 
 ### Testing Steps

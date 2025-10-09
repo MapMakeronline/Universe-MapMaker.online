@@ -4,7 +4,12 @@ Professional Mapbox-powered mapping application built with Next.js 15+, deployed
 
 ## 🚀 Live Demo
 
-**Production**: [https://universe-mapmaker-vs4lfmh3ma-lm.a.run.app](https://universe-mapmaker-vs4lfmh3ma-lm.a.run.app)
+**Production Frontend**: [https://universemapmaker.online](https://universemapmaker.online)
+**Production API**: [https://api.universemapmaker.online](https://api.universemapmaker.online)
+
+**Alternative URLs:**
+- Frontend (Cloud Run direct): [https://universe-mapmaker-vs4lfmh3ma-lm.a.run.app](https://universe-mapmaker-vs4lfmh3ma-lm.a.run.app)
+- Backend (GCP VM): 34.0.251.33:8000 (HTTPS via Nginx)
 
 ## ✨ Features
 
@@ -247,7 +252,12 @@ npm install
 Create `.env.local`:
 ```env
 NEXT_PUBLIC_MAPBOX_TOKEN=pk.eyJ1IjoieW91cl91c2VybmFtZSIsImEiOiJjbGZxZXF3MjAwMDExM29zN3...
+NEXT_PUBLIC_API_URL=https://api.universemapmaker.online
 ```
+
+**Note:** If `.env.local` is missing:
+- Mapbox token fallback in `src/lib/mapbox/config.ts`
+- API URL fallback in `src/lib/api/client.ts` → `https://api.universemapmaker.online`
 
 ### 4. Run Development
 ```bash
@@ -264,6 +274,10 @@ npm run dev      # Development server
 npm run build    # Production build
 npm run start    # Start production server
 npm run lint     # Code linting
+
+# Testing
+node test-login.js                    # Basic API integration tests
+node test-login-full.js <user> <pass> # Full login flow test
 ```
 
 ### Browser Testing & Screenshots
@@ -417,6 +431,7 @@ style: 'mapbox://styles/mapbox/streets-v12'
 
 ### Environment Variables
 - `NEXT_PUBLIC_MAPBOX_TOKEN` - Mapbox access token
+- `NEXT_PUBLIC_API_URL` - Backend API URL (default: `https://api.universemapmaker.online`)
 - `NODE_ENV` - Environment (production/development)
 - `NEXT_TELEMETRY_DISABLED` - Disable Next.js telemetry
 
@@ -849,6 +864,17 @@ const profile = await fetch(`${API_URL}/auth/profile`, {
 
 ---
 
+## 📚 Documentation
+
+- **Testing Guide**: [TESTING.md](TESTING.md) - Comprehensive testing documentation
+- **Backend Integration**: [BACKEND-INTEGRATION.md](BACKEND-INTEGRATION.md) - API integration guide
+- **Claude Code Guide**: [CLAUDE.md](CLAUDE.md) - Development guidelines for AI assistance
+
+---
+
 **Built with** ❤️ using **Mapbox GL JS** + **Next.js 15** + **Google Cloud Run**
 
-*Deployed at: [universe-mapmaker-vs4lfmh3ma-lm.a.run.app](https://universe-mapmaker-vs4lfmh3ma-lm.a.run.app)*
+**Deployed at:**
+- Production: [universemapmaker.online](https://universemapmaker.online)
+- API: [api.universemapmaker.online](https://api.universemapmaker.online)
+- Cloud Run Direct: [universe-mapmaker-vs4lfmh3ma-lm.a.run.app](https://universe-mapmaker-vs4lfmh3ma-lm.a.run.app)

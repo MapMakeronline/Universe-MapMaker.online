@@ -92,10 +92,18 @@ Screenshots are saved to `screenshots/` folder (gitignored by default).
 Create `.env.local` in project root:
 ```env
 NEXT_PUBLIC_MAPBOX_TOKEN=pk.eyJ1IjoibWFwbWFrZXItb25saW5lIiwiYSI6ImNtZzN3bm8wYTBwaXIybHM5dDlpc3YwOTQifQ.8Hrv97gishqnvI_h7PiqlQ
+NEXT_PUBLIC_API_URL=https://api.universemapmaker.online
 ```
 
+**Production Environment:**
+- Backend API: `https://api.universemapmaker.online`
+- Frontend: `https://universemapmaker.online`
+- SSL: ✅ Active (Google-managed certificates)
+
 **Fallback Configuration:**
-If `.env.local` is missing, the token fallback is in `src/lib/mapbox/config.ts` (line 4).
+If `.env.local` is missing:
+- Mapbox token fallback: `src/lib/mapbox/config.ts` (line 4)
+- API URL fallback: `src/lib/api/client.ts` (line 6) → `https://api.universemapmaker.online`
 
 ## Theme & Styling
 
