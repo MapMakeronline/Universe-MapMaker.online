@@ -29,12 +29,13 @@ export interface ProjectsResponse {
   db_info: DbInfo;
 }
 
+// Dashboard uses different field names than /api/projects/create/
 export interface CreateProjectData {
-  project: string; // Backend expects "project" not "project_name"
-  domain: string; // Backend expects "domain" not "custom_project_name"
-  projectDescription?: string; // Backend expects "projectDescription" not "description"
+  project_name: string; // Dashboard expects "project_name"
+  custom_project_name?: string; // Dashboard expects "custom_project_name"
+  description?: string; // Dashboard expects "description"
   keywords?: string;
-  category?: string; // Backend service.py uses "category" (singular)
+  category?: string;
   is_public?: boolean;
 }
 

@@ -91,7 +91,9 @@
       "Bash(gcloud compute disks:*)",
       "Bash(gcloud compute instances describe:*)",
       "Bash(git clone:*)",
-      "Bash(gcloud projects describe:*)"
+      "Bash(gcloud projects describe:*)",
+      "Bash(screenshot.bat http://localhost:3000/dashboard screenshots/dashboard-empty-state.png)",
+      "Bash(npx playwright screenshot:*)"
     ],
     "deny": [],
     "ask": []
