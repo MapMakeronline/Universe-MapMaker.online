@@ -17,7 +17,7 @@ steps:
       'build',
       '--build-arg', 'NEXT_PUBLIC_MAPBOX_TOKEN=pk.eyJ1IjoibWFwbWFrZXItb25saW5lIiwiYSI6ImNtZzN3bm8wYTBwaXIybHM5dDlpc3YwOTQifQ.8Hrv97gishqnvI_h7PiqlQ',
       '--build-arg', 'NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN=pk.eyJ1IjoibWFwbWFrZXItb25saW5lIiwiYSI6ImNtZzN3bm8wYTBwaXIybHM5dDlpc3YwOTQifQ.8Hrv97gishqnvI_h7PiqlQ',
-      '--build-arg', 'NEXT_PUBLIC_API_URL=https://universe-mapmaker-backend-production.up.railway.app',
+      '--build-arg', 'NEXT_PUBLIC_API_URL=http://34.0.251.33:8000',
       '-t', 'europe-central2-docker.pkg.dev/$PROJECT_ID/app-repo/app:$SHORT_SHA',
       '-t', 'europe-central2-docker.pkg.dev/$PROJECT_ID/app-repo/app:latest',
       '.'
@@ -45,7 +45,7 @@ steps:
       '--max-instances', '5',  # Reduced to 5 for start
       '--concurrency', '80',
       '--timeout', '300',
-      '--set-env-vars', 'NODE_ENV=production,NEXT_TELEMETRY_DISABLED=1,NEXT_PUBLIC_MAPBOX_TOKEN=pk.eyJ1IjoibWFwbWFrZXItb25saW5lIiwiYSI6ImNtZzN3bm8wYTBwaXIybHM5dDlpc3YwOTQifQ.8Hrv97gishqnvI_h7PiqlQ,NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN=pk.eyJ1IjoibWFwbWFrZXItb25saW5lIiwiYSI6ImNtZzN3bm8wYTBwaXIybHM5dDlpc3YwOTQifQ.8Hrv97gishqnvI_h7PiqlQ,NEXT_PUBLIC_API_URL=https://universe-mapmaker-backend-production.up.railway.app'
+      '--set-env-vars', 'NODE_ENV=production,NEXT_TELEMETRY_DISABLED=1,NEXT_PUBLIC_MAPBOX_TOKEN=pk.eyJ1IjoibWFwbWFrZXItb25saW5lIiwiYSI6ImNtZzN3bm8wYTBwaXIybHM5dDlpc3YwOTQifQ.8Hrv97gishqnvI_h7PiqlQ,NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN=pk.eyJ1IjoibWFwbWFrZXItb25saW5lIiwiYSI6ImNtZzN3bm8wYTBwaXIybHM5dDlpc3YwOTQifQ.8Hrv97gishqnvI_h7PiqlQ,NEXT_PUBLIC_API_URL=http://34.0.251.33:8000'
       # REMOVED --set-secrets line that was causing permission errors
     ]
 
