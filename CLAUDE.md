@@ -2,6 +2,34 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Work Methodology
+
+**CRITICAL:** Follow this systematic approach for all backend integration work:
+
+### Step 1: Backend Endpoint Discovery
+1. **Extract ALL endpoints** from backend `urls.py` files
+2. **Create endpoint map** in `BACKEND-ENDPOINTS.md`
+3. **Document request/response** format for each endpoint
+4. **Check if endpoint works** with curl/Postman before frontend work
+
+### Step 2: RTK Query Integration
+1. **Create RTK Query slice** for each endpoint group (projects, layers, auth, etc.)
+2. **Test each endpoint** individually with frontend UI
+3. **Ask user for clarification** if endpoint behavior is unclear
+4. **Verify with user** before moving to next endpoint
+
+### Step 3: Systematic Testing
+1. **One endpoint at a time** - Don't implement multiple features simultaneously
+2. **Test → Verify → Commit → Push** - Small iterations
+3. **Document what works** and what needs backend fixes
+4. **Ask user** if behavior doesn't match expectations
+
+**This approach ensures:**
+- ✅ No wasted effort on non-existent endpoints
+- ✅ Clear communication about what works/doesn't work
+- ✅ Gradual, testable progress
+- ✅ User involvement in decision-making
+
 ## Code Quality Standards
 
 **IMPORTANT:** Before writing or modifying any code, verify that the implementation follows current best practices and standards from **context7.com MCP** (Model Context Protocol).
