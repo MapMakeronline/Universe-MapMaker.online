@@ -31,7 +31,7 @@ import {
   Send,
   VideoCall,
 } from '@mui/icons-material';
-import { dashboardService } from '@/lib/api/dashboard';
+import { unifiedUserApi } from '@/lib/api/unified-user';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -87,7 +87,7 @@ export default function Contact() {
     setIsLoading(true);
 
     try {
-      await dashboardService.sendContactForm({
+      await unifiedUserApi.sendContactForm({
         subject: formData.subject,
         message: formData.message,
       });

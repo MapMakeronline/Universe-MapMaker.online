@@ -1,6 +1,7 @@
 // Redux slice for managing QGIS projects from GeoCraft backend
+// REFACTORED: Now uses unified API service
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { projectsApi } from '@/lib/api/projects';
+import { unifiedProjectsApi } from '@/lib/api/unified-projects';
 import type {
   Project,
   ProjectsResponse,
@@ -40,7 +41,7 @@ export const fetchProjects = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       mapLogger.info('Fetching projects from backend...');
-      const response = await projectsApi.getProjects();
+      const response = await unifiedProjectsApi.getProjects();
       mapLogger.info('Projects fetched successfully:', {
         count: response.list_of_projects?.length || 0,
         projects: response.list_of_projects?.slice(0, 5).map(p => p.project_name),
@@ -60,7 +61,7 @@ export const createProject = createAsyncThunk(
   'projects/createProject',
   async (data: CreateProjectData, { rejectWithValue, dispatch }) => {
     try {
-      const project = await projectsApi.createProject(data);
+      const project = await unifiedProjectsApi.createProject(data);
       mapLogger.info('Project created:', project);
 
       // Refresh project list after creation
@@ -81,7 +82,7 @@ export const updateProject = createAsyncThunk(
   'projects/updateProject',
   async (data: UpdateProjectData, { rejectWithValue, dispatch }) => {
     try {
-      const result = await projectsApi.updateProject(data);
+      const result = await unifiedProjectsApi.updateProject(data);
       mapLogger.info('Project updated:', result);
 
       // Refresh project list after update
@@ -102,7 +103,7 @@ export const deleteProject = createAsyncThunk(
   'projects/deleteProject',
   async (projectName: string, { rejectWithValue, dispatch }) => {
     try {
-      const result = await projectsApi.deleteProject(projectName);
+      const result = await unifiedProjectsApi.deleteProject(projectName);
       mapLogger.info('Project deleted:', projectName);
 
       // Refresh project list after deletion
@@ -123,7 +124,7 @@ export const togglePublishProject = createAsyncThunk(
   'projects/togglePublishProject',
   async ({ projectName, publish }: { projectName: string; publish: boolean }, { rejectWithValue, dispatch }) => {
     try {
-      const result = await projectsApi.publishProject(projectName, publish);
+      const result = await unifiedProjectsApi.togglePublish(projectName, publish);
       mapLogger.info(`Project ${publish ? 'published' : 'unpublished'}:`, projectName);
 
       // Refresh project list
@@ -144,7 +145,7 @@ export const changeProjectDomain = createAsyncThunk(
   'projects/changeProjectDomain',
   async ({ projectName, newDomain }: { projectName: string; newDomain: string }, { rejectWithValue, dispatch }) => {
     try {
-      const result = await projectsApi.changeDomain(projectName, newDomain);
+      const result = await unifiedProjectsApi.changeDomain(projectName, newDomain);
       mapLogger.info('Project domain changed:', { projectName, newDomain });
 
       // Refresh project list

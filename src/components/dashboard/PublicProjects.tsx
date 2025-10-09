@@ -29,8 +29,8 @@ import {
   Storage,
   Person,
 } from '@mui/icons-material';
-import { dashboardService } from '@/lib/api/dashboard';
-import type { Project as ApiProject } from '@/lib/api/dashboard';
+import { unifiedProjectsApi } from '@/lib/api/unified-projects';
+import type { Project as ApiProject } from '@/lib/api/types';
 import { ProjectsGridSkeleton } from './ProjectCardSkeleton';
 
 interface PublicProject {
@@ -177,7 +177,7 @@ export default function PublicProjects() {
       setError(null);
 
       try {
-        const response = await dashboardService.getPublicProjects();
+        const response = await unifiedProjectsApi.getPublicProjects();
 
         // Map API projects to UI format
         const mappedProjects: PublicProject[] = response.projects.map((proj: ApiProject) => ({

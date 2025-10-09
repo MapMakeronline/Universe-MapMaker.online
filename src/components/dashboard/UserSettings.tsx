@@ -31,7 +31,7 @@ import {
 } from '@mui/icons-material';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { updateUser } from '@/store/slices/authSlice';
-import { dashboardService } from '@/lib/api/dashboard';
+import { unifiedUserApi } from '@/lib/api/unified-user';
 import LoginRequiredGuard from './LoginRequiredGuard';
 
 interface TabPanelProps {
@@ -143,7 +143,7 @@ export default function UserSettings() {
     setSaveSuccess(false);
 
     try {
-      const response = await dashboardService.updateProfile({
+      const response = await unifiedUserApi.updateProfile({
         first_name: generalSettings.firstName,
         last_name: generalSettings.lastName,
         email: generalSettings.email,
@@ -185,7 +185,7 @@ export default function UserSettings() {
     setIsLoading(true);
 
     try {
-      await dashboardService.changePassword({
+      await unifiedUserApi.changePassword({
         old_password: passwordSettings.old_password,
         new_password: passwordSettings.new_password,
       });

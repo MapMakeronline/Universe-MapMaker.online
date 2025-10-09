@@ -34,7 +34,7 @@ import {
 } from '@mui/icons-material';
 import LoginRequiredGuard from './LoginRequiredGuard';
 import { useAppSelector } from '@/store/hooks';
-import { dashboardService, UserProfile as UserProfileData } from '@/lib/api/dashboard';
+import { unifiedUserApi, UserProfile as UserProfileData } from '@/lib/api/unified-user';
 
 interface UserStats {
   totalProjects: number;
@@ -109,7 +109,7 @@ export default function UserProfile() {
 
       try {
         setIsLoading(true);
-        const data = await dashboardService.getProfile();
+        const data = await unifiedUserApi.getProfile();
         setProfileData(data);
         setError(null);
       } catch (err: any) {
