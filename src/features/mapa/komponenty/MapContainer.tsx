@@ -11,7 +11,6 @@ import DrawTools from '../narzedzia/DrawTools';
 import MeasurementTools from '../narzedzia/MeasurementTools';
 import IdentifyTool from './IdentifyTool';
 import Buildings3D from './Buildings3D';
-import BuildingAttributesModal from '@/features/warstwy/modale/BuildingAttributesModal';
 import FeatureAttributesModal from '@/features/warstwy/modale/FeatureAttributesModal';
 import MobileFAB from './MobileFAB';
 import TapTest from './TapTest';
@@ -206,10 +205,7 @@ const MapContainer: React.FC<MapContainerProps> = ({ children }) => {
         {children}
       </Map>
 
-      {/* Building Attributes Modal */}
-      <BuildingAttributesModal />
-
-      {/* Universal Feature Attributes Modal */}
+      {/* Universal Feature Attributes Modal for ALL feature types (buildings, POI, points, lines, polygons, etc.) */}
       <FeatureAttributesModal />
 
       {/* Proste toolbary bez MUI - ukryte */}

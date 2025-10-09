@@ -1,8 +1,10 @@
-# Backend API Endpoints Map
+# Backend API Endpoints - Status Integracji
 
-Complete list of all Django backend endpoints for systematic RTK Query integration.
+**Dokument śledzi status integracji 243+ endpointów Django REST API z frontendem Universe-MapMaker.**
 
 **Base URL:** `https://api.universemapmaker.online`
+
+**Postęp ogólny:** 28.8% (70/243 endpointów zintegrowanych)
 
 ## 📚 Backend Documentation Reference
 
@@ -30,26 +32,49 @@ Complete list of all Django backend endpoints for systematic RTK Query integrati
 | Serializers | `geocraft_api/serializers.py` | 77KB | Main API serializers |
 | DAO | `geocraft_api/dao.py` | 41KB | Database access layer |
 
+## 📊 Statystyki Integracji
+
+| Kategoria | Zintegrowane | Planowane | Razem | Postęp |
+|-----------|--------------|-----------|-------|--------|
+| **Authentication** | 5/5 | 0 | 5 | 100% ✅ |
+| **Projects Core** | 6/10 | 4 | 10 | 60% |
+| **Projects Advanced** | 22/50+ | 28+ | 50+ | 44% |
+| **Layers Core** | 7/15 | 8 | 15 | 47% |
+| **Layers Advanced** | 23/30+ | 7+ | 30+ | 77% |
+| **User Profile** | 4/10 | 6 | 10 | 40% |
+| **Dashboard** | 3/5 | 2 | 5 | 60% |
+| **Groups** | 0/9 | 9 | 9 | 0% |
+| **Documents** | 0/15 | 15 | 15 | 0% |
+| **Wypis** | 0/20 | 20 | 20 | 0% |
+| **Admin** | 0/50+ | 50+ | 50+ | 0% |
+| **RAZEM** | **70/243+** | **173+** | **243+** | **28.8%** |
+
 ## Legend
 
-- ✅ **Integrated** - RTK Query slice exists and tested
-- 🔨 **In Progress** - Currently being implemented
-- ⏳ **Pending** - Not yet started
-- ❌ **Not Working** - Backend endpoint has issues
-- 📝 **Needs Clarification** - Unclear behavior, need to ask user
+- ✅ **Zintegrowane** - Endpoint zaimplementowany w `src/api/endpointy/`
+- 🔨 **W trakcie** - Obecnie testowane
+- ⏳ **Planowane** - Czeka na implementację
+- ❌ **Nie działa** - Backend endpoint ma problemy
+- 📝 **Wymaga wyjaśnienia** - Niejasne zachowanie
 
 ---
 
-## 1. Authentication (`/auth/*`)
+## 1. 🔐 Authentication (`src/api/endpointy/auth.ts`)
 
-Base: `/auth/`
+**Status:** ✅ **100% Zintegrowane (5/5)**
 
-| Endpoint | Method | Status | RTK Slice | Description | Notes |
-|----------|--------|--------|-----------|-------------|-------|
-| `register` | POST | ✅ | - | Register new user | Currently using ApiClient |
-| `login` | POST | ✅ | - | User login | Currently using ApiClient |
-| `logout` | POST | ✅ | - | User logout | Currently using ApiClient |
-| `profile` | GET | ✅ | - | Get user profile | Currently using ApiClient |
+| Endpoint | Metoda | Status | Funkcja | Komponenty |
+|----------|--------|--------|---------|------------|
+| `/auth/register` | POST | ✅ | `authService.register()` | RegisterPage.tsx |
+| `/auth/login` | POST | ✅ | `authService.login()` | LoginPage.tsx |
+| `/auth/logout` | POST | ✅ | `authService.logout()` | DashboardLayout.tsx |
+| `/auth/profile` | GET | ✅ | `authService.getProfile()` | UserSettings.tsx |
+| Token management | - | ✅ | `isAuthenticated()`, `setToken()`, `removeToken()` | localStorage |
+
+**Wykorzystanie:**
+- `src/features/autoryzacja/` - Login/Register komponenty
+- Token przechowywany w `localStorage` jako `authToken`
+- Automatyczna autoryzacja wszystkich requestów przez `apiClient`
 
 **Source:** `geocraft_api/auth/urls.py`
 
@@ -76,15 +101,32 @@ Base: `/dashboard/`
 
 ---
 
-## 3. Projects (`/api/projects/*`)
+## 3. 📁 Projects API (`src/api/endpointy/unified-projects.ts`)
 
-Base: `/api/projects/`
+**Status:** ✅ **47% Zintegrowane (28/60+)**
 
-| Endpoint | Method | Status | RTK Slice | Description | Notes |
-|----------|--------|--------|-----------|-------------|-------|
-| `create/` | POST | ⏳ | - | Create project (API version) | Different from dashboard/projects/create? |
-| `import/qgs/` | POST | 🔨 | - | Import QGIS .qgs file | **Currently testing!** |
-| `import/qgz/` | POST | 🔨 | - | Import QGIS .qgz file | **Currently testing!** |
+### 📌 Core Operations (✅ 6/10)
+
+| Endpoint | Metoda | Status | Funkcja | Komponenty |
+|----------|--------|--------|---------|------------|
+| `/dashboard/projects/` | GET | ✅ | `getProjects()` | OwnProjects.tsx |
+| `/dashboard/projects/public/` | GET | ✅ | `getPublicProjects()` | PublicProjects.tsx |
+| `/dashboard/projects/{name}/` | GET | ✅ | `getProjectData()` | MapContainer.tsx |
+| `/dashboard/projects/create/` | POST | ✅ | `createProject()` | CreateProjectModal.tsx |
+| `/dashboard/projects/update/` | PUT | ✅ | `updateProject()` | EditProjectModal.tsx |
+| `/dashboard/projects/delete/` | DELETE | ✅ | `deleteProject()` | OwnProjects.tsx |
+| `/api/projects/duplicate` | POST | ⏳ | - | Clone project |
+| `/api/projects/archive` | POST | ⏳ | - | Archive project |
+| `/api/projects/recent` | GET | ⏳ | - | Recently viewed |
+| `/api/projects/favorites` | POST | ⏳ | - | Toggle favorite |
+
+### 📤 Import & Export (✅ 3/5)
+
+| Endpoint | Metoda | Status | Funkcja | Notatki |
+|----------|--------|--------|---------|---------|
+| `/api/projects/export` | POST | ✅ | `exportProject()` | QGS/QGZ export |
+| `/api/projects/import/qgs/` | POST | ✅ | `importQGS()` | **Fully integrated!** |
+| `/api/projects/import/qgz/` | POST | ✅ | `importQGZ()` | **Fully integrated!** |
 | `missing-layer/add/` | POST | ⏳ | - | Add missing layer | Need clarification |
 | `remove/` | POST | ⏳ | - | Remove project | Different from dashboard delete? |
 | `export` | GET | ⏳ | - | Export project | Format? QGS/QGZ? |
