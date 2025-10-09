@@ -20,9 +20,19 @@ class ProjectsService {
 
   /**
    * Create a new project
+   * Uses dashboard endpoint which expects: project_name, custom_project_name, description
    */
-  async createProject(data: CreateProjectData): Promise<Project> {
-    return apiClient.post<Project>('/api/projects/create/', data);
+  async createProject(data: CreateProjectData): Promise<{ success: boolean; message: string; project?: Project }> {
+    // Transform data to match dashboard endpoint expectations
+    const dashboardData = {
+      project_name: data.project,
+      custom_project_name: data.domain,
+      description: data.projectDescription,
+      keywords: data.keywords,
+      category: data.categories?.[0] || 'Inne',
+      is_public: false,
+    };
+    return apiClient.post('/dashboard/projects/create/', dashboardData);
   }
 
   /**
