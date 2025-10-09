@@ -309,6 +309,84 @@ class LayersService {
   }
 
   /**
+   * Add new feature to layer
+   * Endpoint: POST /api/layer/feature/add
+   */
+  async addFeature(
+    projectName: string,
+    layerName: string,
+    feature: {
+      geometry: GeoJSON.Geometry;
+      properties?: Record<string, any>;
+    }
+  ): Promise<{ success: boolean; feature_id: number }> {
+    return apiClient.post('/api/layer/feature/add', {
+      project_name: projectName,
+      layer_name: layerName,
+      geometry: feature.geometry,
+      properties: feature.properties || {},
+    });
+  }
+
+  /**
+   * Update existing feature (geometry and/or attributes)
+   * Endpoint: POST /api/layer/feature/update
+   */
+  async updateFeature(
+    projectName: string,
+    layerName: string,
+    featureId: number,
+    updates: {
+      geometry?: GeoJSON.Geometry;
+      properties?: Record<string, any>;
+    }
+  ): Promise<{ success: boolean }> {
+    return apiClient.post('/api/layer/feature/update', {
+      project_name: projectName,
+      layer_name: layerName,
+      feature_id: featureId,
+      ...(updates.geometry && { geometry: updates.geometry }),
+      ...(updates.properties && { properties: updates.properties }),
+    });
+  }
+
+  /**
+   * Delete feature from layer
+   * Endpoint: POST /api/layer/feature/delete
+   */
+  async deleteFeature(
+    projectName: string,
+    layerName: string,
+    featureId: number
+  ): Promise<{ success: boolean }> {
+    return apiClient.post('/api/layer/feature/delete', {
+      project_name: projectName,
+      layer_name: layerName,
+      feature_id: featureId,
+    });
+  }
+
+  /**
+   * Batch update multiple features
+   * Endpoint: POST /api/layer/multipleSaving
+   */
+  async batchUpdateFeatures(
+    projectName: string,
+    layerName: string,
+    features: Array<{
+      feature_id: number;
+      geometry?: GeoJSON.Geometry;
+      properties?: Record<string, any>;
+    }>
+  ): Promise<{ success: boolean; updated_count: number }> {
+    return apiClient.post('/api/layer/multipleSaving', {
+      project_name: projectName,
+      layer_name: layerName,
+      features,
+    });
+  }
+
+  /**
    * Get feature coordinates
    */
   async getFeatureCoordinates(
