@@ -20,8 +20,8 @@ async function login(page: any) {
   }
 
   await page.goto('/login');
-  await page.getByLabel(/email|e-mail/i).fill(process.env.TEST_USER_EMAIL!);
-  await page.getByLabel(/password|hasło/i).fill(process.env.TEST_USER_PASSWORD!);
+  await page.getByPlaceholder(/użytkownika|email/i).fill(process.env.TEST_USER_EMAIL!);
+  await page.getByPlaceholder(/hasło|minimum/i).fill(process.env.TEST_USER_PASSWORD!);
   await page.getByRole('button', { name: /zaloguj|login/i }).click();
   await expect(page).toHaveURL(/\/dashboard/, { timeout: 15000 });
 

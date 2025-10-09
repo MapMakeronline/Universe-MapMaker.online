@@ -22,10 +22,10 @@ test.describe('Authentication', () => {
     // Check page title
     await expect(page).toHaveTitle(/MapMaker|Login/);
 
-    // Check login form elements
-    await expect(page.getByLabel(/email|e-mail/i)).toBeVisible();
-    await expect(page.getByLabel(/password|hasło/i)).toBeVisible();
-    await expect(page.getByRole('button', { name: /zaloguj|login/i })).toBeVisible();
+    // Check login form elements (using placeholder since form doesn't have proper labels)
+    await expect(page.getByPlaceholder(/użytkownika|email/i)).toBeVisible();
+    await expect(page.getByPlaceholder(/hasło|minimum/i)).toBeVisible();
+    await expect(page.getByRole('button', { name: /zaloguj/i })).toBeVisible();
   });
 
   test('should show validation errors for empty form', async ({ page }) => {
@@ -39,8 +39,8 @@ test.describe('Authentication', () => {
 
   test('should show error for invalid credentials', async ({ page }) => {
     // Fill form with invalid credentials
-    await page.getByLabel(/email|e-mail/i).fill('invalid@example.com');
-    await page.getByLabel(/password|hasło/i).fill('wrongpassword');
+    await page.getByPlaceholder(/użytkownika|email/i).fill('invalid@example.com');
+    await page.getByPlaceholder(/hasło|minimum/i).fill('wrongpassword');
     await page.getByRole('button', { name: /zaloguj|login/i }).click();
 
     // Check for error message
@@ -56,8 +56,8 @@ test.describe('Authentication', () => {
     }
 
     // Fill login form
-    await page.getByLabel(/email|e-mail/i).fill(process.env.TEST_USER_EMAIL!);
-    await page.getByLabel(/password|hasło/i).fill(process.env.TEST_USER_PASSWORD!);
+    await page.getByPlaceholder(/użytkownika|email/i).fill(process.env.TEST_USER_EMAIL!);
+    await page.getByPlaceholder(/hasło|minimum/i).fill(process.env.TEST_USER_PASSWORD!);
     await page.getByRole('button', { name: /zaloguj|login/i }).click();
 
     // Wait for redirect to dashboard
@@ -75,8 +75,8 @@ test.describe('Authentication', () => {
     await expect(page).toHaveURL(/\/register/);
 
     // Check registration form
-    await expect(page.getByLabel(/email|e-mail/i)).toBeVisible();
-    await expect(page.getByLabel(/password|hasło/i)).toBeVisible();
+    await expect(page.getByPlaceholder(/użytkownika|email/i)).toBeVisible();
+    await expect(page.getByPlaceholder(/hasło|minimum/i)).toBeVisible();
   });
 
   test('should navigate to forgot password page', async ({ page }) => {
@@ -87,7 +87,7 @@ test.describe('Authentication', () => {
     await expect(page).toHaveURL(/\/forgot-password/);
 
     // Check email input
-    await expect(page.getByLabel(/email|e-mail/i)).toBeVisible();
+    await expect(page.getByPlaceholder(/użytkownika|email/i)).toBeVisible();
   });
 });
 

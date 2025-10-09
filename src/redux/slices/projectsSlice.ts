@@ -55,147 +55,17 @@ const initialState: ProjectsState = projectsAdapter.getInitialState({
 });
 
 // ============================================================================
-// Async Thunks (DEPRECATED - Use RTK Query hooks from @/redux/api/projectsApi)
+// NOTE: Async thunks removed - RTK Query is now used exclusively
 // ============================================================================
-// ⚠️ DEPRECATED: These async thunks are kept for backward compatibility only.
-// New code should use RTK Query hooks:
-// - useGetProjectsQuery() instead of dispatch(fetchProjects())
-// - useCreateProjectMutation() instead of dispatch(createProject())
-// - useDeleteProjectMutation() instead of dispatch(deleteProject())
-// - useTogglePublishMutation() instead of dispatch(togglePublishProject())
+// All project CRUD operations are now handled by RTK Query hooks:
+// - useGetProjectsQuery() - Fetch projects with auto-caching
+// - useCreateProjectMutation() - Create new project
+// - useDeleteProjectMutation() - Delete project
+// - useTogglePublishMutation() - Publish/unpublish project
 //
-// See: src/store/api/projectsApi.ts for RTK Query implementation
-// See: src/components/dashboard/OwnProjectsRTK.tsx for usage example
-//
-// These will be removed in a future version.
+// See: src/redux/api/projectsApi.ts for RTK Query implementation
+// See: src/features/dashboard/komponenty/OwnProjects.tsx for usage example
 // ============================================================================
-
-/**
- * Fetch all projects for the authenticated user
- * @deprecated Use useGetProjectsQuery() from @/redux/api/projectsApi instead
- */
-export const fetchProjects = createAsyncThunk(
-  'projects/fetchProjects',
-  async (_, { rejectWithValue }) => {
-    try {
-      mapLogger.info('Fetching projects from backend...');
-      const response = await unifiedProjectsApi.getProjects();
-      mapLogger.info('Projects fetched successfully:', {
-        count: response.list_of_projects?.length || 0,
-        projects: response.list_of_projects?.slice(0, 5).map(p => p.project_name),
-      });
-      return response;
-    } catch (error: any) {
-      mapLogger.error('Failed to fetch projects:', error);
-      return rejectWithValue(error.message || 'Failed to fetch projects');
-    }
-  }
-);
-
-/**
- * Create a new project
- */
-export const createProject = createAsyncThunk(
-  'projects/createProject',
-  async (data: CreateProjectData, { rejectWithValue, dispatch }) => {
-    try {
-      const project = await unifiedProjectsApi.createProject(data);
-      mapLogger.info('Project created:', project);
-
-      // Refresh project list after creation
-      dispatch(fetchProjects());
-
-      return project;
-    } catch (error: any) {
-      mapLogger.error('Failed to create project:', error);
-      return rejectWithValue(error.message || 'Failed to create project');
-    }
-  }
-);
-
-/**
- * Update project metadata
- */
-export const updateProject = createAsyncThunk(
-  'projects/updateProject',
-  async (data: UpdateProjectData, { rejectWithValue, dispatch }) => {
-    try {
-      const result = await unifiedProjectsApi.updateProject(data);
-      mapLogger.info('Project updated:', result);
-
-      // Refresh project list after update
-      dispatch(fetchProjects());
-
-      return { projectName: data.project, ...result };
-    } catch (error: any) {
-      mapLogger.error('Failed to update project:', error);
-      return rejectWithValue(error.message || 'Failed to update project');
-    }
-  }
-);
-
-/**
- * Delete a project
- */
-export const deleteProject = createAsyncThunk(
-  'projects/deleteProject',
-  async (projectName: string, { rejectWithValue, dispatch }) => {
-    try {
-      const result = await unifiedProjectsApi.deleteProject(projectName);
-      mapLogger.info('Project deleted:', projectName);
-
-      // Refresh project list after deletion
-      dispatch(fetchProjects());
-
-      return { projectName, ...result };
-    } catch (error: any) {
-      mapLogger.error('Failed to delete project:', error);
-      return rejectWithValue(error.message || 'Failed to delete project');
-    }
-  }
-);
-
-/**
- * Publish/unpublish a project
- */
-export const togglePublishProject = createAsyncThunk(
-  'projects/togglePublishProject',
-  async ({ projectName, publish }: { projectName: string; publish: boolean }, { rejectWithValue, dispatch }) => {
-    try {
-      const result = await unifiedProjectsApi.togglePublish(projectName, publish);
-      mapLogger.info(`Project ${publish ? 'published' : 'unpublished'}:`, projectName);
-
-      // Refresh project list
-      dispatch(fetchProjects());
-
-      return { projectName, publish, ...result };
-    } catch (error: any) {
-      mapLogger.error('Failed to toggle publish state:', error);
-      return rejectWithValue(error.message || 'Failed to toggle publish state');
-    }
-  }
-);
-
-/**
- * Change project domain
- */
-export const changeProjectDomain = createAsyncThunk(
-  'projects/changeProjectDomain',
-  async ({ projectName, newDomain }: { projectName: string; newDomain: string }, { rejectWithValue, dispatch }) => {
-    try {
-      const result = await unifiedProjectsApi.changeDomain(projectName, newDomain);
-      mapLogger.info('Project domain changed:', { projectName, newDomain });
-
-      // Refresh project list
-      dispatch(fetchProjects());
-
-      return { projectName, newDomain, ...result };
-    } catch (error: any) {
-      mapLogger.error('Failed to change domain:', error);
-      return rejectWithValue(error.message || 'Failed to change domain');
-    }
-  }
-);
 
 // ============================================================================
 // Slice Definition
@@ -234,102 +104,7 @@ const projectsSlice = createSlice({
       }
     },
   },
-  extraReducers: (builder) => {
-    // Fetch projects
-    builder
-      .addCase(fetchProjects.pending, (state) => {
-        state.isLoading = true;
-        state.error = null;
-      })
-      .addCase(fetchProjects.fulfilled, (state, action: PayloadAction<ProjectsResponse>) => {
-        state.isLoading = false;
-        // Use entity adapter to set all projects (replaces array, maintains normalization)
-        projectsAdapter.setAll(state, action.payload.list_of_projects);
-        state.dbInfo = action.payload.db_info;
-        state.lastFetch = Date.now();
-        mapLogger.info(`Fetched ${action.payload.list_of_projects.length} projects`);
-      })
-      .addCase(fetchProjects.rejected, (state, action) => {
-        state.isLoading = false;
-        state.error = action.payload as string;
-      });
-
-    // Create project
-    builder
-      .addCase(createProject.pending, (state) => {
-        state.isLoading = true;
-        state.error = null;
-      })
-      .addCase(createProject.fulfilled, (state) => {
-        state.isLoading = false;
-        // Projects list will be refreshed by fetchProjects
-      })
-      .addCase(createProject.rejected, (state, action) => {
-        state.isLoading = false;
-        state.error = action.payload as string;
-      });
-
-    // Update project
-    builder
-      .addCase(updateProject.pending, (state) => {
-        state.isLoading = true;
-        state.error = null;
-      })
-      .addCase(updateProject.fulfilled, (state) => {
-        state.isLoading = false;
-        // Projects list will be refreshed by fetchProjects
-      })
-      .addCase(updateProject.rejected, (state, action) => {
-        state.isLoading = false;
-        state.error = action.payload as string;
-      });
-
-    // Delete project
-    builder
-      .addCase(deleteProject.pending, (state) => {
-        state.isLoading = true;
-        state.error = null;
-      })
-      .addCase(deleteProject.fulfilled, (state, action) => {
-        state.isLoading = false;
-        // Use Entity Adapter to remove the project (O(1) deletion)
-        projectsAdapter.removeOne(state, action.meta.arg);
-
-        // Clear current project if it was deleted
-        if (state.currentProject?.project_name === action.meta.arg) {
-          state.currentProject = null;
-        }
-        // Note: fetchProjects is still dispatched for backend sync
-      })
-      .addCase(deleteProject.rejected, (state, action) => {
-        state.isLoading = false;
-        state.error = action.payload as string;
-      });
-
-    // Toggle publish
-    builder
-      .addCase(togglePublishProject.pending, (state) => {
-        state.error = null;
-      })
-      .addCase(togglePublishProject.fulfilled, (state) => {
-        // Projects list will be refreshed by fetchProjects
-      })
-      .addCase(togglePublishProject.rejected, (state, action) => {
-        state.error = action.payload as string;
-      });
-
-    // Change domain
-    builder
-      .addCase(changeProjectDomain.pending, (state) => {
-        state.error = null;
-      })
-      .addCase(changeProjectDomain.fulfilled, (state) => {
-        // Projects list will be refreshed by fetchProjects
-      })
-      .addCase(changeProjectDomain.rejected, (state, action) => {
-        state.error = action.payload as string;
-      });
-  },
+  // No extraReducers needed - RTK Query handles all async operations
 });
 
 export const {

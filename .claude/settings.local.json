@@ -112,7 +112,8 @@
       "Bash(tee:*)",
       "Bash(kill:*)",
       "Bash(tree:*)",
-      "Bash(npx playwright install:*)"
+      "Bash(npx playwright install:*)",
+      "Bash(npx playwright test:*)"
     ],
     "deny": [],
     "ask": []
