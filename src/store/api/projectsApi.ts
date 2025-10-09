@@ -24,7 +24,7 @@ import type {
 // Get token from localStorage (same as apiClient)
 const getToken = (): string | null => {
   if (typeof window === 'undefined') return null;
-  return localStorage.getItem('token');
+  return localStorage.getItem('authToken'); // Changed from 'token' to 'authToken'
 };
 
 // Base query with auth headers
@@ -33,7 +33,7 @@ const baseQuery = fetchBaseQuery({
   prepareHeaders: (headers) => {
     const token = getToken();
     if (token) {
-      headers.set('Authorization', `Bearer ${token}`);
+      headers.set('Authorization', `Token ${token}`); // Changed from 'Bearer' to 'Token' for Django REST Framework
     }
     headers.set('Content-Type', 'application/json');
     return headers;
