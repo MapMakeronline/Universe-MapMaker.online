@@ -5,7 +5,8 @@ import { useSearchParams } from 'next/navigation';
 import { ThemeProvider, CssBaseline } from '@mui/material';
 import { theme } from '@/lib/theme';
 import DashboardLayout from '../../../src/components/dashboard/DashboardLayout';
-import OwnProjects from '../../../src/components/dashboard/OwnProjectsIntegrated';
+// Phase 3: Using RTK Query version
+import OwnProjects from '../../../src/components/dashboard/OwnProjectsRTK';
 import PublicProjects from '../../../src/components/dashboard/PublicProjects';
 import UserProfile from '../../../src/components/dashboard/UserProfile';
 import UserSettings from '../../../src/components/dashboard/UserSettings';
