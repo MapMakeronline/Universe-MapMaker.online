@@ -86,7 +86,12 @@
       "Read(//c/Users/mestw/**)",
       "Bash(screenshot.bat https://universemapmaker.online screenshots/universemapmaker-online-check.png)",
       "Bash(gcloud compute instances list:*)",
-      "Bash(gcloud compute ssh:*)"
+      "Bash(gcloud compute ssh:*)",
+      "Bash(gcloud sql instances list:*)",
+      "Bash(gcloud compute disks:*)",
+      "Bash(gcloud compute instances describe:*)",
+      "Bash(git clone:*)",
+      "Bash(gcloud projects describe:*)"
     ],
     "deny": [],
     "ask": []

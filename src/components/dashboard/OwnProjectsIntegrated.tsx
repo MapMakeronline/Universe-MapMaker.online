@@ -27,7 +27,7 @@ import { ProjectsGridSkeleton } from './ProjectCardSkeleton';
 import { ProjectCard } from './ProjectCard';
 import { CreateProjectDialog } from './dialogs/CreateProjectDialog';
 import { DeleteProjectDialog } from './dialogs/DeleteProjectDialog';
-import type { Project } from '@/lib/api/types';
+import type { Project, CreateProjectData } from '@/lib/api/types';
 
 export default function OwnProjectsIntegrated() {
   const theme = useTheme();
@@ -61,13 +61,7 @@ export default function OwnProjectsIntegrated() {
     setCreateDialogOpen(true);
   };
 
-  const handleProjectCreated = async (data: {
-    project_name: string;
-    custom_project_name?: string;
-    description?: string;
-    keywords?: string;
-    categories?: string;
-  }) => {
+  const handleProjectCreated = async (data: CreateProjectData) => {
     try {
       await dispatch(createProject(data)).unwrap();
       setSnackbar({
