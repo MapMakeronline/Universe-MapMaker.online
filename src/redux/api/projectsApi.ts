@@ -35,7 +35,7 @@ const baseQuery = fetchBaseQuery({
     if (token) {
       headers.set('Authorization', `Token ${token}`);
     }
-    headers.set('Content-Type', 'application/json');
+    // Don't set Content-Type manually - let RTK Query handle it
     return headers;
   },
 });
@@ -112,7 +112,12 @@ export const projectsApi = createApi({
       query: (data) => ({
         url: '/api/projects/create/',
         method: 'POST',
-        body: data,
+        body: {
+          project: data.project,
+          domain: data.domain,
+          projectDescription: data.projectDescription,
+          keywords: data.keywords,
+        },
       }),
       invalidatesTags: [{ type: 'Projects', id: 'LIST' }],
     }),

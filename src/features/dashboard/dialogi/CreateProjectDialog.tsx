@@ -34,7 +34,7 @@ interface CreateProjectDialogProps {
   open: boolean;
   onClose: () => void;
   onCreate: (data: CreateProjectData) => Promise<void>;
-  onImportQGIS?: (file: File, projectName: string) => Promise<void>;
+  onImportQGIS?: (file: File, projectName: string, domain: string, description?: string) => Promise<void>;
 }
 
 interface TabPanelProps {
@@ -86,6 +86,8 @@ export function CreateProjectDialog({
   // QGIS import form state
   const [qgisFile, setQgisFile] = useState<File | null>(null);
   const [qgisProjectName, setQgisProjectName] = useState('');
+  const [qgisDomain, setQgisDomain] = useState('');
+  const [qgisDescription, setQgisDescription] = useState('');
   const [qgisError, setQgisError] = useState<string | null>(null);
   const [isImporting, setIsImporting] = useState(false);
 
@@ -156,16 +158,18 @@ export function CreateProjectDialog({
   };
 
   const handleImportSubmit = async () => {
-    if (!qgisFile || !qgisProjectName || !onImportQGIS) return;
+    if (!qgisFile || !qgisProjectName || !qgisDomain || !onImportQGIS) return;
 
     setIsImporting(true);
     setQgisError(null);
 
     try {
-      await onImportQGIS(qgisFile, qgisProjectName);
+      await onImportQGIS(qgisFile, qgisProjectName, qgisDomain, qgisDescription);
       // Reset form on success
       setQgisFile(null);
       setQgisProjectName('');
+      setQgisDomain('');
+      setQgisDescription('');
       setActiveTab(0); // Switch back to create tab
     } catch (error: any) {
       setQgisError(error.message || 'Wystąpił błąd podczas importowania projektu');
@@ -178,7 +182,7 @@ export function CreateProjectDialog({
     formData.project.length >= 3 && formData.domain.length >= 3 &&
     (formData.projectDescription?.length || 0) <= 100;
 
-  const isImportValid = qgisFile !== null && qgisProjectName.length >= 3;
+  const isImportValid = qgisFile !== null && qgisProjectName.length >= 3 && qgisDomain.length >= 3;
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth fullScreen={isMobile}>
@@ -348,8 +352,9 @@ export function CreateProjectDialog({
         <TabPanel value={activeTab} index={1}>
           <Stack spacing={3}>
             <Alert severity="info" sx={{ mb: 2 }}>
-              Importuj projekt QGIS z pliku .qgz lub .qgs. Plik zostanie przeanalizowany
-              i utworzony zostanie nowy projekt z warstwami.
+              Importuj projekt QGIS z pliku .qgz lub .qgs. System automatycznie:
+              <br />1. Utworzy nowy projekt z podaną nazwą i domeną
+              <br />2. Zaimportuje warstwy z pliku QGIS do projektu
             </Alert>
 
             {qgisError && (
@@ -426,27 +431,70 @@ export function CreateProjectDialog({
             </Box>
 
             {qgisFile && (
-              <TextField
-                label="Nazwa projektu"
-                placeholder="Nazwa projektu (min. 3 znaki)"
-                fullWidth
-                required
-                value={qgisProjectName}
-                onChange={(e) => {
-                  const sanitized = e.target.value
-                    .replace(/[^a-zA-Z0-9ąćęłńóśźżĄĘŁŃÓŚŹŻ_]/g, '_')
-                    .replace(/^_+|_+$/g, '');
-                  setQgisProjectName(sanitized);
-                }}
-                helperText="Tylko litery, cyfry i _ (wymagane, minimum 3 znaki)"
-                error={qgisProjectName.length > 0 && qgisProjectName.length < 3}
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    bgcolor: 'white',
-                    '&:hover fieldset': { borderColor: theme.palette.primary.main },
-                  },
-                }}
-              />
+              <>
+                <TextField
+                  label="Nazwa projektu"
+                  placeholder="Nazwa projektu (min. 3 znaki)"
+                  fullWidth
+                  required
+                  value={qgisProjectName}
+                  onChange={(e) => {
+                    const sanitized = e.target.value
+                      .replace(/[^a-zA-Z0-9ąćęłńóśźżĄĘŁŃÓŚŹŻ_]/g, '_')
+                      .replace(/^_+|_+$/g, '');
+                    setQgisProjectName(sanitized);
+                  }}
+                  helperText="Tylko litery, cyfry i _ (wymagane, minimum 3 znaki)"
+                  error={qgisProjectName.length > 0 && qgisProjectName.length < 3}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      bgcolor: 'white',
+                      '&:hover fieldset': { borderColor: theme.palette.primary.main },
+                    },
+                  }}
+                />
+
+                <TextField
+                  label="Domena"
+                  placeholder="Subdomena dla projektu (minimum 3 znaki)"
+                  fullWidth
+                  required
+                  value={qgisDomain}
+                  onChange={(e) => {
+                    const sanitized = e.target.value
+                      .toLowerCase()
+                      .replace(/[^a-z0-9-]/g, '-')
+                      .replace(/^-+|-+$/g, '');
+                    setQgisDomain(sanitized);
+                  }}
+                  helperText="Minimum 3 znaki, format: example-domain (wymagane)"
+                  error={qgisDomain.length > 0 && qgisDomain.length < 3}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      bgcolor: 'white',
+                      '&:hover fieldset': { borderColor: theme.palette.primary.main },
+                    },
+                  }}
+                />
+
+                <TextField
+                  label="Opis"
+                  placeholder="Opisz projekt (opcjonalnie, maksymalnie 100 znaków)"
+                  fullWidth
+                  multiline
+                  rows={3}
+                  value={qgisDescription}
+                  onChange={(e) => setQgisDescription(e.target.value)}
+                  helperText={`${qgisDescription.length}/100 (opcjonalnie)`}
+                  error={qgisDescription.length > 100}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      bgcolor: 'white',
+                      '&:hover fieldset': { borderColor: theme.palette.primary.main },
+                    },
+                  }}
+                />
+              </>
             )}
           </Stack>
         </TabPanel>
@@ -491,7 +539,7 @@ export function CreateProjectDialog({
               '&:hover': { bgcolor: theme.palette.primary.dark },
             }}
           >
-            {isImporting ? 'Importowanie...' : 'Importuj projekt'}
+            {isImporting ? 'Tworzenie i importowanie...' : 'Utwórz i importuj'}
           </Button>
         )}
       </DialogActions>

@@ -96,15 +96,29 @@ export default function OwnProjectsRTK() {
     }
   };
 
-  const handleImportQGIS = async (file: File, projectName: string) => {
+  const handleImportQGIS = async (file: File, projectName: string, domain: string, description?: string) => {
     try {
-      // Import via unified API (not RTK Query)
+      // STEP 1: Create empty project first (backend requirement)
+      const createData: CreateProjectData = {
+        project: projectName,
+        domain: domain || projectName.toLowerCase(),
+        projectDescription: description || `Importowany projekt QGIS: ${file.name}`,
+        keywords: 'qgis, import',
+        categories: ['Inne'],
+      };
+
+      const createdProject = await createProject(createData).unwrap();
+
+      // Use project_name from backend response (not user input)
+      const backendProjectName = createdProject.project_name || projectName;
+
+      // STEP 2: Import QGS file to the created project
       const { unifiedProjectsApi } = await import('@/api/endpointy/unified-projects');
-      await unifiedProjectsApi.importQGISProject(file, projectName);
+      await unifiedProjectsApi.importQGISProject(file, backendProjectName);
 
       setSnackbar({
         open: true,
-        message: `Projekt QGIS "${projectName}" został zaimportowany pomyślnie!`,
+        message: `Projekt "${projectName}" został utworzony i zaimportowany pomyślnie!`,
         severity: 'success',
       });
       setCreateDialogOpen(false);
