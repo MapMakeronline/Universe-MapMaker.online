@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
@@ -17,136 +17,31 @@ import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import Grid from '@mui/material/Grid';
 import LinearProgress from '@mui/material/LinearProgress';
+import Select from '@mui/material/Select';
+import MenuItem from '@mui/material/MenuItem';
+import FormControl from '@mui/material/FormControl';
 import PersonIcon from '@mui/icons-material/Person';
 import StorageIcon from '@mui/icons-material/Storage';
 import CloudIcon from '@mui/icons-material/CloudQueue';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import { useAppSelector } from '@/redux/hooks';
-import { apiClient } from '@/api/klient/client';
-
-interface UserStats {
-  id: number;
-  username: string;
-  email: string;
-  projectCount: number;
-  layerCount: number;
-  storageUsed: number; // MB
-  lastLogin: string;
-  isActive: boolean;
-}
-
-interface SystemStats {
-  totalUsers: number;
-  totalProjects: number;
-  totalLayers: number;
-  totalStorage: number; // MB
-  activeUsers: number;
-}
+import { useGetAdminStatsQuery, useUpdateUserLicenseMutation, type AdminUser } from '@/redux/api/adminApi';
 
 export default function AdminPanel() {
   const { user } = useAppSelector((state) => state.auth);
-  const [users, setUsers] = useState<UserStats[]>([]);
-  const [systemStats, setSystemStats] = useState<SystemStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+
+  // RTK Query hooks
+  const { data, isLoading, error } = useGetAdminStatsQuery();
+  const [updateLicense] = useUpdateUserLicenseMutation();
 
   // Check if user is admin
   const isAdmin = user?.email?.includes('@universemapmaker.online') || user?.username === 'admin';
 
-  useEffect(() => {
-    if (isAdmin) {
-      fetchAdminData();
-    }
-  }, [isAdmin]);
-
-  const fetchAdminData = async () => {
+  const handleLicenseChange = async (userId: number, newLicense: 'free' | 'paid') => {
     try {
-      setLoading(true);
-      setError(null);
-
-      // Real API call to backend
-      const response = await apiClient.get<{
-        system_stats: {
-          total_users: number;
-          active_users: number;
-          total_projects: number;
-          total_layers: number;
-          total_storage: number;
-        };
-        users: Array<{
-          id: number;
-          username: string;
-          email: string;
-          project_count: number;
-          layer_count: number;
-          storage_used: number;
-          last_login: string | null;
-          is_active: boolean;
-        }>;
-      }>('/admin/stats');
-
-      // Map backend response to frontend format
-      const mappedUsers: UserStats[] = response.users.map(u => ({
-        id: u.id,
-        username: u.username,
-        email: u.email,
-        projectCount: u.project_count,
-        layerCount: u.layer_count,
-        storageUsed: u.storage_used,
-        lastLogin: u.last_login || new Date().toISOString(),
-        isActive: u.is_active,
-      }));
-
-      const mappedStats: SystemStats = {
-        totalUsers: response.system_stats.total_users,
-        activeUsers: response.system_stats.active_users,
-        totalProjects: response.system_stats.total_projects,
-        totalLayers: response.system_stats.total_layers,
-        totalStorage: response.system_stats.total_storage,
-      };
-
-      setUsers(mappedUsers);
-      setSystemStats(mappedStats);
-    } catch (err: any) {
-      console.error('Failed to fetch admin data:', err);
-      setError(err.message || 'Failed to load admin statistics');
-
-      // Fallback to mock data if API fails (for development)
-      const mockUsers: UserStats[] = [
-        {
-          id: 1,
-          username: 'admin',
-          email: 'admin@mapmaker.com',
-          projectCount: 5,
-          layerCount: 23,
-          storageUsed: 124.5,
-          lastLogin: '2025-10-09T10:30:00',
-          isActive: true,
-        },
-        {
-          id: 2,
-          username: 'admin@universemapmaker.online',
-          email: 'admin@universemapmaker.online',
-          projectCount: 0,
-          layerCount: 0,
-          storageUsed: 0,
-          lastLogin: '2025-10-09T00:05:00',
-          isActive: true,
-        },
-      ];
-
-      const mockSystemStats: SystemStats = {
-        totalUsers: mockUsers.length,
-        totalProjects: mockUsers.reduce((sum, u) => sum + u.projectCount, 0),
-        totalLayers: mockUsers.reduce((sum, u) => sum + u.layerCount, 0),
-        totalStorage: mockUsers.reduce((sum, u) => sum + u.storageUsed, 0),
-        activeUsers: mockUsers.filter(u => u.isActive).length,
-      };
-
-      setUsers(mockUsers);
-      setSystemStats(mockSystemStats);
-    } finally {
-      setLoading(false);
+      await updateLicense({ userId, licenseType: newLicense }).unwrap();
+    } catch (err) {
+      console.error('Failed to update license:', err);
     }
   };
 
@@ -160,7 +55,7 @@ export default function AdminPanel() {
     );
   }
 
-  if (loading) {
+  if (isLoading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 400 }}>
         <CircularProgress />
@@ -171,7 +66,9 @@ export default function AdminPanel() {
   if (error) {
     return (
       <Box sx={{ p: 3 }}>
-        <Alert severity="error">{error}</Alert>
+        <Alert severity="error">
+          {'status' in error ? `Błąd ${error.status}: Nie udało się załadować danych` : 'Błąd ładowania danych administracyjnych'}
+        </Alert>
       </Box>
     );
   }
@@ -187,10 +84,11 @@ export default function AdminPanel() {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
     }).format(date);
   };
+
+  const users = data?.users || [];
+  const systemStats = data?.system_stats;
 
   return (
     <Box sx={{ p: 3 }}>
@@ -210,10 +108,10 @@ export default function AdminPanel() {
                 </Typography>
               </Box>
               <Typography variant="h4" sx={{ fontWeight: 600 }}>
-                {systemStats?.totalUsers || 0}
+                {systemStats?.total_users || 0}
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                {systemStats?.activeUsers || 0} aktywnych
+                {systemStats?.active_users || 0} aktywnych
               </Typography>
             </CardContent>
           </Card>
@@ -229,7 +127,7 @@ export default function AdminPanel() {
                 </Typography>
               </Box>
               <Typography variant="h4" sx={{ fontWeight: 600 }}>
-                {systemStats?.totalProjects || 0}
+                {systemStats?.total_projects || 0}
               </Typography>
               <Typography variant="caption" color="text.secondary">
                 Wszystkich projektów
@@ -248,7 +146,7 @@ export default function AdminPanel() {
                 </Typography>
               </Box>
               <Typography variant="h4" sx={{ fontWeight: 600 }}>
-                {systemStats?.totalLayers || 0}
+                {systemStats?.total_layers || 0}
               </Typography>
               <Typography variant="caption" color="text.secondary">
                 Wszystkich warstw
@@ -267,7 +165,7 @@ export default function AdminPanel() {
                 </Typography>
               </Box>
               <Typography variant="h4" sx={{ fontWeight: 600 }}>
-                {formatBytes(systemStats?.totalStorage || 0)}
+                {formatBytes(systemStats?.total_storage || 0)}
               </Typography>
               <Typography variant="caption" color="text.secondary">
                 Całkowite zużycie
@@ -280,7 +178,7 @@ export default function AdminPanel() {
       {/* Users Table */}
       <Paper sx={{ p: 2 }}>
         <Typography variant="h6" gutterBottom sx={{ mb: 2, fontWeight: 600 }}>
-          Statystyki Użytkowników
+          Statystyki Użytkowników (sortowane po ilości danych)
         </Typography>
 
         <TableContainer>
@@ -289,24 +187,24 @@ export default function AdminPanel() {
               <TableRow sx={{ backgroundColor: 'grey.50' }}>
                 <TableCell sx={{ fontWeight: 600 }}>Użytkownik</TableCell>
                 <TableCell sx={{ fontWeight: 600 }}>Email</TableCell>
+                <TableCell align="center" sx={{ fontWeight: 600 }}>
+                  Licencja
+                </TableCell>
                 <TableCell align="right" sx={{ fontWeight: 600 }}>
                   Projekty
                 </TableCell>
                 <TableCell align="right" sx={{ fontWeight: 600 }}>
-                  Warstwy
-                </TableCell>
-                <TableCell align="right" sx={{ fontWeight: 600 }}>
                   Pamięć
                 </TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>Ostatnie logowanie</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>Data założenia</TableCell>
                 <TableCell align="center" sx={{ fontWeight: 600 }}>
                   Status
                 </TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {users.map((user) => {
-                const storagePercentage = (user.storageUsed / (systemStats?.totalStorage || 1)) * 100;
+              {users.map((user: AdminUser) => {
+                const storagePercentage = (user.storage_used / (systemStats?.total_storage || 1)) * 100;
 
                 return (
                   <TableRow key={user.id} hover>
@@ -320,24 +218,29 @@ export default function AdminPanel() {
                         {user.email}
                       </Typography>
                     </TableCell>
-                    <TableCell align="right">
-                      <Chip
-                        label={user.projectCount}
-                        size="small"
-                        color={user.projectCount > 0 ? 'primary' : 'default'}
-                      />
+                    <TableCell align="center">
+                      <FormControl size="small" sx={{ minWidth: 110 }}>
+                        <Select
+                          value={user.license_type}
+                          onChange={(e) => handleLicenseChange(user.id, e.target.value as 'free' | 'paid')}
+                          sx={{ fontSize: '0.875rem' }}
+                        >
+                          <MenuItem value="free">Darmowa</MenuItem>
+                          <MenuItem value="paid">Płatna</MenuItem>
+                        </Select>
+                      </FormControl>
                     </TableCell>
                     <TableCell align="right">
                       <Chip
-                        label={user.layerCount}
+                        label={user.project_count}
                         size="small"
-                        color={user.layerCount > 0 ? 'success' : 'default'}
+                        color={user.project_count > 0 ? 'primary' : 'default'}
                       />
                     </TableCell>
                     <TableCell align="right">
                       <Box>
                         <Typography variant="body2" fontWeight={500}>
-                          {formatBytes(user.storageUsed)}
+                          {formatBytes(user.storage_used)}
                         </Typography>
                         <LinearProgress
                           variant="determinate"
@@ -351,14 +254,14 @@ export default function AdminPanel() {
                     </TableCell>
                     <TableCell>
                       <Typography variant="caption" color="text.secondary">
-                        {formatDate(user.lastLogin)}
+                        {formatDate(user.date_joined)}
                       </Typography>
                     </TableCell>
                     <TableCell align="center">
                       <Chip
-                        label={user.isActive ? 'Aktywny' : 'Nieaktywny'}
+                        label={user.is_active ? 'Aktywny' : 'Nieaktywny'}
                         size="small"
-                        color={user.isActive ? 'success' : 'default'}
+                        color={user.is_active ? 'success' : 'default'}
                       />
                     </TableCell>
                   </TableRow>
@@ -374,14 +277,6 @@ export default function AdminPanel() {
           </Box>
         )}
       </Paper>
-
-      {/* Info Alert */}
-      <Alert severity="info" sx={{ mt: 3 }}>
-        <Typography variant="body2">
-          <strong>Uwaga:</strong> Dane są obecnie mockowane. Pełna integracja z backendem będzie dostępna po
-          implementacji endpointu <code>/api/admin/users-stats</code> w Django.
-        </Typography>
-      </Alert>
     </Box>
   );
 }

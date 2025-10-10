@@ -7,6 +7,7 @@ import buildingsReducer from './slices/buildingsSlice';
 import featuresReducer from './slices/featuresSlice';
 import projectsReducer from './slices/projectsSlice';
 import { projectsApi } from './api/projectsApi'; // Phase 3: RTK Query API
+import { adminApi } from './api/adminApi'; // Admin API for user management
 
 // Create a makeStore function for Next.js App Router
 export const makeStore = () => {
@@ -21,6 +22,7 @@ export const makeStore = () => {
       projects: projectsReducer,
       // Phase 3: RTK Query API reducer
       [projectsApi.reducerPath]: projectsApi.reducer,
+      [adminApi.reducerPath]: adminApi.reducer,
     },
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware({
@@ -31,7 +33,8 @@ export const makeStore = () => {
         },
       })
         // Phase 3: Add RTK Query middleware for caching, invalidation, polling, etc.
-        .concat(projectsApi.middleware),
+        .concat(projectsApi.middleware)
+        .concat(adminApi.middleware),
   });
 };
 
