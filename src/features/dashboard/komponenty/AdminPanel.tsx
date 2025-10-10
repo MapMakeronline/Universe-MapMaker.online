@@ -68,16 +68,6 @@ export default function AdminPanel() {
   const [updateLicense] = useUpdateUserLicenseMutation();
   const [deleteUser, { isLoading: isDeleting }] = useDeleteUserMutation();
 
-  // Debug: Log projects data
-  console.log('📊 Projects Data:', JSON.stringify(projectsData, null, 2));
-  if (projectsError) {
-    console.log('❌ Projects Error:', {
-      status: 'status' in projectsError ? projectsError.status : 'unknown',
-      data: 'data' in projectsError ? projectsError.data : undefined,
-      error: 'error' in projectsError ? projectsError.error : undefined
-    });
-  }
-
   // Check if user is admin
   const isAdmin = user?.email?.includes('@universemapmaker.online') || user?.username === 'admin';
 
@@ -445,6 +435,7 @@ export default function AdminPanel() {
                     </TableCell>
                     <TableCell align="center" sx={{ fontWeight: 600 }}>Status QGS</TableCell>
                     <TableCell align="center" sx={{ fontWeight: 600 }}>Status DB</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 600 }}>QGS Storage</TableCell>
                     <TableCell sx={{ fontWeight: 600 }}>Data utworzenia</TableCell>
                   </TableRow>
                 </TableHead>
@@ -506,6 +497,23 @@ export default function AdminPanel() {
                             <ErrorIcon color="error" fontSize="small" />
                           )}
                         </Tooltip>
+                      </TableCell>
+                      <TableCell align="center">
+                        {project.qgs_storage_url ? (
+                          <Tooltip title="Otwórz w Google Cloud Storage">
+                            <IconButton
+                              size="small"
+                              href={project.qgs_storage_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              sx={{ color: theme.palette.primary.main }}
+                            >
+                              <CloudIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        ) : (
+                          <Typography variant="caption" color="text.secondary">-</Typography>
+                        )}
                       </TableCell>
                       <TableCell>
                         <Typography variant="caption" color="text.secondary">

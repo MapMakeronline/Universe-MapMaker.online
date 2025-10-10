@@ -53,6 +53,8 @@ export interface AdminProject {
   qgs_file_exists: boolean;
   database_exists: boolean;
   is_valid: boolean;
+  // Cloud Storage
+  qgs_storage_url?: string;
 }
 
 export interface AdminProjectsResponse {
@@ -114,6 +116,7 @@ export const adminApi = createApi({
             qgs_file_exists: p.qgs_file_exists !== false,
             database_exists: p.database_exists !== false,
             is_valid: p.qgs_file_exists !== false && p.database_exists !== false,
+            qgs_storage_url: p.qgs_storage_url,
           })),
           timestamp: new Date().toISOString(),
         };
