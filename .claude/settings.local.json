@@ -113,7 +113,9 @@
       "Bash(kill:*)",
       "Bash(tree:*)",
       "Bash(npx playwright install:*)",
-      "Bash(npx playwright test:*)"
+      "Bash(npx playwright test:*)",
+      "Bash(lsof:*)",
+      "Read(//tmp/**)"
     ],
     "deny": [],
     "ask": []

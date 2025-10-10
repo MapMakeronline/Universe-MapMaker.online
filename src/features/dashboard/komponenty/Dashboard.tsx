@@ -12,6 +12,7 @@ import UserProfile from './UserProfile';
 import UserSettings from './UserSettings';
 import Contact from './Contact';
 import AdminPanel from './AdminPanel';
+import ContentManagementPanel from './ContentManagementPanel';
 
 export default function Dashboard() {
   const searchParams = useSearchParams();
@@ -42,6 +43,8 @@ export default function Dashboard() {
         return <Contact />;
       case 'admin':
         return <AdminPanel />;
+      case 'cms':
+        return <ContentManagementPanel />;
       default:
         return <OwnProjects />;
     }

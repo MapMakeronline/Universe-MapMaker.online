@@ -34,6 +34,7 @@ import ChevronLeft from '@mui/icons-material/ChevronLeft';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import Login from '@mui/icons-material/Login';
 import AdminPanelSettings from '@mui/icons-material/AdminPanelSettings';
+import EditNote from '@mui/icons-material/EditNote';
 import { useAppSelector, useAppDispatch } from '@/redux/hooks';
 import { clearAuth } from '@/redux/slices/authSlice';
 
@@ -170,12 +171,13 @@ export default function DashboardLayout({ children, currentPage, onPageChange }:
             <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 3, mr: 2 }}>
               <Typography
                 component="a"
-                href="#"
+                href="/blog"
                 sx={{
                   color: 'inherit',
                   textDecoration: 'none',
                   fontSize: '14px',
                   opacity: 0.8,
+                  cursor: 'pointer',
                   '&:hover': {
                     opacity: 1,
                     textDecoration: 'underline',
@@ -186,12 +188,13 @@ export default function DashboardLayout({ children, currentPage, onPageChange }:
               </Typography>
               <Typography
                 component="a"
-                href="#"
+                href="/regulamin"
                 sx={{
                   color: 'inherit',
                   textDecoration: 'none',
                   fontSize: '14px',
                   opacity: 0.8,
+                  cursor: 'pointer',
                   '&:hover': {
                     opacity: 1,
                     textDecoration: 'underline',
@@ -202,12 +205,13 @@ export default function DashboardLayout({ children, currentPage, onPageChange }:
               </Typography>
               <Typography
                 component="a"
-                href="#"
+                href="/faq"
                 sx={{
                   color: 'inherit',
                   textDecoration: 'none',
                   fontSize: '14px',
                   opacity: 0.8,
+                  cursor: 'pointer',
                   '&:hover': {
                     opacity: 1,
                     textDecoration: 'underline',
@@ -469,6 +473,36 @@ export default function DashboardLayout({ children, currentPage, onPageChange }:
                     </ListItemIcon>
                     <ListItemText
                       primary="Panel Admina"
+                      primaryTypographyProps={{ fontWeight: 500 }}
+                    />
+                  </ListItemButton>
+                </ListItem>
+                <ListItem disablePadding sx={{ mb: 0.5 }}>
+                  <ListItemButton
+                    onClick={() => onPageChange('cms')}
+                    selected={currentPage === 'cms'}
+                    sx={{
+                      borderRadius: 2,
+                      '&.Mui-selected': {
+                        bgcolor: 'primary.main',
+                        color: 'white',
+                        '&:hover': {
+                          bgcolor: 'primary.dark',
+                        },
+                        '& .MuiListItemIcon-root': {
+                          color: 'white',
+                        },
+                      },
+                      '&:hover': {
+                        bgcolor: alpha(theme.palette.primary.main, 0.08),
+                      },
+                    }}
+                  >
+                    <ListItemIcon>
+                      <EditNote />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary="Zarządzanie Treścią"
                       primaryTypographyProps={{ fontWeight: 500 }}
                     />
                   </ListItemButton>

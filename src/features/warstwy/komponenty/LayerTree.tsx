@@ -476,7 +476,21 @@ export const LayerTree: React.FC<LayerTreeProps> = ({
             {getWarstwaIcon(warstwa.typ, warstwa.id)}
           </Box>
           
-          <Tooltip title={warstwa.nazwa} arrow placement="right">
+          <Tooltip 
+            title={warstwa.nazwa} 
+            arrow 
+            placement="right"
+            PopperProps={{
+              modifiers: [
+                {
+                  name: 'offset',
+                  options: {
+                    offset: [0, 5], // przesunięcie w prawo o 20px
+                  },
+                },
+              ],
+            }}
+          >
             <Typography
               sx={{
                 fontSize: TREE_CONFIG.typography.fontSize,
@@ -495,10 +509,24 @@ export const LayerTree: React.FC<LayerTreeProps> = ({
             </Typography>
           </Tooltip>
           
-          {/* Ikony po prawej stronie jak na screenie */}
+          {/* Ikony po prawej */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: TREE_CONFIG.elements.actionButton.gap }}>
             {/* Ikona celownika/GPS */}
-            <Tooltip title="Przybliż do warstwy" arrow>
+            <Tooltip 
+              title="Przybliż do warstwy" 
+              arrow
+              placement="right"
+              PopperProps={{
+                modifiers: [
+                  {
+                    name: 'offset',
+                    options: {
+                      offset: [0, 5], 
+                    },
+                  },
+                ],
+              }}
+            >
               <IconButton
                 size="small"
                 onClick={(e) => {
@@ -517,7 +545,21 @@ export const LayerTree: React.FC<LayerTreeProps> = ({
             
             {/* Ikona kalendarza - tylko dla warstw (nie katalogów) */}
             {warstwa.typ !== 'grupa' && (
-              <Tooltip title="Pokaż tabele atrybutów" arrow>
+              <Tooltip 
+                title="Pokaż tabele atrybutów" 
+                arrow
+                placement="right"
+                PopperProps={{
+                  modifiers: [
+                    {
+                      name: 'offset',
+                      options: {
+                        offset: [0, 3],
+                      },
+                    },
+                  ],
+                }}
+              >
                 <IconButton
                   size="small"
                   onClick={(e) => {
