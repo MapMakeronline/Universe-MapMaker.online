@@ -32,9 +32,10 @@ interface ProjectCardProps {
   onOpen: () => void;
   onDelete: () => void;
   onTogglePublish: () => void;
+  onSettings: () => void;
 }
 
-export function ProjectCard({ project, onOpen, onDelete, onTogglePublish }: ProjectCardProps) {
+export function ProjectCard({ project, onOpen, onDelete, onTogglePublish, onSettings }: ProjectCardProps) {
   const theme = useTheme();
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
 
@@ -224,6 +225,13 @@ export function ProjectCard({ project, onOpen, onDelete, onTogglePublish }: Proj
           <ListItemText>
             {project.published ? 'Cofnij publikację' : 'Opublikuj projekt'}
           </ListItemText>
+        </MenuItem>
+
+        <MenuItem onClick={() => handleMenuAction(onSettings)}>
+          <ListItemIcon>
+            <Settings fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Ustawienia projektu</ListItemText>
         </MenuItem>
 
         <MenuItem onClick={() => handleMenuAction(onDelete)}>

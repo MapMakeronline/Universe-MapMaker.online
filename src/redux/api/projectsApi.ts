@@ -1,7 +1,7 @@
 /**
  * RTK Query API for Projects
  *
- * Phase 3: RTK Query Migration
+ * Phase 3: RTK Query Migration + Advanced Features
  * Replaces manual async thunks with auto-generated hooks and caching
  *
  * Benefits:
@@ -24,7 +24,7 @@ import type {
 // Get token from localStorage (same as apiClient)
 const getToken = (): string | null => {
   if (typeof window === 'undefined') return null;
-  return localStorage.getItem('authToken'); // Changed from 'token' to 'authToken'
+  return localStorage.getItem('authToken');
 };
 
 // Base query with auth headers
@@ -33,7 +33,7 @@ const baseQuery = fetchBaseQuery({
   prepareHeaders: (headers) => {
     const token = getToken();
     if (token) {
-      headers.set('Authorization', `Token ${token}`); // Changed from 'Bearer' to 'Token' for Django REST Framework
+      headers.set('Authorization', `Token ${token}`);
     }
     headers.set('Content-Type', 'application/json');
     return headers;
@@ -44,16 +44,20 @@ const baseQuery = fetchBaseQuery({
  * Projects API with RTK Query
  *
  * Endpoints:
- * - getProjects: Fetch all user projects
+ * - getProjects: Fetch all user projects (requires auth)
+ * - getPublicProjects: Fetch all published projects (no auth required)
  * - createProject: Create new project
  * - updateProject: Update project metadata
  * - deleteProject: Delete project
  * - togglePublish: Publish/unpublish project
+ * - exportProject: Export project as QGS/QGZ
+ * - checkSubdomainAvailability: Check if subdomain is available
+ * - changeDomain: Change project subdomain
  */
 export const projectsApi = createApi({
   reducerPath: 'projectsApi',
   baseQuery,
-  tagTypes: ['Projects', 'Project'],
+  tagTypes: ['Projects', 'Project', 'PublicProjects'],
   endpoints: (builder) => ({
     /**
      * GET /dashboard/projects/
@@ -74,12 +78,39 @@ export const projectsApi = createApi({
     }),
 
     /**
-     * POST /dashboard/projects/create/
+     * GET /dashboard/projects/public/
+     * Fetch all published projects (no authentication required)
+     * Available for guests and logged-in users
+     */
+    getPublicProjects: builder.query<ProjectsResponse, void>({
+      query: () => '/dashboard/projects/public/',
+      transformResponse: (response: any) => {
+        // Backend returns { success: true, projects: [...], count: N }
+        // Transform to match ProjectsResponse format { list_of_projects: [...] }
+        return {
+          list_of_projects: response.projects || [],
+          count: response.count || 0,
+        };
+      },
+      providesTags: (result) =>
+        result
+          ? [
+              ...result.list_of_projects.map(({ project_name }) => ({
+                type: 'Project' as const,
+                id: `public-${project_name}`
+              })),
+              { type: 'PublicProjects', id: 'LIST' },
+            ]
+          : [{ type: 'PublicProjects', id: 'LIST' }],
+    }),
+
+    /**
+     * POST /api/projects/create/
      * Create a new project
      */
     createProject: builder.mutation<Project, CreateProjectData>({
       query: (data) => ({
-        url: '/dashboard/projects/create/',
+        url: '/api/projects/create/',
         method: 'POST',
         body: data,
       }),
@@ -106,44 +137,46 @@ export const projectsApi = createApi({
     }),
 
     /**
-     * DELETE /dashboard/projects/delete/{projectName}/
-     * Delete a project
+     * POST /api/projects/remove/
+     * Delete a project (move to trash or permanently delete)
      */
-    deleteProject: builder.mutation<{ message: string }, string>({
-      query: (projectName) => ({
-        url: `/dashboard/projects/delete/${projectName}/`,
-        method: 'DELETE',
+    deleteProject: builder.mutation<{ message: string }, { project: string; remove_permanently?: boolean }>({
+      query: ({ project, remove_permanently = false }) => ({
+        url: '/api/projects/remove/',
+        method: 'POST',
+        body: { project, remove_permanently },
       }),
-      invalidatesTags: (result, error, projectName) => [
-        { type: 'Project', id: projectName },
+      invalidatesTags: (result, error, { project }) => [
+        { type: 'Project', id: project },
         { type: 'Projects', id: 'LIST' },
       ],
     }),
 
     /**
-     * PUT /dashboard/projects/{projectName}/publish/
+     * POST /api/projects/publish
      * Toggle project publish status
      */
     togglePublish: builder.mutation<
       { message: string },
-      { projectName: string; publish: boolean }
+      { project: string; publish: boolean }
     >({
-      query: ({ projectName, publish }) => ({
-        url: `/dashboard/projects/${projectName}/publish/`,
-        method: 'PUT',
-        body: { publish },
+      query: ({ project, publish }) => ({
+        url: '/api/projects/publish',
+        method: 'POST',
+        body: { project, publish },
       }),
       invalidatesTags: (result, error, arg) => [
-        { type: 'Project', id: arg.projectName },
+        { type: 'Project', id: arg.project },
         { type: 'Projects', id: 'LIST' },
+        { type: 'PublicProjects', id: 'LIST' }, // Refresh public projects when publish status changes
       ],
       // Optimistic update for instant UI feedback
-      async onQueryStarted({ projectName, publish }, { dispatch, queryFulfilled }) {
+      async onQueryStarted({ project, publish }, { dispatch, queryFulfilled }) {
         const patchResult = dispatch(
           projectsApi.util.updateQueryData('getProjects', undefined, (draft) => {
-            const project = draft.list_of_projects.find(p => p.project_name === projectName);
-            if (project) {
-              project.published = publish;
+            const foundProject = draft.list_of_projects.find(p => p.project_name === project);
+            if (foundProject) {
+              foundProject.published = publish;
             }
           })
         );
@@ -154,6 +187,84 @@ export const projectsApi = createApi({
         }
       },
     }),
+
+    /**
+     * POST /api/projects/export
+     * Export project as QGS or QGZ file
+     * Returns file blob for download
+     */
+    exportProject: builder.mutation<Blob, { project: string; project_type: 'qgs' | 'qgz' }>({
+      queryFn: async ({ project, project_type }, api, extraOptions, baseQuery) => {
+        const token = getToken();
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.universemapmaker.online';
+
+        try {
+          const response = await fetch(`${baseUrl}/api/projects/export`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Token ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ project, project_type }),
+          });
+
+          if (!response.ok) {
+            return { error: { status: response.status, data: await response.text() } };
+          }
+
+          const blob = await response.blob();
+
+          // Trigger download
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `${project}.${project_type}`;
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+
+          return { data: blob };
+        } catch (error: any) {
+          return { error: { status: 'FETCH_ERROR', error: error.message } };
+        }
+      },
+    }),
+
+    /**
+     * POST /api/projects/subdomainAvailability
+     * Check if subdomain is available
+     */
+    checkSubdomainAvailability: builder.mutation<
+      { data: { subdomain: string; available: boolean }; success: boolean; message: string },
+      { subdomain: string }
+    >({
+      query: ({ subdomain }) => ({
+        url: '/api/projects/subdomainAvailability',
+        method: 'POST',
+        body: { subdomain },
+      }),
+    }),
+
+    /**
+     * POST /api/projects/domain/change
+     * Change project subdomain
+     */
+    changeDomain: builder.mutation<
+      { message: string },
+      { project: string; subdomain: string }
+    >({
+      query: ({ project, subdomain }) => ({
+        url: '/api/projects/domain/change',
+        method: 'POST',
+        body: { project, subdomain },
+      }),
+      invalidatesTags: (result, error, arg) => [
+        { type: 'Project', id: arg.project },
+        { type: 'Projects', id: 'LIST' },
+        { type: 'PublicProjects', id: 'LIST' },
+      ],
+    }),
   }),
 });
 
@@ -161,18 +272,26 @@ export const projectsApi = createApi({
  * Auto-generated hooks for components
  *
  * Queries (auto-refetch on mount/focus):
- * - useGetProjectsQuery()
+ * - useGetProjectsQuery() - User's own projects (requires auth)
+ * - useGetPublicProjectsQuery() - All published projects (no auth required)
  *
  * Mutations (manual trigger):
  * - useCreateProjectMutation()
  * - useUpdateProjectMutation()
  * - useDeleteProjectMutation()
  * - useTogglePublishMutation()
+ * - useExportProjectMutation() - Export as QGS/QGZ
+ * - useCheckSubdomainAvailabilityMutation() - Check subdomain
+ * - useChangeDomainMutation() - Change project domain
  */
 export const {
   useGetProjectsQuery,
+  useGetPublicProjectsQuery,
   useCreateProjectMutation,
   useUpdateProjectMutation,
   useDeleteProjectMutation,
   useTogglePublishMutation,
+  useExportProjectMutation,
+  useCheckSubdomainAvailabilityMutation,
+  useChangeDomainMutation,
 } = projectsApi;

@@ -27,6 +27,7 @@ import { ProjectsGridSkeleton } from './ProjectCardSkeleton';
 import { ProjectCard } from './ProjectCard';
 import { CreateProjectDialog } from '../dialogi/CreateProjectDialog';
 import { DeleteProjectDialog } from '../dialogi/DeleteProjectDialog';
+import { ProjectSettingsDialog } from '../dialogi/ProjectSettingsDialog';
 import type { Project, CreateProjectData } from '@/api/typy/types';
 
 export default function OwnProjectsRTK() {
@@ -59,7 +60,9 @@ export default function OwnProjectsRTK() {
   // Local UI state
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
+  const [projectForSettings, setProjectForSettings] = useState<Project | null>(null);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -123,7 +126,7 @@ export default function OwnProjectsRTK() {
     if (!projectToDelete) return;
 
     try {
-      await deleteProject(projectToDelete.project_name).unwrap();
+      await deleteProject({ project: projectToDelete.project_name, remove_permanently: false }).unwrap();
       setSnackbar({
         open: true,
         message: 'Projekt został usunięty',
@@ -144,7 +147,7 @@ export default function OwnProjectsRTK() {
   const handleTogglePublish = async (project: Project) => {
     try {
       await togglePublish({
-        projectName: project.project_name,
+        project: project.project_name,
         publish: !project.published,
       }).unwrap();
       setSnackbar({
@@ -167,6 +170,11 @@ export default function OwnProjectsRTK() {
   const handleOpenProject = (project: Project) => {
     dispatch(setCurrentProject(project));
     router.push('/map');
+  };
+
+  const handleOpenSettings = (project: Project) => {
+    setProjectForSettings(project);
+    setSettingsDialogOpen(true);
   };
 
   // Render
@@ -304,7 +312,7 @@ export default function OwnProjectsRTK() {
               onOpen={() => handleOpenProject(project)}
               onDelete={() => handleDeleteProject(project)}
               onTogglePublish={() => handleTogglePublish(project)}
-              isLoading={isDeleting || isToggling}
+              onSettings={() => handleOpenSettings(project)}
             />
           ))}
         </Box>
@@ -326,6 +334,15 @@ export default function OwnProjectsRTK() {
         }}
         project={projectToDelete}
         onConfirm={handleConfirmDelete}
+      />
+
+      <ProjectSettingsDialog
+        open={settingsDialogOpen}
+        onClose={() => {
+          setSettingsDialogOpen(false);
+          setProjectForSettings(null);
+        }}
+        project={projectForSettings}
       />
 
       {/* Snackbar for notifications */}
