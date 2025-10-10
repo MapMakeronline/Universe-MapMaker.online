@@ -645,9 +645,21 @@ import { MAPBOX_TOKEN } from '@/lib/mapbox/config';    // resolves to ./src/lib/
 
 Next.js App Router (file-based):
 - `/` - Home page (`app/page.tsx`)
-- `/map` - Main map interface (`app/map/page.tsx`)
+- `/map?project={name}` - Main map interface with project context (`app/map/page.tsx`)
+  - **Read-only mode** for non-owners (automatic detection via Redux auth state)
+  - Shows "👁️ Tryb podglądu (tylko odczyt)" banner for viewers
+  - Edit mode enabled only when `user.id === project.owner_id`
 - `/dashboard` - User dashboard (`app/dashboard/page.tsx`)
+  - **Tab 1: Moje Projekty** - User's own projects with edit access
+  - **Tab 2: Publiczne Projekty** - All published projects (click opens in read-only mode)
 - `/login`, `/register`, `/forgot-password` - Authentication pages
+
+**Public Projects Workflow:**
+1. User clicks public project card in Dashboard → Publiczne Projekty tab
+2. Navigates to `/map?project={project_name}`
+3. MapPage detects non-owner → automatically enables read-only mode
+4. User can view map, layers, use tools, but cannot edit or save changes
+5. Owner information displayed from `project.owner` field (username, email)
 
 ### Production Deployment (Google Cloud Run)
 
