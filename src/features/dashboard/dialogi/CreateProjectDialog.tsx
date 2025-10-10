@@ -11,7 +11,6 @@ import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
-import Grid from '@mui/material/Grid';
 import Checkbox from '@mui/material/Checkbox';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import IconButton from '@mui/material/IconButton';
@@ -23,6 +22,7 @@ import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import Alert from '@mui/material/Alert';
 import Chip from '@mui/material/Chip';
+import LinearProgress from '@mui/material/LinearProgress';
 import Close from '@mui/icons-material/Close';
 import Add from '@mui/icons-material/Add';
 import CloudUpload from '@mui/icons-material/CloudUpload';
@@ -90,6 +90,7 @@ export function CreateProjectDialog({
   const [qgisDescription, setQgisDescription] = useState('');
   const [qgisError, setQgisError] = useState<string | null>(null);
   const [isImporting, setIsImporting] = useState(false);
+  const [importStep, setImportStep] = useState<'idle' | 'creating' | 'uploading'>('idle');
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setActiveTab(newValue);
@@ -147,6 +148,15 @@ export function CreateProjectDialog({
       return;
     }
 
+    // Validate file size (max 100 MB)
+    const maxSize = 100 * 1024 * 1024; // 100 MB in bytes
+    if (file.size > maxSize) {
+      setQgisError(`Plik jest za duży (${(file.size / 1024 / 1024).toFixed(2)} MB). Maksymalny rozmiar to 100 MB.`);
+      setQgisFile(null);
+      setQgisProjectName('');
+      return;
+    }
+
     setQgisFile(file);
 
     // Auto-generate project name from filename (sanitize for backend)
@@ -162,17 +172,29 @@ export function CreateProjectDialog({
 
     setIsImporting(true);
     setQgisError(null);
+    setImportStep('creating');
+
+    console.log('📝 Dialog - Starting import with params:', {
+      file: qgisFile.name,
+      projectName: qgisProjectName,
+      domain: qgisDomain,
+      description: qgisDescription
+    });
 
     try {
       await onImportQGIS(qgisFile, qgisProjectName, qgisDomain, qgisDescription);
+      console.log('✅ Dialog - Import completed successfully');
       // Reset form on success
       setQgisFile(null);
       setQgisProjectName('');
       setQgisDomain('');
       setQgisDescription('');
+      setImportStep('idle');
       setActiveTab(0); // Switch back to create tab
     } catch (error: any) {
+      console.error('❌ Dialog - Import failed:', error);
       setQgisError(error.message || 'Wystąpił błąd podczas importowania projektu');
+      setImportStep('idle');
     } finally {
       setIsImporting(false);
     }
@@ -329,21 +351,26 @@ export function CreateProjectDialog({
               <Typography variant="subtitle1" gutterBottom fontWeight="600">
                 Kategorie:
               </Typography>
-              <Grid container spacing={1}>
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(3, 1fr)' },
+                  gap: 1,
+                }}
+              >
                 {CATEGORIES.map((category) => (
-                  <Grid item xs={6} sm={4} key={category}>
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          checked={selectedCategories.includes(category)}
-                          onChange={() => handleCategoryToggle(category)}
-                        />
-                      }
-                      label={category}
-                    />
-                  </Grid>
+                  <FormControlLabel
+                    key={category}
+                    control={
+                      <Checkbox
+                        checked={selectedCategories.includes(category)}
+                        onChange={() => handleCategoryToggle(category)}
+                      />
+                    }
+                    label={category}
+                  />
                 ))}
-              </Grid>
+              </Box>
             </Box>
           </Stack>
         </TabPanel>
@@ -356,6 +383,16 @@ export function CreateProjectDialog({
               <br />1. Utworzy nowy projekt z podaną nazwą i domeną
               <br />2. Zaimportuje warstwy z pliku QGIS do projektu
             </Alert>
+
+            {isImporting && (
+              <Box sx={{ width: '100%' }}>
+                <LinearProgress />
+                <Typography variant="caption" sx={{ mt: 1, display: 'block', textAlign: 'center', color: 'text.secondary' }}>
+                  {importStep === 'creating' && '⏳ Tworzenie projektu...'}
+                  {importStep === 'uploading' && '📤 Importowanie pliku QGS...'}
+                </Typography>
+              </Box>
+            )}
 
             {qgisError && (
               <Alert severity="error" onClose={() => setQgisError(null)}>

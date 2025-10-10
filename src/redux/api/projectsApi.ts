@@ -20,6 +20,7 @@ import type {
   UpdateProjectData,
   DbInfo,
 } from '@/api/typy/types';
+import type { QGISProjectTree } from '@/types/qgis';
 
 // Get token from localStorage (same as apiClient)
 const getToken = (): string | null => {
@@ -107,8 +108,19 @@ export const projectsApi = createApi({
     /**
      * POST /api/projects/create/
      * Create a new project
+     *
+     * Backend response format:
+     * {
+     *   "data": { host, port, db_name, login, password },
+     *   "success": true,
+     *   "message": "Projekt został pomyślnie utworzony",
+     *   "project_name": "actual_project_name"
+     * }
      */
-    createProject: builder.mutation<Project, CreateProjectData>({
+    createProject: builder.mutation<
+      { data: DbInfo; success: boolean; message: string; project_name: string },
+      CreateProjectData
+    >({
       query: (data) => ({
         url: '/api/projects/create/',
         method: 'POST',
@@ -272,6 +284,38 @@ export const projectsApi = createApi({
     }),
 
     /**
+     * POST /api/projects/import/qgs/
+     * Import QGS file to existing project
+     *
+     * Process:
+     * 1. Removes old QGS file
+     * 2. Saves new QGS file
+     * 3. Imports vector/raster layers to database
+     * 4. Configures WFS and styles
+     * 5. Generates layer tree (tree.json)
+     */
+    importQGS: builder.mutation<
+      { data: string; success: boolean; message: string },
+      { project: string; qgsFile: File }
+    >({
+      query: ({ project, qgsFile }) => {
+        const formData = new FormData();
+        formData.append('project', project);
+        formData.append('qgs', qgsFile);
+
+        return {
+          url: '/api/projects/import/qgs/',
+          method: 'POST',
+          body: formData,
+        };
+      },
+      invalidatesTags: (result, error, arg) => [
+        { type: 'Project', id: arg.project },
+        { type: 'Projects', id: 'LIST' },
+      ],
+    }),
+
+    /**
      * GET /api/projects/new/json
      * Fetch project data structure (tree.json) for map view
      *
@@ -287,12 +331,11 @@ export const projectsApi = createApi({
      * - Private project: Requires ownership
      */
     getProjectData: builder.query<
-      {
+      QGISProjectTree & {
         name: string;
         extent: [number, number, number, number];
         logoExists: boolean;
         large: boolean;
-        children: any[];
       },
       { project: string; published?: boolean; save?: boolean }
     >({
@@ -320,6 +363,7 @@ export const projectsApi = createApi({
  * - useUpdateProjectMutation()
  * - useDeleteProjectMutation()
  * - useTogglePublishMutation()
+ * - useImportQGSMutation() - Import QGS file to project
  * - useExportProjectMutation() - Export as QGS/QGZ
  * - useCheckSubdomainAvailabilityMutation() - Check subdomain
  * - useChangeDomainMutation() - Change project domain
@@ -332,6 +376,7 @@ export const {
   useUpdateProjectMutation,
   useDeleteProjectMutation,
   useTogglePublishMutation,
+  useImportQGSMutation,
   useExportProjectMutation,
   useCheckSubdomainAvailabilityMutation,
   useChangeDomainMutation,

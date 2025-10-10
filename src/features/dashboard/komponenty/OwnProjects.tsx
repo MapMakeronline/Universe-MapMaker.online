@@ -20,6 +20,7 @@ import { setCurrentProject } from '@/redux/slices/projectsSlice';
 import {
   useGetProjectsQuery,
   useCreateProjectMutation,
+  useImportQGSMutation,
   useDeleteProjectMutation,
   useTogglePublishMutation,
 } from '@/redux/api/projectsApi';
@@ -54,6 +55,7 @@ export default function OwnProjectsRTK() {
 
   // RTK Query mutations
   const [createProject, { isLoading: isCreating }] = useCreateProjectMutation();
+  const [importQGS, { isLoading: isImporting }] = useImportQGSMutation();
   const [deleteProject, { isLoading: isDeleting }] = useDeleteProjectMutation();
   const [togglePublish, { isLoading: isToggling }] = useTogglePublishMutation();
 
@@ -107,14 +109,21 @@ export default function OwnProjectsRTK() {
         categories: ['Inne'],
       };
 
+      console.log('🔧 Creating project with data:', createData);
       const createdProject = await createProject(createData).unwrap();
+      console.log('✅ Project created, backend response:', createdProject);
 
       // Use project_name from backend response (not user input)
       const backendProjectName = createdProject.project_name || projectName;
+      console.log('📦 Using project name for import:', backendProjectName);
 
-      // STEP 2: Import QGS file to the created project
-      const { unifiedProjectsApi } = await import('@/api/endpointy/unified-projects');
-      await unifiedProjectsApi.importQGISProject(file, backendProjectName);
+      // STEP 2: Import QGS file to the created project (RTK Query)
+      console.log('📤 Importing QGS file to project:', backendProjectName);
+      await importQGS({
+        project: backendProjectName,
+        qgsFile: file,
+      }).unwrap();
+      console.log('✅ QGS imported successfully!');
 
       setSnackbar({
         open: true,
@@ -123,8 +132,7 @@ export default function OwnProjectsRTK() {
       });
       setCreateDialogOpen(false);
 
-      // Manually refetch projects after import
-      refetch();
+      // RTK Query automatically invalidates cache and refetches
     } catch (error: any) {
       // Error will be handled by CreateProjectDialog
       throw error;
@@ -327,6 +335,7 @@ export default function OwnProjectsRTK() {
               onDelete={() => handleDeleteProject(project)}
               onTogglePublish={() => handleTogglePublish(project)}
               onSettings={() => handleOpenSettings(project)}
+              onOpenInMap={() => router.push(`/map?project=${project.project_name}`)}
             />
           ))}
         </Box>
