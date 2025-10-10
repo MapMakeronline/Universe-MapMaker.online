@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
@@ -20,19 +20,45 @@ import LinearProgress from '@mui/material/LinearProgress';
 import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
 import FormControl from '@mui/material/FormControl';
+import Tabs from '@mui/material/Tabs';
+import Tab from '@mui/material/Tab';
+import IconButton from '@mui/material/IconButton';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import Button from '@mui/material/Button';
+import { useTheme } from '@mui/material/styles';
 import PersonIcon from '@mui/icons-material/Person';
 import StorageIcon from '@mui/icons-material/Storage';
 import CloudIcon from '@mui/icons-material/CloudQueue';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import DeleteIcon from '@mui/icons-material/Delete';
+import FolderIcon from '@mui/icons-material/Folder';
+import PublicIcon from '@mui/icons-material/Public';
+import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import { useAppSelector } from '@/redux/hooks';
-import { useGetAdminStatsQuery, useUpdateUserLicenseMutation, type AdminUser } from '@/redux/api/adminApi';
+import {
+  useGetAdminStatsQuery,
+  useGetAllProjectsQuery,
+  useUpdateUserLicenseMutation,
+  useDeleteUserMutation,
+  type AdminUser,
+  type AdminProject,
+} from '@/redux/api/adminApi';
 
 export default function AdminPanel() {
+  const theme = useTheme();
   const { user } = useAppSelector((state) => state.auth);
+  const [activeTab, setActiveTab] = useState(0);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<AdminUser | null>(null);
 
   // RTK Query hooks
-  const { data, isLoading, error } = useGetAdminStatsQuery();
+  const { data: statsData, isLoading: statsLoading, error: statsError } = useGetAdminStatsQuery();
+  const { data: projectsData, isLoading: projectsLoading, error: projectsError } = useGetAllProjectsQuery();
   const [updateLicense] = useUpdateUserLicenseMutation();
+  const [deleteUser, { isLoading: isDeleting }] = useDeleteUserMutation();
 
   // Check if user is admin
   const isAdmin = user?.email?.includes('@universemapmaker.online') || user?.username === 'admin';
@@ -45,6 +71,43 @@ export default function AdminPanel() {
     }
   };
 
+  const handleDeleteClick = (user: AdminUser) => {
+    setUserToDelete(user);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!userToDelete) return;
+
+    try {
+      await deleteUser(userToDelete.id).unwrap();
+      setDeleteDialogOpen(false);
+      setUserToDelete(null);
+    } catch (err) {
+      console.error('Failed to delete user:', err);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteDialogOpen(false);
+    setUserToDelete(null);
+  };
+
+  const formatBytes = (mb: number) => {
+    if (mb < 1024) return `${mb.toFixed(2)} MB`;
+    return `${(mb / 1024).toFixed(2)} GB`;
+  };
+
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return new Intl.DateTimeFormat('pl-PL', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    }).format(date);
+  };
+
   if (!isAdmin) {
     return (
       <Box sx={{ p: 3 }}>
@@ -55,7 +118,7 @@ export default function AdminPanel() {
     );
   }
 
-  if (isLoading) {
+  if (statsLoading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 400 }}>
         <CircularProgress />
@@ -63,32 +126,20 @@ export default function AdminPanel() {
     );
   }
 
-  if (error) {
+  if (statsError) {
     return (
       <Box sx={{ p: 3 }}>
         <Alert severity="error">
-          {'status' in error ? `Błąd ${error.status}: Nie udało się załadować danych` : 'Błąd ładowania danych administracyjnych'}
+          {'status' in statsError ? `Błąd ${statsError.status}: Nie udało się załadować danych` : 'Błąd ładowania danych administracyjnych'}
         </Alert>
       </Box>
     );
   }
 
-  const formatBytes = (mb: number) => {
-    if (mb < 1024) return `${mb.toFixed(2)} MB`;
-    return `${(mb / 1024).toFixed(2)} GB`;
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return new Intl.DateTimeFormat('pl-PL', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    }).format(date);
-  };
-
-  const users = data?.users || [];
-  const systemStats = data?.system_stats;
+  const users = statsData?.users || [];
+  const systemStats = statsData?.system_stats;
+  const projects = projectsData?.projects || [];
+  const paidUsers = users.filter((u) => u.license_type === 'paid');
 
   return (
     <Box sx={{ p: 3 }}>
@@ -175,108 +226,425 @@ export default function AdminPanel() {
         </Grid>
       </Grid>
 
-      {/* Users Table */}
-      <Paper sx={{ p: 2 }}>
-        <Typography variant="h6" gutterBottom sx={{ mb: 2, fontWeight: 600 }}>
-          Statystyki Użytkowników (sortowane po ilości danych)
-        </Typography>
-
-        <TableContainer>
-          <Table>
-            <TableHead>
-              <TableRow sx={{ backgroundColor: 'grey.50' }}>
-                <TableCell sx={{ fontWeight: 600 }}>Użytkownik</TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>Email</TableCell>
-                <TableCell align="center" sx={{ fontWeight: 600 }}>
-                  Licencja
-                </TableCell>
-                <TableCell align="right" sx={{ fontWeight: 600 }}>
-                  Projekty
-                </TableCell>
-                <TableCell align="right" sx={{ fontWeight: 600 }}>
-                  Pamięć
-                </TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>Data założenia</TableCell>
-                <TableCell align="center" sx={{ fontWeight: 600 }}>
-                  Status
-                </TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {users.map((user: AdminUser) => {
-                const storagePercentage = (user.storage_used / (systemStats?.total_storage || 1)) * 100;
-
-                return (
-                  <TableRow key={user.id} hover>
-                    <TableCell>
-                      <Typography variant="body2" fontWeight={500}>
-                        {user.username}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" color="text.secondary">
-                        {user.email}
-                      </Typography>
-                    </TableCell>
-                    <TableCell align="center">
-                      <FormControl size="small" sx={{ minWidth: 110 }}>
-                        <Select
-                          value={user.license_type}
-                          onChange={(e) => handleLicenseChange(user.id, e.target.value as 'free' | 'paid')}
-                          sx={{ fontSize: '0.875rem' }}
-                        >
-                          <MenuItem value="free">Darmowa</MenuItem>
-                          <MenuItem value="paid">Płatna</MenuItem>
-                        </Select>
-                      </FormControl>
-                    </TableCell>
-                    <TableCell align="right">
-                      <Chip
-                        label={user.project_count}
-                        size="small"
-                        color={user.project_count > 0 ? 'primary' : 'default'}
-                      />
-                    </TableCell>
-                    <TableCell align="right">
-                      <Box>
-                        <Typography variant="body2" fontWeight={500}>
-                          {formatBytes(user.storage_used)}
-                        </Typography>
-                        <LinearProgress
-                          variant="determinate"
-                          value={Math.min(storagePercentage, 100)}
-                          sx={{ mt: 0.5, height: 4, borderRadius: 2 }}
-                          color={
-                            storagePercentage > 80 ? 'error' : storagePercentage > 50 ? 'warning' : 'success'
-                          }
-                        />
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="caption" color="text.secondary">
-                        {formatDate(user.date_joined)}
-                      </Typography>
-                    </TableCell>
-                    <TableCell align="center">
-                      <Chip
-                        label={user.is_active ? 'Aktywny' : 'Nieaktywny'}
-                        size="small"
-                        color={user.is_active ? 'success' : 'default'}
-                      />
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </TableContainer>
-
-        {users.length === 0 && (
-          <Box sx={{ textAlign: 'center', py: 4 }}>
-            <Typography color="text.secondary">Brak użytkowników do wyświetlenia</Typography>
-          </Box>
-        )}
+      {/* Tabs */}
+      <Paper sx={{ mb: 3 }}>
+        <Tabs
+          value={activeTab}
+          onChange={(_, newValue) => setActiveTab(newValue)}
+          sx={{
+            borderBottom: 1,
+            borderColor: 'divider',
+            '& .MuiTab-root': {
+              textTransform: 'none',
+              fontWeight: 500,
+              fontSize: '0.95rem',
+            },
+          }}
+        >
+          <Tab label="Wszyscy Użytkownicy" />
+          <Tab label="Projekty" />
+          <Tab label="Użytkownicy Płatni" />
+        </Tabs>
       </Paper>
+
+      {/* Tab 1: All Users */}
+      {activeTab === 0 && (
+        <Paper sx={{ p: 2 }}>
+          <Typography variant="h6" gutterBottom sx={{ mb: 2, fontWeight: 600 }}>
+            Wszyscy Użytkownicy ({users.length})
+          </Typography>
+
+          <TableContainer>
+            <Table>
+              <TableHead>
+                <TableRow sx={{ backgroundColor: 'grey.50' }}>
+                  <TableCell sx={{ fontWeight: 600 }}>Użytkownik</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Email</TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 600 }}>
+                    Licencja
+                  </TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 600 }}>
+                    Projekty
+                  </TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 600 }}>
+                    Pamięć
+                  </TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Data założenia</TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 600 }}>
+                    Status
+                  </TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 600 }}>
+                    Akcje
+                  </TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {users.map((user: AdminUser) => {
+                  const storagePercentage = (user.storage_used / (systemStats?.total_storage || 1)) * 100;
+
+                  return (
+                    <TableRow key={user.id} hover>
+                      <TableCell>
+                        <Typography variant="body2" fontWeight={500}>
+                          {user.username}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" color="text.secondary">
+                          {user.email}
+                        </Typography>
+                      </TableCell>
+                      <TableCell align="center">
+                        <FormControl size="small" sx={{ minWidth: 110 }}>
+                          <Select
+                            value={user.license_type}
+                            onChange={(e) => handleLicenseChange(user.id, e.target.value as 'free' | 'paid')}
+                            sx={{ fontSize: '0.875rem' }}
+                          >
+                            <MenuItem value="free">Darmowa</MenuItem>
+                            <MenuItem value="paid">Płatna</MenuItem>
+                          </Select>
+                        </FormControl>
+                      </TableCell>
+                      <TableCell align="right">
+                        <Chip
+                          label={user.project_count}
+                          size="small"
+                          color={user.project_count > 0 ? 'primary' : 'default'}
+                        />
+                      </TableCell>
+                      <TableCell align="right">
+                        <Box>
+                          <Typography variant="body2" fontWeight={500}>
+                            {formatBytes(user.storage_used)}
+                          </Typography>
+                          <LinearProgress
+                            variant="determinate"
+                            value={Math.min(storagePercentage, 100)}
+                            sx={{ mt: 0.5, height: 4, borderRadius: 2 }}
+                            color={
+                              storagePercentage > 80 ? 'error' : storagePercentage > 50 ? 'warning' : 'success'
+                            }
+                          />
+                        </Box>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="caption" color="text.secondary">
+                          {formatDate(user.date_joined)}
+                        </Typography>
+                      </TableCell>
+                      <TableCell align="center">
+                        <Chip
+                          label={user.is_active ? 'Aktywny' : 'Nieaktywny'}
+                          size="small"
+                          color={user.is_active ? 'success' : 'default'}
+                        />
+                      </TableCell>
+                      <TableCell align="center">
+                        <IconButton
+                          size="small"
+                          color="error"
+                          onClick={() => handleDeleteClick(user)}
+                          disabled={user.is_superuser}
+                          title={user.is_superuser ? 'Nie można usunąć superużytkownika' : 'Usuń użytkownika'}
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </TableContainer>
+
+          {users.length === 0 && (
+            <Box sx={{ textAlign: 'center', py: 4 }}>
+              <Typography color="text.secondary">Brak użytkowników do wyświetlenia</Typography>
+            </Box>
+          )}
+        </Paper>
+      )}
+
+      {/* Tab 2: All Projects */}
+      {activeTab === 1 && (
+        <Paper sx={{ p: 2 }}>
+          <Typography variant="h6" gutterBottom sx={{ mb: 2, fontWeight: 600 }}>
+            Wszystkie Projekty ({projects.length})
+          </Typography>
+
+          {projectsLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : projectsError ? (
+            <Alert severity="error">
+              {'status' in projectsError
+                ? `Błąd ${projectsError.status}: Nie udało się załadować projektów`
+                : 'Błąd ładowania projektów'}
+            </Alert>
+          ) : (
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow sx={{ backgroundColor: 'grey.50' }}>
+                    <TableCell sx={{ fontWeight: 600 }}>Nazwa Projektu</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Kategoria</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Właściciel</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Domena</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 600 }}>
+                      Opublikowany
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Data utworzenia</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {projects.map((project: AdminProject) => (
+                    <TableRow key={project.id} hover>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <FolderIcon sx={{ fontSize: '1.2rem', color: theme.palette.primary.main }} />
+                          <Typography variant="body2" fontWeight={500}>
+                            {project.custom_project_name || project.project_name}
+                          </Typography>
+                        </Box>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" color="text.secondary">
+                          {project.categories || 'Brak'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" fontWeight={500}>
+                          {project.owner.username}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {project.owner.email}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" color="text.secondary">
+                          {project.domain_name || 'Brak'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell align="center">
+                        {project.published ? (
+                          <Chip
+                            icon={<PublicIcon sx={{ fontSize: '1rem' }} />}
+                            label="Tak"
+                            size="small"
+                            color="success"
+                          />
+                        ) : (
+                          <Chip label="Nie" size="small" color="default" />
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="caption" color="text.secondary">
+                          {formatDate(project.project_date)}
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+
+          {projects.length === 0 && !projectsLoading && (
+            <Box sx={{ textAlign: 'center', py: 4 }}>
+              <Typography color="text.secondary">Brak projektów do wyświetlenia</Typography>
+            </Box>
+          )}
+        </Paper>
+      )}
+
+      {/* Tab 3: Paid Users Only */}
+      {activeTab === 2 && (
+        <Paper sx={{ p: 2 }}>
+          <Box
+            sx={{
+              backgroundColor: theme.palette.success.light,
+              color: theme.palette.success.contrastText,
+              px: 2,
+              py: 1.5,
+              mb: 2,
+              borderRadius: 1,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+            }}
+          >
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+              Użytkownicy z licencją płatną ({paidUsers.length})
+            </Typography>
+          </Box>
+
+          <TableContainer>
+            <Table>
+              <TableHead>
+                <TableRow sx={{ backgroundColor: 'grey.50' }}>
+                  <TableCell sx={{ fontWeight: 600 }}>Użytkownik</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Email</TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 600 }}>
+                    Licencja
+                  </TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 600 }}>
+                    Projekty
+                  </TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 600 }}>
+                    Pamięć
+                  </TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Data założenia</TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 600 }}>
+                    Status
+                  </TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {paidUsers.map((user: AdminUser) => {
+                  const storagePercentage = (user.storage_used / (systemStats?.total_storage || 1)) * 100;
+
+                  return (
+                    <TableRow key={user.id} hover>
+                      <TableCell>
+                        <Typography variant="body2" fontWeight={500}>
+                          {user.username}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" color="text.secondary">
+                          {user.email}
+                        </Typography>
+                      </TableCell>
+                      <TableCell align="center">
+                        <Chip label="Płatna" size="small" color="success" />
+                      </TableCell>
+                      <TableCell align="right">
+                        <Chip
+                          label={user.project_count}
+                          size="small"
+                          color={user.project_count > 0 ? 'primary' : 'default'}
+                        />
+                      </TableCell>
+                      <TableCell align="right">
+                        <Box>
+                          <Typography variant="body2" fontWeight={500}>
+                            {formatBytes(user.storage_used)}
+                          </Typography>
+                          <LinearProgress
+                            variant="determinate"
+                            value={Math.min(storagePercentage, 100)}
+                            sx={{ mt: 0.5, height: 4, borderRadius: 2 }}
+                            color="success"
+                          />
+                        </Box>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="caption" color="text.secondary">
+                          {formatDate(user.date_joined)}
+                        </Typography>
+                      </TableCell>
+                      <TableCell align="center">
+                        <Chip
+                          label={user.is_active ? 'Aktywny' : 'Nieaktywny'}
+                          size="small"
+                          color={user.is_active ? 'success' : 'default'}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </TableContainer>
+
+          {paidUsers.length === 0 && (
+            <Box sx={{ textAlign: 'center', py: 4 }}>
+              <Typography color="text.secondary">Brak użytkowników z płatną licencją</Typography>
+            </Box>
+          )}
+        </Paper>
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={handleDeleteCancel}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '8px',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
+          },
+        }}
+      >
+        <DialogTitle
+          sx={{
+            bgcolor: theme.palette.error.main,
+            color: 'white',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+            py: 2,
+            px: 3,
+            fontSize: '16px',
+            fontWeight: 600,
+          }}
+        >
+          <WarningAmberIcon />
+          Potwierdzenie usunięcia użytkownika
+        </DialogTitle>
+
+        <DialogContent sx={{ bgcolor: '#f7f9fc', px: 3, py: 3 }}>
+          <Typography variant="body1" sx={{ mb: 2 }}>
+            Czy na pewno chcesz usunąć użytkownika <strong>{userToDelete?.username}</strong>?
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Ta operacja jest nieodwracalna i spowoduje usunięcie wszystkich danych użytkownika, w tym projektów i warstw.
+          </Typography>
+        </DialogContent>
+
+        <DialogActions
+          sx={{
+            bgcolor: '#f7f9fc',
+            px: 3,
+            pb: 3,
+            pt: 0,
+            gap: 2,
+            justifyContent: 'flex-end',
+          }}
+        >
+          <Button
+            onClick={handleDeleteCancel}
+            variant="outlined"
+            disabled={isDeleting}
+            sx={{
+              borderColor: '#d1d5db',
+              color: theme.palette.text.primary,
+              '&:hover': {
+                borderColor: theme.palette.text.primary,
+                bgcolor: 'rgba(0, 0, 0, 0.04)',
+              },
+            }}
+          >
+            Anuluj
+          </Button>
+          <Button
+            onClick={handleDeleteConfirm}
+            variant="contained"
+            color="error"
+            disabled={isDeleting}
+            sx={{
+              bgcolor: theme.palette.error.main,
+              '&:hover': { bgcolor: theme.palette.error.dark },
+            }}
+          >
+            {isDeleting ? 'Usuwanie...' : 'Usuń użytkownika'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

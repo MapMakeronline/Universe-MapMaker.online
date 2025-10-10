@@ -34,6 +34,30 @@ export interface AdminStatsResponse {
   timestamp: string;
 }
 
+export interface AdminProject {
+  id: number;
+  project_name: string;
+  custom_project_name: string;
+  description: string;
+  categories: string;
+  published: boolean;
+  domain_name: string;
+  project_date: string | null;
+  project_time: string | null;
+  owner: {
+    id: number | null;
+    username: string;
+    email: string;
+  };
+  logoExists: boolean;
+}
+
+export interface AdminProjectsResponse {
+  total_projects: number;
+  projects: AdminProject[];
+  timestamp: string;
+}
+
 export const adminApi = createApi({
   reducerPath: 'adminApi',
   baseQuery: fetchBaseQuery({
@@ -46,15 +70,20 @@ export const adminApi = createApi({
       return headers;
     },
   }),
-  tagTypes: ['AdminStats', 'User'],
+  tagTypes: ['AdminStats', 'User', 'AdminProjects'],
   endpoints: (builder) => ({
     getAdminStats: builder.query<AdminStatsResponse, void>({
       query: () => '/api/admin-stats/stats',
       providesTags: ['AdminStats'],
     }),
 
+    getAllProjects: builder.query<AdminProjectsResponse, void>({
+      query: () => '/api/admin-stats/projects',
+      providesTags: ['AdminProjects'],
+    }),
+
     updateUserLicense: builder.mutation<
-      { success: boolean },
+      { success: boolean; message?: string },
       { userId: number; licenseType: 'free' | 'paid' }
     >({
       query: ({ userId, licenseType }) => ({
@@ -64,10 +93,23 @@ export const adminApi = createApi({
       }),
       invalidatesTags: ['AdminStats', 'User'],
     }),
+
+    deleteUser: builder.mutation<
+      { success: boolean; message: string },
+      number
+    >({
+      query: (userId) => ({
+        url: `/api/admin-stats/users/${userId}/delete`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['AdminStats', 'User'],
+    }),
   }),
 });
 
 export const {
   useGetAdminStatsQuery,
+  useGetAllProjectsQuery,
   useUpdateUserLicenseMutation,
+  useDeleteUserMutation,
 } = adminApi;
