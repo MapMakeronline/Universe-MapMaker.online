@@ -10,95 +10,74 @@ import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import { setCurrentProject } from '@/redux/slices/projectsSlice';
 import { loadLayers, resetLayers } from '@/redux/slices/layersSlice';
 import { setViewState, setMapStyle } from '@/redux/slices/mapSlice';
-import { unifiedProjectsApi } from '@/api/endpointy/unified-projects';
+import { useGetProjectDataQuery } from '@/redux/api/projectsApi';
 import { MAP_STYLES } from '@/mapbox/config';
 
 export default function MapPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const dispatch = useAppDispatch();
-  const { isAuthenticated } = useAppSelector((state) => state.auth);
+  const { isAuthenticated, user } = useAppSelector((state) => state.auth);
+  const currentProject = useAppSelector((state) => state.projects.currentProject);
   const projectName = searchParams.get('project');
 
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // Fetch project data using RTK Query
+  const { data: projectData, isLoading, error, isError } = useGetProjectDataQuery(
+    { project: projectName || '', published: false },
+    { skip: !projectName } // Don't fetch if no project name
+  );
+
+  // Determine if user is owner (edit mode) or viewer (read-only)
+  const isOwner = isAuthenticated && currentProject && user?.id === (currentProject as any).owner_id;
+  const isReadOnly = !isOwner;
 
   useEffect(() => {
-    const loadProjectData = async () => {
-      // Check authentication first
-      if (!isAuthenticated) {
-        console.warn('User not authenticated, redirecting to login...');
-        setError('Musisz być zalogowany. Przekierowanie do logowania...');
-        setTimeout(() => router.push('/auth?tab=0'), 2000);
-        return;
-      }
+    if (!projectName) {
+      router.push('/dashboard');
+      return;
+    }
 
-      if (!projectName) {
-        setError('Nie wybrano projektu. Przekierowanie do dashboardu...');
-        setTimeout(() => router.push('/dashboard'), 2000);
-        return;
-      }
+    // Reset previous project data when switching projects
+    if (currentProject?.project_name !== projectName) {
+      dispatch(resetLayers());
+    }
+  }, [projectName, currentProject, dispatch, router]);
 
-      try {
-        setIsLoading(true);
-        setError(null);
+  useEffect(() => {
+    if (!projectData || isLoading) return;
 
-        // Reset previous project data
-        dispatch(resetLayers());
+    console.log('📦 Loading project data:', projectData.name);
+    console.log(isOwner ? '✏️ Edit mode (owner)' : '👁️ Read-only mode (viewer)');
 
-        // Fetch project data from backend
-        const projectData = await unifiedProjectsApi.getProjectData(projectName);
+    // Convert tree.json format to Redux layers format
+    const convertedLayers = projectData.children || [];
 
-        // Set current project in Redux
-        dispatch(setCurrentProject(projectData as any));
+    // Load layers into Redux
+    dispatch(loadLayers(convertedLayers));
 
-        // Load layers into Redux
-        dispatch(loadLayers(projectData.layers));
+    // Load map extent as viewport
+    if (projectData.extent && projectData.extent.length === 4) {
+      const [minLng, minLat, maxLng, maxLat] = projectData.extent;
+      const centerLng = (minLng + maxLng) / 2;
+      const centerLat = (minLat + maxLat) / 2;
 
-        // Load map state (viewport + style)
-        if (projectData.map_state) {
-          dispatch(setViewState(projectData.map_state.viewState));
+      dispatch(setViewState({
+        longitude: centerLng,
+        latitude: centerLat,
+        zoom: 10, // Default zoom, can be calculated from extent
+        bearing: 0,
+        pitch: 0,
+      }));
+    }
 
-          // Resolve style key to Mapbox URL
-          const styleKey = projectData.map_state.mapStyle as keyof typeof MAP_STYLES;
-          if (styleKey && MAP_STYLES[styleKey]) {
-            // Use the object form with both URL and key
-            dispatch(setMapStyle({
-              url: MAP_STYLES[styleKey].style,
-              key: styleKey,
-            }));
-          } else {
-            // Fallback to full3d if style key is invalid
-            console.warn(`Invalid style key: ${styleKey}, falling back to full3d`);
-            dispatch(setMapStyle({
-              url: MAP_STYLES.full3d.style,
-              key: 'full3d',
-            }));
-          }
-        }
+    // Set default map style
+    dispatch(setMapStyle({
+      url: MAP_STYLES.full3d.style,
+      key: 'full3d',
+    }));
+  }, [projectData, isLoading, isOwner, dispatch]);
 
-        // TODO: Load features (3D buildings, POI, etc.)
-        // dispatch(loadFeatures(projectData.features));
-
-        setIsLoading(false);
-      } catch (err: any) {
-        console.error('Failed to load project:', err);
-
-        // Handle 401 Unauthorized specifically
-        if (err.status === 401 || err.message?.includes('401')) {
-          setError('Sesja wygasła. Przekierowanie do logowania...');
-          setTimeout(() => router.push('/auth?tab=0'), 2000);
-          return;
-        }
-
-        setError(err.message || 'Nie udało się załadować projektu');
-        setIsLoading(false);
-      }
-    };
-
-    loadProjectData();
-  }, [projectName, dispatch, router, isAuthenticated]);
-
+  // Loading state
   if (isLoading) {
     return (
       <Box
@@ -119,7 +98,45 @@ export default function MapPage() {
     );
   }
 
-  if (error) {
+  // Error state
+  if (isError || error) {
+    const errorMessage = error
+      ? ('status' in error && error.status === 404
+        ? 'Projekt nie został znaleziony'
+        : 'data' in error && typeof error.data === 'string'
+        ? error.data
+        : 'Nie udało się załadować projektu')
+      : 'Wystąpił błąd podczas ładowania projektu';
+
+    return (
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '100vh',
+          p: 3,
+          gap: 2,
+        }}
+      >
+        <Alert severity="error" sx={{ maxWidth: 500 }}>
+          {errorMessage}
+        </Alert>
+        <Typography
+          variant="body2"
+          color="primary"
+          sx={{ cursor: 'pointer', textDecoration: 'underline' }}
+          onClick={() => router.push('/dashboard')}
+        >
+          Powrót do dashboardu
+        </Typography>
+      </Box>
+    );
+  }
+
+  // No data state
+  if (!projectData) {
     return (
       <Box
         sx={{
@@ -130,8 +147,8 @@ export default function MapPage() {
           p: 3,
         }}
       >
-        <Alert severity="error" sx={{ maxWidth: 500 }}>
-          {error}
+        <Alert severity="info" sx={{ maxWidth: 500 }}>
+          Brak danych projektu
         </Alert>
       </Box>
     );
@@ -158,6 +175,31 @@ export default function MapPage() {
           height: '100vh',
         }}
       >
+        {/* Read-only mode indicator */}
+        {isReadOnly && (
+          <Box
+            sx={{
+              position: 'absolute',
+              top: 16,
+              right: 80,
+              zIndex: 1000,
+              bgcolor: 'rgba(255, 152, 0, 0.9)',
+              color: 'white',
+              px: 2,
+              py: 1,
+              borderRadius: 1,
+              boxShadow: 2,
+              fontSize: '14px',
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+            }}
+          >
+            👁️ Tryb podglądu (tylko odczyt)
+          </Box>
+        )}
+
         <MapContainer>
           {/* Draw Tools, Geocoder, Popups będą dodane tutaj */}
         </MapContainer>

@@ -265,6 +265,40 @@ export const projectsApi = createApi({
         { type: 'PublicProjects', id: 'LIST' },
       ],
     }),
+
+    /**
+     * GET /api/projects/new/json
+     * Fetch project data structure (tree.json) for map view
+     *
+     * This endpoint is used when opening a project to load:
+     * - Layer tree structure
+     * - Project extent (bbox)
+     * - Logo availability
+     * - Layer visibility/styling
+     *
+     * Authentication: Optional
+     * - Owner: Full access (edit mode)
+     * - Public project: Read-only access
+     * - Private project: Requires ownership
+     */
+    getProjectData: builder.query<
+      {
+        name: string;
+        extent: [number, number, number, number];
+        logoExists: boolean;
+        large: boolean;
+        children: any[];
+      },
+      { project: string; published?: boolean; save?: boolean }
+    >({
+      query: ({ project, published = false, save = false }) => ({
+        url: `/api/projects/new/json`,
+        params: { project, published, save },
+      }),
+      providesTags: (result, error, arg) => [
+        { type: 'Project', id: arg.project },
+      ],
+    }),
   }),
 });
 
@@ -274,6 +308,7 @@ export const projectsApi = createApi({
  * Queries (auto-refetch on mount/focus):
  * - useGetProjectsQuery() - User's own projects (requires auth)
  * - useGetPublicProjectsQuery() - All published projects (no auth required)
+ * - useGetProjectDataQuery() - Project data structure for map view
  *
  * Mutations (manual trigger):
  * - useCreateProjectMutation()
@@ -287,6 +322,7 @@ export const projectsApi = createApi({
 export const {
   useGetProjectsQuery,
   useGetPublicProjectsQuery,
+  useGetProjectDataQuery,
   useCreateProjectMutation,
   useUpdateProjectMutation,
   useDeleteProjectMutation,
