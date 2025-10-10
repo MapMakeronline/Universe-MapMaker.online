@@ -30,6 +30,7 @@ import { useTheme } from '@mui/material/styles';
 import { authService } from '@/api/endpointy/auth';
 import { useAppDispatch } from '@/redux/hooks';
 import { setAuth, setLoading } from '@/redux/slices/authSlice';
+import { enableDemoAdminMode, DEMO_ADMIN_USER, DEMO_ADMIN_TOKEN } from '@/utils/demoAdmin';
 
 // Force dynamic rendering for this page (uses useSearchParams)
 export const dynamic = 'force-dynamic';
