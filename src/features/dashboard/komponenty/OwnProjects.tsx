@@ -112,14 +112,25 @@ export default function OwnProjectsRTK() {
       console.log('🔧 Creating project with data:', createData);
       const createdProject = await createProject(createData).unwrap();
       console.log('✅ Project created, backend response:', createdProject);
-      console.log('🔍 Backend response keys:', Object.keys(createdProject));
-      console.log('🔍 project_name in response?', 'project_name' in createdProject);
-      console.log('🔍 createdProject.project_name value:', createdProject.project_name);
 
-      // Use project_name from backend response (not user input)
-      const backendProjectName = createdProject.project_name || projectName;
-      console.log('📦 Using project name for import:', backendProjectName);
-      console.log('⚠️ WARNING: If undefined above, backend did NOT return project_name!');
+      // CRITICAL: Backend does NOT return project_name in response!
+      // We need to fetch the project list to get the actual project_name (not custom_project_name)
+      console.log('🔍 Fetching project list to find actual project_name...');
+      await refetch(); // Force refetch projects list
+
+      // Find the newly created project by custom_project_name
+      const projects = projectsData?.list_of_projects || [];
+      const newProject = projects.find(p => p.custom_project_name === projectName);
+
+      if (!newProject) {
+        throw new Error(`Projekt "${projectName}" został utworzony, ale nie znaleziono go w bazie. Odśwież stronę i spróbuj zaimportować QGS ręcznie.`);
+      }
+
+      const backendProjectName = newProject.project_name; // Use REAL project_name from database
+      console.log('📦 Found project in database:', {
+        custom_project_name: newProject.custom_project_name,
+        project_name: newProject.project_name
+      });
 
       // STEP 2: Import QGS file to the created project (RTK Query)
       console.log('📤 Importing QGS file to project:', backendProjectName);
