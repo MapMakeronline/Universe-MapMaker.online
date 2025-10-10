@@ -62,7 +62,12 @@ export interface Project {
   domain_url: string;
   categories: string;
   qgs_exists: boolean;
-  user?: User;
+  user?: User; // Deprecated - use owner instead
+  owner?: {
+    id: number | null;
+    username: string;
+    email: string;
+  };
   thumbnail_url?: string;
 }
 

@@ -127,7 +127,7 @@ export default function PublicProjects() {
         border: '1px solid',
         borderColor: 'divider',
       }}
-      onClick={() => window.location.href = '/map'}
+      onClick={() => window.location.href = `/map?project=${project.project_name}`}
     >
       <Box sx={{ position: 'relative' }}>
         <CardMedia
@@ -221,10 +221,10 @@ export default function PublicProjects() {
               fontSize: '0.75rem'
             }}
           >
-            {(project.user?.username || 'U').charAt(0).toUpperCase()}
+            {(project.owner?.username || 'U').charAt(0).toUpperCase()}
           </Avatar>
           <Typography variant="body2" color="text.secondary">
-            {project.user?.username || 'Użytkownik'}
+            {project.owner?.username || 'Nieznany'}
           </Typography>
         </Box>
 
