@@ -6,6 +6,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import MapContainer from '@/features/mapa/komponenty/MapContainer';
 import LeftPanel from '@/features/warstwy/komponenty/LeftPanel';
 import RightToolbar from '@/features/narzedzia/RightToolbar';
+import { QGISProjectLoader } from '@/src/components/qgis/QGISProjectLoader';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import { setCurrentProject } from '@/redux/slices/projectsSlice';
 import { loadLayers, resetLayers } from '@/redux/slices/layersSlice';
@@ -96,6 +97,7 @@ export default function MapPage() {
             </Box>
           )}
           <MapContainer />
+          {projectName && <QGISProjectLoader projectName={projectName} />}
         </Box>
         <RightToolbar />
       </Box>

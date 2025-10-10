@@ -304,6 +304,12 @@ export const projectsApi = createApi({
         const token = getToken();
         const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.universemapmaker.online';
 
+        console.log('🚀 importQGS mutation called with:');
+        console.log('  - project:', project);
+        console.log('  - qgsFile:', qgsFile.name, qgsFile.size, 'bytes');
+        console.log('  - baseUrl:', baseUrl);
+        console.log('  - token:', token ? '✅ present' : '❌ missing');
+
         return new Promise((resolve) => {
           const xhr = new XMLHttpRequest();
           const formData = new FormData();
@@ -320,12 +326,17 @@ export const projectsApi = createApi({
 
           // Response handlers
           xhr.addEventListener('load', () => {
+            console.log('📥 Response received, status:', xhr.status);
+            console.log('📄 Response text:', xhr.responseText.substring(0, 500)); // First 500 chars
+
             if (xhr.status >= 200 && xhr.status < 300) {
               try {
                 const data = JSON.parse(xhr.responseText);
+                console.log('✅ Parsed response data:', data);
 
                 // Check if backend returned an error despite 200 status
                 if (data.success === false || data.error) {
+                  console.error('❌ Backend returned error in 200 response:', data);
                   resolve({
                     error: {
                       status: xhr.status,
@@ -336,6 +347,7 @@ export const projectsApi = createApi({
                     }
                   });
                 } else {
+                  console.log('🎉 Import successful!');
                   resolve({ data });
                 }
               } catch (error) {
@@ -359,18 +371,24 @@ export const projectsApi = createApi({
             }
           });
 
-          xhr.addEventListener('error', () => {
+          xhr.addEventListener('error', (e) => {
+            console.error('❌ XHR error event:', e);
             resolve({ error: { status: 'FETCH_ERROR', error: 'Network error' } });
           });
 
-          xhr.addEventListener('abort', () => {
+          xhr.addEventListener('abort', (e) => {
+            console.warn('⚠️ XHR abort event:', e);
             resolve({ error: { status: 'FETCH_ERROR', error: 'Upload aborted' } });
           });
 
           // Send request
-          xhr.open('POST', `${baseUrl}/api/projects/import/qgs/`);
+          const requestUrl = `${baseUrl}/api/projects/import/qgs/`;
+          console.log('📡 Sending POST request to:', requestUrl);
+          xhr.open('POST', requestUrl);
           xhr.setRequestHeader('Authorization', `Token ${token}`);
+          console.log('📤 Sending FormData with project:', project, 'and file:', qgsFile.name);
           xhr.send(formData);
+          console.log('✈️ Request sent, waiting for response...');
         });
       },
       invalidatesTags: (result, error, arg) => [

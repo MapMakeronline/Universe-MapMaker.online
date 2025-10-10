@@ -130,7 +130,12 @@
       "Bash(CSRF_TOKEN=\"Fx3qfXxov4KUOCLLC3oFpoE4RnFyjsXB1iD8E34NL6mJ9ABOcFTFRNhhHJEBTbAG\")",
       "Bash(if exist nul del /f nul)",
       "Bash(.screenshot.bat http://localhost:3000/dashboard screenshots/admin-panel-responsive-test.png)",
-      "Bash(cmd //c:*)"
+      "Bash(cmd //c:*)",
+      "Bash(gsutil ls:*)",
+      "Bash(npx:*)",
+      "Bash(./screenshot.bat http://localhost:3000/dashboard screenshots/create-import-qgs-test.png)",
+      "Bash(npm ls:*)",
+      "Bash(został utworzony, ale nie znaleziono go w bazie\" error.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")"
     ],
     "deny": [],
     "ask": []

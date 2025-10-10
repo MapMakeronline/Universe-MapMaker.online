@@ -116,27 +116,36 @@ export default function OwnProjectsRTK() {
       };
 
       const createdProject = await createProject(createData).unwrap();
+      console.log('✅ STEP 1: Project created:', createdProject);
 
       // CRITICAL: Backend does NOT return project_name in response!
       // We need to fetch the project list to get the actual project_name (not custom_project_name)
       const { data: freshProjectsData } = await refetch(); // Force refetch and get fresh data
+      console.log('📋 STEP 2: Refetched projects count:', freshProjectsData?.list_of_projects?.length);
 
       // Find the newly created project by custom_project_name in FRESH data
       const projects = freshProjectsData?.list_of_projects || [];
       const newProject = projects.find(p => p.custom_project_name === projectName);
+      console.log('🔍 STEP 3: Searching for project with custom_project_name:', projectName);
+      console.log('🔍 Found project:', newProject);
 
       if (!newProject) {
+        console.error('❌ ERROR: Project not found after creation!');
+        console.error('Available projects:', projects.map(p => ({ custom_name: p.custom_project_name, project_name: p.project_name })));
         throw new Error(`Projekt "${projectName}" został utworzony, ale nie znaleziono go w bazie. Odśwież stronę i spróbuj zaimportować QGS ręcznie.`);
       }
 
       const backendProjectName = newProject.project_name; // Use REAL project_name from database
+      console.log('🎯 STEP 4: Using backend project_name:', backendProjectName);
 
       // STEP 2: Import QGS file to the created project (RTK Query with progress tracking)
-      await importQGS({
+      console.log('📤 STEP 5: Starting QGS import with file:', file.name, 'size:', file.size);
+      const importResult = await importQGS({
         project: backendProjectName,
         qgsFile: file,
         onProgress, // Pass progress callback from dialog
       }).unwrap();
+      console.log('✅ STEP 6: QGS import completed:', importResult);
 
       setSnackbar({
         open: true,

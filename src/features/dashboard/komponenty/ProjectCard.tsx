@@ -24,6 +24,7 @@ import Storage from '@mui/icons-material/Storage';
 import Delete from '@mui/icons-material/Delete';
 import Settings from '@mui/icons-material/Settings';
 import Language from '@mui/icons-material/Language';
+import Map from '@mui/icons-material/Map';
 import type { Project } from '@/api/typy/types';
 import { unifiedProjectsApi as projectsApi } from '@/api/endpointy/unified-projects';
 
@@ -33,9 +34,10 @@ interface ProjectCardProps {
   onDelete: () => void;
   onTogglePublish: () => void;
   onSettings: () => void;
+  onOpenInMap?: () => void;
 }
 
-export function ProjectCard({ project, onOpen, onDelete, onTogglePublish, onSettings }: ProjectCardProps) {
+export function ProjectCard({ project, onOpen, onDelete, onTogglePublish, onSettings, onOpenInMap }: ProjectCardProps) {
   const theme = useTheme();
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
 
@@ -205,6 +207,15 @@ export function ProjectCard({ project, onOpen, onDelete, onTogglePublish, onSett
           },
         }}
       >
+        {onOpenInMap && (
+          <MenuItem onClick={() => handleMenuAction(onOpenInMap)}>
+            <ListItemIcon>
+              <Map fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Otwórz w edytorze mapy</ListItemText>
+          </MenuItem>
+        )}
+
         {project.published && project.domain_url && (
           <MenuItem
             onClick={() =>
