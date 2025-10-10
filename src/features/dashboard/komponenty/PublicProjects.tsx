@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Card from '@mui/material/Card';
@@ -16,32 +16,18 @@ import InputLabel from '@mui/material/InputLabel';
 import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
 import Pagination from '@mui/material/Pagination';
+import Alert from '@mui/material/Alert';
 import { useTheme } from '@mui/material/styles';
 import { alpha } from '@mui/material/styles';
 import { useMediaQuery } from '@mui/material';
-import CircularProgress from '@mui/material/CircularProgress';
 import Search from '@mui/icons-material/Search';
 import Public from '@mui/icons-material/Public';
 import ViewModule from '@mui/icons-material/ViewModule';
 import Storage from '@mui/icons-material/Storage';
 import Person from '@mui/icons-material/Person';
-import { unifiedProjectsApi } from '@/api/endpointy/unified-projects';
-import type { Project as ApiProject } from '@/api/typy/types';
+import { useGetPublicProjectsQuery } from '@/redux/api/projectsApi';
+import type { Project } from '@/api/typy/types';
 import { ProjectsGridSkeleton } from './ProjectCardSkeleton';
-
-interface PublicProject {
-  id: string;
-  title: string;
-  description: string;
-  image: string;
-  category: string;
-  size: string;
-  layers: number;
-  lastModified: string;
-  owner: string;
-  ownerAvatar: string;
-  views: number;
-}
 
 // Placeholder SVG dla projektów bez obrazka
 const placeholderImage = 'data:image/svg+xml;base64,' + btoa(`
@@ -64,87 +50,6 @@ const placeholderImage = 'data:image/svg+xml;base64,' + btoa(`
   </svg>
 `);
 
-const mockPublicProjects: PublicProject[] = [
-  {
-    id: '1',
-    title: 'ogrodzeniecsip',
-    description: 'ogrodzenie',
-    image: placeholderImage,
-    category: 'Infrastruktura',
-    size: '25.4 MB',
-    layers: 12,
-    lastModified: '2 dni temu',
-    owner: 'ogrodzieniec',
-    ownerAvatar: 'O',
-    views: 1247,
-  },
-  {
-    id: '2',
-    title: 'UniejowMwMpzp',
-    description: 'uniejow',
-    image: placeholderImage,
-    category: 'Planowanie',
-    size: '18.7 MB',
-    layers: 8,
-    lastModified: '1 tydzień temu',
-    owner: 'uniejow',
-    ownerAvatar: 'U',
-    views: 856,
-  },
-  {
-    id: '3',
-    title: 'AugustowWMpzp',
-    description: 'augustow',
-    image: placeholderImage,
-    category: 'Planowanie',
-    size: '32.1 MB',
-    layers: 15,
-    lastModified: '3 dni temu',
-    owner: 'augustow',
-    ownerAvatar: 'A',
-    views: 2103,
-  },
-  {
-    id: '4',
-    title: 'Gmina Uniejów',
-    description: 'Mapa gminy Uniejów z podziałem na sołectwa',
-    image: placeholderImage,
-    category: 'Administracja',
-    size: '28.9 MB',
-    layers: 20,
-    lastModified: '5 dni temu',
-    owner: 'gmina_uniejow',
-    ownerAvatar: 'G',
-    views: 1567,
-  },
-  {
-    id: '5',
-    title: 'Tereny inwestycyjne Augustów',
-    description: 'Dostępne tereny pod inwestycje w Augustowie',
-    image: placeholderImage,
-    category: 'Inwestycje',
-    size: '15.2 MB',
-    layers: 6,
-    lastModified: '1 dzień temu',
-    owner: 'inwestycje_augustow',
-    ownerAvatar: 'I',
-    views: 934,
-  },
-  {
-    id: '6',
-    title: 'Sieć wodociągowa Lublin',
-    description: 'Mapa sieci wodociągowej miasta Lublin',
-    image: placeholderImage,
-    category: 'Infrastruktura',
-    size: '45.8 MB',
-    layers: 25,
-    lastModified: '2 tygodnie temu',
-    owner: 'mpwik_lublin',
-    ownerAvatar: 'M',
-    views: 3421,
-  },
-];
-
 const categories = [
   'Wszystkie',
   'Infrastruktura',
@@ -159,54 +64,26 @@ export default function PublicProjects() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Wszystkie');
   const [currentPage, setCurrentPage] = useState(1);
-  const [publicProjects, setPublicProjects] = useState<PublicProject[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const projectsPerPage = 6;
 
-  // Fetch public projects on mount
-  useEffect(() => {
-    const fetchPublicProjects = async () => {
-      setIsLoading(true);
-      setError(null);
+  // RTK Query - fetch public projects from backend
+  const { data: projectsData, isLoading, error } = useGetPublicProjectsQuery(undefined, {
+    pollingInterval: 60000, // Auto-refresh every 60 seconds
+    refetchOnMountOrArgChange: true,
+    refetchOnFocus: true,
+  });
 
-      try {
-        const response = await unifiedProjectsApi.getPublicProjects();
-
-        // Map API projects to UI format
-        const mappedProjects: PublicProject[] = response.projects.map((proj: ApiProject) => ({
-          id: proj.project_name,
-          title: proj.custom_project_name || proj.project_name,
-          description: proj.description || 'Projekt publiczny',
-          image: proj.logoExists ? `/api/logos/${proj.project_name}` : placeholderImage,
-          category: proj.categories || 'Inne',
-          size: '0 MB', // TODO: Get from backend if available
-          layers: 0, // TODO: Get from backend if available
-          lastModified: `${proj.project_date} ${proj.project_time}`,
-          owner: 'Użytkownik', // TODO: Get from backend if available
-          ownerAvatar: proj.custom_project_name?.charAt(0).toUpperCase() || 'U',
-          views: 0, // TODO: Get from backend if available
-        }));
-
-        setPublicProjects(mappedProjects);
-      } catch (err: any) {
-        console.error('Failed to fetch public projects:', err);
-        setError(err.message || 'Nie udało się pobrać projektów publicznych');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchPublicProjects();
-  }, []);
+  // Extract projects from RTK Query response
+  const publicProjects = projectsData?.list_of_projects || [];
 
   const filteredProjects = publicProjects.filter(project => {
-    const matchesSearch = project.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         project.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         project.owner.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === 'Wszystkie' || project.category === selectedCategory;
+    const title = project.custom_project_name || project.project_name;
+    const matchesSearch = title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (project.description || '').toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = selectedCategory === 'Wszystkie' ||
+                           (project.categories || '').includes(selectedCategory);
     return matchesSearch && matchesCategory;
   });
 
@@ -230,8 +107,13 @@ export default function PublicProjects() {
     setCurrentPage(value);
   };
 
-  const ProjectCard = ({ project }: { project: PublicProject }) => (
-    <Card
+  const ProjectCard = ({ project }: { project: Project }) => {
+    const title = project.custom_project_name || project.project_name;
+    const image = project.logoExists ? `/api/logos/${project.project_name}` : placeholderImage;
+    const category = project.categories || 'Inne';
+
+    return (
+      <Card
       sx={{
         height: 480, // Stała wysokość dla wszystkich kart
         display: 'flex',
@@ -251,9 +133,9 @@ export default function PublicProjects() {
         <CardMedia
           component="img"
           height="200"
-          image={project.image}
-          alt={project.title}
-          sx={{ 
+          image={image}
+          alt={title}
+          sx={{
             bgcolor: 'grey.100',
             backgroundImage: 'linear-gradient(45deg, #f5f5f5 25%, transparent 25%), linear-gradient(-45deg, #f5f5f5 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #f5f5f5 75%), linear-gradient(-45deg, transparent 75%, #f5f5f5 75%)',
             backgroundSize: '20px 20px',
@@ -289,7 +171,7 @@ export default function PublicProjects() {
           }}
         >
           <Chip
-            label={project.category}
+            label={category}
             size="small"
             sx={{
               bgcolor: alpha(theme.palette.background.paper, 0.9),
@@ -298,7 +180,7 @@ export default function PublicProjects() {
           />
         </Box>
       </Box>
-      
+
       <CardContent sx={{ flexGrow: 1, p: 2, display: 'flex', flexDirection: 'column' }}>
         <Typography
           variant="h6"
@@ -311,7 +193,7 @@ export default function PublicProjects() {
             whiteSpace: 'nowrap',
           }}
         >
-          {project.title}
+          {title}
         </Typography>
 
         <Typography
@@ -327,54 +209,41 @@ export default function PublicProjects() {
             minHeight: '40px',
           }}
         >
-          {project.description}
+          {project.description || 'Brak opisu'}
         </Typography>
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 2 }}>
-          <Avatar 
-            sx={{ 
-              width: 24, 
-              height: 24, 
-              bgcolor: 'primary.main', 
-              fontSize: '0.75rem' 
+          <Avatar
+            sx={{
+              width: 24,
+              height: 24,
+              bgcolor: 'primary.main',
+              fontSize: '0.75rem'
             }}
           >
-            {project.ownerAvatar}
+            {(project.user?.username || 'U').charAt(0).toUpperCase()}
           </Avatar>
           <Typography variant="body2" color="text.secondary">
-            {project.owner}
+            {project.user?.username || 'Użytkownik'}
           </Typography>
         </Box>
 
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-              <ViewModule fontSize="small" color="action" />
-              <Typography variant="caption" color="text.secondary">
-                {project.layers}
-              </Typography>
-            </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-              <Storage fontSize="small" color="action" />
-              <Typography variant="caption" color="text.secondary">
-                {project.size}
-              </Typography>
-            </Box>
-          </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-            <Person fontSize="small" color="action" />
-            <Typography variant="caption" color="text.secondary">
-              {project.views.toLocaleString()}
-            </Typography>
-          </Box>
+          <Chip
+            icon={<Public />}
+            label={project.domain_name || 'Brak domeny'}
+            size="small"
+            variant="outlined"
+          />
         </Box>
 
         <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-          Ostatnia aktualizacja: {project.lastModified}
+          Data utworzenia: {project.project_date} {project.project_time}
         </Typography>
       </CardContent>
-    </Card>
-  );
+      </Card>
+    );
+  };
 
   return (
     <Box>
@@ -425,21 +294,14 @@ export default function PublicProjects() {
 
       {/* Error State */}
       {error && !isLoading && (
-        <Box
-          sx={{
-            textAlign: 'center',
-            py: 8,
-            color: 'text.secondary',
-          }}
-        >
-          <Public sx={{ fontSize: 64, mb: 2, opacity: 0.5, color: 'error.main' }} />
-          <Typography variant="h6" gutterBottom color="error">
-            Wystąpił błąd
+        <Alert severity="error" sx={{ mb: 4 }}>
+          <Typography variant="body1" fontWeight="600" gutterBottom>
+            Nie udało się załadować projektów publicznych
           </Typography>
           <Typography variant="body2">
-            {error}
+            Spróbuj odświeżyć stronę lub skontaktuj się z administratorem.
           </Typography>
-        </Box>
+        </Alert>
       )}
 
       {/* Results info */}
@@ -453,7 +315,7 @@ export default function PublicProjects() {
       {!isLoading && !error && (
         <Grid container spacing={3} sx={{ mb: 4 }}>
           {currentProjects.map((project) => (
-            <Grid item xs={12} sm={6} md={4} key={project.id}>
+            <Grid item xs={12} sm={6} md={4} key={project.project_name}>
               <ProjectCard project={project} />
             </Grid>
           ))}
