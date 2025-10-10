@@ -37,6 +37,11 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import FolderIcon from '@mui/icons-material/Folder';
 import PublicIcon from '@mui/icons-material/Public';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import ErrorIcon from '@mui/icons-material/Error';
+import DatabaseIcon from '@mui/icons-material/Storage';
+import BuildIcon from '@mui/icons-material/Build';
+import Tooltip from '@mui/material/Tooltip';
 import { useAppSelector } from '@/redux/hooks';
 import {
   useGetAdminStatsQuery,
@@ -395,6 +400,8 @@ export default function AdminPanel() {
                     <TableCell align="center" sx={{ fontWeight: 600 }}>
                       Opublikowany
                     </TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 600 }}>Status QGS</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 600 }}>Status DB</TableCell>
                     <TableCell sx={{ fontWeight: 600 }}>Data utworzenia</TableCell>
                   </TableRow>
                 </TableHead>
@@ -411,7 +418,7 @@ export default function AdminPanel() {
                       </TableCell>
                       <TableCell>
                         <Typography variant="body2" color="text.secondary">
-                          {project.categories || 'Brak'}
+                          {project.category || 'Brak'}
                         </Typography>
                       </TableCell>
                       <TableCell>
@@ -439,9 +446,27 @@ export default function AdminPanel() {
                           <Chip label="Nie" size="small" color="default" />
                         )}
                       </TableCell>
+                      <TableCell align="center">
+                        <Tooltip title={project.qgs_file_exists ? 'Plik QGS istnieje' : 'Brak pliku QGS'}>
+                          {project.qgs_file_exists ? (
+                            <CheckCircleIcon color="success" fontSize="small" />
+                          ) : (
+                            <ErrorIcon color="error" fontSize="small" />
+                          )}
+                        </Tooltip>
+                      </TableCell>
+                      <TableCell align="center">
+                        <Tooltip title={project.database_exists ? 'Baza danych istnieje' : 'Brak bazy danych'}>
+                          {project.database_exists ? (
+                            <CheckCircleIcon color="success" fontSize="small" />
+                          ) : (
+                            <ErrorIcon color="error" fontSize="small" />
+                          )}
+                        </Tooltip>
+                      </TableCell>
                       <TableCell>
                         <Typography variant="caption" color="text.secondary">
-                          {formatDate(project.project_date)}
+                          {formatDate(project.creationDate)}
                         </Typography>
                       </TableCell>
                     </TableRow>

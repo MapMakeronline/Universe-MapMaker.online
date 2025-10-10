@@ -47,3 +47,4 @@ docs/backend/
 /playwright-report/
 /playwright/.cache/
 .env.test
+nul

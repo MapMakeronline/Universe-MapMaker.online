@@ -39,21 +39,28 @@ export interface AdminProject {
   project_name: string;
   custom_project_name: string;
   description: string;
-  categories: string;
+  category: string;
   published: boolean;
   domain_name: string;
-  project_date: string | null;
-  project_time: string | null;
+  creationDate: string | null;
+  logoExists: boolean;
   owner: {
     id: number | null;
     username: string;
     email: string;
   };
-  logoExists: boolean;
+  // Diagnostic fields for project health
+  qgs_file_exists: boolean;
+  database_exists: boolean;
+  is_valid: boolean;
 }
 
 export interface AdminProjectsResponse {
   total_projects: number;
+  valid_projects: number;
+  invalid_projects: number;
+  missing_qgs_files: number;
+  missing_databases: number;
   projects: AdminProject[];
   timestamp: string;
 }
