@@ -112,10 +112,14 @@ export default function OwnProjectsRTK() {
       console.log('🔧 Creating project with data:', createData);
       const createdProject = await createProject(createData).unwrap();
       console.log('✅ Project created, backend response:', createdProject);
+      console.log('🔍 Backend response keys:', Object.keys(createdProject));
+      console.log('🔍 project_name in response?', 'project_name' in createdProject);
+      console.log('🔍 createdProject.project_name value:', createdProject.project_name);
 
       // Use project_name from backend response (not user input)
       const backendProjectName = createdProject.project_name || projectName;
       console.log('📦 Using project name for import:', backendProjectName);
+      console.log('⚠️ WARNING: If undefined above, backend did NOT return project_name!');
 
       // STEP 2: Import QGS file to the created project (RTK Query)
       console.log('📤 Importing QGS file to project:', backendProjectName);
