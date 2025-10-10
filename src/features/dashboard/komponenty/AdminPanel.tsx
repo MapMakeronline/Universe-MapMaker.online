@@ -28,7 +28,7 @@ import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import Button from '@mui/material/Button';
-import { useTheme } from '@mui/material/styles';
+import { useTheme, useMediaQuery } from '@mui/material/styles';
 import PersonIcon from '@mui/icons-material/Person';
 import StorageIcon from '@mui/icons-material/Storage';
 import CloudIcon from '@mui/icons-material/CloudQueue';
@@ -54,6 +54,8 @@ import {
 
 export default function AdminPanel() {
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isTablet = useMediaQuery(theme.breakpoints.down('lg'));
   const { user } = useAppSelector((state) => state.auth);
   const [activeTab, setActiveTab] = useState(0);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -141,19 +143,48 @@ export default function AdminPanel() {
     );
   }
 
-  const users = statsData?.users || [];
+  // Sort users by newest registration date (desc)
+  const sortedUsers = [...(statsData?.users || [])].sort((a, b) => {
+    const dateA = new Date(a.date_joined || 0).getTime();
+    const dateB = new Date(b.date_joined || 0).getTime();
+    return dateB - dateA; // Newest first
+  });
+
   const systemStats = statsData?.system_stats;
   const projects = projectsData?.projects || [];
-  const paidUsers = users.filter((u) => u.license_type === 'paid');
+
+  // Sort paid users by nearest license expiration (closest expiration first)
+  // Note: Backend needs to provide license_expiration_date field for this to work
+  // For now, we'll sort by newest registration as fallback
+  const sortedPaidUsers = sortedUsers
+    .filter((u) => u.license_type === 'paid')
+    .sort((a, b) => {
+      // If license_expiration_date exists, sort by it (nearest first)
+      if ((a as any).license_expiration_date && (b as any).license_expiration_date) {
+        const expirationA = new Date((a as any).license_expiration_date).getTime();
+        const expirationB = new Date((b as any).license_expiration_date).getTime();
+        return expirationA - expirationB; // Nearest expiration first
+      }
+      // Fallback: sort by registration date
+      return new Date(b.date_joined || 0).getTime() - new Date(a.date_joined || 0).getTime();
+    });
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom sx={{ mb: 3, fontWeight: 600 }}>
+    <Box sx={{ p: { xs: 2, sm: 3 } }}>
+      <Typography
+        variant="h4"
+        gutterBottom
+        sx={{
+          mb: 3,
+          fontWeight: 600,
+          fontSize: { xs: '1.75rem', sm: '2.125rem' }
+        }}
+      >
         Panel Administratora
       </Typography>
 
       {/* System Statistics */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
+      <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mb: 4 }}>
         <Grid item xs={12} sm={6} md={3}>
           <Card>
             <CardContent>
@@ -254,28 +285,29 @@ export default function AdminPanel() {
 
       {/* Tab 1: All Users */}
       {activeTab === 0 && (
-        <Paper sx={{ p: 2 }}>
+        <Paper sx={{ p: { xs: 1.5, sm: 2 }, overflowX: 'auto' }}>
           <Typography variant="h6" gutterBottom sx={{ mb: 2, fontWeight: 600 }}>
-            Wszyscy Użytkownicy ({users.length})
+            Wszyscy Użytkownicy ({sortedUsers.length})
           </Typography>
 
-          <TableContainer>
-            <Table>
+          <TableContainer sx={{ overflowX: { xs: 'auto', md: 'visible' } }}>
+            <Table size={isMobile ? 'small' : 'medium'}>
               <TableHead>
                 <TableRow sx={{ backgroundColor: 'grey.50' }}>
-                  <TableCell sx={{ fontWeight: 600 }}>Użytkownik</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>Email</TableCell>
-                  <TableCell align="center" sx={{ fontWeight: 600 }}>
+                  <TableCell sx={{ fontWeight: 600, display: { xs: 'none', sm: 'table-cell' } }}>Użytkownik</TableCell>
+                  <TableCell sx={{ fontWeight: 600, display: { xs: 'table-cell', sm: 'none' } }}>Dane</TableCell>
+                  <TableCell sx={{ fontWeight: 600, display: { xs: 'none', md: 'table-cell' } }}>Email</TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 600, display: { xs: 'none', sm: 'table-cell' } }}>
                     Licencja
                   </TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 600 }}>
+                  <TableCell align="right" sx={{ fontWeight: 600, display: { xs: 'none', sm: 'table-cell' } }}>
                     Projekty
                   </TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 600 }}>
+                  <TableCell align="right" sx={{ fontWeight: 600, display: { xs: 'none', md: 'table-cell' } }}>
                     Pamięć
                   </TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>Data założenia</TableCell>
-                  <TableCell align="center" sx={{ fontWeight: 600 }}>
+                  <TableCell sx={{ fontWeight: 600, display: { xs: 'none', lg: 'table-cell' } }}>Data założenia</TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 600, display: { xs: 'none', md: 'table-cell' } }}>
                     Status
                   </TableCell>
                   <TableCell align="center" sx={{ fontWeight: 600 }}>
@@ -284,7 +316,7 @@ export default function AdminPanel() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {users.map((user: AdminUser) => {
+                {sortedUsers.map((user: AdminUser) => {
                   const storagePercentage = (user.storage_used / (systemStats?.total_storage || 1)) * 100;
 
                   return (
@@ -363,7 +395,7 @@ export default function AdminPanel() {
             </Table>
           </TableContainer>
 
-          {users.length === 0 && (
+          {sortedUsers.length === 0 && (
             <Box sx={{ textAlign: 'center', py: 4 }}>
               <Typography color="text.secondary">Brak użytkowników do wyświetlenia</Typography>
             </Box>
@@ -486,7 +518,7 @@ export default function AdminPanel() {
 
       {/* Tab 3: Paid Users Only */}
       {activeTab === 2 && (
-        <Paper sx={{ p: 2 }}>
+        <Paper sx={{ p: { xs: 1.5, sm: 2 }, overflowX: 'auto' }}>
           <Box
             sx={{
               backgroundColor: theme.palette.success.light,
@@ -500,34 +532,35 @@ export default function AdminPanel() {
               gap: 1,
             }}
           >
-            <Typography variant="h6" sx={{ fontWeight: 600 }}>
-              Użytkownicy z licencją płatną ({paidUsers.length})
+            <Typography variant="h6" sx={{ fontWeight: 600, fontSize: { xs: '1rem', sm: '1.25rem' } }}>
+              Użytkownicy z licencją płatną ({sortedPaidUsers.length})
             </Typography>
           </Box>
 
-          <TableContainer>
-            <Table>
+          <TableContainer sx={{ overflowX: { xs: 'auto', md: 'visible' } }}>
+            <Table size={isMobile ? 'small' : 'medium'}>
               <TableHead>
                 <TableRow sx={{ backgroundColor: 'grey.50' }}>
-                  <TableCell sx={{ fontWeight: 600 }}>Użytkownik</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>Email</TableCell>
-                  <TableCell align="center" sx={{ fontWeight: 600 }}>
+                  <TableCell sx={{ fontWeight: 600, display: { xs: 'none', sm: 'table-cell' } }}>Użytkownik</TableCell>
+                  <TableCell sx={{ fontWeight: 600, display: { xs: 'table-cell', sm: 'none' } }}>Dane</TableCell>
+                  <TableCell sx={{ fontWeight: 600, display: { xs: 'none', md: 'table-cell' } }}>Email</TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 600, display: { xs: 'none', sm: 'table-cell' } }}>
                     Licencja
                   </TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 600 }}>
+                  <TableCell align="right" sx={{ fontWeight: 600, display: { xs: 'none', sm: 'table-cell' } }}>
                     Projekty
                   </TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 600 }}>
+                  <TableCell align="right" sx={{ fontWeight: 600, display: { xs: 'none', md: 'table-cell' } }}>
                     Pamięć
                   </TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>Data założenia</TableCell>
-                  <TableCell align="center" sx={{ fontWeight: 600 }}>
+                  <TableCell sx={{ fontWeight: 600, display: { xs: 'none', lg: 'table-cell' } }}>Data założenia</TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 600, display: { xs: 'none', md: 'table-cell' } }}>
                     Status
                   </TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {paidUsers.map((user: AdminUser) => {
+                {sortedPaidUsers.map((user: AdminUser) => {
                   const storagePercentage = (user.storage_used / (systemStats?.total_storage || 1)) * 100;
 
                   return (
@@ -584,7 +617,7 @@ export default function AdminPanel() {
             </Table>
           </TableContainer>
 
-          {paidUsers.length === 0 && (
+          {sortedPaidUsers.length === 0 && (
             <Box sx={{ textAlign: 'center', py: 4 }}>
               <Typography color="text.secondary">Brak użytkowników z płatną licencją</Typography>
             </Box>
