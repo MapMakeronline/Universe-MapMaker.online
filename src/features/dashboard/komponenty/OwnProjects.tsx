@@ -169,7 +169,7 @@ export default function OwnProjectsRTK() {
 
   const handleOpenProject = (project: Project) => {
     dispatch(setCurrentProject(project));
-    router.push('/map');
+    router.push(`/map?project=${project.project_name}`);
   };
 
   const handleOpenSettings = (project: Project) => {
