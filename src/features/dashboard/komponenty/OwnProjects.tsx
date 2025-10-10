@@ -115,13 +115,10 @@ export default function OwnProjectsRTK() {
         categories: ['Inne'],
       };
 
-      console.log('🔧 Creating project with data:', createData);
       const createdProject = await createProject(createData).unwrap();
-      console.log('✅ Project created, backend response:', createdProject);
 
       // CRITICAL: Backend does NOT return project_name in response!
       // We need to fetch the project list to get the actual project_name (not custom_project_name)
-      console.log('🔍 Fetching project list to find actual project_name...');
       await refetch(); // Force refetch projects list
 
       // Find the newly created project by custom_project_name
@@ -133,19 +130,13 @@ export default function OwnProjectsRTK() {
       }
 
       const backendProjectName = newProject.project_name; // Use REAL project_name from database
-      console.log('📦 Found project in database:', {
-        custom_project_name: newProject.custom_project_name,
-        project_name: newProject.project_name
-      });
 
       // STEP 2: Import QGS file to the created project (RTK Query with progress tracking)
-      console.log('📤 Importing QGS file to project:', backendProjectName);
       await importQGS({
         project: backendProjectName,
         qgsFile: file,
         onProgress, // Pass progress callback from dialog
       }).unwrap();
-      console.log('✅ QGS imported successfully!');
 
       setSnackbar({
         open: true,

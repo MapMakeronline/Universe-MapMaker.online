@@ -98,6 +98,7 @@ export function CreateProjectDialog({
   const [isImporting, setIsImporting] = useState(false);
   const [importStep, setImportStep] = useState<'idle' | 'creating' | 'uploading'>('idle');
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setActiveTab(newValue);
@@ -136,8 +137,7 @@ export function CreateProjectDialog({
     }
   };
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  const validateAndSetFile = (file: File | null) => {
     setQgisError(null);
 
     if (!file) {
@@ -174,19 +174,50 @@ export function CreateProjectDialog({
     setQgisProjectName(sanitized);
   };
 
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    validateAndSetFile(file || null);
+  };
+
+  // Drag & drop handlers
+  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isImporting) {
+      setIsDragging(true);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    if (isImporting) return;
+
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      validateAndSetFile(files[0]);
+    }
+  };
+
   const handleImportSubmit = async () => {
     if (!qgisFile || !qgisProjectName || !qgisDomain || !onImportQGIS) return;
 
     setIsImporting(true);
     setQgisError(null);
     setImportStep('creating');
-
-    console.log('📝 Dialog - Starting import with params:', {
-      file: qgisFile.name,
-      projectName: qgisProjectName,
-      domain: qgisDomain,
-      description: qgisDescription
-    });
 
     try {
       // Create progress callback that updates state and sets step to uploading
@@ -198,7 +229,6 @@ export function CreateProjectDialog({
       };
 
       await onImportQGIS(qgisFile, qgisProjectName, qgisDomain, qgisDescription, handleProgress);
-      console.log('✅ Dialog - Import completed successfully');
       // Reset form on success
       setQgisFile(null);
       setQgisProjectName('');
@@ -208,7 +238,6 @@ export function CreateProjectDialog({
       setImportStep('idle');
       setActiveTab(0); // Switch back to create tab
     } catch (error: any) {
-      console.error('❌ Dialog - Import failed:', error);
       setQgisError(error.message || 'Wystąpił błąd podczas importowania projektu');
       setUploadProgress(0);
       setImportStep('idle');
@@ -430,62 +459,123 @@ export function CreateProjectDialog({
                 Wybierz plik QGIS:
               </Typography>
 
-              <input
-                accept=".qgz,.qgs"
-                style={{ display: 'none' }}
-                id="qgis-file-upload"
-                type="file"
-                onChange={handleFileChange}
-                disabled={isImporting}
-              />
-              <label htmlFor="qgis-file-upload">
-                <Button
-                  variant="contained"
-                  component="span"
-                  startIcon={<CloudUpload />}
-                  disabled={isImporting}
-                  sx={{
-                    bgcolor: theme.palette.primary.main,
-                    color: 'white',
-                    textTransform: 'none',
-                    px: 3,
-                    '&:hover': { bgcolor: theme.palette.primary.dark },
-                  }}
-                >
-                  Wybierz plik (.qgz, .qgs)
-                </Button>
-              </label>
-
-              {qgisFile && (
-                <Box
-                  sx={{
-                    mt: 2,
-                    p: 2,
-                    bgcolor: 'white',
-                    borderRadius: '4px',
-                    border: '1px solid #e0e0e0',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 2,
-                  }}
-                >
-                  <InsertDriveFile color="primary" />
-                  <Box sx={{ flex: 1 }}>
-                    <Typography variant="body2" fontWeight={600}>
-                      {qgisFile.name}
+              {/* Drag & Drop Zone */}
+              <Box
+                onDragEnter={handleDragEnter}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                sx={{
+                  border: isDragging
+                    ? `2px dashed ${theme.palette.primary.main}`
+                    : qgisFile
+                    ? `2px solid ${theme.palette.success.main}`
+                    : '2px dashed #d1d5db',
+                  borderRadius: '8px',
+                  bgcolor: isDragging
+                    ? 'rgba(247, 94, 76, 0.05)'
+                    : qgisFile
+                    ? 'rgba(76, 175, 80, 0.05)'
+                    : 'white',
+                  p: 3,
+                  textAlign: 'center',
+                  cursor: isImporting ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s ease-in-out',
+                  '&:hover': {
+                    borderColor: isImporting ? '#d1d5db' : theme.palette.primary.main,
+                    bgcolor: isImporting ? 'white' : 'rgba(247, 94, 76, 0.02)',
+                  },
+                }}
+              >
+                {!qgisFile ? (
+                  <>
+                    <CloudUpload
+                      sx={{
+                        fontSize: 48,
+                        color: isDragging ? theme.palette.primary.main : '#9ca3af',
+                        mb: 2,
+                      }}
+                    />
+                    <Typography variant="body1" fontWeight={600} gutterBottom>
+                      {isDragging
+                        ? 'Upuść plik tutaj'
+                        : 'Przeciągnij i upuść plik QGIS'}
                     </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {(qgisFile.size / 1024).toFixed(2)} KB
+                    <Typography variant="body2" color="text.secondary" gutterBottom>
+                      lub
                     </Typography>
+                    <input
+                      accept=".qgz,.qgs"
+                      style={{ display: 'none' }}
+                      id="qgis-file-upload"
+                      type="file"
+                      onChange={handleFileChange}
+                      disabled={isImporting}
+                    />
+                    <label htmlFor="qgis-file-upload">
+                      <Button
+                        variant="outlined"
+                        component="span"
+                        disabled={isImporting}
+                        sx={{
+                          mt: 1,
+                          textTransform: 'none',
+                          borderColor: theme.palette.primary.main,
+                          color: theme.palette.primary.main,
+                          '&:hover': {
+                            borderColor: theme.palette.primary.dark,
+                            bgcolor: 'rgba(247, 94, 76, 0.05)',
+                          },
+                        }}
+                      >
+                        Wybierz plik z komputera
+                      </Button>
+                    </label>
+                    <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 2 }}>
+                      Obsługiwane formaty: .qgz, .qgs (max. 100 MB)
+                    </Typography>
+                  </>
+                ) : (
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 2,
+                    }}
+                  >
+                    <InsertDriveFile sx={{ fontSize: 40, color: theme.palette.success.main }} />
+                    <Box sx={{ textAlign: 'left', flex: 1 }}>
+                      <Typography variant="body1" fontWeight={600} color="success.main">
+                        {qgisFile.name}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {(qgisFile.size / 1024 / 1024).toFixed(2)} MB
+                      </Typography>
+                    </Box>
+                    <Chip
+                      icon={<CheckCircle />}
+                      label="Gotowy do importu"
+                      color="success"
+                      size="small"
+                    />
+                    <IconButton
+                      size="small"
+                      onClick={() => {
+                        setQgisFile(null);
+                        setQgisProjectName('');
+                      }}
+                      disabled={isImporting}
+                      sx={{
+                        color: 'text.secondary',
+                        '&:hover': { color: 'error.main' },
+                      }}
+                    >
+                      <Close />
+                    </IconButton>
                   </Box>
-                  <Chip
-                    icon={<CheckCircle />}
-                    label="Wybrano"
-                    color="success"
-                    size="small"
-                  />
-                </Box>
-              )}
+                )}
+              </Box>
             </Box>
 
             {qgisFile && (
