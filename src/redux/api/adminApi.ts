@@ -85,7 +85,39 @@ export const adminApi = createApi({
     }),
 
     getAllProjects: builder.query<AdminProjectsResponse, void>({
-      query: () => '/api/admin-stats/projects',
+      query: () => '/dashboard/projects/',
+      transformResponse: (response: any) => {
+        // Transform /dashboard/projects/ response to AdminProjectsResponse format
+        const projects = response.list_of_projects || [];
+
+        return {
+          total_projects: projects.length,
+          valid_projects: projects.filter((p: any) => p.qgs_file_exists && p.database_exists).length,
+          invalid_projects: projects.filter((p: any) => !p.qgs_file_exists || !p.database_exists).length,
+          missing_qgs_files: projects.filter((p: any) => !p.qgs_file_exists).length,
+          missing_databases: projects.filter((p: any) => !p.database_exists).length,
+          projects: projects.map((p: any) => ({
+            id: p.id,
+            project_name: p.project_name,
+            custom_project_name: p.custom_project_name || '',
+            description: p.description || '',
+            category: p.category || 'Inne',
+            published: p.published,
+            domain_name: p.domain || '',
+            creationDate: p.creationDate,
+            logoExists: p.logoExists || false,
+            owner: {
+              id: p.owner?.id || null,
+              username: p.owner?.username || 'Unknown',
+              email: p.owner?.email || '',
+            },
+            qgs_file_exists: p.qgs_file_exists !== false,
+            database_exists: p.database_exists !== false,
+            is_valid: p.qgs_file_exists !== false && p.database_exists !== false,
+          })),
+          timestamp: new Date().toISOString(),
+        };
+      },
       providesTags: ['AdminProjects'],
     }),
 

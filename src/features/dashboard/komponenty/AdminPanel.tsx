@@ -68,6 +68,16 @@ export default function AdminPanel() {
   const [updateLicense] = useUpdateUserLicenseMutation();
   const [deleteUser, { isLoading: isDeleting }] = useDeleteUserMutation();
 
+  // Debug: Log projects data
+  console.log('📊 Projects Data:', JSON.stringify(projectsData, null, 2));
+  if (projectsError) {
+    console.log('❌ Projects Error:', {
+      status: 'status' in projectsError ? projectsError.status : 'unknown',
+      data: 'data' in projectsError ? projectsError.data : undefined,
+      error: 'error' in projectsError ? projectsError.error : undefined
+    });
+  }
+
   // Check if user is admin
   const isAdmin = user?.email?.includes('@universemapmaker.online') || user?.username === 'admin';
 
