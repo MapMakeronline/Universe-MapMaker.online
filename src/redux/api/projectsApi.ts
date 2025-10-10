@@ -323,16 +323,38 @@ export const projectsApi = createApi({
             if (xhr.status >= 200 && xhr.status < 300) {
               try {
                 const data = JSON.parse(xhr.responseText);
-                resolve({ data });
+
+                // Check if backend returned an error despite 200 status
+                if (data.success === false || data.error) {
+                  resolve({
+                    error: {
+                      status: xhr.status,
+                      data: {
+                        message: data.message || data.error || 'Import QGS failed',
+                        details: data
+                      }
+                    }
+                  });
+                } else {
+                  resolve({ data });
+                }
               } catch (error) {
                 resolve({ error: { status: xhr.status, data: 'Invalid JSON response' } });
               }
             } else {
               try {
                 const errorData = JSON.parse(xhr.responseText);
-                resolve({ error: { status: xhr.status, data: errorData } });
+                resolve({
+                  error: {
+                    status: xhr.status,
+                    data: {
+                      message: errorData.message || errorData.detail || 'HTTP Error',
+                      details: errorData
+                    }
+                  }
+                });
               } catch {
-                resolve({ error: { status: xhr.status, data: xhr.responseText } });
+                resolve({ error: { status: xhr.status, data: { message: xhr.responseText || 'Unknown error' } } });
               }
             }
           });

@@ -238,7 +238,10 @@ export function CreateProjectDialog({
       setImportStep('idle');
       setActiveTab(0); // Switch back to create tab
     } catch (error: any) {
-      setQgisError(error.message || 'Wystąpił błąd podczas importowania projektu');
+      // Extract detailed error message from RTK Query error structure
+      const errorMessage = error?.data?.message || error?.message || 'Wystąpił błąd podczas importowania projektu';
+
+      setQgisError(errorMessage);
       setUploadProgress(0);
       setImportStep('idle');
     } finally {
