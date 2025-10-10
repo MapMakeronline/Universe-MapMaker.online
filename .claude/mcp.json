@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "mapbox": {
+      "command": "npx",
+      "args": ["-y", "@mapbox/mcp-server-mapbox"],
+      "env": {
+        "MAPBOX_ACCESS_TOKEN": "pk.eyJ1IjoibWFwbWFrZXItb25saW5lIiwiYSI6ImNtZ2U3NHN5MzFmNzIybHF0MGp4eHVoYzkifQ.bYL5OZhuqokHHHWuOwdeIA"
+      }
+    },
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@context-labs/mcp-server-context7"]
+    }
+  }
+}

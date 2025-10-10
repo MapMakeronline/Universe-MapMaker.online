@@ -31,9 +31,9 @@ import {
   Google,
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
-import { authService } from '@/lib/api/auth';
-import { useAppDispatch } from '@/store/hooks';
-import { setAuth, setLoading } from '@/store/slices/authSlice';
+import { authService } from '@/api/endpointy/auth';
+import { useAppDispatch } from '@/redux/hooks';
+import { setAuth, setLoading } from '@/redux/slices/authSlice';
 
 export default function RegisterPage() {
   const theme = useTheme();

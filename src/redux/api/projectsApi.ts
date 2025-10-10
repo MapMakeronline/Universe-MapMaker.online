@@ -1,0 +1,178 @@
+/**
+ * RTK Query API for Projects
+ *
+ * Phase 3: RTK Query Migration
+ * Replaces manual async thunks with auto-generated hooks and caching
+ *
+ * Benefits:
+ * - Auto-generated hooks: useGetProjectsQuery, useCreateProjectMutation
+ * - Automatic caching and invalidation
+ * - Optimistic updates
+ * - Built-in loading/error states
+ * - ~85% less boilerplate code
+ */
+
+import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import type {
+  ProjectsResponse,
+  Project,
+  CreateProjectData,
+  UpdateProjectData,
+  DbInfo,
+} from '@/api/typy/types';
+
+// Get token from localStorage (same as apiClient)
+const getToken = (): string | null => {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('authToken'); // Changed from 'token' to 'authToken'
+};
+
+// Base query with auth headers
+const baseQuery = fetchBaseQuery({
+  baseUrl: process.env.NEXT_PUBLIC_API_URL || 'https://api.universemapmaker.online',
+  prepareHeaders: (headers) => {
+    const token = getToken();
+    if (token) {
+      headers.set('Authorization', `Token ${token}`); // Changed from 'Bearer' to 'Token' for Django REST Framework
+    }
+    headers.set('Content-Type', 'application/json');
+    return headers;
+  },
+});
+
+/**
+ * Projects API with RTK Query
+ *
+ * Endpoints:
+ * - getProjects: Fetch all user projects
+ * - createProject: Create new project
+ * - updateProject: Update project metadata
+ * - deleteProject: Delete project
+ * - togglePublish: Publish/unpublish project
+ */
+export const projectsApi = createApi({
+  reducerPath: 'projectsApi',
+  baseQuery,
+  tagTypes: ['Projects', 'Project'],
+  endpoints: (builder) => ({
+    /**
+     * GET /dashboard/projects/
+     * Fetch all projects for authenticated user
+     */
+    getProjects: builder.query<ProjectsResponse, void>({
+      query: () => '/dashboard/projects/',
+      providesTags: (result) =>
+        result
+          ? [
+              ...result.list_of_projects.map(({ project_name }) => ({
+                type: 'Project' as const,
+                id: project_name
+              })),
+              { type: 'Projects', id: 'LIST' },
+            ]
+          : [{ type: 'Projects', id: 'LIST' }],
+    }),
+
+    /**
+     * POST /dashboard/projects/create/
+     * Create a new project
+     */
+    createProject: builder.mutation<Project, CreateProjectData>({
+      query: (data) => ({
+        url: '/dashboard/projects/create/',
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: [{ type: 'Projects', id: 'LIST' }],
+    }),
+
+    /**
+     * PUT /dashboard/projects/update/
+     * Update project metadata
+     */
+    updateProject: builder.mutation<
+      { message: string },
+      UpdateProjectData
+    >({
+      query: (data) => ({
+        url: '/dashboard/projects/update/',
+        method: 'PUT',
+        body: data,
+      }),
+      invalidatesTags: (result, error, arg) => [
+        { type: 'Project', id: arg.project },
+        { type: 'Projects', id: 'LIST' },
+      ],
+    }),
+
+    /**
+     * DELETE /dashboard/projects/delete/{projectName}/
+     * Delete a project
+     */
+    deleteProject: builder.mutation<{ message: string }, string>({
+      query: (projectName) => ({
+        url: `/dashboard/projects/delete/${projectName}/`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: (result, error, projectName) => [
+        { type: 'Project', id: projectName },
+        { type: 'Projects', id: 'LIST' },
+      ],
+    }),
+
+    /**
+     * PUT /dashboard/projects/{projectName}/publish/
+     * Toggle project publish status
+     */
+    togglePublish: builder.mutation<
+      { message: string },
+      { projectName: string; publish: boolean }
+    >({
+      query: ({ projectName, publish }) => ({
+        url: `/dashboard/projects/${projectName}/publish/`,
+        method: 'PUT',
+        body: { publish },
+      }),
+      invalidatesTags: (result, error, arg) => [
+        { type: 'Project', id: arg.projectName },
+        { type: 'Projects', id: 'LIST' },
+      ],
+      // Optimistic update for instant UI feedback
+      async onQueryStarted({ projectName, publish }, { dispatch, queryFulfilled }) {
+        const patchResult = dispatch(
+          projectsApi.util.updateQueryData('getProjects', undefined, (draft) => {
+            const project = draft.list_of_projects.find(p => p.project_name === projectName);
+            if (project) {
+              project.published = publish;
+            }
+          })
+        );
+        try {
+          await queryFulfilled;
+        } catch {
+          patchResult.undo();
+        }
+      },
+    }),
+  }),
+});
+
+/**
+ * Auto-generated hooks for components
+ *
+ * Queries (auto-refetch on mount/focus):
+ * - useGetProjectsQuery()
+ *
+ * Mutations (manual trigger):
+ * - useCreateProjectMutation()
+ * - useUpdateProjectMutation()
+ * - useDeleteProjectMutation()
+ * - useTogglePublishMutation()
+ */
+export const {
+  useGetProjectsQuery,
+  useCreateProjectMutation,
+  useUpdateProjectMutation,
+  useDeleteProjectMutation,
+  useTogglePublishMutation,
+} = projectsApi;

@@ -23,9 +23,10 @@ import {
   ArrowBack,
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
-import { authService } from '@/lib/api/auth';
-import { useAppDispatch } from '@/store/hooks';
-import { setAuth, setLoading } from '@/store/slices/authSlice';
+import Image from 'next/image';
+import { authService } from '@/api/endpointy/auth';
+import { useAppDispatch } from '@/redux/hooks';
+import { setAuth, setLoading } from '@/redux/slices/authSlice';
 
 export default function LoginPage() {
   const theme = useTheme();
@@ -35,7 +36,7 @@ export default function LoginPage() {
   const [error, setError] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
-    email: '',
+    usernameOrEmail: '',
     password: '',
   });
 
@@ -55,7 +56,7 @@ export default function LoginPage() {
 
     try {
       const response = await authService.login({
-        username: formData.email, // Using email as username
+        username: formData.usernameOrEmail,
         password: formData.password,
       });
 
@@ -145,11 +146,17 @@ export default function LoginPage() {
                   alignItems: 'center',
                   justifyContent: 'center',
                   mr: 2,
+                  p: 1,
                 }}
               >
-                <Typography variant="h4" sx={{ color: theme.palette.primary.main, fontWeight: 'bold' }}>
-                  M
-                </Typography>
+                <Image
+                  src="/logo.svg"
+                  alt="MapMaker Logo"
+                  width={50}
+                  height={50}
+                  style={{ objectFit: 'contain' }}
+                  priority
+                />
               </Box>
               <Typography variant="h4" component="h1" fontWeight="700">
                 MapMaker.Online
@@ -204,13 +211,13 @@ export default function LoginPage() {
 
                 <Box sx={{ mt: 4 }}>
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                    Nazwa użytkownika
+                    Nazwa użytkownika lub email
                   </Typography>
                   <TextField
                     fullWidth
-                    placeholder="Wpisz swoją nazwę użytkownika"
-                    value={formData.email}
-                    onChange={handleInputChange('email')}
+                    placeholder="Wpisz nazwę użytkownika lub adres email"
+                    value={formData.usernameOrEmail}
+                    onChange={handleInputChange('usernameOrEmail')}
                     disabled={isLoading}
                     sx={{
                       mb: 3,
@@ -258,7 +265,7 @@ export default function LoginPage() {
                     variant="contained"
                     size="large"
                     onClick={handleLogin}
-                    disabled={isLoading || !formData.email || !formData.password}
+                    disabled={isLoading || !formData.usernameOrEmail || !formData.password}
                     sx={{
                       mb: 3,
                       py: 1.5,

@@ -26,3 +26,24 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .env.local
+
+# screenshots (testing)
+/screenshots
+
+# build & dev logs
+*.log
+build-output.log
+dev-output.log
+
+# migration backups
+backup-*/
+
+# legacy folders
+mapmaker_test-main/
+docs/backend/
+
+# Playwright
+/test-results/
+/playwright-report/
+/playwright/.cache/
+.env.test
