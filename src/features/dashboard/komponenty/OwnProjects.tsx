@@ -119,10 +119,10 @@ export default function OwnProjectsRTK() {
 
       // CRITICAL: Backend does NOT return project_name in response!
       // We need to fetch the project list to get the actual project_name (not custom_project_name)
-      await refetch(); // Force refetch projects list
+      const { data: freshProjectsData } = await refetch(); // Force refetch and get fresh data
 
-      // Find the newly created project by custom_project_name
-      const projects = projectsData?.list_of_projects || [];
+      // Find the newly created project by custom_project_name in FRESH data
+      const projects = freshProjectsData?.list_of_projects || [];
       const newProject = projects.find(p => p.custom_project_name === projectName);
 
       if (!newProject) {
