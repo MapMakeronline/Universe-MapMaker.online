@@ -98,7 +98,13 @@ export default function OwnProjectsRTK() {
     }
   };
 
-  const handleImportQGIS = async (file: File, projectName: string, domain: string, description?: string) => {
+  const handleImportQGIS = async (
+    file: File,
+    projectName: string,
+    domain: string,
+    description?: string,
+    onProgress?: (progress: number) => void
+  ) => {
     try {
       // STEP 1: Create empty project first (backend requirement)
       const createData: CreateProjectData = {
@@ -132,11 +138,12 @@ export default function OwnProjectsRTK() {
         project_name: newProject.project_name
       });
 
-      // STEP 2: Import QGS file to the created project (RTK Query)
+      // STEP 2: Import QGS file to the created project (RTK Query with progress tracking)
       console.log('📤 Importing QGS file to project:', backendProjectName);
       await importQGS({
         project: backendProjectName,
         qgsFile: file,
+        onProgress, // Pass progress callback from dialog
       }).unwrap();
       console.log('✅ QGS imported successfully!');
 

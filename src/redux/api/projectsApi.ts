@@ -293,21 +293,63 @@ export const projectsApi = createApi({
      * 3. Imports vector/raster layers to database
      * 4. Configures WFS and styles
      * 5. Generates layer tree (tree.json)
+     *
+     * NOTE: Uses custom queryFn to support upload progress tracking
      */
     importQGS: builder.mutation<
       { data: string; success: boolean; message: string },
-      { project: string; qgsFile: File }
+      { project: string; qgsFile: File; onProgress?: (progress: number) => void }
     >({
-      query: ({ project, qgsFile }) => {
-        const formData = new FormData();
-        formData.append('project', project);
-        formData.append('qgs', qgsFile);
+      queryFn: async ({ project, qgsFile, onProgress }, _api, _extraOptions, baseQuery) => {
+        const token = getToken();
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.universemapmaker.online';
 
-        return {
-          url: '/api/projects/import/qgs/',
-          method: 'POST',
-          body: formData,
-        };
+        return new Promise((resolve) => {
+          const xhr = new XMLHttpRequest();
+          const formData = new FormData();
+          formData.append('project', project);
+          formData.append('qgs', qgsFile);
+
+          // Upload progress tracking
+          xhr.upload.addEventListener('progress', (e) => {
+            if (e.lengthComputable && onProgress) {
+              const percentComplete = Math.round((e.loaded / e.total) * 100);
+              onProgress(percentComplete);
+            }
+          });
+
+          // Response handlers
+          xhr.addEventListener('load', () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              try {
+                const data = JSON.parse(xhr.responseText);
+                resolve({ data });
+              } catch (error) {
+                resolve({ error: { status: xhr.status, data: 'Invalid JSON response' } });
+              }
+            } else {
+              try {
+                const errorData = JSON.parse(xhr.responseText);
+                resolve({ error: { status: xhr.status, data: errorData } });
+              } catch {
+                resolve({ error: { status: xhr.status, data: xhr.responseText } });
+              }
+            }
+          });
+
+          xhr.addEventListener('error', () => {
+            resolve({ error: { status: 'FETCH_ERROR', error: 'Network error' } });
+          });
+
+          xhr.addEventListener('abort', () => {
+            resolve({ error: { status: 'FETCH_ERROR', error: 'Upload aborted' } });
+          });
+
+          // Send request
+          xhr.open('POST', `${baseUrl}/api/projects/import/qgs/`);
+          xhr.setRequestHeader('Authorization', `Token ${token}`);
+          xhr.send(formData);
+        });
       },
       invalidatesTags: (result, error, arg) => [
         { type: 'Project', id: arg.project },

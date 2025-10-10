@@ -34,7 +34,13 @@ interface CreateProjectDialogProps {
   open: boolean;
   onClose: () => void;
   onCreate: (data: CreateProjectData) => Promise<void>;
-  onImportQGIS?: (file: File, projectName: string, domain: string, description?: string) => Promise<void>;
+  onImportQGIS?: (
+    file: File,
+    projectName: string,
+    domain: string,
+    description?: string,
+    onProgress?: (progress: number) => void
+  ) => Promise<void>;
 }
 
 interface TabPanelProps {
@@ -91,6 +97,7 @@ export function CreateProjectDialog({
   const [qgisError, setQgisError] = useState<string | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [importStep, setImportStep] = useState<'idle' | 'creating' | 'uploading'>('idle');
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setActiveTab(newValue);
@@ -182,18 +189,28 @@ export function CreateProjectDialog({
     });
 
     try {
-      await onImportQGIS(qgisFile, qgisProjectName, qgisDomain, qgisDescription);
+      // Create progress callback that updates state and sets step to uploading
+      const handleProgress = (progress: number) => {
+        setUploadProgress(progress);
+        if (progress > 0 && importStep !== 'uploading') {
+          setImportStep('uploading');
+        }
+      };
+
+      await onImportQGIS(qgisFile, qgisProjectName, qgisDomain, qgisDescription, handleProgress);
       console.log('✅ Dialog - Import completed successfully');
       // Reset form on success
       setQgisFile(null);
       setQgisProjectName('');
       setQgisDomain('');
       setQgisDescription('');
+      setUploadProgress(0);
       setImportStep('idle');
       setActiveTab(0); // Switch back to create tab
     } catch (error: any) {
       console.error('❌ Dialog - Import failed:', error);
       setQgisError(error.message || 'Wystąpił błąd podczas importowania projektu');
+      setUploadProgress(0);
       setImportStep('idle');
     } finally {
       setIsImporting(false);
@@ -386,10 +403,14 @@ export function CreateProjectDialog({
 
             {isImporting && (
               <Box sx={{ width: '100%' }}>
-                <LinearProgress />
+                <LinearProgress
+                  variant={importStep === 'uploading' && uploadProgress > 0 ? 'determinate' : 'indeterminate'}
+                  value={uploadProgress}
+                />
                 <Typography variant="caption" sx={{ mt: 1, display: 'block', textAlign: 'center', color: 'text.secondary' }}>
                   {importStep === 'creating' && '⏳ Tworzenie projektu...'}
-                  {importStep === 'uploading' && '📤 Importowanie pliku QGS...'}
+                  {importStep === 'uploading' && uploadProgress > 0 && `📤 Wysyłanie pliku... ${uploadProgress}%`}
+                  {importStep === 'uploading' && uploadProgress === 0 && '📤 Rozpoczynanie wysyłania...'}
                 </Typography>
               </Box>
             )}
