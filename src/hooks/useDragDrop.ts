@@ -31,7 +31,7 @@ const MAIN_LEVEL_DROP_ID = '__main_level__';
 
 export const useDragDrop = <T extends LayerNode>(
   items: T[],
-  setItems: (items: T[]) => void
+  onMove: (layerId: string, targetId: string, position: 'before' | 'after' | 'inside') => void
 ) => {
   const [dragDropState, setDragDropState] = useState<DragDropState>({
     draggedItem: null,
@@ -329,29 +329,7 @@ export const useDragDrop = <T extends LayerNode>(
     // Specjalna obsługa dla strefy głównego poziomu
     if (targetId === MAIN_LEVEL_DROP_ID) {
       console.log('🏠 DROP TO MAIN LEVEL!');
-
-      const draggedPath = findElementPath(items, dragDropState.draggedItem);
-      if (!draggedPath) {
-        console.log('❌ Could not find dragged element path');
-        setDragDropState(prev => ({ ...prev, dropTarget: null }));
-        return;
-      }
-
-      let newItems = [...items];
-
-      // Usuń element z aktualnej pozycji
-      const { newItems: itemsAfterRemoval, removedElement } = removeElementAtPath(newItems, draggedPath);
-      if (!removedElement) {
-        console.log('❌ Could not remove element');
-        setDragDropState(prev => ({ ...prev, dropTarget: null }));
-        return;
-      }
-
-      // Dodaj na koniec głównego poziomu
-      newItems = [...itemsAfterRemoval, removedElement];
-
-      console.log('✅ Main level drop completed');
-      setItems(newItems);
+      onMove(dragDropState.draggedItem, targetId, 'after');
       cleanupDragState();
       return;
     }
@@ -363,49 +341,8 @@ export const useDragDrop = <T extends LayerNode>(
       return;
     }
 
-    // Znajdź ścieżki do elementów
-    const draggedPath = findElementPath(items, dragDropState.draggedItem);
-    const targetPath = findElementPath(items, targetId);
-
-    if (!draggedPath || !targetPath) {
-      console.log('❌ Could not find element paths');
-      setDragDropState(prev => ({ ...prev, dropTarget: null }));
-      return;
-    }
-
-    let newItems = [...items];
-
-    // 1. Usuń przeciągnięty element
-    const { newItems: itemsAfterRemoval, removedElement } = removeElementAtPath(newItems, draggedPath);
-    if (!removedElement) {
-      console.log('❌ Could not remove dragged element');
-      setDragDropState(prev => ({ ...prev, dropTarget: null }));
-      return;
-    }
-
-    console.log('📦 Removed element:', removedElement.id);
-    newItems = itemsAfterRemoval;
-
-    // 2. Znajdź nową ścieżkę do targetu (po usunięciu elementu)
-    const newTargetPath = findElementPath(newItems, targetId);
-    if (!newTargetPath) {
-      console.log('❌ Could not find target after removal');
-      setDragDropState(prev => ({ ...prev, dropTarget: null }));
-      return;
-    }
-
-    // 3. Wstaw element w nowym miejscu
-    if (dragDropState.dropPosition === 'inside') {
-      console.log('📁 Moving to group:', targetId);
-      newItems = insertElementAtPath(newItems, removedElement, newTargetPath, 'inside');
-    } else {
-      console.log('📋 Reordering/moving between groups:', dragDropState.dropPosition);
-      newItems = insertElementAtPath(newItems, removedElement, newTargetPath, dragDropState.dropPosition);
-    }
-
-    console.log('✅ Hierarchy operation completed');
-    setItems(newItems);
-
+    console.log('✅ Calling Redux moveLayer:', dragDropState.draggedItem, '→', targetId, dragDropState.dropPosition);
+    onMove(dragDropState.draggedItem, targetId, dragDropState.dropPosition);
     cleanupDragState();
   };
 
@@ -425,44 +362,8 @@ export const useDragDrop = <T extends LayerNode>(
       return;
     }
 
-    console.log(`🎯 Advanced drop at end of group: ${groupId}, item: ${dragDropState.draggedItem}`);
-
-    // Znajdź ścieżki
-    const draggedPath = findElementPath(items, dragDropState.draggedItem);
-    const groupPath = findElementPath(items, groupId);
-
-    if (!draggedPath || !groupPath) {
-      console.log('❌ Could not find element paths');
-      setDragDropState(prev => ({ ...prev, dropTarget: null }));
-      return;
-    }
-
-    let newItems = [...items];
-
-    // Usuń element z aktualnej pozycji
-    const { newItems: itemsAfterRemoval, removedElement } = removeElementAtPath(newItems, draggedPath);
-    if (!removedElement) {
-      console.log('❌ Could not remove element');
-      setDragDropState(prev => ({ ...prev, dropTarget: null }));
-      return;
-    }
-
-    newItems = itemsAfterRemoval;
-
-    // Znajdź nową ścieżkę do grupy (po usunięciu elementu)
-    const newGroupPath = findElementPath(newItems, groupId);
-    if (!newGroupPath) {
-      console.log('❌ Could not find group after removal');
-      setDragDropState(prev => ({ ...prev, dropTarget: null }));
-      return;
-    }
-
-    // Wstaw na koniec grupy
-    newItems = insertElementAtPath(newItems, removedElement, newGroupPath, 'inside');
-
-    console.log('✅ Advanced end drop completed');
-    setItems(newItems);
-
+    console.log(`🎯 Drop at end of group: ${groupId}, item: ${dragDropState.draggedItem}`);
+    onMove(dragDropState.draggedItem, groupId, 'inside');
     cleanupDragState();
   };
 

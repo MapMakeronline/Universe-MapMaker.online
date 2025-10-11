@@ -11,7 +11,16 @@
       "Bash(curl:*)",
       "Bash(npm install:*)",
       "Read(//c//**)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nfix: improve QGS import UX and add coordinate transformation\n\nMajor UX improvements for QGS import workflow:\n- Add progress feedback during 3-minute backend processing\n- Fix project sorting (newest first by created_at)\n- Fix timestamp display (UTC to local Polish time)\n- Add coordinate transformation (EPSG:2180 to EPSG:4326)\n- Connect layer tree to Redux for real-time updates\n\nChanges:\n- feat(import): add ''processing'' step with clear message\n- feat(projects): sort by created_at DESC in both tabs\n- feat(timestamp): convert UTC to local time with Polish locale\n- feat(coordinates): add proj4 transformation utilities\n- feat(layers): connect LeftPanel to Redux state\n- feat(api): complete RTK Query migration (52 endpoints)\n- docs: add comprehensive documentation for all fixes\n\nFiles changed:\n- CreateProjectDialog.tsx: Added processing step UI\n- OwnProjects.tsx: Added project sorting logic\n- PublicProjects.tsx: Added project sorting logic\n- ProjectCard.tsx: Added UTC to local time conversion\n- coordinates.ts: NEW coordinate transformation utilities\n- LeftPanel.tsx: Connected to Redux layers state\n- layersApi.ts: NEW RTK Query API for layers (29 endpoints)\n- map/page.tsx: Added automatic coordinate transformation\n\nFixes:\n- Invalid LngLat coordinate errors (EPSG:2180 vs EPSG:4326)\n- Missing progress feedback during import\n- Wrong timestamp display (2 hour difference)\n- New projects not appearing at top of list\n- Layer tree not loading imported layers\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git push:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(taskkill:*)",
+      "Bash(cmd //c:*)",
+      "Bash(npm run dev:*)",
+      "Bash(git commit:*)",
+      "Bash(npx:*)"
     ],
     "deny": [],
     "ask": []

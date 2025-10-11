@@ -20,8 +20,17 @@ import CreateConsultationModal from '../modale/CreateConsultationModal';
 import LayerManagerModal from '../modale/LayerManagerModal';
 import PrintConfigModal from '../modale/PrintConfigModal';
 import { useResizable, useDragDrop } from '@/hooks/index';
-import { useAppSelector } from '@/redux/hooks';
+import { useAppSelector, useAppDispatch } from '@/redux/hooks';
 import { LayerNode } from '@/typy/layers';
+import {
+  toggleLayerVisibility,
+  toggleGroupExpanded,
+  toggleGroupVisibilityCascade,
+  expandAllGroups,
+  collapseAllGroups,
+  deleteLayer,
+  moveLayer
+} from '@/redux/slices/layersSlice';
 
 // Types
 interface Warstwa {
@@ -52,6 +61,7 @@ const SIDEBAR_CONFIG = {
 
 const LeftPanel: React.FC = () => {
   const theme = useTheme();
+  const dispatch = useAppDispatch();
 
   // Get layers from Redux
   const reduxLayers = useAppSelector((state) => state.layers.layers);
@@ -109,7 +119,12 @@ const LeftPanel: React.FC = () => {
     maxWidth: parseInt(SIDEBAR_CONFIG.sidebar.maxWidth),
   });
 
-  const dragDropHandlers = useDragDrop(warstwy, setWarstwy);
+  // Drag & drop handlers with Redux integration
+  const handleDragDropMove = (layerId: string, targetId: string, position: 'before' | 'after' | 'inside') => {
+    dispatch(moveLayer({ layerId, targetId, position }));
+  };
+
+  const dragDropHandlers = useDragDrop(warstwy, handleDragDropMove);
 
   // Convert Redux LayerNode to Warstwa format
   const convertLayerNodeToWarstwa = (node: LayerNode): Warstwa => {
@@ -167,40 +182,19 @@ const LeftPanel: React.FC = () => {
   };
 
   const toggleVisibility = (id: string) => {
-    const updateWarstwy = (warstwy: Warstwa[]): Warstwa[] => {
-      return warstwy.map(warstwa => {
-        if (warstwa.id === id) {
-          const newWarstwa = { ...warstwa, widoczna: !warstwa.widoczna };
-          if (newWarstwa.dzieci) {
-            newWarstwa.dzieci = newWarstwa.dzieci.map(dziecko => ({
-              ...dziecko,
-              widoczna: newWarstwa.widoczna
-            }));
-          }
-          return newWarstwa;
-        }
-        if (warstwa.dzieci) {
-          return { ...warstwa, dzieci: updateWarstwy(warstwa.dzieci) };
-        }
-        return warstwa;
-      });
-    };
-    setWarstwy(updateWarstwy(warstwy));
+    // Check if it's a group (has children)
+    const layer = findLayerById(warstwy, id);
+    if (layer && layer.typ === 'grupa' && layer.dzieci) {
+      // Use cascade action for groups
+      dispatch(toggleGroupVisibilityCascade(id));
+    } else {
+      // Use regular toggle for individual layers
+      dispatch(toggleLayerVisibility(id));
+    }
   };
 
   const toggleExpansion = (id: string) => {
-    const updateExpansion = (warstwy: Warstwa[]): Warstwa[] => {
-      return warstwy.map(warstwa => {
-        if (warstwa.id === id && warstwa.typ === 'grupa') {
-          return { ...warstwa, rozwinięta: !warstwa.rozwinięta };
-        }
-        if (warstwa.dzieci) {
-          return { ...warstwa, dzieci: updateExpansion(warstwa.dzieci) };
-        }
-        return warstwa;
-      });
-    };
-    setWarstwy(updateExpansion(warstwy));
+    dispatch(toggleGroupExpanded(id));
   };
 
   const toggleSection = (sectionId: string) => {
@@ -218,25 +212,11 @@ const LeftPanel: React.FC = () => {
   };
 
   const expandAll = () => {
-    const expandAllRecursive = (warstwy: Warstwa[]): Warstwa[] => {
-      return warstwy.map(warstwa => ({
-        ...warstwa,
-        rozwinięta: warstwa.typ === 'grupa',
-        dzieci: warstwa.dzieci ? expandAllRecursive(warstwa.dzieci) : undefined
-      }));
-    };
-    setWarstwy(expandAllRecursive(warstwy));
+    dispatch(expandAllGroups());
   };
 
   const collapseAll = () => {
-    const collapseAllRecursive = (warstwy: Warstwa[]): Warstwa[] => {
-      return warstwy.map(warstwa => ({
-        ...warstwa,
-        rozwinięta: false,
-        dzieci: warstwa.dzieci ? collapseAllRecursive(warstwa.dzieci) : undefined
-      }));
-    };
-    setWarstwy(collapseAllRecursive(warstwy));
+    dispatch(collapseAllGroups());
   };
 
   // Modal handlers
@@ -328,20 +308,7 @@ const LeftPanel: React.FC = () => {
 
   const handleDeleteLayer = () => {
     if (selectedLayer) {
-      const deleteLayerRecursive = (layers: Warstwa[], targetId: string): Warstwa[] => {
-        return layers.filter(layer => {
-          if (layer.id === targetId) {
-            return false; // Remove this layer
-          }
-          if (layer.dzieci) {
-            layer.dzieci = deleteLayerRecursive(layer.dzieci, targetId);
-          }
-          return true;
-        });
-      };
-
-      const updatedWarstwy = deleteLayerRecursive(warstwy, selectedLayer.id);
-      setWarstwy(updatedWarstwy);
+      dispatch(deleteLayer(selectedLayer.id));
       setSelectedLayer(null);
     }
   };
