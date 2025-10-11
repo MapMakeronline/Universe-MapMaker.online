@@ -22,14 +22,7 @@ import LayersIcon from '@mui/icons-material/Layers';
 import PrzyblizDoWarstwyIcon from '@mui/icons-material/MyLocation';
 import CalendarTodayIcon from '@mui/icons-material/TableView';
 // Types
-interface Warstwa {
-  id: string;
-  nazwa: string;
-  widoczna: boolean;
-  typ: 'grupa' | 'wektor' | 'raster' | 'wms';
-  dzieci?: Warstwa[];
-  rozwinięta?: boolean;
-}
+import { LayerNode } from '@/typy/layers';
 
 type DropPosition = 'before' | 'after' | 'inside';
 
@@ -41,8 +34,8 @@ interface DragDropState {
 }
 
 interface LayerTreeProps {
-  warstwy: Warstwa[];
-  selectedLayer: Warstwa | null;
+  warstwy: LayerNode[];
+  selectedLayer: LayerNode | null;
   searchFilter: string;
   dragDropState: DragDropState;
   onLayerSelect: (id: string) => void;
@@ -224,30 +217,31 @@ export const LayerTree: React.FC<LayerTreeProps> = ({
   const theme = useTheme();
   const { draggedItem, dropTarget, dropPosition, showMainLevelZone } = dragDropState;
 
-  const getWarstwaIcon = (typ: 'grupa' | 'wektor' | 'raster' | 'wms', id?: string) => {
+  const getWarstwaIcon = (type: LayerNode['type'], id?: string) => {
     const iconSize = TREE_CONFIG.icon.size.small;
-    switch (typ) {
-      case 'grupa': return <FolderIcon sx={{ color: layerIconColors.grupa, fontSize: iconSize }} />;
-      case 'wektor': return <LayersIcon sx={{ color: layerIconColors.wektor, fontSize: iconSize }} />;
-      case 'raster': return <LayersIcon sx={{ color: layerIconColors.raster, fontSize: iconSize }} />;
+    switch (type) {
+      case 'group': return <FolderIcon sx={{ color: layerIconColors.grupa, fontSize: iconSize }} />;
+      case 'VectorLayer': return <LayersIcon sx={{ color: layerIconColors.wektor, fontSize: iconSize }} />;
+      case 'RasterLayer': return <LayersIcon sx={{ color: layerIconColors.raster, fontSize: iconSize }} />;
+      case 'WMSLayer': return <LayersIcon sx={{ color: layerIconColors.raster, fontSize: iconSize }} />;
       default: return <LayersIcon sx={{ color: layerIconColors.default, fontSize: iconSize }} />;
     }
   };
 
-  const filterWarstwy = (warstwy: Warstwa[], filter: string): Warstwa[] => {
+  const filterWarstwy = (warstwy: LayerNode[], filter: string): LayerNode[] => {
     if (!filter) return warstwy;
     return warstwy.filter(warstwa => {
-      const matchesName = warstwa.nazwa.toLowerCase().includes(filter.toLowerCase());
-      const hasMatchingChildren = warstwa.dzieci && 
-        filterWarstwy(warstwa.dzieci, filter).length > 0;
+      const matchesName = warstwa.name.toLowerCase().includes(filter.toLowerCase());
+      const hasMatchingChildren = warstwa.children &&
+        filterWarstwy(warstwa.children, filter).length > 0;
       return matchesName || hasMatchingChildren;
     }).map(warstwa => ({
       ...warstwa,
-      dzieci: warstwa.dzieci ? filterWarstwy(warstwa.dzieci, filter) : undefined
+      children: warstwa.children ? filterWarstwy(warstwa.children, filter) : undefined
     }));
   };
 
-  const renderWarstwaItem = (warstwa: Warstwa, level: number = 0): React.ReactNode => {
+  const renderWarstwaItem = (warstwa: LayerNode, level: number = 0): React.ReactNode => {
     const isDragged = draggedItem === warstwa.id;
     const isDropTarget = dropTarget === warstwa.id;
 
@@ -409,7 +403,7 @@ export const LayerTree: React.FC<LayerTreeProps> = ({
           }}
         >
           {/* Strzałka rozwijania dla grup lub placeholder dla warstw */}
-          {warstwa.typ === 'grupa' ? (
+          {warstwa.type === 'group' ? (
             <Box
               onClick={(e) => {
                 e.stopPropagation();
@@ -431,8 +425,8 @@ export const LayerTree: React.FC<LayerTreeProps> = ({
                   width: 0,
                   height: 0,
                   borderStyle: 'solid',
-                  borderWidth: warstwa.rozwinięta ? '6px 4px 0 4px' : '4px 0 4px 6px',
-                  borderColor: warstwa.rozwinięta
+                  borderWidth: warstwa.childrenVisible ? '6px 4px 0 4px' : '4px 0 4px 6px',
+                  borderColor: warstwa.childrenVisible
                     ? `${theme.palette.text.secondary} transparent transparent transparent`
                     : `transparent transparent transparent ${theme.palette.text.secondary}`,
                   transition: 'all 0.2s ease'
@@ -451,7 +445,7 @@ export const LayerTree: React.FC<LayerTreeProps> = ({
           <Box
             component="input"
             type="checkbox"
-            checked={warstwa.widoczna}
+            checked={warstwa.visible}
             onChange={() => onToggleVisibility(warstwa.id)}
             onClick={(e: any) => e.stopPropagation()}
             sx={{
@@ -466,23 +460,23 @@ export const LayerTree: React.FC<LayerTreeProps> = ({
             }}
           />
           
-          <Box sx={{ 
-            mr: TREE_CONFIG.elements.iconContainer.marginRight, 
-            display: 'flex', 
+          <Box sx={{
+            mr: TREE_CONFIG.elements.iconContainer.marginRight,
+            display: 'flex',
             alignItems: 'center',
             minWidth: TREE_CONFIG.elements.iconContainer.minWidth,
             justifyContent: 'center'
           }}>
-            {getWarstwaIcon(warstwa.typ, warstwa.id)}
+            {getWarstwaIcon(warstwa.type, warstwa.id)}
           </Box>
           
-          <Tooltip title={warstwa.nazwa} arrow placement="right">
+          <Tooltip title={warstwa.name} arrow placement="right">
             <Typography
               sx={{
                 fontSize: TREE_CONFIG.typography.fontSize,
-                color: warstwa.widoczna ? theme.palette.text.primary : theme.palette.text.disabled,
+                color: warstwa.visible ? theme.palette.text.primary : theme.palette.text.disabled,
                 flex: 1,
-                fontWeight: warstwa.typ === 'grupa' ? TREE_CONFIG.typography.fontWeight.group : TREE_CONFIG.typography.fontWeight.layer,
+                fontWeight: warstwa.type === 'group' ? TREE_CONFIG.typography.fontWeight.group : TREE_CONFIG.typography.fontWeight.layer,
                 letterSpacing: TREE_CONFIG.typography.letterSpacing,
                 fontFamily: TREE_CONFIG.typography.fontFamily,
                 whiteSpace: 'nowrap',
@@ -491,7 +485,7 @@ export const LayerTree: React.FC<LayerTreeProps> = ({
                 cursor: 'pointer'
               }}
             >
-              {warstwa.nazwa}
+              {warstwa.name}
             </Typography>
           </Tooltip>
           
@@ -503,9 +497,9 @@ export const LayerTree: React.FC<LayerTreeProps> = ({
                 size="small"
                 onClick={(e) => {
                   e.stopPropagation();
-                  console.log('Zoom to:', warstwa.nazwa);
+                  console.log('Zoom to:', warstwa.name);
                 }}
-                sx={{ 
+                sx={{
                   color: theme.palette.text.secondary,
                   p: TREE_CONFIG.elements.actionButton.padding,
                   '&:hover': { color: theme.palette.primary.main }
@@ -514,15 +508,15 @@ export const LayerTree: React.FC<LayerTreeProps> = ({
                 <PrzyblizDoWarstwyIcon fontSize="small" />
               </IconButton>
             </Tooltip>
-            
+
             {/* Ikona kalendarza - tylko dla warstw (nie katalogów) */}
-            {warstwa.typ !== 'grupa' && (
+            {warstwa.type !== 'group' && (
               <Tooltip title="Pokaż tabele atrybutów" arrow>
                 <IconButton
                   size="small"
                   onClick={(e) => {
                     e.stopPropagation();
-                    console.log('Calendar for:', warstwa.nazwa);
+                    console.log('Calendar for:', warstwa.name);
                   }}
                   sx={{ 
                     color: theme.palette.text.secondary,
@@ -536,13 +530,13 @@ export const LayerTree: React.FC<LayerTreeProps> = ({
             )}
           </Box>
         </Box>
-        
-        {warstwa.dzieci && warstwa.rozwinięta && (
+
+        {warstwa.children && warstwa.childrenVisible && (
           <Box sx={{ ml: TREE_CONFIG.item.margins.children }}>
-            {warstwa.dzieci.map((dziecko: Warstwa) => (
-              <Box key={dziecko.id}>
+            {warstwa.children.map((dziecko: LayerNode) => (
+              <React.Fragment key={dziecko.id}>
                 {renderWarstwaItem(dziecko, level + 1)}
-              </Box>
+              </React.Fragment>
             ))}
             
             {/* Specjalna strefa drop na końcu grupy */}
@@ -662,9 +656,9 @@ export const LayerTree: React.FC<LayerTreeProps> = ({
       )}
 
       {filteredWarstwy.map(warstwa => (
-        <Box key={warstwa.id}>
+        <React.Fragment key={warstwa.id}>
           {renderWarstwaItem(warstwa)}
-        </Box>
+        </React.Fragment>
       ))}
     </Box>
   );

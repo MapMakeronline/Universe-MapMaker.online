@@ -61,3 +61,5 @@ export const NotificationProvider: React.FC = () => {
     </Snackbar>
   );
 };
+
+// Force recompilation

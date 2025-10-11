@@ -8,7 +8,7 @@ import { makeStore, AppStore } from '@/redux/store';
 import { themeOptimized as theme } from '@/style/theme.optimized';
 import ErrorBoundary from '@/wspolne/ErrorBoundary';
 import AuthProvider from '@/features/autoryzacja/AuthProvider';
-import { NotificationProvider } from '@/components/NotificationProvider';
+import { NotificationProvider } from '@/wspolne/NotificationProvider';
 
 interface ProvidersProps {
   children: React.ReactNode;

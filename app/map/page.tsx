@@ -14,6 +14,31 @@ import { setViewState, setMapStyle } from '@/redux/slices/mapSlice';
 import { useGetProjectDataQuery } from '@/redux/api/projectsApi';
 import { MAP_STYLES } from '@/mapbox/config';
 import { transformExtent, isValidWGS84 } from '@/mapbox/coordinates';
+import type { QGISLayerNode } from '@/types/qgis';
+import type { LayerNode } from '@/typy/layers';
+
+/**
+ * Convert QGIS backend structure to frontend LayerNode structure
+ * Backend uses: 'VectorLayer' | 'RasterLayer' | 'group'
+ * Frontend uses: 'VectorLayer' | 'RasterLayer' | 'WMSLayer' | 'group' | 'layer'
+ */
+function convertQGISToLayerNode(qgisNode: QGISLayerNode): LayerNode {
+  const baseNode: LayerNode = {
+    id: qgisNode.id || `layer-${Math.random().toString(36).substr(2, 9)}`,
+    name: qgisNode.name,
+    visible: qgisNode.visible !== false,
+    opacity: 'opacity' in qgisNode ? qgisNode.opacity / 255 : 1, // QGIS uses 0-255, we use 0-1
+    type: qgisNode.type,
+  };
+
+  // Handle group layers (folders)
+  if (qgisNode.type === 'group') {
+    baseNode.childrenVisible = qgisNode.childrenVisible !== false;
+    baseNode.children = qgisNode.children?.map(convertQGISToLayerNode) || [];
+  }
+
+  return baseNode;
+}
 
 export default function MapPage() {
   const searchParams = useSearchParams();
@@ -54,7 +79,9 @@ export default function MapPage() {
     console.log('📦 Loading project data:', projectData.name);
     console.log(isOwner ? '✏️ Edit mode (owner)' : '👁️ Read-only mode (viewer)');
 
-    const convertedLayers = projectData.children || [];
+    // Convert QGIS backend structure to frontend LayerNode structure
+    const qgisLayers = projectData.children || [];
+    const convertedLayers = qgisLayers.map(convertQGISToLayerNode);
     dispatch(loadLayers(convertedLayers));
 
     if (projectData.extent && projectData.extent.length === 4) {
