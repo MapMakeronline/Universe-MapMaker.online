@@ -37,6 +37,7 @@ interface LayerTreeProps {
   warstwy: LayerNode[];
   selectedLayer: LayerNode | null;
   searchFilter: string;
+  expandedGroups: string[];
   dragDropState: DragDropState;
   onLayerSelect: (id: string) => void;
   onToggleVisibility: (id: string) => void;
@@ -200,6 +201,7 @@ export const LayerTree: React.FC<LayerTreeProps> = ({
   warstwy,
   selectedLayer,
   searchFilter,
+  expandedGroups,
   dragDropState,
   onLayerSelect,
   onToggleVisibility,
@@ -425,8 +427,8 @@ export const LayerTree: React.FC<LayerTreeProps> = ({
                   width: 0,
                   height: 0,
                   borderStyle: 'solid',
-                  borderWidth: warstwa.childrenVisible ? '6px 4px 0 4px' : '4px 0 4px 6px',
-                  borderColor: warstwa.childrenVisible
+                  borderWidth: expandedGroups.includes(warstwa.id) ? '6px 4px 0 4px' : '4px 0 4px 6px',
+                  borderColor: expandedGroups.includes(warstwa.id)
                     ? `${theme.palette.text.secondary} transparent transparent transparent`
                     : `transparent transparent transparent ${theme.palette.text.secondary}`,
                   transition: 'all 0.2s ease'
@@ -531,7 +533,7 @@ export const LayerTree: React.FC<LayerTreeProps> = ({
           </Box>
         </Box>
 
-        {warstwa.children && warstwa.childrenVisible && (
+        {warstwa.children && expandedGroups.includes(warstwa.id) && (
           <Box sx={{ ml: TREE_CONFIG.item.margins.children }}>
             {warstwa.children.map((dziecko: LayerNode) => (
               <React.Fragment key={dziecko.id}>

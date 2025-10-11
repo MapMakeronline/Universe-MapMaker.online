@@ -56,8 +56,9 @@ const LeftPanel: React.FC = () => {
   const theme = useTheme();
   const dispatch = useAppDispatch();
 
-  // Get layers from Redux
+  // Get layers and expandedGroups from Redux
   const reduxLayers = useAppSelector((state) => state.layers.layers);
+  const expandedGroups = useAppSelector((state) => state.layers.expandedGroups);
 
   // Backend mutation for persisting layer order
   const [changeLayersOrder] = useChangeLayersOrderMutation();
@@ -413,6 +414,7 @@ const LeftPanel: React.FC = () => {
             warstwy={layers}
             selectedLayer={selectedLayer}
             searchFilter={searchFilter}
+            expandedGroups={expandedGroups}
             dragDropState={dragDropHandlers.dragDropState}
             onLayerSelect={handleLayerSelect}
             onToggleVisibility={toggleVisibility}
