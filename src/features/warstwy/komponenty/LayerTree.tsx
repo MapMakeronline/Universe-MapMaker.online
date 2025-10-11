@@ -250,10 +250,10 @@ export const LayerTree: React.FC<LayerTreeProps> = ({
   const renderWarstwaItem = (warstwa: Warstwa, level: number = 0): React.ReactNode => {
     const isDragged = draggedItem === warstwa.id;
     const isDropTarget = dropTarget === warstwa.id;
-    
+
     return (
-      <Box key={warstwa.id} sx={{ 
-        mb: -0.2, 
+      <Box sx={{
+        mb: -0.2,
         position: 'relative',
         ml: showMainLevelZone ? 1.5 : 0, // Delikatny margines tylko gdy w lewej strefie
         transition: 'margin-left 0.2s ease'

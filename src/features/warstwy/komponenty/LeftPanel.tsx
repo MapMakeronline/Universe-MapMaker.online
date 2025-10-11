@@ -99,46 +99,8 @@ const LeftPanel: React.FC = () => {
     warstwaWidocznoscTrybOpublikowany: true
   });
 
-  const [warstwy, setWarstwy] = useState<Warstwa[]>([
-    {
-      id: 'obszar-rewitalizacji',
-      nazwa: 'Obszar Rewitalizacji',
-      widoczna: true,
-      typ: 'grupa',
-      rozwinięta: true,
-      dzieci: [
-        {
-          id: 'miejscowe-plany',
-          nazwa: 'MIEJSCOWE PLANY ZAGOSPODAROWANIA...',
-          widoczna: true,
-          typ: 'grupa',
-          rozwinięta: false,
-          dzieci: [
-            { id: 'xxvii-282-2001', nazwa: 'XXVII_282_2001', widoczna: true, typ: 'wektor' },
-            { id: 'xxxvii-283-2001', nazwa: 'XXXVII_283_2001', widoczna: true, typ: 'wektor' },
-            { id: 'xxxvii-286-2001', nazwa: 'XXXVII_286_2001', widoczna: true, typ: 'wektor' },
-            { id: 'xlii-307-2002', nazwa: 'XLII_307_2002', widoczna: true, typ: 'wektor' },
-            { id: 'xlii-308-2002', nazwa: 'XLII_308_2002', widoczna: true, typ: 'wektor' },
-            { id: 'xlviii-335-2002', nazwa: 'XLVIII_335_2002', widoczna: true, typ: 'wektor' },
-            { id: 'xxxviii-325-2005', nazwa: 'XXXVIII_325_2005', widoczna: true, typ: 'wektor' }
-          ]
-        },
-        {
-          id: 'granice',
-          nazwa: 'Granice',
-          widoczna: false,
-          typ: 'grupa',
-          rozwinięta: true,
-          dzieci: [
-            { id: 'granica-miasta-gminy', nazwa: 'Granica Miasta i Gminy', widoczna: false, typ: 'wektor' },
-            { id: 'granica-miasta-ogrodzieniec', nazwa: 'Granica Miasta Ogrodzieniec', widoczna: false, typ: 'wektor' },
-            { id: 'granice-obreby-geodezyjne', nazwa: 'Granice obręby geodezyjne...', widoczna: false, typ: 'wektor' },
-            { id: 'granice-dzialek-1-10000', nazwa: '(< 1:10000) Granice działek ...', widoczna: false, typ: 'wektor' }
-          ]
-        }
-      ]
-    }
-  ]);
+  // Layer state - initialized empty, populated from Redux
+  const [warstwy, setWarstwy] = useState<Warstwa[]>([]);
 
   // Hooks
   const { width, isResizing, handleMouseDown } = useResizable({
