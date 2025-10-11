@@ -539,7 +539,11 @@ export const LayerTree: React.FC<LayerTreeProps> = ({
         
         {warstwa.dzieci && warstwa.rozwinięta && (
           <Box sx={{ ml: TREE_CONFIG.item.margins.children }}>
-            {warstwa.dzieci.map((dziecko: Warstwa) => renderWarstwaItem(dziecko, level + 1))}
+            {warstwa.dzieci.map((dziecko: Warstwa) => (
+              <React.Fragment key={dziecko.id}>
+                {renderWarstwaItem(dziecko, level + 1)}
+              </React.Fragment>
+            ))}
             
             {/* Specjalna strefa drop na końcu grupy */}
             <Box
@@ -656,8 +660,12 @@ export const LayerTree: React.FC<LayerTreeProps> = ({
           </Typography>
         </Box>
       )}
-      
-      {filteredWarstwy.map(warstwa => renderWarstwaItem(warstwa))}
+
+      {filteredWarstwy.map(warstwa => (
+        <React.Fragment key={warstwa.id}>
+          {renderWarstwaItem(warstwa)}
+        </React.Fragment>
+      ))}
     </Box>
   );
 };
