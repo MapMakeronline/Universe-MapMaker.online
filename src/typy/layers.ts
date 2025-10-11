@@ -1,13 +1,14 @@
 export interface LayerNode {
   id: string;
   name: string;
-  type: 'group' | 'layer';
+  type: 'group' | 'layer' | 'RasterLayer' | 'VectorLayer' | 'WMSLayer';
   visible: boolean;
   opacity: number;
   children?: LayerNode[];
+  childrenVisible?: boolean; // Is group expanded (UI state)
   color?: string;
   icon?: string;
-  sourceType?: 'vector' | 'raster' | 'geojson';
+  sourceType?: 'vector' | 'raster' | 'geojson' | 'wms';
   source?: any;
   paint?: any;
   layout?: any;

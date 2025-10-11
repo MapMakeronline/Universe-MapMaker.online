@@ -32,18 +32,9 @@ import {
   moveLayer
 } from '@/redux/slices/layersSlice';
 import { useChangeLayersOrderMutation } from '@/redux/api/projectsApi';
-import { showSuccess, showError } from '@/redux/slices/notificationSlice';
+import { showSuccess, showError, showInfo } from '@/redux/slices/notificationSlice';
 
 // Types
-interface Warstwa {
-  id: string;
-  nazwa: string;
-  widoczna: boolean;
-  typ: 'grupa' | 'wektor' | 'raster' | 'wms';
-  dzieci?: Warstwa[];
-  rozwinięta?: boolean;
-}
-
 type FilterType = 'wszystko' | 'wektor' | 'raster' | 'wms';
 
 const SIDEBAR_CONFIG = {
@@ -81,7 +72,7 @@ const LeftPanel: React.FC = () => {
   const [filterMenuOpen, setFilterMenuOpen] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState<FilterType>('wszystko');
   const [selectedBasemap, setSelectedBasemap] = useState('google-maps');
-  const [selectedLayer, setSelectedLayer] = useState<Warstwa | null>(null);
+  const [selectedLayer, setSelectedLayer] = useState<LayerNode | null>(null);
 
   // Modal states
   const [addDatasetModalOpen, setAddDatasetModalOpen] = useState(false);
@@ -119,8 +110,8 @@ const LeftPanel: React.FC = () => {
     warstwaWidocznoscTrybOpublikowany: true
   });
 
-  // Layer state - initialized empty, populated from Redux
-  const [warstwy, setWarstwy] = useState<Warstwa[]>([]);
+  // Layer state - NO local state, use Redux directly!
+  const layers = reduxLayers; // Direct reference to Redux state
 
   // Hooks
   const { width, isResizing, handleMouseDown } = useResizable({
@@ -180,52 +171,26 @@ const LeftPanel: React.FC = () => {
     }, 500);
   };
 
-  const dragDropHandlers = useDragDrop(warstwy, handleDragDropMove);
-
-  // Convert Redux LayerNode to Warstwa format
-  const convertLayerNodeToWarstwa = (node: LayerNode): Warstwa => {
-    const typ: 'grupa' | 'wektor' | 'raster' | 'wms' =
-      node.type === 'group' ? 'grupa' :
-      node.type === 'RasterLayer' ? 'raster' :
-      node.type === 'VectorLayer' ? 'wektor' : 'wms';
-
-    return {
-      id: node.id,
-      nazwa: node.name,
-      widoczna: node.visible !== false,
-      typ,
-      dzieci: node.children?.map(convertLayerNodeToWarstwa),
-      rozwinięta: node.childrenVisible || false,
-    };
-  };
-
-  // Sync Redux layers to local state
-  React.useEffect(() => {
-    if (reduxLayers && reduxLayers.length > 0) {
-      console.log('🔄 LeftPanel: Updating layers from Redux:', reduxLayers.length, 'layers');
-      const convertedLayers = reduxLayers.map(convertLayerNodeToWarstwa);
-      setWarstwy(convertedLayers);
-    }
-  }, [reduxLayers]);
+  const dragDropHandlers = useDragDrop(layers, handleDragDropMove);
 
   // Helper functions
-  const findLayerById = (layers: Warstwa[], id: string): Warstwa | null => {
+  const findLayerById = (layers: LayerNode[], id: string): LayerNode | null => {
     for (const layer of layers) {
       if (layer.id === id) return layer;
-      if (layer.dzieci) {
-        const found = findLayerById(layer.dzieci, id);
+      if (layer.children) {
+        const found = findLayerById(layer.children, id);
         if (found) return found;
       }
     }
     return null;
   };
 
-  const findParentGroup = (layers: Warstwa[], childId: string): Warstwa | null => {
+  const findParentGroup = (layers: LayerNode[], childId: string): LayerNode | null => {
     for (const layer of layers) {
-      if (layer.dzieci) {
-        const directChild = layer.dzieci.find(child => child.id === childId);
+      if (layer.children) {
+        const directChild = layer.children.find((child: LayerNode) => child.id === childId);
         if (directChild) return layer;
-        const found = findParentGroup(layer.dzieci, childId);
+        const found = findParentGroup(layer.children, childId);
         if (found) return found;
       }
     }
@@ -233,14 +198,14 @@ const LeftPanel: React.FC = () => {
   };
 
   const handleLayerSelect = (id: string) => {
-    const layer = findLayerById(warstwy, id);
+    const layer = findLayerById(layers, id);
     setSelectedLayer(layer);
   };
 
   const toggleVisibility = (id: string) => {
     // Check if it's a group (has children)
-    const layer = findLayerById(warstwy, id);
-    if (layer && layer.typ === 'grupa' && layer.dzieci) {
+    const layer = findLayerById(layers, id);
+    if (layer && layer.type === 'group' && layer.children) {
       // Use cascade action for groups
       dispatch(toggleGroupVisibilityCascade(id));
     } else {
@@ -276,90 +241,35 @@ const LeftPanel: React.FC = () => {
   };
 
   // Modal handlers
+  // TODO: Phase 4 - Rewrite these to use Redux + Backend API
   const handleAddDataset = (data: { nazwaPlan: string; nazwaGrupy: string; temat: string }) => {
-    const newLayer: Warstwa = {
-      id: `dataset-${Date.now()}`,
-      nazwa: data.nazwaPlan,
-      widoczna: true,
-      typ: 'wektor',
-    };
-    setWarstwy([...warstwy, newLayer]);
     setAddDatasetModalOpen(false);
-    console.log('Adding new dataset:', data);
+    console.log('TODO: Adding new dataset:', data);
+    dispatch(showInfo('Dodawanie datasetu - wkrótce dostępne'));
   };
 
   const handleAddNationalLaw = (data: { type: 'create' | 'import'; [key: string]: any }) => {
-    const newLayer: Warstwa = {
-      id: `national-law-${Date.now()}`,
-      nazwa: data.type === 'create' ? data.nazwaApp : data.nazwaApp,
-      widoczna: true,
-      typ: 'wektor',
-    };
-    setWarstwy([...warstwy, newLayer]);
     setAddNationalLawModalOpen(false);
-    console.log('Adding new national law:', data);
+    console.log('TODO: Adding new national law:', data);
+    dispatch(showInfo('Dodawanie prawa krajowego - wkrótce dostępne'));
   };
 
   const handleAddLayer = (data: { nazwaWarstwy: string; typGeometrii: string; nazwaGrupy: string; columns: any[] }) => {
-    const newLayer: Warstwa = {
-      id: `layer-${Date.now()}`,
-      nazwa: data.nazwaWarstwy,
-      widoczna: true,
-      typ: 'wektor',
-    };
-    setWarstwy([...warstwy, newLayer]);
     setAddLayerModalOpen(false);
-    console.log('Adding new layer:', data);
+    console.log('TODO: Adding new layer:', data);
+    dispatch(showInfo('Dodawanie warstwy - wkrótce dostępne'));
   };
 
   const handleImportLayer = (data: { nazwaWarstwy: string; nazwaGrupy: string; format: string; file?: File }) => {
-    const newLayer: Warstwa = {
-      id: `import-${Date.now()}`,
-      nazwa: data.nazwaWarstwy,
-      widoczna: true,
-      typ: 'wektor',
-    };
-    setWarstwy([...warstwy, newLayer]);
     setImportLayerModalOpen(false);
-    console.log('Importing layer:', data, 'File:', data.file?.name);
+    console.log('TODO: Importing layer:', data, 'File:', data.file?.name);
+    dispatch(showInfo('Import warstwy - wkrótce dostępne'));
   };
 
   const handleAddGroup = (data: { nazwaGrupy: string; grupaNadrzedna: string }) => {
-    const newGroup: Warstwa = {
-      id: `group-${Date.now()}`,
-      nazwa: data.nazwaGrupy,
-      widoczna: true,
-      typ: 'grupa',
-      dzieci: [],
-      rozwinięta: false,
-    };
-
-    if (data.grupaNadrzedna === 'Stwórz poza grupami') {
-      // Add at main level
-      setWarstwy([...warstwy, newGroup]);
-    } else {
-      // Add to parent group
-      const addToParent = (layers: Warstwa[]): Warstwa[] => {
-        return layers.map(layer => {
-          if (layer.id === data.grupaNadrzedna) {
-            return {
-              ...layer,
-              dzieci: layer.dzieci ? [...layer.dzieci, newGroup] : [newGroup],
-            };
-          }
-          if (layer.dzieci) {
-            return {
-              ...layer,
-              dzieci: addToParent(layer.dzieci),
-            };
-          }
-          return layer;
-        });
-      };
-      setWarstwy(addToParent(warstwy));
-    }
     setAddGroupModalOpen(false);
-    console.log('Adding new group:', data);
+    console.log('TODO: Adding new group:', data);
+    dispatch(showInfo('Dodawanie grupy - wkrótce dostępne'));
   };
 
   const handleDeleteLayer = () => {
@@ -376,62 +286,18 @@ const LeftPanel: React.FC = () => {
     dataRozpoczecia: string;
     dataZakonczenia: string;
   }) => {
-    // Create a new consultation layer
-    const newConsultationLayer: Warstwa = {
-      id: `consultation-${Date.now()}`,
-      nazwa: data.nazwa,
-      widoczna: true,
-      typ: 'wektor',
-    };
-
-    setWarstwy([...warstwy, newConsultationLayer]);
     setCreateConsultationModalOpen(false);
-    console.log('Creating consultation:', data);
+    console.log('TODO: Creating consultation:', data);
+    dispatch(showInfo('Tworzenie konsultacji - wkrótce dostępne'));
   };
 
   const handleLayerManager = (data: {
     deletedLayerIds: string[];
     restoredLayers: Array<{ id: string; nazwa: string; typ: 'wektor' | 'raster'; grupaNadrzedna?: string }>;
   }) => {
-    // Handle deleted layers (remove from database layers list - this will be backend)
-    console.log('Deleted layers:', data.deletedLayerIds);
-
-    // Handle restored layers (add to project)
-    data.restoredLayers.forEach(restoredLayer => {
-      const newLayer: Warstwa = {
-        id: restoredLayer.id,
-        nazwa: restoredLayer.nazwa,
-        widoczna: true,
-        typ: restoredLayer.typ,
-      };
-
-      if (restoredLayer.grupaNadrzedna === 'Stwórz poza grupami' || !restoredLayer.grupaNadrzedna) {
-        // Add at main level
-        setWarstwy(prev => [...prev, newLayer]);
-      } else {
-        // Add to parent group
-        const addToParent = (layers: Warstwa[]): Warstwa[] => {
-          return layers.map(layer => {
-            if (layer.id === restoredLayer.grupaNadrzedna) {
-              return {
-                ...layer,
-                dzieci: layer.dzieci ? [...layer.dzieci, newLayer] : [newLayer],
-              };
-            }
-            if (layer.dzieci) {
-              return {
-                ...layer,
-                dzieci: addToParent(layer.dzieci),
-              };
-            }
-            return layer;
-          });
-        };
-        setWarstwy(addToParent);
-      }
-    });
-
     setLayerManagerModalOpen(false);
+    console.log('TODO: Layer manager:', data);
+    dispatch(showInfo('Zarządzanie warstwami - wkrótce dostępne'));
   };
 
   const handlePrintConfig = (data: {
@@ -544,7 +410,7 @@ const LeftPanel: React.FC = () => {
           <BuildingsPanel />
 
           <LayerTree
-            warstwy={warstwy}
+            warstwy={layers}
             selectedLayer={selectedLayer}
             searchFilter={searchFilter}
             dragDropState={dragDropHandlers.dragDropState}
@@ -564,7 +430,7 @@ const LeftPanel: React.FC = () => {
 
           <PropertiesPanel
             selectedLayer={selectedLayer}
-            warstwy={warstwy}
+            warstwy={layers}
             expandedSections={expandedSections}
             checkboxStates={checkboxStates}
             onToggleSection={toggleSection}
@@ -645,7 +511,7 @@ const LeftPanel: React.FC = () => {
         open={addGroupModalOpen}
         onClose={() => setAddGroupModalOpen(false)}
         onSubmit={handleAddGroup}
-        existingGroups={warstwy}
+        existingGroups={layers}
       />
 
       {/* Create Consultation Modal */}
@@ -660,7 +526,7 @@ const LeftPanel: React.FC = () => {
         open={layerManagerModalOpen}
         onClose={() => setLayerManagerModalOpen(false)}
         onSubmit={handleLayerManager}
-        existingGroups={warstwy}
+        existingGroups={layers}
       />
 
       {/* Print Config Modal */}
@@ -668,7 +534,7 @@ const LeftPanel: React.FC = () => {
         open={printConfigModalOpen}
         onClose={() => setPrintConfigModalOpen(false)}
         onSubmit={handlePrintConfig}
-        projectLayers={warstwy}
+        projectLayers={layers}
       />
     </>
   );
