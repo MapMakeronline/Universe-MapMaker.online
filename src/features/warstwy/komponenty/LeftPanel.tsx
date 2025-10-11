@@ -32,6 +32,7 @@ import {
   moveLayer
 } from '@/redux/slices/layersSlice';
 import { useChangeLayersOrderMutation } from '@/redux/api/projectsApi';
+import { showSuccess, showError } from '@/redux/slices/notificationSlice';
 
 // Types
 interface Warstwa {
@@ -147,6 +148,7 @@ const LeftPanel: React.FC = () => {
   const syncLayerOrderWithBackend = async () => {
     if (!projectName) {
       console.warn('⚠️ No project name - skipping backend sync');
+      dispatch(showError('Nie można zapisać - brak nazwy projektu'));
       return;
     }
 
@@ -160,9 +162,10 @@ const LeftPanel: React.FC = () => {
       }).unwrap();
 
       console.log('✅ Layer order synced successfully');
+      dispatch(showSuccess('Kolejność warstw zapisana', 3000));
     } catch (error) {
       console.error('❌ Failed to sync layer order:', error);
-      // TODO: Add user notification (toast/snackbar)
+      dispatch(showError('Nie udało się zapisać kolejności warstw', 6000));
     }
   };
 

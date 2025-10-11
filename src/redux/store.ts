@@ -6,6 +6,7 @@ import authReducer from './slices/authSlice';
 import buildingsReducer from './slices/buildingsSlice';
 import featuresReducer from './slices/featuresSlice';
 import projectsReducer from './slices/projectsSlice';
+import notificationReducer from './slices/notificationSlice';
 import { projectsApi } from './api/projectsApi'; // Phase 3: RTK Query API
 import { adminApi } from './api/adminApi'; // Admin API for user management
 import { layersApi } from './api/layersApi'; // Layers API for layer operations
@@ -21,6 +22,7 @@ export const makeStore = () => {
       buildings: buildingsReducer,
       features: featuresReducer,
       projects: projectsReducer,
+      notification: notificationReducer,
       // Phase 3: RTK Query API reducer
       [projectsApi.reducerPath]: projectsApi.reducer,
       [adminApi.reducerPath]: adminApi.reducer,
