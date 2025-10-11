@@ -31,6 +31,7 @@ import {
   deleteLayer,
   moveLayer
 } from '@/redux/slices/layersSlice';
+import { useChangeLayersOrderMutation } from '@/redux/api/projectsApi';
 
 // Types
 interface Warstwa {
@@ -65,6 +66,14 @@ const LeftPanel: React.FC = () => {
 
   // Get layers from Redux
   const reduxLayers = useAppSelector((state) => state.layers.layers);
+
+  // Backend mutation for persisting layer order
+  const [changeLayersOrder] = useChangeLayersOrderMutation();
+
+  // Get current project name from URL
+  const projectName = typeof window !== 'undefined'
+    ? new URLSearchParams(window.location.search).get('project') || ''
+    : '';
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [searchFilter, setSearchFilter] = useState('');
@@ -119,9 +128,53 @@ const LeftPanel: React.FC = () => {
     maxWidth: parseInt(SIDEBAR_CONFIG.sidebar.maxWidth),
   });
 
-  // Drag & drop handlers with Redux integration
-  const handleDragDropMove = (layerId: string, targetId: string, position: 'before' | 'after' | 'inside') => {
+  // Helper: Extract flat list of layer IDs in order (for backend)
+  const extractLayerOrder = (layers: LayerNode[]): string[] => {
+    const order: string[] = [];
+    const traverse = (nodes: LayerNode[]) => {
+      for (const node of nodes) {
+        order.push(node.id);
+        if (node.children) {
+          traverse(node.children);
+        }
+      }
+    };
+    traverse(layers);
+    return order;
+  };
+
+  // Helper: Sync layer order with backend
+  const syncLayerOrderWithBackend = async () => {
+    if (!projectName) {
+      console.warn('⚠️ No project name - skipping backend sync');
+      return;
+    }
+
+    try {
+      const order = extractLayerOrder(reduxLayers);
+      console.log('💾 Syncing layer order to backend:', order);
+
+      await changeLayersOrder({
+        project_name: projectName,
+        order,
+      }).unwrap();
+
+      console.log('✅ Layer order synced successfully');
+    } catch (error) {
+      console.error('❌ Failed to sync layer order:', error);
+      // TODO: Add user notification (toast/snackbar)
+    }
+  };
+
+  // Drag & drop handlers with Redux integration + backend sync
+  const handleDragDropMove = async (layerId: string, targetId: string, position: 'before' | 'after' | 'inside') => {
+    // 1. Update Redux state (optimistic update)
     dispatch(moveLayer({ layerId, targetId, position }));
+
+    // 2. Sync with backend after a short delay (debounce for multiple rapid moves)
+    setTimeout(() => {
+      syncLayerOrderWithBackend();
+    }, 500);
   };
 
   const dragDropHandlers = useDragDrop(warstwy, handleDragDropMove);
