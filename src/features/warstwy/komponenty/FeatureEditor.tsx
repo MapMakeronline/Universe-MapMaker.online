@@ -49,7 +49,11 @@ import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { useTheme } from '@mui/material';
-import { layersApi } from '@/api/endpointy/layers';
+import {
+  useAddFeatureMutation,
+  useUpdateFeatureMutation,
+  useDeleteFeatureMutation,
+} from '@/redux/api/layersApi';
 import { useAppSelector } from '@/redux/hooks';
 
 interface FeatureEditorProps {
@@ -78,12 +82,18 @@ const FeatureEditor: React.FC<FeatureEditorProps> = ({
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
+  // RTK Query hooks
+  const [addFeature, { isLoading: isAdding }] = useAddFeatureMutation();
+  const [updateFeature, { isLoading: isUpdating }] = useUpdateFeatureMutation();
+  const [deleteFeature, { isLoading: isDeleting }] = useDeleteFeatureMutation();
+
   const [geometry, setGeometry] = useState<GeoJSON.Geometry | null>(initialGeometry || null);
   const [properties, setProperties] = useState<Record<string, any>>(initialProperties);
   const [newAttribute, setNewAttribute] = useState({ key: '', value: '' });
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
+
+  const loading = isAdding || isUpdating || isDeleting;
 
   // Reset state when modal opens/closes
   useEffect(() => {
@@ -123,7 +133,6 @@ const FeatureEditor: React.FC<FeatureEditorProps> = ({
   };
 
   const handleSave = async () => {
-    setLoading(true);
     setError('');
     setSuccess('');
 
@@ -132,14 +141,17 @@ const FeatureEditor: React.FC<FeatureEditorProps> = ({
         // Add new feature
         if (!geometry) {
           setError('Please draw a geometry first');
-          setLoading(false);
           return;
         }
 
-        const result = await layersApi.addFeature(projectName, layerName, {
-          geometry,
-          properties,
-        });
+        const result = await addFeature({
+          projectName,
+          layerName,
+          feature: {
+            geometry,
+            properties,
+          },
+        }).unwrap();
 
         setSuccess(`Feature added successfully! ID: ${result.feature_id}`);
         onSave?.(result.feature_id);
@@ -151,14 +163,18 @@ const FeatureEditor: React.FC<FeatureEditorProps> = ({
         // Update existing feature
         if (!featureId) {
           setError('Feature ID is required for editing');
-          setLoading(false);
           return;
         }
 
-        await layersApi.updateFeature(projectName, layerName, featureId, {
-          geometry: geometry || undefined,
-          properties,
-        });
+        await updateFeature({
+          projectName,
+          layerName,
+          featureId,
+          updates: {
+            geometry: geometry || undefined,
+            properties,
+          },
+        }).unwrap();
 
         setSuccess('Feature updated successfully!');
         onSave?.(featureId);
@@ -170,11 +186,14 @@ const FeatureEditor: React.FC<FeatureEditorProps> = ({
         // Delete feature
         if (!featureId) {
           setError('Feature ID is required for deletion');
-          setLoading(false);
           return;
         }
 
-        await layersApi.deleteFeature(projectName, layerName, featureId);
+        await deleteFeature({
+          projectName,
+          layerName,
+          featureId,
+        }).unwrap();
 
         setSuccess('Feature deleted successfully!');
 
@@ -183,9 +202,7 @@ const FeatureEditor: React.FC<FeatureEditorProps> = ({
         }, 1500);
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to save feature');
-    } finally {
-      setLoading(false);
+      setError(err.message || err.data?.message || 'Failed to save feature');
     }
   };
 

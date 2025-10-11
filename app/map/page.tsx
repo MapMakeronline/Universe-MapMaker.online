@@ -13,6 +13,7 @@ import { loadLayers, resetLayers } from '@/redux/slices/layersSlice';
 import { setViewState, setMapStyle } from '@/redux/slices/mapSlice';
 import { useGetProjectDataQuery } from '@/redux/api/projectsApi';
 import { MAP_STYLES } from '@/mapbox/config';
+import { transformExtent, isValidWGS84 } from '@/mapbox/coordinates';
 
 export default function MapPage() {
   const searchParams = useSearchParams();
@@ -57,17 +58,43 @@ export default function MapPage() {
     dispatch(loadLayers(convertedLayers));
 
     if (projectData.extent && projectData.extent.length === 4) {
-      const [minLng, minLat, maxLng, maxLat] = projectData.extent;
+      const [minX, minY, maxX, maxY] = projectData.extent;
+
+      // Check if coordinates need transformation (EPSG:2180 → EPSG:4326)
+      let minLng, minLat, maxLng, maxLat;
+
+      if (isValidWGS84(minX, minY) && isValidWGS84(maxX, maxY)) {
+        // Already WGS84
+        [minLng, minLat, maxLng, maxLat] = projectData.extent;
+        console.log('✅ Extent already in WGS84:', projectData.extent);
+      } else {
+        // Transform from EPSG:2180 (Polish Grid) to EPSG:4326 (WGS84)
+        [minLng, minLat, maxLng, maxLat] = transformExtent(projectData.extent);
+        console.log('🔄 Transformed extent EPSG:2180 → WGS84:', {
+          from: projectData.extent,
+          to: [minLng, minLat, maxLng, maxLat]
+        });
+      }
+
       const centerLng = (minLng + maxLng) / 2;
       const centerLat = (minLat + maxLat) / 2;
 
-      dispatch(setViewState({
-        longitude: centerLng,
-        latitude: centerLat,
-        zoom: 10,
-        bearing: 0,
-        pitch: 0,
-      }));
+      // Validate final coordinates before dispatching
+      if (isValidWGS84(centerLng, centerLat)) {
+        dispatch(setViewState({
+          longitude: centerLng,
+          latitude: centerLat,
+          zoom: 10,
+          bearing: 0,
+          pitch: 0,
+        }));
+      } else {
+        console.error('❌ Invalid WGS84 coordinates after transformation:', {
+          centerLng,
+          centerLat,
+          originalExtent: projectData.extent
+        });
+      }
     }
 
     dispatch(setMapStyle({

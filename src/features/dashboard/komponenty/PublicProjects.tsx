@@ -75,8 +75,15 @@ export default function PublicProjects() {
     refetchOnFocus: true,
   });
 
-  // Extract projects from RTK Query response
-  const publicProjects = projectsData?.list_of_projects || [];
+  // Extract and sort projects from RTK Query response (newest first)
+  const publicProjects = projectsData?.list_of_projects
+    ? [...projectsData.list_of_projects].sort((a, b) => {
+        // Sort by created_at descending (newest first)
+        const dateA = new Date(a.created_at || 0).getTime();
+        const dateB = new Date(b.created_at || 0).getTime();
+        return dateB - dateA;
+      })
+    : [];
 
   const filteredProjects = publicProjects.filter(project => {
     const title = project.custom_project_name || project.project_name;

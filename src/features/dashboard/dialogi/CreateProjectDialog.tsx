@@ -96,7 +96,7 @@ export function CreateProjectDialog({
   const [qgisDescription, setQgisDescription] = useState('');
   const [qgisError, setQgisError] = useState<string | null>(null);
   const [isImporting, setIsImporting] = useState(false);
-  const [importStep, setImportStep] = useState<'idle' | 'creating' | 'uploading'>('idle');
+  const [importStep, setImportStep] = useState<'idle' | 'creating' | 'uploading' | 'processing'>('idle');
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -225,6 +225,10 @@ export function CreateProjectDialog({
         setUploadProgress(progress);
         if (progress > 0 && importStep !== 'uploading') {
           setImportStep('uploading');
+        }
+        // When upload reaches 100%, switch to processing state
+        if (progress >= 100 && importStep !== 'processing') {
+          setImportStep('processing');
         }
       };
 
@@ -443,6 +447,7 @@ export function CreateProjectDialog({
                   {importStep === 'creating' && '⏳ Tworzenie projektu...'}
                   {importStep === 'uploading' && uploadProgress > 0 && `📤 Wysyłanie pliku... ${uploadProgress}%`}
                   {importStep === 'uploading' && uploadProgress === 0 && '📤 Rozpoczynanie wysyłania...'}
+                  {importStep === 'processing' && '⚙️ Przetwarzanie pliku QGIS na serwerze... To może potrwać kilka minut.'}
                 </Typography>
               </Box>
             )}

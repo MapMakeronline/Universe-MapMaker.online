@@ -215,6 +215,553 @@ gcloud builds submit --region=europe-central2 --config=cloudbuild.yaml
 
 **Request Access:** If any GCP operation fails due to permissions, request access immediately.
 
+### Database Schema (PostgreSQL with PostGIS)
+
+**CRITICAL:** Understanding the database schema is essential for proper backend integration.
+
+**Instance:** `geocraft-postgres` (Google Cloud SQL, europe-central2)
+
+#### Core Tables
+
+**1. ProjectItem (geocraft_api_projectitem)**
+- **Primary project table** - stores project metadata
+- Key fields:
+  - `id` (integer, PK) - Auto-increment project ID
+  - `project_name` (varchar) - Unique project name (NOT `name`!)
+  - `user_id` (FK → CustomUser) - Owner reference (NOT `owner_id`!)
+  - `published` (boolean) - Publication status
+  - `category` (varchar) - Project category
+  - `creationDate` (timestamp) - Creation timestamp (NOT `created_at`!)
+  - `domain_id` (FK → Domain) - Associated domain
+  - `wms_url` (varchar) - WMS endpoint URL (empty until published)
+  - `wfs_url` (varchar) - WFS endpoint URL (empty until published)
+  - `geoserver_workspace` (varchar) - GeoServer workspace name
+  - `base_map` (varchar) - Default basemap setting
+  - `logoExists` (boolean) - Logo file availability
+  - `metadata_id` (FK → Metadata) - Project metadata
+  - `settings_id` (FK → Settings) - Project settings
+
+**2. Layer (geocraft_api_layer)**
+- **Stores map layers** extracted from QGS files
+- Key fields:
+  - `id` (integer, PK)
+  - `project` (varchar) - Project name reference (NOT FK!)
+  - `projectitem` (FK → ProjectItem) - Project reference
+  - `source_table_name` (varchar) - PostGIS table name
+  - `creationDateOfLayer` (timestamp) - Layer creation date
+  - `published` (boolean) - Layer published to GeoServer
+  - `public` (boolean) - Public access flag
+  - `is_inspire` (boolean) - INSPIRE dataset flag
+  - `is_app` (boolean) - App-created layer flag
+  - `consultation_id` (FK → Consultation) - Consultation reference
+  - `excluded_columns` (text) - Columns excluded from display
+
+**3. Domain (geocraft_api_domain)**
+- **Project subdomains** for publication
+- Key fields:
+  - `id` (integer, PK)
+  - `name` (varchar) - Subdomain name (unique)
+  - `project_id` (FK → ProjectItem) - Associated project
+  - `created_at` (timestamp) - Domain creation date
+
+**4. QgsFile (geocraft_api_qgsfile)**
+- **QGS/QGZ file storage metadata**
+- Key fields:
+  - `id` (integer, PK)
+  - `project` (varchar) - Project name
+  - `qgs` (varchar) - File path (relative to storage)
+  - `uploaded_at` (timestamp) - Upload timestamp
+
+**5. CustomUser (geocraft_api_customuser)**
+- **User accounts** with authentication
+- Key fields:
+  - `id` (integer, PK)
+  - `email` (varchar, unique) - User email
+  - `username` (varchar) - Display name
+  - `is_active` (boolean) - Account status
+  - `date_joined` (timestamp) - Registration date
+
+#### Relationships
+
+```
+ProjectItem (1) ←→ (1) Domain
+ProjectItem (1) ←→ (*) Layer (via project name AND projectitem FK)
+ProjectItem (*) ←→ (1) CustomUser (user_id)
+ProjectItem (1) ←→ (1) QgsFile (via project name)
+```
+
+#### Critical Database Patterns
+
+**Field Naming Inconsistencies:**
+- ❌ `created_at` → ✅ `creationDate` (ProjectItem)
+- ❌ `owner_id` → ✅ `user_id` (ProjectItem)
+- ❌ `name` → ✅ `project_name` (ProjectItem)
+
+**Layer Relationship Pattern:**
+- Layers have **TWO** connections to ProjectItem:
+  1. `project` (varchar) - String reference to `project_name`
+  2. `projectitem` (FK) - Foreign key to ProjectItem.id
+- Always filter by BOTH when querying: `Layer.objects.filter(project=name, projectitem=project_obj)`
+
+**QGS Import Workflow (Database Updates):**
+1. ✅ **ProjectItem created** - Basic metadata saved
+2. ✅ **Domain created** - Subdomain assigned
+3. ✅ **QgsFile created** - File metadata saved
+4. ⚠️ **Layers NOT created** - Import process incomplete!
+5. ⚠️ **WMS/WFS URLs empty** - Not published yet
+6. ⚠️ **tree.json NOT generated** - Layer tree missing
+
+**Known Issues:**
+- QGS import creates ProjectItem but fails to create Layer records
+- Backend errors: `Error getExtentLayer: list index out of range`
+- Backend errors: `Error get_project_large: 'NoneType' object is not subscriptable`
+- QObject threading issues in QGIS Python API
+- `/api/projects/new/json` returns 400 "Nie znaleziono projektu" for imported projects
+
+#### Querying Examples (Django ORM)
+
+```python
+# Get latest project
+from geocraft_api.models import ProjectItem
+project = ProjectItem.objects.latest('creationDate')
+
+# Get project layers (use BOTH fields!)
+from geocraft_api.models import Layer
+layers = Layer.objects.filter(
+    project=project.project_name,
+    projectitem=project
+)
+
+# Get project domain
+domain = project.domain  # OneToOne relationship
+
+# Get project owner
+owner = project.user  # FK relationship (NOT project.owner!)
+
+# Get QGS file
+from geocraft_api.models import QgsFile
+qgs_file = QgsFile.objects.get(project=project.project_name)
+```
+
+### Critical Backend-Frontend Integration Patterns
+
+**CRITICAL:** Understanding how backend creates projects and returns data is essential for proper frontend integration.
+
+#### Project Creation Workflow
+
+**Backend Process (`/api/projects/create/`):**
+```python
+# 1. User sends custom_project_name (e.g., "MyProject")
+custom_project_name = data.get("project")
+
+# 2. Backend generates UNIQUE project_name with suffix if duplicate exists
+project_name = generate_project_name(custom_project_name)
+# Result: "MyProject" → "MyProject_1" (if duplicate)
+
+# 3. Creates ProjectItem in database
+ProjectItem.objects.create(
+    project_name="MyProject_1",           # ← UNIQUE (with suffix)
+    custom_project_name="MyProject"       # ← NOT UNIQUE (user input)
+)
+
+# 4. Returns response with db_name = REAL project_name
+{
+    "data": {
+        "host": "...",
+        "port": "...",
+        "db_name": "MyProject_1",  # ← REAL project_name with suffix!
+        "login": "...",
+        "password": "..."
+    },
+    "success": true,
+    "message": "Projekt został pomyślnie utworzony"
+}
+```
+
+**Frontend Pattern (CORRECT):**
+```typescript
+// ✅ CORRECT: Use db_name from response
+const createdProject = await createProject(createData).unwrap();
+const projectName = createdProject.data.db_name; // "MyProject_1"
+
+// ❌ WRONG: Search by custom_project_name
+const projects = await refetch();
+const found = projects.find(p => p.custom_project_name === userInput);
+// PROBLEM: Finds FIRST project with this custom_project_name (may be old!)
+```
+
+**Key Points:**
+- `data.db_name` = REAL `project_name` (with suffix `_1`, `_2`, etc.)
+- `custom_project_name` = User input (can have duplicates!)
+- **ALWAYS use `data.db_name` for subsequent operations** (import QGS, open map, etc.)
+
+#### QGS Import Workflow
+
+**Backend Process (`/api/projects/import/qgs/`):**
+```python
+# 1. Receives project_name (MUST be exact match with database!)
+project_name = data.get("project")  # e.g., "MyProject_1"
+
+# 2. Saves QGS file to: qgs/{project_name}/{project_name}.qgs
+qgs_file_path = f"qgs/{project_name}/{project_name}.qgs"
+
+# 3. Reads QGS file with PyQGIS
+project = QgsProject.instance()
+project.read(qgs_file_path)
+
+# 4. Extracts layers to PostGIS (multithreaded)
+for layer_id in project.mapLayers():
+    # Export to GeoJSON
+    export_path = f"qgs/{project_name}/to_export_{id}.geojson"
+
+    # Import to PostGIS table
+    source_table_name = generate_source_table_name(layer.name(), id)
+    create_geo_json_layer(project_name, user, export_path, source_table_name, epsg)
+
+    # Create Layer record in database
+    Layer.objects.create(
+        project=project_name,              # String reference
+        source_table_name=source_table_name
+    )
+
+# 5. Generates tree.json (layer hierarchy for frontend)
+make_json_tree_and_save(project, project_name)
+# Saves to: qgs/{project_name}/tree.json
+```
+
+**Frontend Pattern (CORRECT):**
+```typescript
+// ✅ CORRECT: Use db_name from CREATE response
+const createdProject = await createProject(...).unwrap();
+const projectName = createdProject.data.db_name; // "MyProject_1"
+
+await importQGS({
+  project: projectName,  // ✅ Matches database and file system!
+  qgsFile: file
+});
+
+// ❌ WRONG: Use different project_name
+await importQGS({
+  project: "MyProject",  // ❌ Wrong! QGS goes to wrong folder!
+  qgsFile: file
+});
+```
+
+**Key Points:**
+- QGS file path = `qgs/{project_name}/{project_name}.qgs`
+- tree.json path = `qgs/{project_name}/tree.json`
+- Layer records use `project=project_name` (string, not FK!)
+- **If project_name is wrong, import goes to wrong folder!**
+
+#### Map View Workflow
+
+**Backend Process (`/api/projects/new/json`):**
+```python
+# 1. Receives project_name
+project_name = request.GET.get('project')
+
+# 2. Reads tree.json from file system
+tree_json_path = f"qgs/{project_name}/tree.json"
+with open(tree_json_path, 'r') as f:
+    data = json.load(f)
+
+# 3. Returns layer tree structure
+{
+    "name": "ProjectName.qgs",
+    "extent": [minLng, minLat, maxLng, maxLat],
+    "children": [
+        {
+            "name": "LayerName",
+            "id": "layer_uuid",
+            "type": "VectorLayer",
+            "visible": true,
+            "extent": [...],
+            "geometry": "MultiPolygon"
+        }
+    ],
+    "project_name": "ProjectName_1",
+    "wms_url": "",
+    "wfs_url": ""
+}
+```
+
+**Frontend Pattern:**
+```typescript
+// Map page URL: /map?project=ProjectName_1
+const projectName = searchParams.get('project');
+
+// Fetch project data
+const { data: projectData } = useGetProjectDataQuery({
+  project: projectName,  // "ProjectName_1"
+  published: false
+});
+
+// Load layers
+if (projectData.children.length === 0) {
+  // ❌ PROBLEM: Empty children = no layers imported!
+  console.error('Project has no layers - import may have failed');
+}
+```
+
+**Key Points:**
+- tree.json MUST exist at `qgs/{project_name}/tree.json`
+- `children: []` = no layers (import failed or project empty)
+- `children: [...]` = layers successfully imported
+- **Frontend MUST use exact project_name from database**
+
+#### File System Structure
+
+```
+/app/qgs/
+├── MyProject/                      (old project)
+│   ├── MyProject.qgs              (132KB - has layers)
+│   ├── tree.json                  (12KB - children: [...])
+│   └── styles/
+└── MyProject_1/                    (new project - duplicate name)
+    ├── MyProject_1.qgs            (8KB - empty or 132KB - with layers)
+    └── tree.json                  (1.2KB - empty OR 12KB - with layers)
+```
+
+**PROBLEM Scenario:**
+1. User creates project "MyProject" → backend creates "MyProject_1"
+2. Frontend searches by custom_project_name="MyProject"
+3. Finds OLD project (MyProject) instead of NEW (MyProject_1)
+4. Imports QGS to "MyProject" folder
+5. Opens "MyProject_1" in map view → EMPTY (no tree.json or empty children)
+
+**SOLUTION:**
+- Use `data.db_name` from CREATE response
+- Never search by `custom_project_name` for newly created projects
+
+#### Required TypeScript Types
+
+```typescript
+// src/api/typy/types.ts
+export interface DbInfo {
+  login: string;
+  password: string;
+  host: string;
+  port: string;
+  db_name: string;  // ← CRITICAL: REAL project_name from backend!
+}
+
+// src/redux/api/projectsApi.ts
+createProject: builder.mutation<
+  {
+    data: DbInfo;      // ← Contains db_name
+    success: boolean;
+    message: string;
+  },
+  CreateProjectData
+>({
+  query: (data) => ({
+    url: '/api/projects/create/',
+    method: 'POST',
+    body: { project, domain, projectDescription, keywords }
+  })
+})
+```
+
+### Strategic Development Guidelines
+
+**CRITICAL:** Always follow these patterns when working with projects and backend integration.
+
+#### Empty Project Creation Pattern
+
+**Backend Behavior:**
+```python
+# When creating new project, backend ALWAYS:
+1. Generates unique project_name with suffix if duplicate exists
+   - "MyProject" → "MyProject" (if unique)
+   - "MyProject" → "MyProject_1" (if duplicate)
+   - "MyProject" → "MyProject_2" (if MyProject_1 exists)
+
+2. Creates PostgreSQL database for project
+   - Database name = project_name
+   - Separate schema for each project
+
+3. Copies empty QGS template
+   - Source: templates/template/template3857.qgs (8.6KB)
+   - Target: qgs/{project_name}/{project_name}.qgs
+   - Template: EPSG:3857, <projectlayers/> (empty)
+
+4. Creates database records
+   - ProjectItem (project_name, custom_project_name, user_id, domain_id)
+   - Domain (auto-assigned subdomain)
+   - CustomUserLayoutMapSettings (default UI settings)
+
+5. Returns response with db_name
+   - { data: { db_name: "MyProject_1", host, port, login, password } }
+```
+
+**Frontend Pattern (CORRECT):**
+```typescript
+// ✅ ALWAYS use db_name from response
+const createdProject = await createProject(data).unwrap();
+const realProjectName = createdProject.data.db_name;
+
+// Use realProjectName for ALL subsequent operations:
+// - Import QGS
+// - Open in map
+// - Update settings
+// - Delete project
+
+// ❌ NEVER search by custom_project_name
+// ❌ NEVER assume project_name = custom_project_name
+```
+
+#### Dashboard Features Implementation Status
+
+**Moje Projekty (Own Projects):**
+- ✅ **Utwórz Pusty Projekt** - Backend creates template QGS + DB entry
+- ✅ **Utwórz i Importuj QGS** - Two-step: create empty → import QGS (uses db_name)
+- ✅ **Usuń Projekt** - Soft delete to `qgs/deleted_projects/`
+- ✅ **Opublikuj/Cofnij** - Publishes to GeoServer, creates WMS/WFS URLs
+- ✅ **Otwórz w Edytorze** - Owner = edit mode, others = read-only
+- ⚠️ **Ustawienia Projektu** - Dialog exists, backend integration NOT TESTED
+- ✅ **Zobacz Opublikowaną Mapę** - Opens subdomain in new tab
+- ✅ **Odśwież** - RTK Query auto-polling (30s) + manual refetch
+
+**Publiczne Projekty (Public Projects):**
+- ✅ **Przeglądaj** - Grid view with pagination (6/page)
+- ✅ **Szukaj** - Client-side filtering (name + description)
+- ✅ **Filtruj po Kategorii** - 7 categories
+- ✅ **Otwórz Publiczny** - Auto read-only mode for non-owners
+
+#### RTK Query Integration Patterns
+
+**Cache Invalidation Strategy:**
+```typescript
+// Projects API Tags:
+- 'Projects' + 'LIST' → Invalidated by create/delete
+- 'Project' + id      → Invalidated by update/delete/publish
+- 'PublicProjects' + 'LIST' → Invalidated by publish/unpublish
+
+// When to invalidate:
+createProject   → ['Projects', 'LIST']
+deleteProject   → ['Project', id], ['Projects', 'LIST']
+togglePublish   → ['Project', id], ['Projects', 'LIST'], ['PublicProjects', 'LIST']
+importQGS       → ['Project', id], ['Projects', 'LIST']
+updateProject   → ['Project', id], ['Projects', 'LIST']
+```
+
+**Polling Strategy:**
+```typescript
+// Own Projects: 30s (frequent updates expected)
+useGetProjectsQuery(undefined, {
+  pollingInterval: 30000,
+  refetchOnFocus: true,
+  refetchOnMountOrArgChange: true,
+})
+
+// Public Projects: 60s (less frequent changes)
+useGetPublicProjectsQuery(undefined, {
+  pollingInterval: 60000,
+  refetchOnFocus: true,
+  refetchOnMountOrArgChange: true,
+})
+```
+
+**Optimistic Updates:**
+```typescript
+// Toggle Publish - instant UI feedback
+togglePublish.onQueryStarted(({ project, publish }, { dispatch, queryFulfilled }) => {
+  const patchResult = dispatch(
+    projectsApi.util.updateQueryData('getProjects', undefined, (draft) => {
+      const found = draft.list_of_projects.find(p => p.project_name === project);
+      if (found) found.published = publish;
+    })
+  );
+  try {
+    await queryFulfilled;
+  } catch {
+    patchResult.undo(); // Rollback on error
+  }
+})
+```
+
+#### Common Integration Pitfalls
+
+**1. Project Name Mismatch**
+```typescript
+// ❌ WRONG - Using custom_project_name
+const projectName = userInput; // "MyProject"
+await importQGS({ project: projectName, ... });
+// Result: Import goes to wrong folder if duplicate exists!
+
+// ✅ CORRECT - Using db_name from CREATE response
+const created = await createProject({ project: userInput, ... });
+const projectName = created.data.db_name; // "MyProject_1"
+await importQGS({ project: projectName, ... });
+```
+
+**2. Missing db_name Type**
+```typescript
+// ❌ WRONG - DbInfo without db_name
+export interface DbInfo {
+  login: string;
+  password: string;
+  host: string;
+  port: string;
+  // Missing db_name!
+}
+
+// ✅ CORRECT - DbInfo with db_name
+export interface DbInfo {
+  login: string;
+  password: string;
+  host: string;
+  port: string;
+  db_name: string; // CRITICAL: Real project_name with suffix
+}
+```
+
+**3. Incorrect Field Names (Database vs. API)**
+```typescript
+// Database field names (Django models):
+ProjectItem.project_name       // NOT "name"
+ProjectItem.custom_project_name // User input
+ProjectItem.user_id            // NOT "owner_id"
+ProjectItem.creationDate       // NOT "created_at"
+
+Layer.project                  // String, NOT FK!
+Layer.source_table_name        // PostGIS table name
+Layer.creationDateOfLayer      // NOT "created_at"
+
+// Always check actual database schema before implementing!
+```
+
+**4. Empty Project Detection**
+```typescript
+// Map view - check if project has layers
+const { data: projectData } = useGetProjectDataQuery({ project });
+
+if (!projectData.children || projectData.children.length === 0) {
+  // ❌ Empty project - no layers imported
+  // Show: "Projekt jest pusty. Zaimportuj QGS lub dodaj warstwy."
+}
+```
+
+#### Testing Checklist
+
+**Before deploying project-related features:**
+- [ ] Test with UNIQUE project name
+- [ ] Test with DUPLICATE project name (critical!)
+- [ ] Test QGS import to newly created project
+- [ ] Test opening project in map view
+- [ ] Verify tree.json has children (layers)
+- [ ] Check browser console for correct project_name in logs
+- [ ] Verify database: `Layer.objects.filter(project=project_name).count() > 0`
+- [ ] Verify file system: `ls qgs/{project_name}/` shows QGS + tree.json
+
+**Console Logs to Look For:**
+```
+✅ STEP 1: Project created: { data: { db_name: "MyProject_1" } }
+✅ STEP 2: Using backend project_name from db_name: MyProject_1
+✅ STEP 3: Starting QGS import with file: project.qgs
+✅ STEP 4: QGS import completed: { success: true }
+```
+
 ### Backend Documentation
 
 **CRITICAL:** Complete backend documentation available in backend repository and frontend docs folder.

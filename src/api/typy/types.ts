@@ -98,6 +98,7 @@ export interface DbInfo {
   password: string;
   host: string;
   port: string;
+  db_name: string; // CRITICAL: Real project_name from backend (with suffix _1, _2, etc.)
 }
 
 // ============================================================================

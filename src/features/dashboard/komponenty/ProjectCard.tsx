@@ -41,6 +41,25 @@ export function ProjectCard({ project, onOpen, onDelete, onTogglePublish, onSett
   const theme = useTheme();
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
 
+  // Format timestamp: UTC → local time
+  const formatLocalDateTime = (utcString: string | undefined) => {
+    if (!utcString) return 'Brak daty';
+
+    try {
+      const date = new Date(utcString);
+      // Format: 11 paź 2025, 13:45
+      return date.toLocaleString('pl-PL', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (e) {
+      return 'Nieprawidłowa data';
+    }
+  };
+
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     event.stopPropagation();
     setMenuAnchor(event.currentTarget);
@@ -179,7 +198,7 @@ export function ProjectCard({ project, onOpen, onDelete, onTogglePublish, onSett
             color="text.secondary"
             sx={{ mt: 2, display: 'block' }}
           >
-            Ostatnia modyfikacja: {project.project_date} {project.project_time}
+            Utworzono: {formatLocalDateTime(project.created_at)}
           </Typography>
         </CardContent>
       </Card>

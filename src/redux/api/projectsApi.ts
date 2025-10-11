@@ -113,12 +113,13 @@ export const projectsApi = createApi({
      * {
      *   "data": { host, port, db_name, login, password },
      *   "success": true,
-     *   "message": "Projekt został pomyślnie utworzony",
-     *   "project_name": "actual_project_name"
+     *   "message": "Projekt został pomyślnie utworzony"
      * }
+     *
+     * IMPORTANT: Use data.db_name for real project_name (with suffix _1, _2, etc.)
      */
     createProject: builder.mutation<
-      { data: DbInfo; success: boolean; message: string; project_name: string },
+      { data: DbInfo; success: boolean; message: string },
       CreateProjectData
     >({
       query: (data) => ({
@@ -398,6 +399,350 @@ export const projectsApi = createApi({
     }),
 
     /**
+     * POST /api/projects/import/qgz/
+     * Import compressed QGIS project file (.qgz)
+     *
+     * Same functionality as importQGS but for compressed format.
+     * Includes upload progress tracking.
+     *
+     * Backend Process:
+     * 1. Extracts .qgz archive
+     * 2. Reads .qgs file inside
+     * 3. Imports layers to PostGIS (same as importQGS)
+     * 4. Configures WFS and styles
+     * 5. Generates layer tree
+     *
+     * NOTE: Uses custom queryFn to support upload progress tracking
+     */
+    importQGZ: builder.mutation<
+      { data: string; success: boolean; message: string },
+      { project: string; qgzFile: File; onProgress?: (progress: number) => void }
+    >({
+      queryFn: async ({ project, qgzFile, onProgress }, _api, _extraOptions, baseQuery) => {
+        const token = getToken();
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.universemapmaker.online';
+
+        console.log('🚀 importQGZ mutation called with:');
+        console.log('  - project:', project);
+        console.log('  - qgzFile:', qgzFile.name, qgzFile.size, 'bytes');
+        console.log('  - baseUrl:', baseUrl);
+        console.log('  - token:', token ? '✅ present' : '❌ missing');
+
+        return new Promise((resolve) => {
+          const xhr = new XMLHttpRequest();
+          const formData = new FormData();
+          formData.append('project', project);
+          formData.append('qgz', qgzFile); // Note: 'qgz' field name, not 'qgs'
+
+          // Upload progress tracking
+          xhr.upload.addEventListener('progress', (e) => {
+            if (e.lengthComputable && onProgress) {
+              const percentComplete = Math.round((e.loaded / e.total) * 100);
+              onProgress(percentComplete);
+            }
+          });
+
+          // Response handlers
+          xhr.addEventListener('load', () => {
+            console.log('📥 Response received, status:', xhr.status);
+            console.log('📄 Response text:', xhr.responseText.substring(0, 500));
+
+            if (xhr.status >= 200 && xhr.status < 300) {
+              try {
+                const data = JSON.parse(xhr.responseText);
+                console.log('✅ Parsed response data:', data);
+
+                if (data.success === false || data.error) {
+                  console.error('❌ Backend returned error in 200 response:', data);
+                  resolve({
+                    error: {
+                      status: xhr.status,
+                      data: {
+                        message: data.message || data.error || 'Import QGZ failed',
+                        details: data
+                      }
+                    }
+                  });
+                } else {
+                  console.log('🎉 Import QGZ successful!');
+                  resolve({ data });
+                }
+              } catch (error) {
+                resolve({ error: { status: xhr.status, data: 'Invalid JSON response' } });
+              }
+            } else {
+              try {
+                const errorData = JSON.parse(xhr.responseText);
+                resolve({
+                  error: {
+                    status: xhr.status,
+                    data: {
+                      message: errorData.message || errorData.detail || 'HTTP Error',
+                      details: errorData
+                    }
+                  }
+                });
+              } catch {
+                resolve({ error: { status: xhr.status, data: { message: xhr.responseText || 'Unknown error' } } });
+              }
+            }
+          });
+
+          xhr.addEventListener('error', (e) => {
+            console.error('❌ XHR error event:', e);
+            resolve({ error: { status: 'FETCH_ERROR', error: 'Network error' } });
+          });
+
+          xhr.addEventListener('abort', (e) => {
+            console.warn('⚠️ XHR abort event:', e);
+            resolve({ error: { status: 'FETCH_ERROR', error: 'Upload aborted' } });
+          });
+
+          // Send request
+          const requestUrl = `${baseUrl}/api/projects/import/qgz/`;
+          console.log('📡 Sending POST request to:', requestUrl);
+          xhr.open('POST', requestUrl);
+          xhr.setRequestHeader('Authorization', `Token ${token}`);
+          console.log('📤 Sending FormData with project:', project, 'and file:', qgzFile.name);
+          xhr.send(formData);
+          console.log('✈️ Request sent, waiting for response...');
+        });
+      },
+      invalidatesTags: (result, error, arg) => [
+        { type: 'Project', id: arg.project },
+        { type: 'Projects', id: 'LIST' },
+      ],
+    }),
+
+    /**
+     * POST /api/projects/logo/update/
+     * Update project logo
+     *
+     * Uploads a new logo image for the project.
+     * Logo is displayed in project cards and map header.
+     */
+    updateLogo: builder.mutation<
+      { success: boolean; message?: string },
+      { project: string; logo: File }
+    >({
+      queryFn: async ({ project, logo }) => {
+        const token = getToken();
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.universemapmaker.online';
+
+        return new Promise((resolve) => {
+          const xhr = new XMLHttpRequest();
+          const formData = new FormData();
+          formData.append('project', project);
+          formData.append('logo', logo);
+
+          xhr.addEventListener('load', () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              try {
+                const data = JSON.parse(xhr.responseText);
+                resolve({ data });
+              } catch {
+                resolve({ error: { status: xhr.status, data: 'Invalid JSON response' } });
+              }
+            } else {
+              try {
+                const errorData = JSON.parse(xhr.responseText);
+                resolve({ error: { status: xhr.status, data: errorData } });
+              } catch {
+                resolve({ error: { status: xhr.status, data: { message: xhr.responseText } } });
+              }
+            }
+          });
+
+          xhr.addEventListener('error', () => {
+            resolve({ error: { status: 'FETCH_ERROR', error: 'Network error' } });
+          });
+
+          const requestUrl = `${baseUrl}/api/projects/logo/update/`;
+          xhr.open('POST', requestUrl);
+          xhr.setRequestHeader('Authorization', `Token ${token}`);
+          xhr.send(formData);
+        });
+      },
+      invalidatesTags: (result, error, arg) => [
+        { type: 'Project', id: arg.project },
+        { type: 'Projects', id: 'LIST' },
+      ],
+    }),
+
+    /**
+     * POST /api/projects/metadata
+     * Set project metadata (description, keywords, categories)
+     */
+    setMetadata: builder.mutation<
+      { success: boolean },
+      { project: string; description?: string; keywords?: string; categories?: string }
+    >({
+      query: (data) => ({
+        url: '/api/projects/metadata',
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: (result, error, arg) => [
+        { type: 'Project', id: arg.project },
+        { type: 'Projects', id: 'LIST' },
+      ],
+    }),
+
+    /**
+     * POST /api/projects/order
+     * Get layer tree order
+     */
+    getLayersOrder: builder.query<
+      { layers: string[] },
+      { project_name: string }
+    >({
+      query: (data) => ({
+        url: '/api/projects/order',
+        method: 'POST',
+        body: data,
+      }),
+      providesTags: (result, error, arg) => [
+        { type: 'Project', id: arg.project_name },
+      ],
+    }),
+
+    /**
+     * POST /api/projects/tree/order
+     * Change layer tree order
+     */
+    changeLayersOrder: builder.mutation<
+      { success: boolean },
+      { project_name: string; order: string[] }
+    >({
+      query: (data) => ({
+        url: '/api/projects/tree/order',
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: (result, error, arg) => [
+        { type: 'Project', id: arg.project_name },
+      ],
+    }),
+
+    /**
+     * POST /api/projects/space/get
+     * Get project storage usage
+     */
+    getProjectSpace: builder.query<
+      { size_mb: number },
+      { project_name: string }
+    >({
+      query: (data) => ({
+        url: '/api/projects/space/get',
+        method: 'POST',
+        body: data,
+      }),
+    }),
+
+    /**
+     * POST /api/projects/search
+     * Search projects
+     */
+    searchProjects: builder.query<
+      { projects: Project[] },
+      { query: string }
+    >({
+      query: (data) => ({
+        url: '/api/projects/search',
+        method: 'POST',
+        body: data,
+      }),
+    }),
+
+    /**
+     * POST /api/projects/reload
+     * Reload project (refresh from QGIS)
+     */
+    reloadProject: builder.mutation<
+      { success: boolean },
+      { project_name: string }
+    >({
+      query: (data) => ({
+        url: '/api/projects/reload',
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: (result, error, arg) => [
+        { type: 'Project', id: arg.project_name },
+      ],
+    }),
+
+    /**
+     * POST /api/projects/repair
+     * Repair corrupted project
+     */
+    repairProject: builder.mutation<
+      { success: boolean; issues_fixed: string[] },
+      { project_name: string }
+    >({
+      query: (data) => ({
+        url: '/api/projects/repair',
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: (result, error, arg) => [
+        { type: 'Project', id: arg.project_name },
+      ],
+    }),
+
+    /**
+     * POST /api/projects/restore
+     * Restore project from backup
+     */
+    restoreProject: builder.mutation<
+      { success: boolean },
+      { project_name: string; version?: string }
+    >({
+      query: (data) => ({
+        url: '/api/projects/restore',
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: (result, error, arg) => [
+        { type: 'Project', id: arg.project_name },
+        { type: 'Projects', id: 'LIST' },
+      ],
+    }),
+
+    /**
+     * POST /api/projects/basemap/set
+     * Set project basemap
+     */
+    setBasemap: builder.mutation<
+      { success: boolean },
+      { project_name: string; type: 'osm' | 'mapbox' | 'google' | 'bing'; url?: string; api_key?: string }
+    >({
+      query: (data) => ({
+        url: '/api/projects/basemap/set',
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: (result, error, arg) => [
+        { type: 'Project', id: arg.project_name },
+      ],
+    }),
+
+    /**
+     * POST /api/projects/print
+     * Prepare project print/preview image
+     */
+    preparePrintImage: builder.mutation<
+      { image_url: string },
+      { project_name: string; bbox: [number, number, number, number]; width: number; height: number; dpi?: number }
+    >({
+      query: (data) => ({
+        url: '/api/projects/print',
+        method: 'POST',
+        body: data,
+      }),
+    }),
+
+    /**
      * GET /api/projects/new/json
      * Fetch project data structure (tree.json) for map view
      *
@@ -439,6 +784,9 @@ export const projectsApi = createApi({
  * - useGetProjectsQuery() - User's own projects (requires auth)
  * - useGetPublicProjectsQuery() - All published projects (no auth required)
  * - useGetProjectDataQuery() - Project data structure for map view
+ * - useGetLayersOrderQuery() - Get layer tree order
+ * - useGetProjectSpaceQuery() - Get storage usage
+ * - useSearchProjectsQuery() - Search projects
  *
  * Mutations (manual trigger):
  * - useCreateProjectMutation()
@@ -446,20 +794,41 @@ export const projectsApi = createApi({
  * - useDeleteProjectMutation()
  * - useTogglePublishMutation()
  * - useImportQGSMutation() - Import QGS file to project
+ * - useImportQGZMutation() - Import compressed QGZ file to project
  * - useExportProjectMutation() - Export as QGS/QGZ
  * - useCheckSubdomainAvailabilityMutation() - Check subdomain
  * - useChangeDomainMutation() - Change project domain
+ * - useUpdateLogoMutation() - Update project logo
+ * - useSetMetadataMutation() - Set project metadata
+ * - useChangeLayersOrderMutation() - Reorder layers
+ * - useReloadProjectMutation() - Reload from QGIS
+ * - useRepairProjectMutation() - Repair corrupted project
+ * - useRestoreProjectMutation() - Restore from backup
+ * - useSetBasemapMutation() - Set project basemap
+ * - usePreparePrintImageMutation() - Generate print preview
  */
 export const {
   useGetProjectsQuery,
   useGetPublicProjectsQuery,
   useGetProjectDataQuery,
+  useGetLayersOrderQuery,
+  useGetProjectSpaceQuery,
+  useSearchProjectsQuery,
   useCreateProjectMutation,
   useUpdateProjectMutation,
   useDeleteProjectMutation,
   useTogglePublishMutation,
   useImportQGSMutation,
+  useImportQGZMutation,
   useExportProjectMutation,
   useCheckSubdomainAvailabilityMutation,
   useChangeDomainMutation,
+  useUpdateLogoMutation,
+  useSetMetadataMutation,
+  useChangeLayersOrderMutation,
+  useReloadProjectMutation,
+  useRepairProjectMutation,
+  useRestoreProjectMutation,
+  useSetBasemapMutation,
+  usePreparePrintImageMutation,
 } = projectsApi;

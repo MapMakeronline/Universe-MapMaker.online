@@ -54,21 +54,11 @@ class UnifiedProjectsService {
   // Core Project Operations
   // ============================================================================
 
-  /**
-   * Get all projects for the authenticated user
-   * Endpoint: GET /dashboard/projects/
-   */
-  async getProjects(): Promise<ProjectsResponse> {
-    return apiClient.get<ProjectsResponse>('/dashboard/projects/');
-  }
+  // REMOVED: Duplicate of RTK Query useGetProjectsQuery
+  // Use: import { useGetProjectsQuery } from '@/redux/api/projectsApi'
 
-  /**
-   * Get public projects (no authentication required)
-   * Endpoint: GET /dashboard/projects/public/
-   */
-  async getPublicProjects(): Promise<{ success: boolean; projects: Project[]; count: number }> {
-    return apiClient.get('/dashboard/projects/public/');
-  }
+  // REMOVED: Duplicate of RTK Query useGetPublicProjectsQuery
+  // Use: import { useGetPublicProjectsQuery } from '@/redux/api/projectsApi'
 
   /**
    * Get specific project data with layers, map state, and features
@@ -78,324 +68,57 @@ class UnifiedProjectsService {
     return apiClient.get(`/dashboard/projects/${encodeURIComponent(projectName)}/`);
   }
 
-  /**
-   * Create a new project
-   * Endpoint: POST /dashboard/projects/create/
-   *
-   * @param data - Project creation data (supports both old and new formats)
-   */
-  async createProject(data: CreateProjectData | UnifiedCreateProjectData): Promise<{
-    success: boolean;
-    message: string;
-    project: Project
-  }> {
-    // Transform data to dashboard endpoint format if needed
-    const dashboardData = 'project' in data ? {
-      project_name: data.project,
-      custom_project_name: data.domain,
-      description: data.projectDescription,
-      keywords: data.keywords,
-      category: data.categories?.[0] || 'Inne',
-      is_public: false,
-    } : data;
+  // REMOVED: Duplicate of RTK Query useCreateProjectMutation
+  // Use: import { useCreateProjectMutation } from '@/redux/api/projectsApi'
+  // NOTE: Legacy used /dashboard/projects/create/ (old endpoint)
+  //       RTK Query uses /api/projects/create/ (correct endpoint with db_name)
 
-    return apiClient.post('/dashboard/projects/create/', dashboardData);
-  }
+  // REMOVED: Duplicate of RTK Query useUpdateProjectMutation
+  // Use: import { useUpdateProjectMutation } from '@/redux/api/projectsApi'
 
-  /**
-   * Update project metadata
-   * Endpoint: PUT /dashboard/projects/update/
-   */
-  async updateProject(data: UpdateProjectData | UnifiedUpdateProjectData): Promise<{
-    success: boolean;
-    message: string
-  }> {
-    return apiClient.put('/dashboard/projects/update/', data);
-  }
+  // REMOVED: Duplicate of RTK Query useDeleteProjectMutation
+  // Use: import { useDeleteProjectMutation } from '@/redux/api/projectsApi'
 
-  /**
-   * Delete a project
-   * Endpoint: DELETE /dashboard/projects/delete/?project={projectName}
-   *
-   * STANDARDIZED: Now uses dashboard endpoint with DELETE method
-   */
-  async deleteProject(projectName: string): Promise<{ success: boolean; message: string }> {
-    return apiClient.delete(`/dashboard/projects/delete/?project=${encodeURIComponent(projectName)}`);
-  }
+  // REMOVED: Duplicate of RTK Query useTogglePublishMutation
+  // Use: import { useTogglePublishMutation } from '@/redux/api/projectsApi'
+  // NOTE: Backend has bug - returns 500 but actually publishes (workaround in ProjectSettingsDialog)
+
+  // REMOVED: Duplicate of RTK Query useExportProjectMutation
+  // Use: import { useExportProjectMutation } from '@/redux/api/projectsApi'
+
+  // REMOVED: Duplicate of RTK Query useImportQGSMutation
+  // Use: import { useImportQGSMutation } from '@/redux/api/projectsApi'
+  // NOTE: RTK Query version has upload progress tracking via XMLHttpRequest
+
+  // REMOVED: Duplicate of RTK Query useImportQGZMutation
+  // Use: import { useImportQGZMutation } from '@/redux/api/projectsApi'
+  // NOTE: RTK Query version has upload progress tracking via XMLHttpRequest
 
   // ============================================================================
-  // Project Visibility & Publishing
+  // REMOVED: All functions below migrated to RTK Query
   // ============================================================================
 
-  /**
-   * Toggle project publish status
-   * Endpoint: POST /api/projects/publish
-   *
-   * STANDARDIZED: Single endpoint for both publish/unpublish
-   */
-  async togglePublish(projectName: string, publish: boolean): Promise<{
-    success: boolean;
-    message: string
-  }> {
-    return apiClient.post('/api/projects/publish', {
-      project: projectName,
-      publish: publish,
-    });
-  }
-
-  // ============================================================================
-  // Import & Export
-  // ============================================================================
-
-  /**
-   * Export project to QGS or QGZ format
-   * Endpoint: POST /api/projects/export
-   *
-   * STANDARDIZED: Consistent export implementation
-   */
-  async exportProject(projectName: string, projectType: 'qgs' | 'qgz' = 'qgs'): Promise<Blob> {
-    return apiClient.post('/api/projects/export', {
-      project: projectName,
-      project_type: projectType,
-    }, {
-      // Return blob for file download
-      headers: { 'Accept': 'application/octet-stream' }
-    });
-  }
-
-  /**
-   * Import QGS project file
-   * Endpoint: POST /api/projects/import/qgs/
-   */
-  async importQGS(file: File, projectName?: string): Promise<{ success: boolean; message: string }> {
-    const formData = new FormData();
-    formData.append('qgs', file);
-    if (projectName) {
-      formData.append('project', projectName);
-    }
-    return apiClient.post('/api/projects/import/qgs/', formData);
-  }
-
-  /**
-   * Import QGZ project file (compressed)
-   * Endpoint: POST /api/projects/import/qgz/
-   */
-  async importQGZ(file: File, projectName?: string): Promise<{ success: boolean; message: string }> {
-    const formData = new FormData();
-    formData.append('qgz', file);
-    if (projectName) {
-      formData.append('project', projectName);
-    }
-    return apiClient.post('/api/projects/import/qgz/', formData);
-  }
-
-  // ============================================================================
-  // Project Metadata & Settings
-  // ============================================================================
-
-  /**
-   * Update project logo
-   * Endpoint: POST /api/projects/logo/update/
-   */
-  async updateLogo(projectName: string, logo: File): Promise<{ success: boolean }> {
-    const formData = new FormData();
-    formData.append('project', projectName);
-    formData.append('logo', logo);
-    return apiClient.post('/api/projects/logo/update/', formData);
-  }
-
-  /**
-   * Set project metadata (description, keywords, categories)
-   * Endpoint: POST /api/projects/metadata
-   */
-  async setMetadata(
-    projectName: string,
-    metadata: {
-      description?: string;
-      keywords?: string;
-      categories?: string;
-    }
-  ): Promise<{ success: boolean }> {
-    return apiClient.post('/api/projects/metadata', {
-      project: projectName,
-      ...metadata,
-    });
-  }
+  // REMOVED: updateLogo - Use: useUpdateLogoMutation
+  // REMOVED: setMetadata - Use: useSetMetadataMutation
+  // REMOVED: getLayersOrder - Use: useGetLayersOrderQuery
+  // REMOVED: changeLayersOrder - Use: useChangeLayersOrderMutation
+  // REMOVED: getProjectSpace - Use: useGetProjectSpaceQuery
+  // REMOVED: searchProjects - Use: useSearchProjectsQuery
+  // REMOVED: reloadProject - Use: useReloadProjectMutation
+  // REMOVED: repairProject - Use: useRepairProjectMutation
+  // REMOVED: restoreProject - Use: useRestoreProjectMutation
+  // REMOVED: setBasemap - Use: useSetBasemapMutation
+  // REMOVED: preparePrintImage - Use: usePreparePrintImageMutation
+  // REMOVED: importQGZProject - Use: useImportQGZMutation
+  // REMOVED: importQGSProject - Use: useImportQGSMutation
+  // REMOVED: importQGISProject - Auto-detect in component, use above mutations
 
   /**
    * Get project thumbnail URL
+   * NOTE: This is a helper method, not an API call - OK to keep
    */
   getThumbnailUrl(projectName: string): string {
     return `${apiClient.getBaseURL()}/api/projects/thumbnail/${projectName}/`;
-  }
-
-  // ============================================================================
-  // Domain Management
-  // ============================================================================
-
-  /**
-   * Check subdomain availability
-   * Endpoint: POST /api/projects/subdomainAvailability
-   */
-  async checkSubdomainAvailability(subdomain: string): Promise<{ available: boolean }> {
-    return apiClient.post('/api/projects/subdomainAvailability', { subdomain });
-  }
-
-  /**
-   * Change project domain
-   * Endpoint: POST /api/projects/domain/change
-   */
-  async changeDomain(projectName: string, newDomain: string): Promise<{ success: boolean }> {
-    return apiClient.post('/api/projects/domain/change', {
-      project_name: projectName,
-      domain: newDomain,
-    });
-  }
-
-  // ============================================================================
-  // Layer Management
-  // ============================================================================
-
-  /**
-   * Get project layer order
-   * Endpoint: POST /api/projects/order
-   */
-  async getLayersOrder(projectName: string): Promise<{ layers: string[] }> {
-    return apiClient.post('/api/projects/order', { project_name: projectName });
-  }
-
-  /**
-   * Change layer tree order
-   * Endpoint: POST /api/projects/tree/order
-   */
-  async changeLayersOrder(projectName: string, order: string[]): Promise<{ success: boolean }> {
-    return apiClient.post('/api/projects/tree/order', {
-      project_name: projectName,
-      order,
-    });
-  }
-
-  // ============================================================================
-  // Project Utilities
-  // ============================================================================
-
-  /**
-   * Get project storage usage
-   * Endpoint: POST /api/projects/space/get
-   */
-  async getProjectSpace(projectName: string): Promise<{ size_mb: number }> {
-    return apiClient.post('/api/projects/space/get', { project_name: projectName });
-  }
-
-  /**
-   * Search projects
-   * Endpoint: POST /api/projects/search
-   */
-  async searchProjects(query: string): Promise<{ projects: Project[] }> {
-    return apiClient.post('/api/projects/search', { query });
-  }
-
-  /**
-   * Reload project (refresh from QGIS)
-   * Endpoint: POST /api/projects/reload
-   */
-  async reloadProject(projectName: string): Promise<{ success: boolean }> {
-    return apiClient.post('/api/projects/reload', { project_name: projectName });
-  }
-
-  /**
-   * Repair corrupted project
-   * Endpoint: POST /api/projects/repair
-   */
-  async repairProject(projectName: string): Promise<{ success: boolean; issues_fixed: string[] }> {
-    return apiClient.post('/api/projects/repair', { project_name: projectName });
-  }
-
-  /**
-   * Restore project from backup
-   * Endpoint: POST /api/projects/restore
-   */
-  async restoreProject(projectName: string, version?: string): Promise<{ success: boolean }> {
-    return apiClient.post('/api/projects/restore', {
-      project_name: projectName,
-      version,
-    });
-  }
-
-  /**
-   * Set project basemap
-   * Endpoint: POST /api/projects/basemap/set
-   */
-  async setBasemap(
-    projectName: string,
-    basemap: {
-      type: 'osm' | 'mapbox' | 'google' | 'bing';
-      url?: string;
-      api_key?: string;
-    }
-  ): Promise<{ success: boolean }> {
-    return apiClient.post('/api/projects/basemap/set', {
-      project_name: projectName,
-      ...basemap,
-    });
-  }
-
-  /**
-   * Prepare project print/preview image
-   * Endpoint: POST /api/projects/print
-   */
-  async preparePrintImage(
-    projectName: string,
-    options: {
-      bbox: [number, number, number, number];
-      width: number;
-      height: number;
-      dpi?: number;
-    }
-  ): Promise<{ image_url: string }> {
-    return apiClient.post('/api/projects/print', {
-      project_name: projectName,
-      ...options,
-    });
-  }
-
-  /**
-   * Import QGIS project from .qgz file
-   * POST /api/projects/import/qgz/
-   */
-  async importQGZProject(file: File, projectName: string): Promise<any> {
-    const formData = new FormData();
-    formData.append('project', projectName);
-    formData.append('qgz', file);
-
-    return apiClient.post('/api/projects/import/qgz/', formData);
-  }
-
-  /**
-   * Import QGIS project from .qgs file
-   * POST /api/projects/import/qgs/
-   */
-  async importQGSProject(file: File, projectName: string): Promise<any> {
-    const formData = new FormData();
-    formData.append('project', projectName);
-    formData.append('qgs', file);
-
-    return apiClient.post('/api/projects/import/qgs/', formData);
-  }
-
-  /**
-   * Import QGIS project (auto-detects file type)
-   */
-  async importQGISProject(file: File, projectName: string): Promise<any> {
-    const extension = file.name.split('.').pop()?.toLowerCase();
-
-    if (extension === 'qgz') {
-      return this.importQGZProject(file, projectName);
-    } else if (extension === 'qgs') {
-      return this.importQGSProject(file, projectName);
-    } else {
-      throw new Error('Unsupported file format. Please use .qgz or .qgs files.');
-    }
   }
 }
 

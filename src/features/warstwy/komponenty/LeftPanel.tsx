@@ -20,6 +20,8 @@ import CreateConsultationModal from '../modale/CreateConsultationModal';
 import LayerManagerModal from '../modale/LayerManagerModal';
 import PrintConfigModal from '../modale/PrintConfigModal';
 import { useResizable, useDragDrop } from '@/hooks/index';
+import { useAppSelector } from '@/redux/hooks';
+import { LayerNode } from '@/typy/layers';
 
 // Types
 interface Warstwa {
@@ -50,6 +52,10 @@ const SIDEBAR_CONFIG = {
 
 const LeftPanel: React.FC = () => {
   const theme = useTheme();
+
+  // Get layers from Redux
+  const reduxLayers = useAppSelector((state) => state.layers.layers);
+
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [searchFilter, setSearchFilter] = useState('');
   const [filterMenuOpen, setFilterMenuOpen] = useState(false);
@@ -142,6 +148,32 @@ const LeftPanel: React.FC = () => {
   });
 
   const dragDropHandlers = useDragDrop(warstwy, setWarstwy);
+
+  // Convert Redux LayerNode to Warstwa format
+  const convertLayerNodeToWarstwa = (node: LayerNode): Warstwa => {
+    const typ: 'grupa' | 'wektor' | 'raster' | 'wms' =
+      node.type === 'group' ? 'grupa' :
+      node.type === 'RasterLayer' ? 'raster' :
+      node.type === 'VectorLayer' ? 'wektor' : 'wms';
+
+    return {
+      id: node.id,
+      nazwa: node.name,
+      widoczna: node.visible !== false,
+      typ,
+      dzieci: node.children?.map(convertLayerNodeToWarstwa),
+      rozwinięta: node.childrenVisible || false,
+    };
+  };
+
+  // Sync Redux layers to local state
+  React.useEffect(() => {
+    if (reduxLayers && reduxLayers.length > 0) {
+      console.log('🔄 LeftPanel: Updating layers from Redux:', reduxLayers.length, 'layers');
+      const convertedLayers = reduxLayers.map(convertLayerNodeToWarstwa);
+      setWarstwy(convertedLayers);
+    }
+  }, [reduxLayers]);
 
   // Helper functions
   const findLayerById = (layers: Warstwa[], id: string): Warstwa | null => {
