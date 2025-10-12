@@ -185,6 +185,11 @@ export default function OwnProjectsRTK() {
       const backendProjectName = createdProject.data.db_name;
       console.log('🎯 STEP 2: Using backend project_name from db_name:', backendProjectName);
 
+      // STEP 2.5: Wait for backend to initialize QGS file (template)
+      console.log('⏳ STEP 2.5: Waiting 1s for backend QGS initialization...');
+      await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay
+      console.log('✅ STEP 2.5: Delay complete, proceeding to layer import');
+
       // STEP 3: Import each shapefile as a layer (sequential - backend limitation)
       console.log(`📤 STEP 3: Starting import of ${shapefiles.length} shapefiles...`);
 
