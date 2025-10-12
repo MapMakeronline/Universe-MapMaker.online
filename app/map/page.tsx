@@ -7,13 +7,14 @@ import MapContainer from '@/features/mapa/komponenty/MapContainer';
 import LeftPanel from '@/features/warstwy/komponenty/LeftPanel';
 import RightToolbar from '@/features/narzedzia/RightToolbar';
 import { QGISProjectLoader } from '@/src/components/qgis/QGISProjectLoader';
+import { QGISLayerRenderer } from '@/src/components/qgis/QGISLayerRenderer';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import { setCurrentProject } from '@/redux/slices/projectsSlice';
 import { loadLayers, resetLayers } from '@/redux/slices/layersSlice';
 import { setViewState, setMapStyle } from '@/redux/slices/mapSlice';
-import { useGetProjectDataQuery } from '@/redux/api/projectsApi';
+import { useGetProjectDataQuery, useGetProjectsQuery } from '@/redux/api/projectsApi';
 import { MAP_STYLES } from '@/mapbox/config';
-import { transformExtent, isValidWGS84 } from '@/mapbox/coordinates';
+import { transformExtent, transformExtentFromWebMercator, detectCRS, isValidWGS84 } from '@/mapbox/coordinates';
 import type { QGISLayerNode } from '@/types/qgis';
 import type { LayerNode } from '@/typy/layers';
 
@@ -29,6 +30,9 @@ function convertQGISToLayerNode(qgisNode: QGISLayerNode): LayerNode {
     visible: qgisNode.visible !== false,
     opacity: 'opacity' in qgisNode ? qgisNode.opacity / 255 : 1, // QGIS uses 0-255, we use 0-1
     type: qgisNode.type,
+    extent: qgisNode.extent && qgisNode.extent.length === 4
+      ? (qgisNode.extent as [number, number, number, number])
+      : undefined, // Copy extent from backend (for zoom to layer functionality)
   };
 
   // Handle group layers (folders)
@@ -40,13 +44,41 @@ function convertQGISToLayerNode(qgisNode: QGISLayerNode): LayerNode {
   return baseNode;
 }
 
+/**
+ * Collect all visible layers (flatten nested structure)
+ * For rendering on map - we need flat list of all layers
+ */
+function collectAllLayers(nodes: LayerNode[]): LayerNode[] {
+  const result: LayerNode[] = [];
+
+  for (const node of nodes) {
+    // Add layer (not group) nodes
+    if (node.type !== 'group') {
+      result.push(node);
+    }
+
+    // Recursively collect children
+    if (node.children && node.children.length > 0) {
+      result.push(...collectAllLayers(node.children));
+    }
+  }
+
+  return result;
+}
+
 export default function MapPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const dispatch = useAppDispatch();
   const { isAuthenticated, user } = useAppSelector((state) => state.auth);
   const currentProject = useAppSelector((state) => state.projects.currentProject);
+  const layers = useAppSelector((state) => state.layers.layers);
   const projectName = searchParams.get('project');
+
+  // Fetch all user projects to get owner info
+  const { data: projectsData } = useGetProjectsQuery(undefined, {
+    skip: !isAuthenticated || !projectName,
+  });
 
   // Fetch project data using RTK Query (non-blocking - UI renders immediately)
   const { data: projectData, isLoading, error, isError } = useGetProjectDataQuery(
@@ -54,8 +86,15 @@ export default function MapPage() {
     { skip: !projectName }
   );
 
+  // Find current project from projects list to get owner_id
+  const project = projectsData?.list_of_projects?.find(
+    (p) => p.project_name === projectName
+  );
+
   // Determine if user is owner (edit mode) or viewer (read-only)
-  const isOwner = isAuthenticated && currentProject && user?.id === (currentProject as any).owner_id;
+  // WORKAROUND: /dashboard/projects/ returns ONLY user's projects (no owner field)
+  // So if project is found in user's projects list → user is owner
+  const isOwner = isAuthenticated && !!project;
   const isReadOnly = !isOwner;
 
   // Redirect to dashboard if no project name
@@ -64,6 +103,13 @@ export default function MapPage() {
       router.push('/dashboard');
     }
   }, [projectName, router]);
+
+  // Set current project in Redux when found
+  useEffect(() => {
+    if (project && project.project_name === projectName) {
+      dispatch(setCurrentProject(project));
+    }
+  }, [project, projectName, dispatch]);
 
   // Reset layers when switching projects
   useEffect(() => {
@@ -87,20 +133,32 @@ export default function MapPage() {
     if (projectData.extent && projectData.extent.length === 4) {
       const [minX, minY, maxX, maxY] = projectData.extent;
 
-      // Check if coordinates need transformation (EPSG:2180 → EPSG:4326)
+      // Auto-detect CRS and transform to WGS84 if needed
       let minLng, minLat, maxLng, maxLat;
+      const detectedCRS = detectCRS(minX, minY);
 
-      if (isValidWGS84(minX, minY) && isValidWGS84(maxX, maxY)) {
+      if (detectedCRS === 'EPSG:4326') {
         // Already WGS84
         [minLng, minLat, maxLng, maxLat] = projectData.extent;
-        console.log('✅ Extent already in WGS84:', projectData.extent);
-      } else {
-        // Transform from EPSG:2180 (Polish Grid) to EPSG:4326 (WGS84)
-        [minLng, minLat, maxLng, maxLat] = transformExtent(projectData.extent);
-        console.log('🔄 Transformed extent EPSG:2180 → WGS84:', {
+        console.log('✅ Extent already in WGS84 (EPSG:4326):', projectData.extent);
+      } else if (detectedCRS === 'EPSG:3857') {
+        // Transform from Web Mercator to WGS84
+        [minLng, minLat, maxLng, maxLat] = transformExtentFromWebMercator(projectData.extent);
+        console.log('🔄 Transformed extent EPSG:3857 (Web Mercator) → WGS84:', {
           from: projectData.extent,
           to: [minLng, minLat, maxLng, maxLat]
         });
+      } else if (detectedCRS === 'EPSG:2180') {
+        // Transform from Polish Grid to WGS84
+        [minLng, minLat, maxLng, maxLat] = transformExtent(projectData.extent);
+        console.log('🔄 Transformed extent EPSG:2180 (Polish Grid) → WGS84:', {
+          from: projectData.extent,
+          to: [minLng, minLat, maxLng, maxLat]
+        });
+      } else {
+        // Unknown CRS - fallback to original coordinates
+        [minLng, minLat, maxLng, maxLat] = projectData.extent;
+        console.warn('⚠️ Unknown CRS detected, using original coordinates:', projectData.extent);
       }
 
       const centerLng = (minLng + maxLng) / 2;
@@ -137,7 +195,7 @@ export default function MapPage() {
   return (
     <>
       <Box sx={{ display: 'flex', height: '100vh', overflow: 'hidden', position: 'relative' }}>
-        <LeftPanel />
+        <LeftPanel isOwner={isOwner} />
         <Box component="main" sx={{ flexGrow: 1, position: 'relative', height: '100vh' }}>
           {isLoading && (
             <Box sx={{ position: 'absolute', top: 16, left: '50%', transform: 'translateX(-50%)', zIndex: 1000, bgcolor: 'rgba(255, 255, 255, 0.95)', px: 3, py: 1.5, borderRadius: 2, boxShadow: 2, fontSize: '14px', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 1.5 }}>
@@ -152,6 +210,14 @@ export default function MapPage() {
           )}
           <MapContainer />
           {projectName && <QGISProjectLoader projectName={projectName} />}
+          {/* Render all visible layers as GeoJSON */}
+          {projectName && layers && collectAllLayers(layers).map((layer) => (
+            <QGISLayerRenderer
+              key={layer.id}
+              projectName={projectName}
+              layer={layer}
+            />
+          ))}
         </Box>
         <RightToolbar />
       </Box>

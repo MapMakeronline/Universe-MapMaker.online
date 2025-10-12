@@ -21,6 +21,10 @@ import FolderIcon from '@mui/icons-material/Folder';
 import LayersIcon from '@mui/icons-material/Layers';
 import PrzyblizDoWarstwyIcon from '@mui/icons-material/MyLocation';
 import CalendarTodayIcon from '@mui/icons-material/TableView';
+// Redux
+import { useAppDispatch } from '@/redux/hooks';
+import { setViewState } from '@/redux/slices/mapSlice';
+import { transformExtentFromWebMercator, detectCRS, transformExtent } from '@/mapbox/coordinates';
 // Types
 import { LayerNode } from '@/typy/layers';
 
@@ -217,6 +221,7 @@ export const LayerTree: React.FC<LayerTreeProps> = ({
   onMainLevelDragOver
 }) => {
   const theme = useTheme();
+  const dispatch = useAppDispatch();
   const { draggedItem, dropTarget, dropPosition, showMainLevelZone } = dragDropState;
 
   const getWarstwaIcon = (type: LayerNode['type'], id?: string) => {
@@ -499,7 +504,79 @@ export const LayerTree: React.FC<LayerTreeProps> = ({
                 size="small"
                 onClick={(e) => {
                   e.stopPropagation();
-                  console.log('Zoom to:', warstwa.name);
+
+                  // Sprawdź czy warstwa ma extent
+                  if (!warstwa.extent || warstwa.extent.length !== 4) {
+                    console.warn('⚠️ Warstwa nie ma extent:', warstwa.name);
+                    return;
+                  }
+
+                  const [minX, minY, maxX, maxY] = warstwa.extent;
+
+                  // Auto-detekcja CRS i transformacja do WGS84
+                  let minLng, minLat, maxLng, maxLat;
+                  const detectedCRS = detectCRS(minX, minY);
+
+                  console.log('🔍 Zoom to layer:', {
+                    name: warstwa.name,
+                    extent: warstwa.extent,
+                    detectedCRS
+                  });
+
+                  if (detectedCRS === 'EPSG:4326') {
+                    // Już w WGS84
+                    [minLng, minLat, maxLng, maxLat] = warstwa.extent;
+                    console.log('✅ Extent already in WGS84');
+                  } else if (detectedCRS === 'EPSG:3857') {
+                    // Transform z Web Mercator do WGS84
+                    [minLng, minLat, maxLng, maxLat] = transformExtentFromWebMercator(warstwa.extent);
+                    console.log('🔄 Transformed EPSG:3857 → WGS84:', {
+                      from: warstwa.extent,
+                      to: [minLng, minLat, maxLng, maxLat]
+                    });
+                  } else if (detectedCRS === 'EPSG:2180') {
+                    // Transform z Polish Grid do WGS84
+                    [minLng, minLat, maxLng, maxLat] = transformExtent(warstwa.extent);
+                    console.log('🔄 Transformed EPSG:2180 → WGS84:', {
+                      from: warstwa.extent,
+                      to: [minLng, minLat, maxLng, maxLat]
+                    });
+                  } else {
+                    console.warn('⚠️ Unknown CRS, using original coordinates');
+                    [minLng, minLat, maxLng, maxLat] = warstwa.extent;
+                  }
+
+                  // Oblicz centrum
+                  const centerLng = (minLng + maxLng) / 2;
+                  const centerLat = (minLat + maxLat) / 2;
+
+                  // Oblicz odpowiedni zoom level na podstawie wielkości extent
+                  const latDiff = maxLat - minLat;
+                  const lngDiff = maxLng - minLng;
+                  const maxDiff = Math.max(latDiff, lngDiff);
+
+                  // Heurystyka zoom level (im mniejszy extent, tym większy zoom)
+                  let zoom = 10;
+                  if (maxDiff < 0.001) zoom = 18; // Bardzo mała warstwa (budynki)
+                  else if (maxDiff < 0.01) zoom = 16;
+                  else if (maxDiff < 0.1) zoom = 14;
+                  else if (maxDiff < 1) zoom = 12;
+                  else zoom = 10;
+
+                  console.log('🎯 Zooming to:', {
+                    center: [centerLng, centerLat],
+                    zoom,
+                    extentSize: maxDiff
+                  });
+
+                  // Wyślij akcję zoom
+                  dispatch(setViewState({
+                    longitude: centerLng,
+                    latitude: centerLat,
+                    zoom,
+                    bearing: 0,
+                    pitch: 0,
+                  }));
                 }}
                 sx={{
                   color: theme.palette.text.secondary,

@@ -12,6 +12,7 @@ export interface LayerNode {
   source?: any;
   paint?: any;
   layout?: any;
+  extent?: [number, number, number, number]; // [minX, minY, maxX, maxY] from backend
 }
 
 export interface LayersState {

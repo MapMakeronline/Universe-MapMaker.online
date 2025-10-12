@@ -31,6 +31,18 @@ proj4.defs(
 );
 
 /**
+ * EPSG:3857 - Web Mercator (Pseudo-Mercator)
+ * Used by web mapping services (Google Maps, Mapbox, OpenStreetMap)
+ *
+ * Units: meters
+ * Range: X: [-20037508.34, 20037508.34], Y: [-20048966.10, 20048966.10]
+ */
+proj4.defs(
+  'EPSG:3857',
+  '+proj=merc +a=6378137 +b=6378137 +lat_ts=0 +lon_0=0 +x_0=0 +y_0=0 +k=1 +units=m +nadgrids=@null +wktext +no_defs +type=crs'
+);
+
+/**
  * EPSG:4326 - WGS84 (World Geodetic System 1984)
  * Already defined in proj4 by default
  *
@@ -121,20 +133,73 @@ export function isValidWGS84(lng: number, lat: number): boolean {
 }
 
 /**
+ * Transform extent from EPSG:3857 (Web Mercator) to EPSG:4326 (WGS84)
+ *
+ * @param extent - [minX, minY, maxX, maxY] in EPSG:3857 (meters)
+ * @returns [minLng, minLat, maxLng, maxLat] in EPSG:4326 (degrees)
+ *
+ * @example
+ * // Web Mercator coordinates (EPSG:3857)
+ * const extent = [1883502, 6566838, 1883639, 6567053];
+ *
+ * // Transform to WGS84 for Mapbox
+ * const [minLng, minLat, maxLng, maxLat] = transformExtentFromWebMercator(extent);
+ * // Result: [16.92, 52.04, 16.93, 52.05] (approximately)
+ */
+export function transformExtentFromWebMercator(
+  extent: [number, number, number, number]
+): [number, number, number, number] {
+  const [minX, minY, maxX, maxY] = extent;
+
+  // Transform bottom-left corner
+  const [minLng, minLat] = proj4('EPSG:3857', 'EPSG:4326', [minX, minY]);
+
+  // Transform top-right corner
+  const [maxLng, maxLat] = proj4('EPSG:3857', 'EPSG:4326', [maxX, maxY]);
+
+  return [minLng, minLat, maxLng, maxLat];
+}
+
+/**
+ * Transform single point from EPSG:3857 to EPSG:4326
+ *
+ * @param x - X coordinate in EPSG:3857 (meters)
+ * @param y - Y coordinate in EPSG:3857 (meters)
+ * @returns [longitude, latitude] in EPSG:4326 (degrees)
+ */
+export function transformPointFromWebMercator(x: number, y: number): [number, number] {
+  return proj4('EPSG:3857', 'EPSG:4326', [x, y]);
+}
+
+/**
  * Detect coordinate system based on coordinate values
  *
  * @param x - X coordinate
  * @param y - Y coordinate
- * @returns 'EPSG:4326' | 'EPSG:2180' | 'unknown'
+ * @returns 'EPSG:4326' | 'EPSG:2180' | 'EPSG:3857' | 'unknown'
  *
  * @example
  * detectCRS(19.25, 52.14) // 'EPSG:4326'
  * detectCRS(2132403, 6651920) // 'EPSG:2180'
+ * detectCRS(1883502, 6566838) // 'EPSG:3857'
  */
-export function detectCRS(x: number, y: number): 'EPSG:4326' | 'EPSG:2180' | 'unknown' {
+export function detectCRS(x: number, y: number): 'EPSG:4326' | 'EPSG:2180' | 'EPSG:3857' | 'unknown' {
   // WGS84 bounds check
   if (isValidWGS84(x, y)) {
     return 'EPSG:4326';
+  }
+
+  // EPSG:3857 (Web Mercator) bounds for world
+  // X: ~-20037508 to ~20037508 (meters)
+  // Y: ~-20048966 to ~20048966 (meters)
+  // But for Poland: X: ~1,800,000 to ~2,700,000, Y: ~6,400,000 to ~7,400,000
+  if (
+    x >= 1000000 &&
+    x <= 3000000 &&
+    y >= 6000000 &&
+    y <= 8000000
+  ) {
+    return 'EPSG:3857';
   }
 
   // EPSG:2180 typical bounds for Poland
