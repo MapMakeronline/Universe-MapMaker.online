@@ -322,13 +322,29 @@ export function CreateProjectDialog({
 
   /**
    * Handle Shapefile selection
-   * User can select multiple .shp files or ZIP files
+   * User can select multiple .shp files with supporting files
    * Groups files by base name (e.g., "layer.shp", "layer.shx", "layer.dbf" → one ShapefileSet)
+   *
+   * IMPORTANT: ZIP files are NOT supported by backend /api/layer/add/shp/ endpoint!
+   * Backend expects individual files: .shp (required) + .shx, .dbf, .prj, .cpg, .qpj (optional)
    */
   const handleShapefileSelection = (files: FileList | null) => {
     if (!files || files.length === 0) return;
 
     setShpError(null);
+
+    // Check for ZIP files and reject them
+    const zipFiles = Array.from(files).filter(f => f.name.toLowerCase().endsWith('.zip'));
+    if (zipFiles.length > 0) {
+      setShpError(
+        `❌ Pliki ZIP nie są obsługiwane!\n\n` +
+        `Backend wymaga pojedynczych plików:\n` +
+        `• Wymagany: .shp (geometria)\n` +
+        `• Opcjonalne: .shx (indeks), .dbf (atrybuty), .prj (projekcja), .cpg (kodowanie), .qpj (QGIS projekcja)\n\n` +
+        `Proszę rozpakować pliki ZIP i wybrać je wszystkie (Ctrl+Click).`
+      );
+      return;
+    }
 
     // Group files by base name (without extension)
     const fileGroups: { [baseName: string]: { [ext: string]: File } } = {};
@@ -337,17 +353,7 @@ export function CreateProjectDialog({
       const fileName = file.name;
       const extension = fileName.split('.').pop()?.toLowerCase() || '';
 
-      // Handle ZIP files (assume each ZIP is a complete shapefile)
-      if (extension === 'zip') {
-        const baseName = fileName.replace(/\.zip$/i, '');
-        if (!fileGroups[baseName]) {
-          fileGroups[baseName] = {};
-        }
-        fileGroups[baseName]['zip'] = file;
-        return;
-      }
-
-      // Handle individual shapefile components
+      // Handle individual shapefile components only
       if (['shp', 'shx', 'dbf', 'prj', 'cpg', 'qpj'].includes(extension)) {
         const baseName = fileName.replace(/\.(shp|shx|dbf|prj|cpg|qpj)$/i, '');
         if (!fileGroups[baseName]) {
@@ -359,14 +365,6 @@ export function CreateProjectDialog({
 
     // Convert file groups to ShapefileSet array
     const newShapefiles: ShapefileSet[] = Object.entries(fileGroups).map(([baseName, files]) => {
-      // If ZIP, we'll handle it on backend
-      if (files['zip']) {
-        return {
-          name: baseName,
-          shpFile: files['zip'], // ZIP file treated as SHP for backend
-        };
-      }
-
       // Validate: must have at least .shp file
       if (!files['shp']) {
         setShpError(`Brak pliku .shp dla warstwy "${baseName}". Każdy shapefile musi zawierać plik .shp.`);
@@ -817,9 +815,15 @@ export function CreateProjectDialog({
               <br />1. Utworzy nowy projekt z podaną nazwą i domeną
               <br />2. Zaimportuje każdy shapefile jako osobną warstwę
               <br />
-              <br /><strong>Wspierane formaty:</strong>
-              <br />• Pliki ZIP zawierające shapefile (.shp + .shx + .dbf + .prj)
-              <br />• Pojedyncze pliki .shp (plus pliki pomocnicze)
+              <br /><strong>Wymagane pliki:</strong>
+              <br />• .shp - geometria warstwy (wymagany)
+              <br />• .shx - indeks przestrzenny (zalecany)
+              <br />• .dbf - tabela atrybutów (zalecany)
+              <br />• .prj - definicja układu współrzędnych (zalecany)
+              <br />• .cpg - kodowanie znaków (opcjonalny)
+              <br />• .qpj - projekcja QGIS (opcjonalny)
+              <br />
+              <br /><strong>⚠️ Uwaga:</strong> Pliki ZIP NIE są obsługiwane. Proszę rozpakować archiwum i wybrać wszystkie pliki (Ctrl+Click).
             </Alert>
 
             {isImportingShp && shpImportProgress.total > 0 && (
@@ -889,7 +893,7 @@ export function CreateProjectDialog({
                   lub
                 </Typography>
                 <input
-                  accept=".zip,.shp,.shx,.dbf,.prj,.cpg,.qpj"
+                  accept=".shp,.shx,.dbf,.prj,.cpg,.qpj"
                   style={{ display: 'none' }}
                   id="shp-file-upload"
                   type="file"
@@ -917,9 +921,11 @@ export function CreateProjectDialog({
                   </Button>
                 </label>
                 <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 2 }}>
-                  Obsługiwane formaty: .zip, .shp, .shx, .dbf, .prj, .cpg, .qpj
+                  Obsługiwane formaty: .shp, .shx, .dbf, .prj, .cpg, .qpj
                   <br />
                   Możesz wybrać wiele plików jednocześnie (Ctrl+Click)
+                  <br />
+                  ⚠️ Pliki ZIP NIE są obsługiwane - proszę rozpakować
                 </Typography>
               </Box>
 
@@ -957,9 +963,7 @@ export function CreateProjectDialog({
                                 {shp.name}
                               </Typography>
                               <Typography variant="caption" color="text.secondary">
-                                {shp.shpFile.name.endsWith('.zip')
-                                  ? `ZIP (${(shp.shpFile.size / 1024).toFixed(1)} KB)`
-                                  : supportingFiles.length > 0
+                                {supportingFiles.length > 0
                                   ? `shp + ${supportingFiles.length} plików pomocniczych (${supportingFiles.join(', ')})`
                                   : 'tylko .shp (zalecane: dodaj .shx, .dbf, .prj)'}
                               </Typography>
