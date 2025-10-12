@@ -203,18 +203,40 @@ export default function OwnProjectsRTK() {
         }
 
         // Import shapefile as layer
-        await addShapefileLayer({
+        console.log('📝 Request payload:', {
           project: backendProjectName,
           layer_name: shp.name,
-          shpFile: shp.shpFile,
-          shxFile: shp.shxFile,
-          dbfFile: shp.dbfFile,
-          prjFile: shp.prjFile,
-          cpgFile: shp.cpgFile,
-          qpjFile: shp.qpjFile,
-        }).unwrap();
+          shpFile: shp.shpFile?.name,
+          shxFile: shp.shxFile?.name,
+          dbfFile: shp.dbfFile?.name,
+          prjFile: shp.prjFile?.name,
+          cpgFile: shp.cpgFile?.name,
+          qpjFile: shp.qpjFile?.name,
+        });
 
-        console.log(`✅ Imported shapefile ${i + 1}/${shapefiles.length}: ${shp.name}`);
+        try {
+          await addShapefileLayer({
+            project: backendProjectName,
+            layer_name: shp.name,
+            shpFile: shp.shpFile,
+            shxFile: shp.shxFile,
+            dbfFile: shp.dbfFile,
+            prjFile: shp.prjFile,
+            cpgFile: shp.cpgFile,
+            qpjFile: shp.qpjFile,
+          }).unwrap();
+
+          console.log(`✅ Imported shapefile ${i + 1}/${shapefiles.length}: ${shp.name}`);
+        } catch (layerError: any) {
+          console.error(`❌ Failed to import shapefile ${i + 1}/${shapefiles.length}:`, {
+            name: shp.name,
+            error: layerError,
+            status: layerError?.status,
+            data: layerError?.data,
+            message: layerError?.data?.message || layerError?.message,
+          });
+          throw layerError; // Re-throw to stop loop
+        }
       }
 
       console.log('✅ STEP 4: All shapefiles imported successfully');

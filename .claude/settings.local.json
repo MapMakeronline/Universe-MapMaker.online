@@ -37,7 +37,9 @@
       "Bash(gcloud compute firewall-rules update:*)",
       "Bash(gh:*)",
       "Bash(echo:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(gcloud logging read:*)",
+      "Bash(npm view:*)"
     ],
     "deny": [],
     "ask": []
