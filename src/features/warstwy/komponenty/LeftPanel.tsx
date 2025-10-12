@@ -333,6 +333,7 @@ const LeftPanel: React.FC = () => {
     nazwaGrupy: string;
     format: string;
     file?: File;
+    files?: FileList | null; // Multiple files for Shapefile
     epsg?: string;
   }) => {
     if (!projectName) {
@@ -340,9 +341,19 @@ const LeftPanel: React.FC = () => {
       return;
     }
 
-    if (!data.file) {
-      dispatch(showError('Nie wybrano pliku do importu'));
-      return;
+    // Validation
+    if (data.format === 'shp') {
+      // For Shapefile, check if files (multiple) are provided
+      if (!data.files || data.files.length === 0) {
+        dispatch(showError('Nie wybrano plików do importu (wymagane: .shp, .shx, .dbf)'));
+        return;
+      }
+    } else {
+      // For other formats, check single file
+      if (!data.file) {
+        dispatch(showError('Nie wybrano pliku do importu'));
+        return;
+      }
     }
 
     if (!data.nazwaWarstwy.trim()) {
@@ -357,42 +368,70 @@ const LeftPanel: React.FC = () => {
     dispatch(showInfo(`Importowanie warstwy "${data.nazwaWarstwy}"...`, 10000));
 
     try {
-      console.log('📥 Importing layer:', {
-        project: projectName,
-        layerName: data.nazwaWarstwy,
-        format: data.format,
-        file: data.file.name,
-        epsg: data.epsg,
-      });
-
       // Route to appropriate backend endpoint based on format
       switch (data.format) {
         case 'geoJSON':
+          console.log('📥 Importing GeoJSON layer:', {
+            project: projectName,
+            layerName: data.nazwaWarstwy,
+            file: data.file?.name,
+            epsg: data.epsg,
+          });
+
           await addGeoJsonLayer({
             project_name: projectName,
             layer_name: data.nazwaWarstwy,
-            geojson: data.file,
+            geojson: data.file!,
             epsg: data.epsg,
           }).unwrap();
           break;
 
         case 'shp':
-          // For Shapefile, backend expects "project" not "project_name"
+          // Extract files by extension from FileList
+          const filesArray = Array.from(data.files || []);
+          const shpFile = filesArray.find(f => f.name.toLowerCase().endsWith('.shp'));
+          const shxFile = filesArray.find(f => f.name.toLowerCase().endsWith('.shx'));
+          const dbfFile = filesArray.find(f => f.name.toLowerCase().endsWith('.dbf'));
+          const prjFile = filesArray.find(f => f.name.toLowerCase().endsWith('.prj'));
+          const cpgFile = filesArray.find(f => f.name.toLowerCase().endsWith('.cpg'));
+          const qpjFile = filesArray.find(f => f.name.toLowerCase().endsWith('.qpj'));
+
+          if (!shpFile) {
+            throw new Error('Plik .shp jest wymagany');
+          }
+
+          console.log('📥 Importing Shapefile layer:', {
+            project: projectName,
+            layerName: data.nazwaWarstwy,
+            files: filesArray.map(f => f.name),
+            epsg: data.epsg,
+          });
+
+          // Backend expects "project" not "project_name"
           await addShapefileLayer({
             project: projectName,
             layer_name: data.nazwaWarstwy,
-            shpFile: data.file,
+            shpFile,
+            shxFile,
+            dbfFile,
+            prjFile,
+            cpgFile,
+            qpjFile,
             epsg: data.epsg,
-            // TODO: Support multiple files (shx, dbf, prj, etc.)
-            // For now, user must upload a single .shp file or ZIP
           }).unwrap();
           break;
 
         case 'gml':
+          console.log('📥 Importing GML layer:', {
+            project: projectName,
+            layerName: data.nazwaWarstwy,
+            file: data.file?.name,
+          });
+
           await addGMLLayer({
             projectName,
             layerName: data.nazwaWarstwy,
-            file: data.file,
+            file: data.file!,
           }).unwrap();
           break;
 

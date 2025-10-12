@@ -35,7 +35,8 @@
       "Bash(gcloud beta sql connect:*)",
       "Bash(gcloud compute firewall-rules create:*)",
       "Bash(gcloud compute firewall-rules update:*)",
-      "Bash(gh:*)"
+      "Bash(gh:*)",
+      "Bash(echo:*)"
     ],
     "deny": [],
     "ask": []

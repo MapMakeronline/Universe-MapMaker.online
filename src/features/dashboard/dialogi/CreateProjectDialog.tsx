@@ -246,6 +246,39 @@ export function CreateProjectDialog({
     }
   };
 
+  // Drag & drop handlers for Shapefile tab
+  const handleDragEnterShp = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isImportingShp) {
+      setIsDraggingShp(true);
+    }
+  };
+
+  const handleDragOverShp = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDragLeaveShp = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingShp(false);
+  };
+
+  const handleDropShp = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingShp(false);
+
+    if (isImportingShp) return;
+
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      handleShapefileSelection(files);
+    }
+  };
+
   const handleImportSubmit = async () => {
     if (!qgisFile || !qgisProjectName || !qgisDomain || !onImportQGIS) return;
 
@@ -816,19 +849,41 @@ export function CreateProjectDialog({
                 Wybierz pliki Shapefile:
               </Typography>
 
-              {/* File selection (simplified - will be extended later) */}
+              {/* Drag & Drop Zone for Shapefile */}
               <Box
+                onDragEnter={handleDragEnterShp}
+                onDragOver={handleDragOverShp}
+                onDragLeave={handleDragLeaveShp}
+                onDrop={handleDropShp}
                 sx={{
-                  border: '2px dashed #d1d5db',
+                  border: isDraggingShp
+                    ? `2px dashed ${theme.palette.primary.main}`
+                    : '2px dashed #d1d5db',
                   borderRadius: '8px',
-                  bgcolor: 'white',
+                  bgcolor: isDraggingShp
+                    ? 'rgba(247, 94, 76, 0.05)'
+                    : 'white',
                   p: 3,
                   textAlign: 'center',
+                  cursor: isImportingShp ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s ease-in-out',
+                  '&:hover': {
+                    borderColor: isImportingShp ? '#d1d5db' : theme.palette.primary.main,
+                    bgcolor: isImportingShp ? 'white' : 'rgba(247, 94, 76, 0.02)',
+                  },
                 }}
               >
-                <FolderZip sx={{ fontSize: 48, color: '#9ca3af', mb: 2 }} />
+                <FolderZip
+                  sx={{
+                    fontSize: 48,
+                    color: isDraggingShp ? theme.palette.primary.main : '#9ca3af',
+                    mb: 2,
+                  }}
+                />
                 <Typography variant="body1" fontWeight={600} gutterBottom>
-                  Przeciągnij pliki ZIP lub SHP
+                  {isDraggingShp
+                    ? 'Upuść pliki tutaj'
+                    : 'Przeciągnij i upuść pliki Shapefile'}
                 </Typography>
                 <Typography variant="body2" color="text.secondary" gutterBottom>
                   lub
@@ -858,49 +913,71 @@ export function CreateProjectDialog({
                       },
                     }}
                   >
-                    Wybierz pliki
+                    Wybierz pliki z komputera
                   </Button>
                 </label>
                 <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 2 }}>
-                  Wybierz jeden lub więcej plików ZIP lub SHP
+                  Obsługiwane formaty: .zip, .shp, .shx, .dbf, .prj, .cpg, .qpj
+                  <br />
+                  Możesz wybrać wiele plików jednocześnie (Ctrl+Click)
                 </Typography>
               </Box>
 
               {/* List of selected files */}
               {shapefiles.length > 0 && (
                 <Box sx={{ mt: 2 }}>
-                  <Typography variant="subtitle2" gutterBottom>
-                    Wybrane pliki ({shapefiles.length}):
+                  <Typography variant="subtitle2" gutterBottom fontWeight={600}>
+                    Wybrane warstwy ({shapefiles.length}):
                   </Typography>
                   <Stack spacing={1}>
-                    {shapefiles.map((shp, index) => (
-                      <Box
-                        key={index}
-                        sx={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          bgcolor: 'white',
-                          p: 1.5,
-                          borderRadius: '4px',
-                          border: '1px solid #e5e7eb',
-                        }}
-                      >
-                        <InsertDriveFile sx={{ fontSize: 24, color: theme.palette.primary.main, mr: 1.5 }} />
-                        <Typography variant="body2" sx={{ flex: 1 }}>
-                          {shp.name}
-                        </Typography>
-                        <IconButton
-                          size="small"
-                          onClick={() => {
-                            setShapefiles((prev) => prev.filter((_, i) => i !== index));
+                    {shapefiles.map((shp, index) => {
+                      // Count supporting files
+                      const supportingFiles = [
+                        shp.shxFile && 'shx',
+                        shp.dbfFile && 'dbf',
+                        shp.prjFile && 'prj',
+                        shp.cpgFile && 'cpg',
+                        shp.qpjFile && 'qpj',
+                      ].filter(Boolean);
+
+                      return (
+                        <Box
+                          key={index}
+                          sx={{
+                            bgcolor: 'white',
+                            p: 1.5,
+                            borderRadius: '4px',
+                            border: '1px solid #e5e7eb',
                           }}
-                          disabled={isImportingShp}
-                          sx={{ color: 'text.secondary', '&:hover': { color: 'error.main' } }}
                         >
-                          <Close fontSize="small" />
-                        </IconButton>
-                      </Box>
-                    ))}
+                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                            <InsertDriveFile sx={{ fontSize: 24, color: theme.palette.primary.main, mr: 1.5 }} />
+                            <Box sx={{ flex: 1 }}>
+                              <Typography variant="body2" fontWeight={600}>
+                                {shp.name}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                {shp.shpFile.name.endsWith('.zip')
+                                  ? `ZIP (${(shp.shpFile.size / 1024).toFixed(1)} KB)`
+                                  : supportingFiles.length > 0
+                                  ? `shp + ${supportingFiles.length} plików pomocniczych (${supportingFiles.join(', ')})`
+                                  : 'tylko .shp (zalecane: dodaj .shx, .dbf, .prj)'}
+                              </Typography>
+                            </Box>
+                            <IconButton
+                              size="small"
+                              onClick={() => {
+                                setShapefiles((prev) => prev.filter((_, i) => i !== index));
+                              }}
+                              disabled={isImportingShp}
+                              sx={{ color: 'text.secondary', '&:hover': { color: 'error.main' } }}
+                            >
+                              <Close fontSize="small" />
+                            </IconButton>
+                          </Box>
+                        </Box>
+                      );
+                    })}
                   </Stack>
                 </Box>
               )}

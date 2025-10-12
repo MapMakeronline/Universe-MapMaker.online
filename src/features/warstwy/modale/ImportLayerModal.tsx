@@ -38,12 +38,14 @@ const ImportLayerModal: React.FC<ImportLayerModalProps> = ({ open, onClose, onSu
     wfsUrl: '',
   });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null); // Multiple files for Shapefile
   const [isDragging, setIsDragging] = useState(false);
   const [availableLayers, setAvailableLayers] = useState<string[]>([]);
 
   const handleFormatChange = (_event: React.SyntheticEvent, newValue: FileFormat) => {
     setSelectedFormat(newValue);
     setSelectedFile(null);
+    setSelectedFiles(null); // Clear multiple files
     setAvailableLayers([]);
   };
 
@@ -70,14 +72,30 @@ const ImportLayerModal: React.FC<ImportLayerModalProps> = ({ open, onClose, onSu
 
     const files = e.dataTransfer.files;
     if (files && files.length > 0) {
-      setSelectedFile(files[0]);
+      if (selectedFormat === 'shp') {
+        // For Shapefile, store all files
+        setSelectedFiles(files);
+        setSelectedFile(null);
+      } else {
+        // For other formats, store single file
+        setSelectedFile(files[0]);
+        setSelectedFiles(null);
+      }
     }
-  }, []);
+  }, [selectedFormat]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      setSelectedFile(files[0]);
+      if (selectedFormat === 'shp') {
+        // For Shapefile, store all files
+        setSelectedFiles(files);
+        setSelectedFile(null);
+      } else {
+        // For other formats, store single file
+        setSelectedFile(files[0]);
+        setSelectedFiles(null);
+      }
     }
   };
 
@@ -100,6 +118,7 @@ const ImportLayerModal: React.FC<ImportLayerModalProps> = ({ open, onClose, onSu
         nazwaGrupy: formData.nazwaGrupy,
         format: selectedFormat,
         file: selectedFile,
+        files: selectedFiles, // Pass multiple files for Shapefile
         epsg: selectedFormat === 'shp' ? formData.epsg : undefined,
       });
     }
@@ -113,6 +132,7 @@ const ImportLayerModal: React.FC<ImportLayerModalProps> = ({ open, onClose, onSu
       wfsUrl: '',
     });
     setSelectedFile(null);
+    setSelectedFiles(null);
     setAvailableLayers([]);
     setSelectedFormat('csv');
     onClose();
@@ -122,7 +142,11 @@ const ImportLayerModal: React.FC<ImportLayerModalProps> = ({ open, onClose, onSu
     if (selectedFormat === 'WMS' || selectedFormat === 'WFS') {
       return availableLayers.length === 0;
     }
-    return !formData.nazwaWarstwy.trim() || !selectedFile;
+    // For Shapefile, check if files are selected, otherwise check single file
+    const hasFile = selectedFormat === 'shp'
+      ? (selectedFiles !== null && selectedFiles.length > 0)
+      : (selectedFile !== null);
+    return !formData.nazwaWarstwy.trim() || !hasFile;
   };
 
   const getFileExtension = () => {
@@ -448,18 +472,52 @@ const ImportLayerModal: React.FC<ImportLayerModalProps> = ({ open, onClose, onSu
               },
             }}
           >
-            <Typography
-              sx={{
-                fontSize: '14px',
-                color: theme.palette.primary.main,
-                mb: 0.5,
-              }}
-            >
-              {selectedFile
-                ? selectedFile.name
-                : `Upuść plik tutaj lub kliknij, aby wybrać z dysku (${getFileExtension()})`
-              }
-            </Typography>
+            {selectedFormat === 'shp' && selectedFiles && selectedFiles.length > 0 ? (
+              <Box>
+                <Typography
+                  sx={{
+                    fontSize: '14px',
+                    color: theme.palette.primary.main,
+                    mb: 1,
+                    fontWeight: 600,
+                  }}
+                >
+                  Wybrane pliki ({selectedFiles.length}):
+                </Typography>
+                {Array.from(selectedFiles).map((file, index) => (
+                  <Typography
+                    key={index}
+                    sx={{
+                      fontSize: '13px',
+                      color: theme.palette.text.primary,
+                      mb: 0.5,
+                    }}
+                  >
+                    {file.name}
+                  </Typography>
+                ))}
+              </Box>
+            ) : selectedFile ? (
+              <Typography
+                sx={{
+                  fontSize: '14px',
+                  color: theme.palette.primary.main,
+                  mb: 0.5,
+                }}
+              >
+                {selectedFile.name}
+              </Typography>
+            ) : (
+              <Typography
+                sx={{
+                  fontSize: '14px',
+                  color: theme.palette.primary.main,
+                  mb: 0.5,
+                }}
+              >
+                {`Upuść ${selectedFormat === 'shp' ? 'pliki' : 'plik'} tutaj lub kliknij, aby wybrać z dysku (${getFileExtension()})`}
+              </Typography>
+            )}
           </Box>
         </Box>
 
