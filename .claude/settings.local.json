@@ -20,7 +20,22 @@
       "Bash(cmd //c:*)",
       "Bash(npm run dev:*)",
       "Bash(git commit:*)",
-      "Bash(npx:*)"
+      "Bash(npx:*)",
+      "Bash(powershell:*)",
+      "Bash(timeout:*)",
+      "Bash(git rm:*)",
+      "Bash(gcloud compute instances describe:*)",
+      "Bash(gcloud sql instances patch:*)",
+      "Bash(gcloud sql users set-password:*)",
+      "Bash(git clone:*)",
+      "Read(//tmp/backend-fix/geocraft/**)",
+      "Read(//tmp/backend-fix/**)",
+      "Bash(python:*)",
+      "Bash(gcloud sql databases:*)",
+      "Bash(gcloud beta sql connect:*)",
+      "Bash(gcloud compute firewall-rules create:*)",
+      "Bash(gcloud compute firewall-rules update:*)",
+      "Bash(gh:*)"
     ],
     "deny": [],
     "ask": []

@@ -24,9 +24,11 @@ import {
   useDeleteProjectMutation,
   useTogglePublishMutation,
 } from '@/redux/api/projectsApi';
+import { useAddShapefileLayerMutation } from '@/redux/api/layersApi';
 import { ProjectsGridSkeleton } from './ProjectCardSkeleton';
 import { ProjectCard } from './ProjectCard';
 import { CreateProjectDialog } from '../dialogi/CreateProjectDialog';
+import type { ShapefileSet } from '../dialogi/CreateProjectDialog';
 import { DeleteProjectDialog } from '../dialogi/DeleteProjectDialog';
 import { ProjectSettingsDialog } from '../dialogi/ProjectSettingsDialog';
 import type { Project, CreateProjectData } from '@/api/typy/types';
@@ -56,6 +58,7 @@ export default function OwnProjectsRTK() {
   // RTK Query mutations
   const [createProject, { isLoading: isCreating }] = useCreateProjectMutation();
   const [importQGS, { isLoading: isImporting }] = useImportQGSMutation();
+  const [addShapefileLayer] = useAddShapefileLayerMutation();
   const [deleteProject, { isLoading: isDeleting }] = useDeleteProjectMutation();
   const [togglePublish, { isLoading: isToggling }] = useTogglePublishMutation();
 
@@ -141,6 +144,79 @@ export default function OwnProjectsRTK() {
       setSnackbar({
         open: true,
         message: `Projekt "${projectName}" został utworzony i zaimportowany pomyślnie!`,
+        severity: 'success',
+      });
+      setCreateDialogOpen(false);
+
+      // RTK Query automatically invalidates cache and refetches
+    } catch (error: any) {
+      // Error will be handled by CreateProjectDialog
+      throw error;
+    }
+  };
+
+  /**
+   * Import Shapefile project workflow:
+   * 1. Create empty project
+   * 2. For each shapefile: upload as layer (sequential)
+   * 3. Navigate to project map
+   */
+  const handleImportShapefile = async (
+    shapefiles: ShapefileSet[],
+    projectName: string,
+    domain: string,
+    description?: string,
+    onProgress?: (current: number, total: number) => void
+  ) => {
+    try {
+      // STEP 1: Create empty project
+      const createData: CreateProjectData = {
+        project: projectName,
+        domain: domain || projectName.toLowerCase(),
+        projectDescription: description || `Projekt Shapefile: ${shapefiles.length} warstw`,
+        keywords: 'shapefile, import',
+        categories: ['Inne'],
+      };
+
+      const createdProject = await createProject(createData).unwrap();
+      console.log('✅ STEP 1: Project created:', createdProject);
+
+      // CRITICAL: Use db_name from response (real project_name with suffix)
+      const backendProjectName = createdProject.data.db_name;
+      console.log('🎯 STEP 2: Using backend project_name from db_name:', backendProjectName);
+
+      // STEP 3: Import each shapefile as a layer (sequential - backend limitation)
+      console.log(`📤 STEP 3: Starting import of ${shapefiles.length} shapefiles...`);
+
+      for (let i = 0; i < shapefiles.length; i++) {
+        const shp = shapefiles[i];
+        console.log(`📤 Importing shapefile ${i + 1}/${shapefiles.length}: ${shp.name}`);
+
+        // Update progress
+        if (onProgress) {
+          onProgress(i + 1, shapefiles.length);
+        }
+
+        // Import shapefile as layer
+        await addShapefileLayer({
+          project: backendProjectName,
+          layer_name: shp.name,
+          shpFile: shp.shpFile,
+          shxFile: shp.shxFile,
+          dbfFile: shp.dbfFile,
+          prjFile: shp.prjFile,
+          cpgFile: shp.cpgFile,
+          qpjFile: shp.qpjFile,
+        }).unwrap();
+
+        console.log(`✅ Imported shapefile ${i + 1}/${shapefiles.length}: ${shp.name}`);
+      }
+
+      console.log('✅ STEP 4: All shapefiles imported successfully');
+
+      setSnackbar({
+        open: true,
+        message: `Projekt "${projectName}" został utworzony z ${shapefiles.length} warstwami!`,
         severity: 'success',
       });
       setCreateDialogOpen(false);
@@ -360,6 +436,7 @@ export default function OwnProjectsRTK() {
         onClose={() => setCreateDialogOpen(false)}
         onCreate={handleProjectCreated}
         onImportQGIS={handleImportQGIS}
+        onImportShapefile={handleImportShapefile}
       />
 
       <DeleteProjectDialog

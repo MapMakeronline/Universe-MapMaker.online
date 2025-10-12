@@ -32,6 +32,13 @@ import {
   moveLayer
 } from '@/redux/slices/layersSlice';
 import { useChangeLayersOrderMutation } from '@/redux/api/projectsApi';
+import {
+  useSetLayerVisibilityMutation,
+  useAddGeoJsonLayerMutation,
+  useAddShapefileLayerMutation,
+  useAddGMLLayerMutation,
+  useDeleteLayerMutation,
+} from '@/redux/api/layersApi';
 import { showSuccess, showError, showInfo } from '@/redux/slices/notificationSlice';
 
 // Types
@@ -60,8 +67,13 @@ const LeftPanel: React.FC = () => {
   const reduxLayers = useAppSelector((state) => state.layers.layers);
   const expandedGroups = useAppSelector((state) => state.layers.expandedGroups);
 
-  // Backend mutation for persisting layer order
+  // Backend mutations
   const [changeLayersOrder] = useChangeLayersOrderMutation();
+  const [setLayerVisibility] = useSetLayerVisibilityMutation();
+  const [addGeoJsonLayer] = useAddGeoJsonLayerMutation();
+  const [addShapefileLayer] = useAddShapefileLayerMutation();
+  const [addGMLLayer] = useAddGMLLayerMutation();
+  const [deleteLayerFromBackend] = useDeleteLayerMutation();
 
   // Get current project name from URL
   const projectName = typeof window !== 'undefined'
@@ -203,15 +215,55 @@ const LeftPanel: React.FC = () => {
     setSelectedLayer(layer);
   };
 
-  const toggleVisibility = (id: string) => {
-    // Check if it's a group (has children)
+  /**
+   * Toggle layer visibility with backend sync
+   *
+   * For groups: cascades visibility to all children (Redux only - backend doesn't store group visibility)
+   * For individual layers: syncs with backend via /api/layer/selection
+   *
+   * Uses optimistic updates with rollback on error
+   */
+  const toggleVisibility = async (id: string) => {
+    if (!projectName) {
+      console.warn('⚠️ No project name - skipping visibility toggle');
+      dispatch(showError('Nie można zmienić widoczności - brak nazwy projektu'));
+      return;
+    }
+
     const layer = findLayerById(layers, id);
-    if (layer && layer.type === 'group' && layer.children) {
-      // Use cascade action for groups
+    if (!layer) {
+      console.warn('⚠️ Layer not found:', id);
+      return;
+    }
+
+    // 1. Optimistic update - update Redux immediately for instant UI feedback
+    if (layer.type === 'group' && layer.children) {
+      // Groups: cascade to all children (Redux only)
       dispatch(toggleGroupVisibilityCascade(id));
+      console.log('👁️ Toggled group visibility (Redux only):', layer.name);
+      return;
     } else {
-      // Use regular toggle for individual layers
+      // Individual layer: toggle in Redux first
+      const previousVisibility = layer.visible;
       dispatch(toggleLayerVisibility(id));
+      console.log('👁️ Toggling layer visibility:', layer.name, '→', !previousVisibility);
+
+      // 2. Sync with backend (async)
+      try {
+        await setLayerVisibility({
+          projectName,
+          layerName: layer.name,
+          visible: !previousVisibility,
+        }).unwrap();
+
+        console.log('✅ Layer visibility synced to backend');
+      } catch (error) {
+        console.error('❌ Failed to sync layer visibility:', error);
+
+        // 3. Rollback on error - revert Redux state
+        dispatch(toggleLayerVisibility(id));
+        dispatch(showError(`Nie udało się zapisać widoczności warstwy "${layer.name}"`, 6000));
+      }
     }
   };
 
@@ -261,10 +313,105 @@ const LeftPanel: React.FC = () => {
     dispatch(showInfo('Dodawanie warstwy - wkrótce dostępne'));
   };
 
-  const handleImportLayer = (data: { nazwaWarstwy: string; nazwaGrupy: string; format: string; file?: File }) => {
+  /**
+   * Import layer from file (GeoJSON, Shapefile, GML)
+   *
+   * Supports:
+   * - GeoJSON (.geojson, .json)
+   * - Shapefile (.shp + .shx, .dbf, .prj, .cpg, etc.)
+   * - GML (.gml)
+   *
+   * Backend automatically:
+   * - Validates geometry
+   * - Fixes invalid geometries
+   * - Imports to PostGIS
+   * - Updates project tree.json
+   * - Generates layer styling
+   */
+  const handleImportLayer = async (data: {
+    nazwaWarstwy: string;
+    nazwaGrupy: string;
+    format: string;
+    file?: File;
+    epsg?: string;
+  }) => {
+    if (!projectName) {
+      dispatch(showError('Nie można zaimportować warstwy - brak nazwy projektu'));
+      return;
+    }
+
+    if (!data.file) {
+      dispatch(showError('Nie wybrano pliku do importu'));
+      return;
+    }
+
+    if (!data.nazwaWarstwy.trim()) {
+      dispatch(showError('Nazwa warstwy nie może być pusta'));
+      return;
+    }
+
+    // Close modal immediately for better UX
     setImportLayerModalOpen(false);
-    console.log('TODO: Importing layer:', data, 'File:', data.file?.name);
-    dispatch(showInfo('Import warstwy - wkrótce dostępne'));
+
+    // Show loading notification
+    dispatch(showInfo(`Importowanie warstwy "${data.nazwaWarstwy}"...`, 10000));
+
+    try {
+      console.log('📥 Importing layer:', {
+        project: projectName,
+        layerName: data.nazwaWarstwy,
+        format: data.format,
+        file: data.file.name,
+        epsg: data.epsg,
+      });
+
+      // Route to appropriate backend endpoint based on format
+      switch (data.format) {
+        case 'geoJSON':
+          await addGeoJsonLayer({
+            project_name: projectName,
+            layer_name: data.nazwaWarstwy,
+            geojson: data.file,
+            epsg: data.epsg,
+          }).unwrap();
+          break;
+
+        case 'shp':
+          // For Shapefile, backend expects "project" not "project_name"
+          await addShapefileLayer({
+            project: projectName,
+            layer_name: data.nazwaWarstwy,
+            shpFile: data.file,
+            epsg: data.epsg,
+            // TODO: Support multiple files (shx, dbf, prj, etc.)
+            // For now, user must upload a single .shp file or ZIP
+          }).unwrap();
+          break;
+
+        case 'gml':
+          await addGMLLayer({
+            projectName,
+            layerName: data.nazwaWarstwy,
+            file: data.file,
+          }).unwrap();
+          break;
+
+        default:
+          throw new Error(`Nieobsługiwany format: ${data.format}`);
+      }
+
+      console.log('✅ Layer imported successfully');
+      dispatch(showSuccess(`Warstwa "${data.nazwaWarstwy}" została zaimportowana!`, 5000));
+
+      // RTK Query automatically invalidates cache and refetches project data
+      // The layer tree will update automatically via useGetProjectDataQuery
+    } catch (error: any) {
+      console.error('❌ Failed to import layer:', error);
+
+      // Extract error message from backend response
+      const errorMessage = error?.data?.message || error?.message || 'Nieznany błąd';
+      dispatch(showError(`Nie udało się zaimportować warstwy: ${errorMessage}`, 8000));
+    }
   };
 
   const handleAddGroup = (data: { nazwaGrupy: string; grupaNadrzedna: string }) => {
@@ -273,10 +420,72 @@ const LeftPanel: React.FC = () => {
     dispatch(showInfo('Dodawanie grupy - wkrótce dostępne'));
   };
 
-  const handleDeleteLayer = () => {
-    if (selectedLayer) {
-      dispatch(deleteLayer(selectedLayer.id));
+  /**
+   * Delete layer with backend sync
+   *
+   * Process:
+   * 1. Confirm deletion (user already clicked delete button)
+   * 2. Delete from backend (PostGIS + tree.json)
+   * 3. Remove from Redux state
+   * 4. Close properties panel
+   *
+   * Backend endpoint: POST /api/layer/remove/database
+   * - Removes layer from PostGIS database
+   * - Updates project tree.json
+   * - Cleans up layer styles and metadata
+   */
+  const handleDeleteLayer = async () => {
+    if (!selectedLayer) {
+      console.warn('⚠️ No layer selected for deletion');
+      return;
+    }
+
+    if (!projectName) {
+      dispatch(showError('Nie można usunąć warstwy - brak nazwy projektu'));
+      return;
+    }
+
+    // Don't allow deleting groups (for now)
+    if (selectedLayer.type === 'group') {
+      dispatch(showInfo('Usuwanie grup nie jest jeszcze obsługiwane'));
+      return;
+    }
+
+    const layerName = selectedLayer.name;
+    const layerId = selectedLayer.id;
+
+    try {
+      console.log('🗑️ Deleting layer:', { project: projectName, layer: layerName });
+
+      // Show loading notification
+      dispatch(showInfo(`Usuwanie warstwy "${layerName}"...`, 8000));
+
+      // 1. Delete from backend first
+      await deleteLayerFromBackend({
+        projectName,
+        layerName,
+      }).unwrap();
+
+      console.log('✅ Layer deleted from backend');
+
+      // 2. Remove from Redux state (optimistic update after backend success)
+      dispatch(deleteLayer(layerId));
+
+      // 3. Close properties panel
       setSelectedLayer(null);
+
+      // 4. Show success message
+      dispatch(showSuccess(`Warstwa "${layerName}" została usunięta`, 5000));
+
+      // RTK Query automatically invalidates cache and refetches project data
+    } catch (error: any) {
+      console.error('❌ Failed to delete layer:', error);
+
+      // Extract error message from backend response
+      const errorMessage = error?.data?.message || error?.message || 'Nieznany błąd';
+      dispatch(showError(`Nie udało się usunąć warstwy: ${errorMessage}`, 8000));
+
+      // Don't remove from Redux if backend deletion failed
     }
   };
 

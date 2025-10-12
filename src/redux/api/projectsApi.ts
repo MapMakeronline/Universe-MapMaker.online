@@ -130,6 +130,7 @@ export const projectsApi = createApi({
           domain: data.domain,
           projectDescription: data.projectDescription,
           keywords: data.keywords,
+          categories: data.categories || ['Inne'],
         },
       }),
       invalidatesTags: [{ type: 'Projects', id: 'LIST' }],

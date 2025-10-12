@@ -10,6 +10,11 @@
     "context7": {
       "command": "npx",
       "args": ["-y", "@context-labs/mcp-server-context7"]
+    },
+    "puppeteer": {
+      "command": "npx",
+      "args": ["-y", "puppeteer-mcp-server"],
+      "env": {}
     }
   }
 }

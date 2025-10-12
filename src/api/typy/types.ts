@@ -76,7 +76,7 @@ export interface CreateProjectData {
   domain: string; // Backend expects "domain" not "custom_project_name"
   projectDescription?: string; // Backend expects "projectDescription" not "description"
   keywords?: string;
-  categories?: string[]; // Backend serializers.py uses ListField (array of strings)
+  categories?: string[]; // Frontend uses array, but backend expects single string (ChoiceField)
 }
 
 export interface UpdateProjectData {
@@ -155,6 +155,19 @@ export interface AddGeoJsonLayerData {
   layer_name: string;
   geojson: File | object;
   epsg?: string;
+}
+
+export interface AddShpLayerData {
+  project: string; // Backend expects "project" not "project_name"
+  layer_name: string;
+  shpFile: File; // .shp file
+  shxFile?: File; // .shx file (optional, but recommended)
+  dbfFile?: File; // .dbf file (optional, but recommended)
+  prjFile?: File; // .prj file (optional, for projection info)
+  cpgFile?: File; // .cpg file (optional, for encoding)
+  qpjFile?: File; // .qpj file (optional, for QGIS projection)
+  epsg?: string; // Manual EPSG code if .prj is missing
+  encoding?: string; // Manual encoding if .cpg is missing (default: UTF-8)
 }
 
 export interface UpdateLayerStyleData {

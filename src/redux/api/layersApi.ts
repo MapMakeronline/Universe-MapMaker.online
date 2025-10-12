@@ -6,6 +6,7 @@ import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import type {
   Layer,
   AddGeoJsonLayerData,
+  AddShpLayerData,
   UpdateLayerStyleData,
   LayerAttribute,
   ExportLayerOptions,
@@ -98,31 +99,47 @@ export const layersApi = createApi({
      * Add Shapefile layer to project
      * Endpoint: POST /api/layer/add/shp/
      * Priority: 🔴 High
-     * Used by: AddDatasetModal
+     * Used by: CreateProjectDialog (SHP import tab)
+     *
+     * Backend expects:
+     * - project: string (project_name)
+     * - layer_name: string
+     * - shp: File (required)
+     * - shx: File (optional)
+     * - dbf: File (optional)
+     * - prj: File (optional)
+     * - cpg: File (optional)
+     * - qpj: File (optional)
+     * - epsg: string (optional)
+     * - encoding: string (optional)
+     *
+     * IMPORTANT: Backend saves file as "uploaded_layer.shp" in qgs/{project}/ folder
+     * Multiple SHP files cannot be uploaded simultaneously - must be sequential!
      */
     addShapefileLayer: builder.mutation<
-      { success: boolean; layer_name: string },
-      {
-        projectName: string;
-        layerName: string;
-        files: {
-          shp: File;
-          shx: File;
-          dbf: File;
-          prj?: File;
-        };
-      }
+      { success: boolean; message?: string; data?: any },
+      AddShpLayerData
     >({
-      query: ({ projectName, layerName, files }) => {
+      query: (data) => {
         const formData = new FormData();
-        formData.append('project_name', projectName);
-        formData.append('layer_name', layerName);
-        formData.append('shp', files.shp);
-        formData.append('shx', files.shx);
-        formData.append('dbf', files.dbf);
-        if (files.prj) {
-          formData.append('prj', files.prj);
-        }
+
+        // Backend expects "project" not "project_name"
+        formData.append('project', data.project);
+        formData.append('layer_name', data.layer_name);
+
+        // Add required SHP file (backend renames to uploaded_layer.shp)
+        formData.append('shp', data.shpFile);
+
+        // Add optional supporting files
+        if (data.shxFile) formData.append('shx', data.shxFile);
+        if (data.dbfFile) formData.append('dbf', data.dbfFile);
+        if (data.prjFile) formData.append('prj', data.prjFile);
+        if (data.cpgFile) formData.append('cpg', data.cpgFile);
+        if (data.qpjFile) formData.append('qpj', data.qpjFile);
+
+        // Optional parameters
+        if (data.epsg) formData.append('epsg', data.epsg);
+        if (data.encoding) formData.append('encoding', data.encoding);
 
         return {
           url: '/api/layer/add/shp/',
@@ -131,7 +148,7 @@ export const layersApi = createApi({
         };
       },
       invalidatesTags: (result, error, arg) => [
-        { type: 'Layers', id: arg.projectName },
+        { type: 'Layers', id: arg.project },
         { type: 'Layers', id: 'LIST' },
       ],
     }),
