@@ -54,7 +54,9 @@
       "Read(//c/Users/mestw/Downloads/**)",
       "Bash(node:*)",
       "Bash(gcloud run services describe:*)",
-      "Bash(npm run lint)"
+      "Bash(npm run lint)",
+      "Bash(git pull:*)",
+      "Bash(git stash:*)"
     ],
     "deny": [],
     "ask": []

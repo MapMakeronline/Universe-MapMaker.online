@@ -214,7 +214,7 @@ export default function MapPage() {
           {projectName && <QGISProjectLoader projectName={projectName} />}
           {/* Render layers: WMS for complex styled layers, WFS for simple interactive layers */}
           {projectName && layers && collectAllLayers(layers).map((layer) => {
-            const useWMS = shouldUseWMS(layer);
+            const useWMS = shouldUseWMS(layer, projectName);
             return useWMS ? (
               <WMSLayerRenderer
                 key={layer.id}

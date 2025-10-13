@@ -10,9 +10,16 @@ import type { LayerNode } from '@/typy/layers';
  * 4. Use WFS for simple point/line layers (better interaction)
  *
  * @param layer - Layer to render
+ * @param projectName - Optional project name for project-specific overrides
  * @returns true if WMS should be used, false for WFS
  */
-export function shouldUseWMS(layer: LayerNode): boolean {
+export function shouldUseWMS(layer: LayerNode, projectName?: string): boolean {
+  // 🧪 TEST MODE: Force WMS for specific projects to test style preservation
+  const TEST_WMS_PROJECTS = ['graph', 'test'];
+  if (projectName && TEST_WMS_PROJECTS.includes(projectName.toLowerCase())) {
+    console.log(`📍 [WMS] ${layer.name}: Test mode for project "${projectName}"`);
+    return true;
+  }
   // Always use WMS for raster layers
   if (layer.type === 'RasterLayer') {
     console.log(`📍 [WMS] ${layer.name}: RasterLayer`);
