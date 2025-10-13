@@ -40,12 +40,19 @@ export function WMSLayerRenderer({ projectName, layer }: WMSLayerRendererProps) 
   const [mapInstance, setMapInstance] = useState<any>(null);
 
   // Update mapInstance state when mapRef.current becomes available
+  // This useEffect MUST run after every render to detect when mapRef.current changes
   useEffect(() => {
+    console.log('⚙️ Checking for mapRef.current:', layer.name, {
+      hasMapRef: !!mapRef.current,
+      hasMapInstance: !!mapInstance,
+      isMapLoaded
+    });
+
     if (mapRef.current && !mapInstance) {
       console.log('🗺️ Map ref available, updating mapInstance state:', layer.name);
       setMapInstance(mapRef.current);
     }
-  }, [isMapLoaded, mapRef, mapInstance, layer.name]); // Re-check when isMapLoaded changes
+  }); // NO DEPENDENCIES - run after EVERY render to detect mapRef.current
 
   // DEBUG: Log layer state
   console.log('🔍 WMSLayerRenderer mount/update:', {
