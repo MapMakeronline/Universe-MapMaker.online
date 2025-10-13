@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { useMap } from 'react-map-gl';
+import { useAppSelector } from '@/redux/hooks';
 import type { LayerNode } from '@/typy/layers';
 import { addWMSLayer, removeQGISLayer, updateQGISLayerVisibility, updateQGISLayerOpacity } from '@/mapbox/qgis-layers';
 
@@ -31,7 +32,8 @@ interface WMSLayerRendererProps {
  * ⚠️ Cannot modify style on client
  */
 export function WMSLayerRenderer({ projectName, layer }: WMSLayerRendererProps) {
-  const { current: map } = useMap();
+  const mapRef = useMap();
+  const isMapLoaded = useAppSelector(state => state.map.isLoaded); // Redux state for map loaded
 
   // DEBUG: Log layer state
   console.log('🔍 WMSLayerRenderer mount/update:', {
@@ -39,14 +41,15 @@ export function WMSLayerRenderer({ projectName, layer }: WMSLayerRendererProps) 
     layerId: layer.id,
     visible: layer.visible,
     projectName,
-    hasMap: !!map
+    isMapLoaded,
+    hasMapRef: !!mapRef.current
   });
 
   // Add WMS layer when map becomes available
   useEffect(() => {
-    // Wait for map to be ready
-    if (!map) {
-      console.log('⏳ WMS waiting for map instance:', layer.name);
+    // Wait for map to be ready (using Redux state which triggers re-render)
+    if (!isMapLoaded || !mapRef.current) {
+      console.log('⏳ WMS waiting for map instance:', layer.name, { isMapLoaded, hasMapRef: !!mapRef.current });
       return;
     }
 
@@ -65,7 +68,7 @@ export function WMSLayerRenderer({ projectName, layer }: WMSLayerRendererProps) 
       return;
     }
 
-    const mapInstance = map.getMap();
+    const mapInstance = mapRef.current.getMap();
 
     console.log('✅ Map ready, adding WMS layer:', layer.name);
 
@@ -96,33 +99,33 @@ export function WMSLayerRenderer({ projectName, layer }: WMSLayerRendererProps) 
         console.log('🗑️ Removed WMS layer:', layer.name);
       }
     };
-  }, [map, projectName, layer.id]); // Don't include layer.visible here to avoid recreation
+  }, [isMapLoaded, projectName, layer.id, layer.visible, mapRef]); // Use isMapLoaded from Redux (triggers re-render!)
 
   // Update visibility
   useEffect(() => {
-    if (!map || !layer.id) return;
+    if (!isMapLoaded || !mapRef.current || !layer.id) return;
 
-    const mapInstance = map.getMap();
+    const mapInstance = mapRef.current.getMap();
     const layerId = `qgis-wms-layer-${projectName}-${layer.id}`;
 
     if (mapInstance.getLayer(layerId)) {
       updateQGISLayerVisibility(mapInstance, layerId, layer.visible);
       console.log(`👁️ Updated WMS visibility: ${layer.name} = ${layer.visible}`);
     }
-  }, [map, layer.visible, layer.id, projectName]);
+  }, [isMapLoaded, layer.visible, layer.id, projectName, mapRef]);
 
   // Update opacity
   useEffect(() => {
-    if (!map || !layer.id) return;
+    if (!isMapLoaded || !mapRef.current || !layer.id) return;
 
-    const mapInstance = map.getMap();
+    const mapInstance = mapRef.current.getMap();
     const layerId = `qgis-wms-layer-${projectName}-${layer.id}`;
 
     if (mapInstance.getLayer(layerId)) {
       updateQGISLayerOpacity(mapInstance, layerId, layer.opacity || 1);
       console.log(`🎨 Updated WMS opacity: ${layer.name} = ${layer.opacity}`);
     }
-  }, [map, layer.opacity, layer.id, projectName]);
+  }, [isMapLoaded, layer.opacity, layer.id, projectName, mapRef]);
 
   return null; // No UI rendering needed
 }
