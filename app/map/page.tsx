@@ -8,6 +8,8 @@ import LeftPanel from '@/features/warstwy/komponenty/LeftPanel';
 import RightToolbar from '@/features/narzedzia/RightToolbar';
 import { QGISProjectLoader } from '@/src/components/qgis/QGISProjectLoader';
 import { QGISLayerRenderer } from '@/src/components/qgis/QGISLayerRenderer';
+import { WMSLayerRenderer } from '@/src/components/qgis/WMSLayerRenderer';
+import { shouldUseWMS } from '@/src/components/qgis/layerRenderingUtils';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import { setCurrentProject } from '@/redux/slices/projectsSlice';
 import { loadLayers, resetLayers } from '@/redux/slices/layersSlice';
@@ -210,14 +212,23 @@ export default function MapPage() {
           )}
           <MapContainer projectName={projectName || undefined} />
           {projectName && <QGISProjectLoader projectName={projectName} />}
-          {/* Render all visible layers as GeoJSON */}
-          {projectName && layers && collectAllLayers(layers).map((layer) => (
-            <QGISLayerRenderer
-              key={layer.id}
-              projectName={projectName}
-              layer={layer}
-            />
-          ))}
+          {/* Render layers: WMS for complex styled layers, WFS for simple interactive layers */}
+          {projectName && layers && collectAllLayers(layers).map((layer) => {
+            const useWMS = shouldUseWMS(layer);
+            return useWMS ? (
+              <WMSLayerRenderer
+                key={layer.id}
+                projectName={projectName}
+                layer={layer}
+              />
+            ) : (
+              <QGISLayerRenderer
+                key={layer.id}
+                projectName={projectName}
+                layer={layer}
+              />
+            );
+          })}
         </Box>
         <RightToolbar />
       </Box>
