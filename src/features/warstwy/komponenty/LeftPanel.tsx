@@ -31,7 +31,7 @@ import {
   deleteLayer,
   moveLayer
 } from '@/redux/slices/layersSlice';
-import { useChangeLayersOrderMutation, projectsApi } from '@/redux/api/projectsApi';
+import { useChangeLayersOrderMutation, useGetProjectDataQuery, projectsApi } from '@/redux/api/projectsApi';
 import {
   useSetLayerVisibilityMutation,
   useAddGeoJsonLayerMutation,
@@ -83,6 +83,12 @@ const LeftPanel: React.FC<LeftPanelProps> = ({ isOwner = true }) => {
   const projectName = typeof window !== 'undefined'
     ? new URLSearchParams(window.location.search).get('project') || ''
     : '';
+
+  // Fetch project data to get the display name
+  const { data: projectData } = useGetProjectDataQuery(
+    { project: projectName, published: false },
+    { skip: !projectName }
+  );
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [searchFilter, setSearchFilter] = useState('');
@@ -654,7 +660,7 @@ const LeftPanel: React.FC<LeftPanelProps> = ({ isOwner = true }) => {
               margin: 0
             }}
           >
-            universe-mapmaker.online
+            {projectData?.name || projectName || 'universe-mapmaker.online'}
           </Box>
 
           <Toolbar {...toolbarHandlers} selectedLayer={selectedLayer} isOwner={isOwner} />

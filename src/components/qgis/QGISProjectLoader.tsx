@@ -188,12 +188,14 @@ function addQGISLayer(
     `https://api.universemapmaker.online/ows?` +
     `SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap` +
     `&LAYERS=${layer.id}` +
+    `&STYLES=` +
     `&WIDTH=256&HEIGHT=256` +
     `&FORMAT=image/png` +
     `&TRANSPARENT=true` +
     `&CRS=EPSG:3857` +
     `&BBOX={bbox-epsg-3857}` +
-    `&MAP=${encodeURIComponent(projectName)}/${encodeURIComponent(projectName)}.qgs`;
+    `&DPI=96` +
+    `&MAP=/projects/${encodeURIComponent(projectName)}/${encodeURIComponent(projectName)}.qgs`;
 
   // Add raster source
   map.addSource(sourceId, {
