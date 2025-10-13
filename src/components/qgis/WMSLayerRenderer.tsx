@@ -42,27 +42,32 @@ export function WMSLayerRenderer({ projectName, layer }: WMSLayerRendererProps) 
     hasMap: !!map
   });
 
-  // Add WMS layer on mount
+  // Add WMS layer when map becomes available
   useEffect(() => {
-    // DEBUG: Why not adding WMS layer?
+    // Wait for map to be ready
     if (!map) {
-      console.log('⚠️ WMS not added - no map instance:', layer.name);
+      console.log('⏳ WMS waiting for map instance:', layer.name);
       return;
     }
+
     if (!layer.visible) {
-      console.log('⚠️ WMS not added - layer not visible:', layer.name);
+      console.log('👁️ WMS layer hidden, skipping:', layer.name);
       return;
     }
+
     if (!projectName) {
-      console.log('⚠️ WMS not added - no projectName:', layer.name);
+      console.warn('⚠️ WMS missing projectName:', layer.name);
       return;
     }
+
     if (!layer.id) {
-      console.log('⚠️ WMS not added - no layer.id:', layer.name);
+      console.warn('⚠️ WMS missing layer.id:', layer.name);
       return;
     }
 
     const mapInstance = map.getMap();
+
+    console.log('✅ Map ready, adding WMS layer:', layer.name);
 
     console.log('🗺️ Adding WMS layer:', layer.name, {
       projectName,
