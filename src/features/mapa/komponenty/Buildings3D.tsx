@@ -15,6 +15,12 @@ import {
   disableFull3DMode
 } from '@/mapbox/map3d';
 import { mapLogger } from '@/narzedzia/logger';
+import {
+  isIOS,
+  getDeviceMemory,
+  getBuildingHeightMultiplier,
+  getDeviceLogPrefix
+} from '@/mapbox/device-detection';
 
 const Buildings3D = () => {
   const { current: mapRef } = useMap();
@@ -47,70 +53,96 @@ const Buildings3D = () => {
       // Check if current style has 3D enabled using mapStyleKey
       const currentStyle = mapStyleKey ? MAP_STYLES[mapStyleKey] : undefined;
 
-      mapLogger.log('🏢 Style event fired, checking 3D mode:', {
+      // Get device-specific optimizations
+      const iosDevice = isIOS();
+      const deviceMemory = getDeviceMemory();
+      const heightMultiplier = getBuildingHeightMultiplier();
+      const devicePrefix = getDeviceLogPrefix();
+
+      mapLogger.log(`🏢 ${devicePrefix} Style event fired, checking 3D mode:`, {
         mapStyleKey,
         enable3D: currentStyle?.enable3D,
         enableTerrain: currentStyle?.enableTerrain,
         enableSky: currentStyle?.enableSky,
-        styleName: currentStyle?.name
+        styleName: currentStyle?.name,
+        device: { ios: iosDevice, memory: deviceMemory, heightMultiplier }
       });
 
       // Check if full 3D mode (terrain + buildings + sky)
       if (currentStyle?.enableTerrain && currentStyle?.enableSky) {
         try {
-          mapLogger.log('🌄 Enabling FULL 3D mode (terrain + buildings + sky)');
+          mapLogger.log(`🌄 ${devicePrefix} Enabling FULL 3D mode (terrain + buildings + sky)`);
 
-          // Get current zoom to adjust pitch
+          // OPTIMIZED: Reduced pitch angles for better FPS
+          // iOS gets even lower pitch for better GPU performance
           const currentZoom = map.getZoom();
-          const pitch = currentZoom < 10 ? 45 : 60;
+          const basePitch = currentZoom < 10 ? 35 : 50;
+          const pitch = iosDevice ? Math.max(25, basePitch - 10) : basePitch;
+
+          // iOS gets reduced terrain exaggeration
+          const terrainExaggeration = iosDevice ? 0.6 : 0.8;
 
           const success = enableFull3DMode(map, {
-            terrainExaggeration: 1.2,
+            terrainExaggeration,
             pitch: pitch,
             bearing: 0
           });
 
           if (success) {
-            mapLogger.log(`✅ Full 3D mode enabled (pitch: ${pitch}°, zoom: ${currentZoom.toFixed(1)})`);
-            if (currentZoom < 15) {
-              mapLogger.log(`ℹ️ Zoom in to level 15+ to see 3D buildings. Current: ${currentZoom.toFixed(1)}`);
+            mapLogger.log(`✅ ${devicePrefix} Full 3D mode enabled`, {
+              pitch: `${pitch}°`,
+              zoom: currentZoom.toFixed(1),
+              terrainExaggeration,
+              heightMultiplier
+            });
+            if (currentZoom < 16) {
+              mapLogger.log(`ℹ️ Zoom in to level 16+ to see 3D buildings. Current: ${currentZoom.toFixed(1)}`);
             }
           } else {
-            mapLogger.error('❌ Failed to enable full 3D mode');
+            mapLogger.error(`❌ ${devicePrefix} Failed to enable full 3D mode`);
           }
         } catch (e) {
-          mapLogger.error('❌ Failed to enable full 3D mode:', e);
+          mapLogger.error(`❌ ${devicePrefix} Failed to enable full 3D mode:`, e);
         }
       }
       // Just 3D buildings
       else if (currentStyle?.enable3D) {
         try {
-          mapLogger.log('🏢 Enabling 3D buildings only');
+          mapLogger.log(`🏢 ${devicePrefix} Enabling 3D buildings only`);
 
-          // Get current zoom to adjust pitch
+          // OPTIMIZED: Reduced pitch angles for better FPS
+          // iOS gets even lower pitch for better GPU performance
           const currentZoom = map.getZoom();
-          const pitch = currentZoom < 10 ? 45 : 60;
+          const basePitch = currentZoom < 10 ? 35 : 50;
+          const pitch = iosDevice ? Math.max(25, basePitch - 10) : basePitch;
 
-          // Set pitch for 3D view
+          // Set pitch for 3D view (faster transition)
           map.easeTo({
             pitch: pitch,
             bearing: 0,
-            duration: 1000
+            duration: 800
           });
 
-          // Add 3D buildings
-          const success = add3DBuildings(map);
+          // Add 3D buildings with device-specific height multiplier
+          const success = add3DBuildings(map, {
+            minzoom: 16,
+            heightMultiplier
+          });
 
           if (success) {
-            mapLogger.log(`✅ 3D buildings enabled (pitch: ${pitch}°, zoom: ${currentZoom.toFixed(1)})`);
-            if (currentZoom < 15) {
-              mapLogger.log(`ℹ️ Zoom in to level 15+ to see buildings. Current: ${currentZoom.toFixed(1)}`);
+            mapLogger.log(`✅ ${devicePrefix} 3D buildings enabled`, {
+              pitch: `${pitch}°`,
+              zoom: currentZoom.toFixed(1),
+              heightMultiplier
+            });
+            if (currentZoom < 16) {
+              mapLogger.log(`ℹ️ Zoom in to level 16+ to see buildings. Current: ${currentZoom.toFixed(1)}`);
             }
           } else {
-            mapLogger.error('❌ Failed to add 3D buildings');
+            mapLogger.error(`❌ ${devicePrefix} Failed to add 3D buildings`);
           }
         } catch (e) {
-          mapLogger.error('❌ Failed to add 3D buildings:', e);
+          mapLogger.error(`❌ ${devicePrefix} Failed to add 3D buildings:`, e);
         }
       }
       // No 3D - clean up everything
@@ -148,9 +180,29 @@ const Buildings3D = () => {
     // Listen for future style changes
     map.on('style.load', handleStyleLoad);
 
+    // ==================== WEBGL CONTEXT LOSS RECOVERY ====================
+    // iOS Safari can lose WebGL context during memory pressure
+    // This ensures 3D features are restored after context recovery
+    const handleContextLost = (e: any) => {
+      e.preventDefault();
+      mapLogger.error('❌ WebGL context lost - 3D rendering stopped');
+    };
+
+    const handleContextRestored = () => {
+      mapLogger.log('✅ WebGL context restored - re-initializing 3D features');
+      // Re-apply 3D features after context is restored
+      setTimeout(() => onStyleLoad(), 100);
+    };
+
+    const canvas = map.getCanvas();
+    canvas.addEventListener('webglcontextlost', handleContextLost);
+    canvas.addEventListener('webglcontextrestored', handleContextRestored);
+
     return () => {
       mapLogger.log('🏢 Cleaning up Buildings3D component');
       map.off('style.load', handleStyleLoad);
+      canvas.removeEventListener('webglcontextlost', handleContextLost);
+      canvas.removeEventListener('webglcontextrestored', handleContextRestored);
       try {
         disableFull3DMode(map);
       } catch (e) {

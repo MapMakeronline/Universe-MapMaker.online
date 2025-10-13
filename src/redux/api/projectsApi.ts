@@ -1,4 +1,4 @@
-/**
+﻿/**
  * RTK Query API for Projects
  *
  * Phase 3: RTK Query Migration + Advanced Features
@@ -107,16 +107,19 @@ export const projectsApi = createApi({
 
     /**
      * POST /api/projects/create/
-     * Create a new project
+     * Create a new project with PostgreSQL database and QGS file
      *
      * Backend response format:
      * {
      *   "data": { host, port, db_name, login, password },
      *   "success": true,
-     *   "message": "Projekt został pomyślnie utworzony"
+     *   "message": "Projekt zostaĹ‚ pomyĹ›lnie utworzony"
      * }
      *
      * IMPORTANT: Use data.db_name for real project_name (with suffix _1, _2, etc.)
+     *
+     * NOTE: Changed from /api/projects/create/ to /dashboard/projects/create/
+     * due to backend returning "Method GET not allowed" error
      */
     createProject: builder.mutation<
       { data: DbInfo; success: boolean; message: string },
@@ -126,15 +129,23 @@ export const projectsApi = createApi({
         url: '/api/projects/create/',
         method: 'POST',
         body: {
-          project: data.project,
-          domain: data.domain,
-          projectDescription: data.projectDescription,
-          keywords: data.keywords,
-          categories: data.categories || ['Inne'],
+          project: data.project, // Backend expects "project" (will add suffix if duplicate)
+          domain: data.project
+            .toLowerCase()
+            .replace(/\s+/g, '-')          // Replace spaces with hyphens
+            .replace(/[^a-z0-9-]/g, '')     // Remove special characters
+            .replace(/^-+|-+$/g, '')        // Remove leading/trailing hyphens
+            .substring(0, 63)               // Max 63 chars (backend requirement)
+            || 'project',                   // Fallback if empty
+          // NOTE: categories field removed - backend has incompatible serializer (expects list but validates as string)
+          // Backend will use default value 'Inne'
+          projectDescription: data.projectDescription || '',
+          keywords: data.keywords || '',
         },
       }),
       invalidatesTags: [{ type: 'Projects', id: 'LIST' }],
     }),
+
 
     /**
      * PUT /dashboard/projects/update/
@@ -306,11 +317,11 @@ export const projectsApi = createApi({
         const token = getToken();
         const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.universemapmaker.online';
 
-        console.log('🚀 importQGS mutation called with:');
+        console.log('đźš€ importQGS mutation called with:');
         console.log('  - project:', project);
         console.log('  - qgsFile:', qgsFile.name, qgsFile.size, 'bytes');
         console.log('  - baseUrl:', baseUrl);
-        console.log('  - token:', token ? '✅ present' : '❌ missing');
+        console.log('  - token:', token ? 'âś… present' : 'âťŚ missing');
 
         return new Promise((resolve) => {
           const xhr = new XMLHttpRequest();
@@ -328,17 +339,17 @@ export const projectsApi = createApi({
 
           // Response handlers
           xhr.addEventListener('load', () => {
-            console.log('📥 Response received, status:', xhr.status);
-            console.log('📄 Response text:', xhr.responseText.substring(0, 500)); // First 500 chars
+            console.log('đź“Ą Response received, status:', xhr.status);
+            console.log('đź“„ Response text:', xhr.responseText.substring(0, 500)); // First 500 chars
 
             if (xhr.status >= 200 && xhr.status < 300) {
               try {
                 const data = JSON.parse(xhr.responseText);
-                console.log('✅ Parsed response data:', data);
+                console.log('âś… Parsed response data:', data);
 
                 // Check if backend returned an error despite 200 status
                 if (data.success === false || data.error) {
-                  console.error('❌ Backend returned error in 200 response:', data);
+                  console.error('âťŚ Backend returned error in 200 response:', data);
                   resolve({
                     error: {
                       status: xhr.status,
@@ -349,7 +360,7 @@ export const projectsApi = createApi({
                     }
                   });
                 } else {
-                  console.log('🎉 Import successful!');
+                  console.log('đźŽ‰ Import successful!');
                   resolve({ data });
                 }
               } catch (error) {
@@ -374,23 +385,23 @@ export const projectsApi = createApi({
           });
 
           xhr.addEventListener('error', (e) => {
-            console.error('❌ XHR error event:', e);
+            console.error('âťŚ XHR error event:', e);
             resolve({ error: { status: 'FETCH_ERROR', error: 'Network error' } });
           });
 
           xhr.addEventListener('abort', (e) => {
-            console.warn('⚠️ XHR abort event:', e);
+            console.warn('âš ď¸Ź XHR abort event:', e);
             resolve({ error: { status: 'FETCH_ERROR', error: 'Upload aborted' } });
           });
 
           // Send request
           const requestUrl = `${baseUrl}/api/projects/import/qgs/`;
-          console.log('📡 Sending POST request to:', requestUrl);
+          console.log('đź“ˇ Sending POST request to:', requestUrl);
           xhr.open('POST', requestUrl);
           xhr.setRequestHeader('Authorization', `Token ${token}`);
-          console.log('📤 Sending FormData with project:', project, 'and file:', qgsFile.name);
+          console.log('đź“¤ Sending FormData with project:', project, 'and file:', qgsFile.name);
           xhr.send(formData);
-          console.log('✈️ Request sent, waiting for response...');
+          console.log('âśď¸Ź Request sent, waiting for response...');
         });
       },
       invalidatesTags: (result, error, arg) => [
@@ -423,11 +434,11 @@ export const projectsApi = createApi({
         const token = getToken();
         const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.universemapmaker.online';
 
-        console.log('🚀 importQGZ mutation called with:');
+        console.log('đźš€ importQGZ mutation called with:');
         console.log('  - project:', project);
         console.log('  - qgzFile:', qgzFile.name, qgzFile.size, 'bytes');
         console.log('  - baseUrl:', baseUrl);
-        console.log('  - token:', token ? '✅ present' : '❌ missing');
+        console.log('  - token:', token ? 'âś… present' : 'âťŚ missing');
 
         return new Promise((resolve) => {
           const xhr = new XMLHttpRequest();
@@ -445,16 +456,16 @@ export const projectsApi = createApi({
 
           // Response handlers
           xhr.addEventListener('load', () => {
-            console.log('📥 Response received, status:', xhr.status);
-            console.log('📄 Response text:', xhr.responseText.substring(0, 500));
+            console.log('đź“Ą Response received, status:', xhr.status);
+            console.log('đź“„ Response text:', xhr.responseText.substring(0, 500));
 
             if (xhr.status >= 200 && xhr.status < 300) {
               try {
                 const data = JSON.parse(xhr.responseText);
-                console.log('✅ Parsed response data:', data);
+                console.log('âś… Parsed response data:', data);
 
                 if (data.success === false || data.error) {
-                  console.error('❌ Backend returned error in 200 response:', data);
+                  console.error('âťŚ Backend returned error in 200 response:', data);
                   resolve({
                     error: {
                       status: xhr.status,
@@ -465,7 +476,7 @@ export const projectsApi = createApi({
                     }
                   });
                 } else {
-                  console.log('🎉 Import QGZ successful!');
+                  console.log('đźŽ‰ Import QGZ successful!');
                   resolve({ data });
                 }
               } catch (error) {
@@ -490,23 +501,23 @@ export const projectsApi = createApi({
           });
 
           xhr.addEventListener('error', (e) => {
-            console.error('❌ XHR error event:', e);
+            console.error('âťŚ XHR error event:', e);
             resolve({ error: { status: 'FETCH_ERROR', error: 'Network error' } });
           });
 
           xhr.addEventListener('abort', (e) => {
-            console.warn('⚠️ XHR abort event:', e);
+            console.warn('âš ď¸Ź XHR abort event:', e);
             resolve({ error: { status: 'FETCH_ERROR', error: 'Upload aborted' } });
           });
 
           // Send request
           const requestUrl = `${baseUrl}/api/projects/import/qgz/`;
-          console.log('📡 Sending POST request to:', requestUrl);
+          console.log('đź“ˇ Sending POST request to:', requestUrl);
           xhr.open('POST', requestUrl);
           xhr.setRequestHeader('Authorization', `Token ${token}`);
-          console.log('📤 Sending FormData with project:', project, 'and file:', qgzFile.name);
+          console.log('đź“¤ Sending FormData with project:', project, 'and file:', qgzFile.name);
           xhr.send(formData);
-          console.log('✈️ Request sent, waiting for response...');
+          console.log('âśď¸Ź Request sent, waiting for response...');
         });
       },
       invalidatesTags: (result, error, arg) => [

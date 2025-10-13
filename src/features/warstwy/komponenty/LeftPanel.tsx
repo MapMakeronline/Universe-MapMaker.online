@@ -31,7 +31,7 @@ import {
   deleteLayer,
   moveLayer
 } from '@/redux/slices/layersSlice';
-import { useChangeLayersOrderMutation } from '@/redux/api/projectsApi';
+import { useChangeLayersOrderMutation, projectsApi } from '@/redux/api/projectsApi';
 import {
   useSetLayerVisibilityMutation,
   useAddGeoJsonLayerMutation,
@@ -59,7 +59,11 @@ const SIDEBAR_CONFIG = {
   }
 };
 
-const LeftPanel: React.FC = () => {
+interface LeftPanelProps {
+  isOwner?: boolean;
+}
+
+const LeftPanel: React.FC<LeftPanelProps> = ({ isOwner = true }) => {
   const theme = useTheme();
   const dispatch = useAppDispatch();
 
@@ -408,9 +412,13 @@ const LeftPanel: React.FC = () => {
           });
 
           // Backend expects "project" not "project_name"
+          // CRITICAL: Backend requires 'parent' field (group name or empty string)
+          const parent = data.nazwaGrupy === 'Stwórz poza grupami' ? '' : data.nazwaGrupy;
+
           await addShapefileLayer({
             project: projectName,
             layer_name: data.nazwaWarstwy,
+            parent: parent,
             shpFile,
             shxFile,
             dbfFile,
@@ -440,15 +448,30 @@ const LeftPanel: React.FC = () => {
       }
 
       console.log('✅ Layer imported successfully');
-      dispatch(showSuccess(`Warstwa "${data.nazwaWarstwy}" została zaimportowana!`, 5000));
 
-      // RTK Query automatically invalidates cache and refetches project data
-      // The layer tree will update automatically via useGetProjectDataQuery
+      // ✅ MANUAL REFETCH - Force regenerate tree.json from backend
+      // RTK Query cache invalidation doesn't work between separate APIs (layersApi vs projectsApi)
+      // So we manually invalidate the 'Project' tag in projectsApi to trigger refetch
+      console.log('🔄 Triggering manual refetch of project data (tree.json)');
+      dispatch(
+        projectsApi.util.invalidateTags([
+          { type: 'Project', id: projectName }
+        ])
+      );
+
+      dispatch(showSuccess(`Warstwa "${data.nazwaWarstwy}" została zaimportowana!`, 5000))
     } catch (error: any) {
       console.error('❌ Failed to import layer:', error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
 
       // Extract error message from backend response
-      const errorMessage = error?.data?.message || error?.message || 'Nieznany błąd';
+      const errorMessage = error?.data?.message || error?.data?.error || error?.message || 'Nieznany błąd';
+
+      // Log full error data for debugging
+      if (error?.data) {
+        console.error('Backend error data:', error.data);
+      }
+
       dispatch(showError(`Nie udało się zaimportować warstwy: ${errorMessage}`, 8000));
     }
   };
@@ -634,7 +657,7 @@ const LeftPanel: React.FC = () => {
             universe-mapmaker.online
           </Box>
 
-          <Toolbar {...toolbarHandlers} selectedLayer={selectedLayer} />
+          <Toolbar {...toolbarHandlers} selectedLayer={selectedLayer} isOwner={isOwner} />
           <SearchBar
             searchFilter={searchFilter}
             onSearchChange={setSearchFilter}

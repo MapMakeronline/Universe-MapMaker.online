@@ -1,4 +1,4 @@
-// TypeScript types for GeoCraft Backend API
+﻿// TypeScript types for GeoCraft Backend API
 // Based on Django models and API responses
 
 // ============================================================================
@@ -160,6 +160,7 @@ export interface AddGeoJsonLayerData {
 export interface AddShpLayerData {
   project: string; // Backend expects "project" not "project_name"
   layer_name: string;
+  parent?: string; // Parent group name (required by backend, can be empty string)
   shpFile: File; // .shp file
   shxFile?: File; // .shx file (optional, but recommended)
   dbfFile?: File; // .dbf file (optional, but recommended)

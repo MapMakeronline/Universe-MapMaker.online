@@ -8,6 +8,8 @@ import IdentifyModal from '@/features/warstwy/modale/IdentifyModal';
 import { addFeature, selectFeature, setAttributeModalOpen } from '@/redux/slices/featuresSlice';
 import { setDrawMode } from '@/redux/slices/drawSlice';
 import type { MapFeature } from '@/redux/slices/featuresSlice';
+import { query3DBuildingsAtPoint, get3DBuildingsSource } from '@/mapbox/3d-picking';
+import { detect3DLayers, has3DLayers } from '@/mapbox/3d-layer-detection';
 
 interface FeatureProperty {
   key: string;
@@ -66,7 +68,35 @@ const IdentifyTool = () => {
         lngLat: e.lngLat
       });
 
-      // Query with bbox tolerance (8px pad for better mobile hit detection)
+      // ==================== UNIVERSAL 3D PICKING ====================
+      // Check if map has ANY 3D layers (not just '3d-buildings')
+      const mapHas3DLayers = has3DLayers(map);
+      const layers3D = mapHas3DLayers ? detect3DLayers(map) : [];
+
+      mapLogger.log('🔍 Identify: Universal 3D layer detection', {
+        has3DLayers: mapHas3DLayers,
+        layerCount: layers3D.length,
+        layers: layers3D,
+        pitch: map.getPitch(),
+        bearing: map.getBearing()
+      });
+
+      // Use 3D picking utility for ALL 3D layers (works with any camera angle!)
+      const building3DFeatures = mapHas3DLayers
+        ? query3DBuildingsAtPoint(map, e.point, 12) // 12px tolerance (increased from 8px)
+        : [];
+
+      const is3DBuilding = building3DFeatures.length > 0;
+
+      mapLogger.log('🔍 Identify: 3D Picking results', {
+        has3DLayers: mapHas3DLayers,
+        building3DCount: building3DFeatures.length,
+        layers3D: layers3D,
+        pitch: map.getPitch(),
+        bearing: map.getBearing()
+      });
+
+      // Query regular features with bbox tolerance (8px pad)
       const pad = 8;
       const bbox: [[number, number], [number, number]] = [
         [e.point.x - pad, e.point.y - pad],
@@ -76,21 +106,17 @@ const IdentifyTool = () => {
       const queriedFeatures = map.queryRenderedFeatures(bbox);
 
       mapLogger.log('🔍 Identify: Found features', {
-        count: queriedFeatures.length,
+        totalCount: queriedFeatures.length,
+        building3DCount: building3DFeatures.length,
         bbox
       });
 
-      if (queriedFeatures.length > 0) {
-        // Check if we're in 3D mode and if ANY feature is a 3D building
-        const is3DMode = mapStyleKey === 'buildings3d' || mapStyleKey === 'full3d';
-
-        // Find first 3D building in features (skip labels and other layers)
-        const buildingFeature = queriedFeatures.find(f => f.layer?.id === '3d-buildings');
-        const is3DBuilding = is3DMode && buildingFeature;
+      if (is3DBuilding || queriedFeatures.length > 0) {
+        // ==================== HANDLE 3D BUILDINGS (PRIORITY) ====================
 
         if (is3DBuilding) {
-          // Use the building feature, not the first feature
-          const firstFeature = buildingFeature;
+          // Use the closest building from 3D picking (already sorted by distance)
+          const firstFeature = building3DFeatures[0];
           // Handle 3D building selection
           const featureId = firstFeature.id?.toString() || `building-${Date.now()}`;
 
@@ -135,13 +161,16 @@ const IdentifyTool = () => {
           dispatch(selectFeature(featureId));
           dispatch(setAttributeModalOpen(true));
 
-          // Update feature state for visual feedback
+          // Update feature state for visual feedback (ORANGE HIGHLIGHT)
+          // Use 3D picking utility to detect source
+          const buildingSource = get3DBuildingsSource(map);
+
           const prevSelectedId = selectedFeatureIdRef.current;
           if (prevSelectedId && prevSelectedId !== featureId) {
             // Remove previous selection
             try {
               map.removeFeatureState({
-                source: 'composite',
+                source: buildingSource,
                 sourceLayer: 'building',
                 id: prevSelectedId
               });
@@ -154,12 +183,13 @@ const IdentifyTool = () => {
           try {
             map.setFeatureState(
               {
-                source: 'composite',
+                source: buildingSource,
                 sourceLayer: 'building',
                 id: featureId
               },
               { selected: true }
             );
+            mapLogger.log('✅ Building feature state updated', { source: buildingSource, id: featureId });
           } catch (e) {
             mapLogger.error('Failed to set feature state:', e);
           }
@@ -168,8 +198,20 @@ const IdentifyTool = () => {
           return;
         }
 
-        // Handle regular features (non-3D buildings)
-        const regularFeatures = queriedFeatures.filter(f => f.layer?.id !== '3d-buildings');
+        // Handle regular features (exclude ALL 3D layers, not just '3d-buildings')
+        const regularFeatures = queriedFeatures.filter(f => {
+          const layerId = f.layer?.id;
+          if (!layerId) return true; // Keep features without layer ID
+
+          // Filter out ALL 3D layers (universal detection)
+          return !layers3D.includes(layerId);
+        });
+
+        mapLogger.log('🔍 Identify: Regular features after 3D filtering', {
+          total: queriedFeatures.length,
+          regular: regularFeatures.length,
+          filtered3D: queriedFeatures.length - regularFeatures.length
+        });
 
         if (regularFeatures.length > 0) {
           // For the first feature, create a MapFeature and store it

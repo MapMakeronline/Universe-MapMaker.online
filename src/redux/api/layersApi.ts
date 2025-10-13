@@ -47,7 +47,7 @@ const baseQuery = fetchBaseQuery({
 export const layersApi = createApi({
   reducerPath: 'layersApi',
   baseQuery,
-  tagTypes: ['Layer', 'Layers', 'Features', 'LayerAttributes'],
+  tagTypes: ['Layer', 'Layers', 'Features', 'LayerAttributes', 'Project'],
   endpoints: (builder) => ({
 
     // ========================================================================
@@ -90,6 +90,7 @@ export const layersApi = createApi({
         };
       },
       invalidatesTags: (result, error, arg) => [
+        { type: 'Project', id: arg.project_name }, // Invalidate project data to refetch tree.json
         { type: 'Layers', id: arg.project_name },
         { type: 'Layers', id: 'LIST' },
       ],
@@ -127,6 +128,9 @@ export const layersApi = createApi({
         formData.append('project', data.project);
         formData.append('layer_name', data.layer_name);
 
+        // CRITICAL: Backend requires 'parent' field (can be empty string)
+        formData.append('parent', data.parent || '');
+
         // Add required SHP file (backend renames to uploaded_layer.shp)
         formData.append('shp', data.shpFile);
 
@@ -148,6 +152,7 @@ export const layersApi = createApi({
         };
       },
       invalidatesTags: (result, error, arg) => [
+        { type: 'Project', id: arg.project }, // Invalidate project data to refetch tree.json
         { type: 'Layers', id: arg.project },
         { type: 'Layers', id: 'LIST' },
       ],
@@ -193,6 +198,7 @@ export const layersApi = createApi({
         },
       }),
       invalidatesTags: (result, error, arg) => [
+        { type: 'Project', id: arg.projectName }, // Invalidate project data to refetch tree.json
         { type: 'Layer', id: `${arg.projectName}-${arg.layerName}` },
         { type: 'Layers', id: arg.projectName },
         { type: 'Layers', id: 'LIST' },

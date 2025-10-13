@@ -208,7 +208,7 @@ export default function MapPage() {
               👁️ Tryb podglądu (tylko odczyt)
             </Box>
           )}
-          <MapContainer />
+          <MapContainer projectName={projectName || undefined} />
           {projectName && <QGISProjectLoader projectName={projectName} />}
           {/* Render all visible layers as GeoJSON */}
           {projectName && layers && collectAllLayers(layers).map((layer) => (

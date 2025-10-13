@@ -8,6 +8,7 @@ import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import { setViewState, setMapLoaded, setFullscreen } from '@/redux/slices/mapSlice';
 import { MAPBOX_TOKEN, MAP_CONFIG } from '@/mapbox/config';
 import { mapLogger } from '@/narzedzia/logger';
+import { saveViewport, loadViewport, autoSaveViewport } from '@/mapbox/viewport-persistence';
 import DrawTools from '../narzedzia/DrawTools';
 import MeasurementTools from '../narzedzia/MeasurementTools';
 import IdentifyTool from './IdentifyTool';
@@ -20,9 +21,10 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 
 interface MapContainerProps {
   children?: React.ReactNode;
+  projectName?: string; // Project name for viewport persistence
 }
 
-const MapContainer: React.FC<MapContainerProps> = ({ children }) => {
+const MapContainer: React.FC<MapContainerProps> = ({ children, projectName }) => {
   const dispatch = useAppDispatch();
   const mapRef = useRef<MapRef>(null);
   const geolocateControlRef = useRef<any>(null);
@@ -42,11 +44,49 @@ const MapContainer: React.FC<MapContainerProps> = ({ children }) => {
     }
   }, []);
 
-  // Throttle onMove to reduce Redux updates (max 10 updates per second)
+  // VIEWPORT PERSISTENCE: Load saved viewport on mount
+  useEffect(() => {
+    if (!projectName) return;
+
+    const savedViewport = loadViewport(projectName);
+
+    if (savedViewport) {
+      // Restore viewport from sessionStorage
+      dispatch(setViewState(savedViewport));
+      mapLogger.log('✅ Restored viewport from sessionStorage:', savedViewport);
+    } else {
+      mapLogger.log('ℹ️ No saved viewport found, using default or project extent');
+    }
+  }, [projectName, dispatch]);
+
+  // VIEWPORT PERSISTENCE: Auto-save viewport every 10 seconds
+  useEffect(() => {
+    if (!projectName) return;
+
+    const cleanup = autoSaveViewport(
+      projectName,
+      () => viewState,
+      10000 // 10 seconds
+    );
+
+    return cleanup;
+  }, [projectName, viewState]);
+
+  // VIEWPORT PERSISTENCE: Save on unmount (page close/navigate)
+  useEffect(() => {
+    return () => {
+      if (projectName && viewState) {
+        saveViewport(projectName, viewState);
+        mapLogger.log('💾 Saved viewport on unmount');
+      }
+    };
+  }, [projectName, viewState]);
+
+  // Throttle onMove to reduce Redux updates (max 5 updates per second for better performance)
   const lastUpdateTime = useRef<number>(0);
   const onMove = useCallback((evt: any) => {
     const now = Date.now();
-    if (now - lastUpdateTime.current > 100) { // Throttle: max 10 updates/sec
+    if (now - lastUpdateTime.current > 200) { // Throttle: max 5 updates/sec (doubled from 100ms)
       lastUpdateTime.current = now;
       dispatch(setViewState(evt.viewState));
     }
@@ -56,11 +96,18 @@ const MapContainer: React.FC<MapContainerProps> = ({ children }) => {
     dispatch(setMapLoaded(true));
   }, [dispatch]);
 
+  // Debounce resize to prevent excessive map.resize() calls
+  const resizeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const onResize = useCallback(() => {
-    mapRef.current?.resize();
+    if (resizeTimeoutRef.current) {
+      clearTimeout(resizeTimeoutRef.current);
+    }
+    resizeTimeoutRef.current = setTimeout(() => {
+      mapRef.current?.resize();
+    }, 150); // Debounce 150ms
   }, []);
 
-  // PWA detection and mobile viewport fixes
+  // PWA detection and mobile viewport fixes (with debouncing for performance)
   useEffect(() => {
     if (!mapRef.current) return;
 
@@ -79,26 +126,39 @@ const MapContainer: React.FC<MapContainerProps> = ({ children }) => {
       map.touchZoomRotate.enable();
     }
 
-    // Mobile viewport resize handlers (iOS address bar, orientation)
+    // Debounced viewport resize handler (prevents excessive map.resize() calls)
+    let resizeTimeout: NodeJS.Timeout | null = null;
     const handleViewportResize = () => {
-      mapLogger.log('📐 Viewport changed - resizing map');
-      map.resize();
+      if (resizeTimeout) clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(() => {
+        mapLogger.log('📐 Viewport changed - resizing map (debounced)');
+        map.resize();
+      }, 300); // Debounce 300ms
+    };
+
+    // Debounced visibility change handler
+    let visibilityTimeout: NodeJS.Timeout | null = null;
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        if (visibilityTimeout) clearTimeout(visibilityTimeout);
+        visibilityTimeout = setTimeout(() => {
+          mapLogger.log('👁️ Page visible - resizing map (debounced)');
+          map.resize();
+        }, 200); // Debounce 200ms
+      }
     };
 
     // Listen to various resize events
     window.addEventListener('orientationchange', handleViewportResize);
     window.visualViewport?.addEventListener('resize', handleViewportResize);
-
-    document.addEventListener('visibilitychange', () => {
-      if (!document.hidden) {
-        mapLogger.log('👁️ Page visible - resizing map');
-        map.resize();
-      }
-    });
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       window.removeEventListener('orientationchange', handleViewportResize);
       window.visualViewport?.removeEventListener('resize', handleViewportResize);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (resizeTimeout) clearTimeout(resizeTimeout);
+      if (visibilityTimeout) clearTimeout(visibilityTimeout);
     };
   }, [mapRef]);
 

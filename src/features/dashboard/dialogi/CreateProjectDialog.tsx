@@ -2,7 +2,6 @@
 // Supports:
 // 1. Create empty project
 // 2. Import QGIS project (.qgz, .qgs)
-// 3. Import Shapefile project (.shp + supporting files)
 'use client';
 
 import React, { useState } from 'react';
@@ -31,8 +30,6 @@ import Add from '@mui/icons-material/Add';
 import CloudUpload from '@mui/icons-material/CloudUpload';
 import InsertDriveFile from '@mui/icons-material/InsertDriveFile';
 import CheckCircle from '@mui/icons-material/CheckCircle';
-import Map from '@mui/icons-material/Map';
-import FolderZip from '@mui/icons-material/FolderZip';
 import type { CreateProjectData } from '@/api/typy/types';
 
 interface CreateProjectDialogProps {
@@ -46,23 +43,6 @@ interface CreateProjectDialogProps {
     description?: string,
     onProgress?: (progress: number) => void
   ) => Promise<void>;
-  onImportShapefile?: (
-    shapefiles: ShapefileSet[],
-    projectName: string,
-    domain: string,
-    description?: string,
-    onProgress?: (current: number, total: number) => void
-  ) => Promise<void>;
-}
-
-export interface ShapefileSet {
-  name: string; // Layer name (from filename)
-  shpFile: File; // Required .shp file
-  shxFile?: File; // Optional .shx file
-  dbfFile?: File; // Optional .dbf file
-  prjFile?: File; // Optional .prj file
-  cpgFile?: File; // Optional .cpg file
-  qpjFile?: File; // Optional .qpj file
 }
 
 interface TabPanelProps {
@@ -93,8 +73,7 @@ export function CreateProjectDialog({
   open,
   onClose,
   onCreate,
-  onImportQGIS,
-  onImportShapefile
+  onImportQGIS
 }: CreateProjectDialogProps) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -123,21 +102,10 @@ export function CreateProjectDialog({
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
 
-  // Shapefile import form state
-  const [shapefiles, setShapefiles] = useState<ShapefileSet[]>([]);
-  const [shpProjectName, setShpProjectName] = useState('');
-  const [shpDomain, setShpDomain] = useState('');
-  const [shpDescription, setShpDescription] = useState('');
-  const [shpError, setShpError] = useState<string | null>(null);
-  const [isImportingShp, setIsImportingShp] = useState(false);
-  const [shpImportProgress, setShpImportProgress] = useState({ current: 0, total: 0 });
-  const [isDraggingShp, setIsDraggingShp] = useState(false);
-
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setActiveTab(newValue);
     // Reset errors when switching tabs
     setQgisError(null);
-    setShpError(null);
   };
 
   const handleCategoryToggle = (category: string) => {
@@ -246,39 +214,6 @@ export function CreateProjectDialog({
     }
   };
 
-  // Drag & drop handlers for Shapefile tab
-  const handleDragEnterShp = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!isImportingShp) {
-      setIsDraggingShp(true);
-    }
-  };
-
-  const handleDragOverShp = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-
-  const handleDragLeaveShp = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDraggingShp(false);
-  };
-
-  const handleDropShp = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDraggingShp(false);
-
-    if (isImportingShp) return;
-
-    const files = e.dataTransfer.files;
-    if (files && files.length > 0) {
-      handleShapefileSelection(files);
-    }
-  };
-
   const handleImportSubmit = async () => {
     if (!qgisFile || !qgisProjectName || !qgisDomain || !onImportQGIS) return;
 
@@ -320,79 +255,6 @@ export function CreateProjectDialog({
     }
   };
 
-  /**
-   * Handle Shapefile selection
-   * User can select multiple .shp files with supporting files
-   * Groups files by base name (e.g., "layer.shp", "layer.shx", "layer.dbf" → one ShapefileSet)
-   *
-   * IMPORTANT: ZIP files are NOT supported by backend /api/layer/add/shp/ endpoint!
-   * Backend expects individual files: .shp (required) + .shx, .dbf, .prj, .cpg, .qpj (optional)
-   */
-  const handleShapefileSelection = (files: FileList | null) => {
-    if (!files || files.length === 0) return;
-
-    setShpError(null);
-
-    // Check for ZIP files and reject them
-    const zipFiles = Array.from(files).filter(f => f.name.toLowerCase().endsWith('.zip'));
-    if (zipFiles.length > 0) {
-      setShpError(
-        `❌ Pliki ZIP nie są obsługiwane!\n\n` +
-        `Backend wymaga pojedynczych plików:\n` +
-        `• Wymagany: .shp (geometria)\n` +
-        `• Opcjonalne: .shx (indeks), .dbf (atrybuty), .prj (projekcja), .cpg (kodowanie), .qpj (QGIS projekcja)\n\n` +
-        `Proszę rozpakować pliki ZIP i wybrać je wszystkie (Ctrl+Click).`
-      );
-      return;
-    }
-
-    // Group files by base name (without extension)
-    const fileGroups: { [baseName: string]: { [ext: string]: File } } = {};
-
-    Array.from(files).forEach((file) => {
-      const fileName = file.name;
-      const extension = fileName.split('.').pop()?.toLowerCase() || '';
-
-      // Handle individual shapefile components only
-      if (['shp', 'shx', 'dbf', 'prj', 'cpg', 'qpj'].includes(extension)) {
-        const baseName = fileName.replace(/\.(shp|shx|dbf|prj|cpg|qpj)$/i, '');
-        if (!fileGroups[baseName]) {
-          fileGroups[baseName] = {};
-        }
-        fileGroups[baseName][extension] = file;
-      }
-    });
-
-    // Convert file groups to ShapefileSet array
-    const newShapefiles: ShapefileSet[] = Object.entries(fileGroups).map(([baseName, files]) => {
-      // Validate: must have at least .shp file
-      if (!files['shp']) {
-        setShpError(`Brak pliku .shp dla warstwy "${baseName}". Każdy shapefile musi zawierać plik .shp.`);
-        return null;
-      }
-
-      return {
-        name: baseName,
-        shpFile: files['shp'],
-        shxFile: files['shx'],
-        dbfFile: files['dbf'],
-        prjFile: files['prj'],
-        cpgFile: files['cpg'],
-        qpjFile: files['qpj'],
-      };
-    }).filter((shp): shp is ShapefileSet => shp !== null);
-
-    setShapefiles((prev) => [...prev, ...newShapefiles]);
-
-    // Auto-generate project name from first shapefile
-    if (newShapefiles.length > 0 && !shpProjectName) {
-      const sanitized = newShapefiles[0].name
-        .replace(/[^a-zA-Z0-9ąćęłńóśźżĄĘŁŃÓŚŹŻ_]/g, '_')
-        .replace(/^_+|_+$/g, '');
-      setShpProjectName(sanitized);
-    }
-  };
-
   const isCreateValid =
     formData.project.length >= 3 && formData.domain.length >= 3 &&
     (formData.projectDescription?.length || 0) <= 100;
@@ -414,15 +276,15 @@ export function CreateProjectDialog({
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          {activeTab === 0 ? <Add /> : activeTab === 1 ? <CloudUpload /> : <Map />}
+          {activeTab === 0 ? <Add /> : <CloudUpload />}
           <Typography variant="h6" component="span" fontWeight={600}>
-            {activeTab === 0 ? 'Utwórz nowy projekt' : activeTab === 1 ? 'Importuj projekt QGIS' : 'Importuj Shapefile'}
+            {activeTab === 0 ? 'Utwórz nowy projekt' : 'Importuj projekt QGIS'}
           </Typography>
         </Box>
         <IconButton
           onClick={onClose}
           size="small"
-          disabled={isSubmitting || isImporting || isImportingShp}
+          disabled={isSubmitting || isImporting}
           sx={{ color: 'white', '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.1)' } }}
         >
           <Close />
@@ -451,18 +313,6 @@ export function CreateProjectDialog({
               icon={<CloudUpload />}
               iconPosition="start"
               label="Importuj QGIS"
-              sx={{
-                textTransform: 'none',
-                fontWeight: 500,
-                '&.Mui-selected': { color: theme.palette.primary.main },
-              }}
-            />
-          )}
-          {onImportShapefile && (
-            <Tab
-              icon={<Map />}
-              iconPosition="start"
-              label="Importuj SHP"
               sx={{
                 textTransform: 'none',
                 fontWeight: 500,
@@ -806,261 +656,11 @@ export function CreateProjectDialog({
             )}
           </Stack>
         </TabPanel>
-
-        {/* Tab 2: Import Shapefile project */}
-        <TabPanel value={activeTab} index={2}>
-          <Stack spacing={3}>
-            <Alert severity="info" sx={{ mb: 2 }}>
-              Importuj pliki Shapefile (.shp + pliki pomocnicze). System automatycznie:
-              <br />1. Utworzy nowy projekt z podaną nazwą i domeną
-              <br />2. Zaimportuje każdy shapefile jako osobną warstwę
-              <br />
-              <br /><strong>Wymagane pliki:</strong>
-              <br />• .shp - geometria warstwy (wymagany)
-              <br />• .shx - indeks przestrzenny (zalecany)
-              <br />• .dbf - tabela atrybutów (zalecany)
-              <br />• .prj - definicja układu współrzędnych (zalecany)
-              <br />• .cpg - kodowanie znaków (opcjonalny)
-              <br />• .qpj - projekcja QGIS (opcjonalny)
-              <br />
-              <br /><strong>⚠️ Uwaga:</strong> Pliki ZIP NIE są obsługiwane. Proszę rozpakować archiwum i wybrać wszystkie pliki (Ctrl+Click).
-            </Alert>
-
-            {isImportingShp && shpImportProgress.total > 0 && (
-              <Box sx={{ width: '100%' }}>
-                <LinearProgress
-                  variant="determinate"
-                  value={(shpImportProgress.current / shpImportProgress.total) * 100}
-                />
-                <Typography variant="caption" sx={{ mt: 1, display: 'block', textAlign: 'center', color: 'text.secondary' }}>
-                  ⚙️ Importowanie warstwy {shpImportProgress.current} z {shpImportProgress.total}...
-                </Typography>
-              </Box>
-            )}
-
-            {shpError && (
-              <Alert severity="error" onClose={() => setShpError(null)}>
-                {shpError}
-              </Alert>
-            )}
-
-            <Box>
-              <Typography
-                variant="subtitle2"
-                gutterBottom
-                sx={{ fontSize: '14px', fontWeight: 500, mb: 2 }}
-              >
-                Wybierz pliki Shapefile:
-              </Typography>
-
-              {/* Drag & Drop Zone for Shapefile */}
-              <Box
-                onDragEnter={handleDragEnterShp}
-                onDragOver={handleDragOverShp}
-                onDragLeave={handleDragLeaveShp}
-                onDrop={handleDropShp}
-                sx={{
-                  border: isDraggingShp
-                    ? `2px dashed ${theme.palette.primary.main}`
-                    : '2px dashed #d1d5db',
-                  borderRadius: '8px',
-                  bgcolor: isDraggingShp
-                    ? 'rgba(247, 94, 76, 0.05)'
-                    : 'white',
-                  p: 3,
-                  textAlign: 'center',
-                  cursor: isImportingShp ? 'not-allowed' : 'pointer',
-                  transition: 'all 0.2s ease-in-out',
-                  '&:hover': {
-                    borderColor: isImportingShp ? '#d1d5db' : theme.palette.primary.main,
-                    bgcolor: isImportingShp ? 'white' : 'rgba(247, 94, 76, 0.02)',
-                  },
-                }}
-              >
-                <FolderZip
-                  sx={{
-                    fontSize: 48,
-                    color: isDraggingShp ? theme.palette.primary.main : '#9ca3af',
-                    mb: 2,
-                  }}
-                />
-                <Typography variant="body1" fontWeight={600} gutterBottom>
-                  {isDraggingShp
-                    ? 'Upuść pliki tutaj'
-                    : 'Przeciągnij i upuść pliki Shapefile'}
-                </Typography>
-                <Typography variant="body2" color="text.secondary" gutterBottom>
-                  lub
-                </Typography>
-                <input
-                  accept=".shp,.shx,.dbf,.prj,.cpg,.qpj"
-                  style={{ display: 'none' }}
-                  id="shp-file-upload"
-                  type="file"
-                  multiple
-                  disabled={isImportingShp}
-                  onChange={(e) => handleShapefileSelection(e.target.files)}
-                />
-                <label htmlFor="shp-file-upload">
-                  <Button
-                    variant="outlined"
-                    component="span"
-                    disabled={isImportingShp}
-                    sx={{
-                      mt: 1,
-                      textTransform: 'none',
-                      borderColor: theme.palette.primary.main,
-                      color: theme.palette.primary.main,
-                      '&:hover': {
-                        borderColor: theme.palette.primary.dark,
-                        bgcolor: 'rgba(247, 94, 76, 0.05)',
-                      },
-                    }}
-                  >
-                    Wybierz pliki z komputera
-                  </Button>
-                </label>
-                <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 2 }}>
-                  Obsługiwane formaty: .shp, .shx, .dbf, .prj, .cpg, .qpj
-                  <br />
-                  Możesz wybrać wiele plików jednocześnie (Ctrl+Click)
-                  <br />
-                  ⚠️ Pliki ZIP NIE są obsługiwane - proszę rozpakować
-                </Typography>
-              </Box>
-
-              {/* List of selected files */}
-              {shapefiles.length > 0 && (
-                <Box sx={{ mt: 2 }}>
-                  <Typography variant="subtitle2" gutterBottom fontWeight={600}>
-                    Wybrane warstwy ({shapefiles.length}):
-                  </Typography>
-                  <Stack spacing={1}>
-                    {shapefiles.map((shp, index) => {
-                      // Count supporting files
-                      const supportingFiles = [
-                        shp.shxFile && 'shx',
-                        shp.dbfFile && 'dbf',
-                        shp.prjFile && 'prj',
-                        shp.cpgFile && 'cpg',
-                        shp.qpjFile && 'qpj',
-                      ].filter(Boolean);
-
-                      return (
-                        <Box
-                          key={index}
-                          sx={{
-                            bgcolor: 'white',
-                            p: 1.5,
-                            borderRadius: '4px',
-                            border: '1px solid #e5e7eb',
-                          }}
-                        >
-                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                            <InsertDriveFile sx={{ fontSize: 24, color: theme.palette.primary.main, mr: 1.5 }} />
-                            <Box sx={{ flex: 1 }}>
-                              <Typography variant="body2" fontWeight={600}>
-                                {shp.name}
-                              </Typography>
-                              <Typography variant="caption" color="text.secondary">
-                                {supportingFiles.length > 0
-                                  ? `shp + ${supportingFiles.length} plików pomocniczych (${supportingFiles.join(', ')})`
-                                  : 'tylko .shp (zalecane: dodaj .shx, .dbf, .prj)'}
-                              </Typography>
-                            </Box>
-                            <IconButton
-                              size="small"
-                              onClick={() => {
-                                setShapefiles((prev) => prev.filter((_, i) => i !== index));
-                              }}
-                              disabled={isImportingShp}
-                              sx={{ color: 'text.secondary', '&:hover': { color: 'error.main' } }}
-                            >
-                              <Close fontSize="small" />
-                            </IconButton>
-                          </Box>
-                        </Box>
-                      );
-                    })}
-                  </Stack>
-                </Box>
-              )}
-            </Box>
-
-            {shapefiles.length > 0 && (
-              <>
-                <TextField
-                  label="Nazwa projektu"
-                  placeholder="Nazwa projektu (min. 3 znaki)"
-                  fullWidth
-                  required
-                  value={shpProjectName}
-                  onChange={(e) => {
-                    const sanitized = e.target.value
-                      .replace(/[^a-zA-Z0-9ąćęłńóśźżĄĘŁŃÓŚŹŻ_]/g, '_')
-                      .replace(/^_+|_+$/g, '');
-                    setShpProjectName(sanitized);
-                  }}
-                  helperText="Tylko litery, cyfry i _ (wymagane, minimum 3 znaki)"
-                  error={shpProjectName.length > 0 && shpProjectName.length < 3}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      bgcolor: 'white',
-                      '&:hover fieldset': { borderColor: theme.palette.primary.main },
-                    },
-                  }}
-                />
-
-                <TextField
-                  label="Domena"
-                  placeholder="Subdomena dla projektu (minimum 3 znaki)"
-                  fullWidth
-                  required
-                  value={shpDomain}
-                  onChange={(e) => {
-                    const sanitized = e.target.value
-                      .toLowerCase()
-                      .replace(/[^a-z0-9-]/g, '-')
-                      .replace(/^-+|-+$/g, '');
-                    setShpDomain(sanitized);
-                  }}
-                  helperText="Minimum 3 znaki, format: example-domain (wymagane)"
-                  error={shpDomain.length > 0 && shpDomain.length < 3}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      bgcolor: 'white',
-                      '&:hover fieldset': { borderColor: theme.palette.primary.main },
-                    },
-                  }}
-                />
-
-                <TextField
-                  label="Opis"
-                  placeholder="Opisz projekt (opcjonalnie, maksymalnie 100 znaków)"
-                  fullWidth
-                  multiline
-                  rows={3}
-                  value={shpDescription}
-                  onChange={(e) => setShpDescription(e.target.value)}
-                  helperText={`${shpDescription.length}/100 (opcjonalnie)`}
-                  error={shpDescription.length > 100}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      bgcolor: 'white',
-                      '&:hover fieldset': { borderColor: theme.palette.primary.main },
-                    },
-                  }}
-                />
-              </>
-            )}
-          </Stack>
-        </TabPanel>
       </DialogContent>
-
       <DialogActions sx={{ bgcolor: '#f7f9fc', px: 3, pb: 3, gap: 2 }}>
         <Button
           onClick={onClose}
-          disabled={isSubmitting || isImporting || isImportingShp}
+          disabled={isSubmitting || isImporting}
           sx={{
             textTransform: 'none',
             color: theme.palette.text.primary,
@@ -1083,7 +683,7 @@ export function CreateProjectDialog({
           >
             {isSubmitting ? 'Tworzenie...' : 'Utwórz projekt'}
           </Button>
-        ) : activeTab === 1 ? (
+        ) : (
           <Button
             onClick={handleImportSubmit}
             variant="contained"
@@ -1097,53 +697,6 @@ export function CreateProjectDialog({
             }}
           >
             {isImporting ? 'Tworzenie i importowanie...' : 'Utwórz i importuj'}
-          </Button>
-        ) : (
-          <Button
-            onClick={async () => {
-              if (!onImportShapefile || shapefiles.length === 0) return;
-
-              setIsImportingShp(true);
-              setShpError(null);
-              setShpImportProgress({ current: 0, total: shapefiles.length });
-
-              try {
-                await onImportShapefile(
-                  shapefiles,
-                  shpProjectName,
-                  shpDomain,
-                  shpDescription,
-                  (current, total) => {
-                    setShpImportProgress({ current, total });
-                  }
-                );
-
-                // Reset form on success
-                setShapefiles([]);
-                setShpProjectName('');
-                setShpDomain('');
-                setShpDescription('');
-                setShpImportProgress({ current: 0, total: 0 });
-                setActiveTab(0); // Switch back to create tab
-              } catch (error: any) {
-                const errorMessage = error?.data?.message || error?.message || 'Wystąpił błąd podczas importowania plików SHP';
-                setShpError(errorMessage);
-                setShpImportProgress({ current: 0, total: 0 });
-              } finally {
-                setIsImportingShp(false);
-              }
-            }}
-            variant="contained"
-            disabled={shapefiles.length === 0 || shpProjectName.length < 3 || shpDomain.length < 3 || isImportingShp}
-            startIcon={<Map />}
-            sx={{
-              bgcolor: theme.palette.primary.main,
-              textTransform: 'none',
-              px: 3,
-              '&:hover': { bgcolor: theme.palette.primary.dark },
-            }}
-          >
-            {isImportingShp ? 'Importowanie warstw...' : 'Utwórz i importuj SHP'}
           </Button>
         )}
       </DialogActions>

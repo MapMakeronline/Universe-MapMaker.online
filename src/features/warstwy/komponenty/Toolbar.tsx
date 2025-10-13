@@ -46,6 +46,7 @@ interface ToolbarProps {
   onLayerManager: () => void;
   onPrintConfig: () => void;
   selectedLayer?: Warstwa | null;
+  isOwner?: boolean;
 }
 
 // Obiekt konfiguracji dla wielkości i stylów paska narzędzi
@@ -118,8 +119,14 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onCreateConsultation,
   onLayerManager,
   onPrintConfig,
-  selectedLayer
+  selectedLayer,
+  isOwner = true
 }) => {
+  // For non-owners (read-only mode), hide all editing tools
+  if (!isOwner) {
+    return null;
+  }
+
   return (
     <Box sx={{
       display: 'flex',

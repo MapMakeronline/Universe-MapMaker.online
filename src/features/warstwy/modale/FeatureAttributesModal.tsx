@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -38,11 +39,13 @@ import {
   updateFeatureAttribute,
 } from '@/redux/slices/featuresSlice';
 import type { FeatureAttribute } from '@/redux/slices/featuresSlice';
+import { saveBuildingsToLocalStorage } from '@/mapbox/buildings-storage';
 
 const FeatureAttributesModal = () => {
   const theme = useTheme();
   const dispatch = useAppDispatch();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const searchParams = useSearchParams();
   const { isAttributeModalOpen, selectedFeatureId, features } = useAppSelector(
     (state) => state.features
   );
@@ -55,6 +58,22 @@ const FeatureAttributesModal = () => {
   const [newAttrValue, setNewAttrValue] = useState('');
 
   const selectedFeature = selectedFeatureId ? features[selectedFeatureId] : null;
+  const projectName = searchParams.get('project') || 'unknown';
+
+  /**
+   * AUTO-SAVE: Save all buildings to localStorage whenever features change
+   * This ensures data persistence even if user closes browser unexpectedly
+   */
+  const autoSaveBuildings = () => {
+    const allBuildings = Object.values(features).filter(f => f.type === 'building');
+    if (allBuildings.length > 0) {
+      saveBuildingsToLocalStorage(projectName, allBuildings);
+      console.log('💾 Auto-saved buildings to localStorage', {
+        projectName,
+        buildingCount: allBuildings.length
+      });
+    }
+  };
 
   // Reset name when feature changes
   useEffect(() => {
@@ -78,6 +97,8 @@ const FeatureAttributesModal = () => {
         updates: { name: featureName.trim() }
       }));
       setEditingName(false);
+      // AUTO-SAVE after name change
+      autoSaveBuildings();
     }
   };
 
@@ -100,6 +121,8 @@ const FeatureAttributesModal = () => {
       }));
       setEditingAttr(null);
       setEditAttrValue('');
+      // AUTO-SAVE after attribute edit
+      autoSaveBuildings();
     }
   };
 
@@ -109,6 +132,8 @@ const FeatureAttributesModal = () => {
         featureId: selectedFeatureId,
         attributeKey: key
       }));
+      // AUTO-SAVE after attribute deletion
+      autoSaveBuildings();
     }
   };
 
@@ -123,6 +148,8 @@ const FeatureAttributesModal = () => {
       }));
       setNewAttrKey('');
       setNewAttrValue('');
+      // AUTO-SAVE after adding new attribute
+      autoSaveBuildings();
     }
   };
 

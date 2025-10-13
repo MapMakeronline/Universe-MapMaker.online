@@ -39,7 +39,22 @@
       "Bash(echo:*)",
       "Bash(ls:*)",
       "Bash(gcloud logging read:*)",
-      "Bash(npm view:*)"
+      "Bash(npm view:*)",
+      "Bash(git config:*)",
+      "Bash(git checkout:*)",
+      "Bash(cat:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(gcloud builds submit:*)",
+      "Bash(gcloud builds log:*)",
+      "Bash(gcloud run services list:*)",
+      "Bash(python3:*)",
+      "Bash(gcloud compute scp:*)",
+      "Bash(find:*)",
+      "Read(//c/tmp/**)",
+      "Read(//c/Users/mestw/Downloads/**)",
+      "Bash(node:*)",
+      "Bash(gcloud run services describe:*)",
+      "Bash(npm run lint)"
     ],
     "deny": [],
     "ask": []
