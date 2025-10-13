@@ -1,14 +1,14 @@
 # Universe-MapMaker Backend-Frontend API Compatibility Report
 
-**Data:** 2025-01-13
+**Data:** 2025-01-13 (Zaktualizowano)
 **Analiza:** Backend (Django/QGIS) vs Frontend (Next.js/RTK Query)
-**Status:** 45% pokrycie endpointów, 1 krytyczny bug, 15 niezgodności parametrów
+**Status:** 60% pokrycie endpointów ⬆️, krytyczny bug naprawiony ✅, 15 niezgodności parametrów
 
 ---
 
-## 🚨 KRYTYCZNE BŁĘDY DO NATYCHMIASTOWEGO NAPRAWIENIA
+## ✅ KRYTYCZNY BUG NAPRAWIONY
 
-### Bug #1: Brak prefiksu `/projects/` w parametrze MAP (BACKEND)
+### Bug #1: Brak prefiksu `/projects/` w parametrze MAP (BACKEND) - ✅ NAPRAWIONE
 
 **Lokalizacja:** `Universe-Mapmaker-Backend/geocraft_api/projects/service.py:4591`
 
@@ -44,13 +44,37 @@ MAP=/projects/{project_name}/{project_name}.qgs
 
 ## 📊 STATYSTYKI POKRYCIA API
 
-| Kategoria | Liczba | Procent |
-|-----------|--------|---------|
-| **Wszystkie endpointy backendu** | 97 | 100% |
-| **Zaimplementowane w frontendzie** | 44 | 45% |
-| **Brakujące w frontendzie** | 53 | 55% |
-| **Niezgodności parametrów** | 15 | - |
-| **Krytyczne bugi** | 1 | - |
+| Kategoria | Liczba | Procent | Zmiana |
+|-----------|--------|---------|--------|
+| **Wszystkie endpointy backendu** | 97 | 100% | - |
+| **Zaimplementowane w frontendzie** | 58 | **60%** | ⬆️ +14 |
+| **Brakujące w frontendzie** | 39 | 40% | ⬇️ -14 |
+| **Niezgodności parametrów** | 15 | - | - |
+| **Krytyczne bugi** | 0 | - | ✅ Naprawione |
+
+### 📈 Nowe Endpointy (2025-01-13 Update)
+
+**Layers API - Nowe (+6 endpointów):**
+- ✅ `useWfsTransactionMutation` - WFS-T dla edycji obiektów
+- ✅ `useAddRasterLayerMutation` - Upload warstw rastrowych (TIFF, GeoTIFF)
+- ✅ `useSetLayerOpacityMutation` - Kontrola przezroczystości (0-100)
+- ✅ `useSetLayerScaleMutation` - Widoczność zależna od skali
+- ✅ `useSetLayerPublishedMutation` - Publikacja warstwy
+- ✅ `useRemoveColumnsMutation` - Batch usuwanie kolumn
+
+**Projects API - Nowe (+4 endpointy):**
+- ✅ `useGetDistinctValuesQuery` - Wartości do filtrowania
+- ✅ `useGetMinMaxValuesQuery` - Zakres liczbowy dla filtrów
+- ✅ `useGetNumericColumnsQuery` - Lista kolumn numerycznych
+- ✅ `useGlobalSearchQuery` - Wyszukiwanie w całym projekcie
+
+**Layers API - Już zaimplementowane (+4 endpointy z poprzedniej aktualizacji):**
+- ✅ `useAddFeatureMutation` - Dodawanie nowych obiektów
+- ✅ `useUpdateFeatureMutation` - Edycja geometrii/atrybutów obiektów
+- ✅ `useDeleteFeatureMutation` - Usuwanie obiektów
+- ✅ `useBatchUpdateFeaturesMutation` - Batch edycja wielu obiektów
+
+**Razem: +14 nowych endpointów | Pokrycie: 45% → 60%** 🎉
 
 ---
 
@@ -96,38 +120,50 @@ MAP=/projects/{project_name}/{project_name}.qgs
 
 ---
 
-## ❌ BRAKUJĄCE FUNKCJE (Wysoki Priorytet)
+## ✅ ZAIMPLEMENTOWANE W TEJ AKTUALIZACJI
 
-### 1. Edycja obiektów (WFS-T)
+### 1. Edycja obiektów - ✅ GOTOWE
 
-**Brakujące endpointy:**
-- `POST /api/layer/feature/add` - Dodawanie nowych obiektów
-- `POST /api/layer/feature/update` - Edycja geometrii/atrybutów
-- `POST /api/layer/feature/delete` - Usuwanie obiektów
+**Nowe endpointy:**
+- ✅ `useAddFeatureMutation` - Dodawanie nowych obiektów
+- ✅ `useUpdateFeatureMutation` - Edycja geometrii/atrybutów
+- ✅ `useDeleteFeatureMutation` - Usuwanie obiektów
+- ✅ `useWfsTransactionMutation` - WFS-T jako alternatywa
 
-**Wpływ:** ❌ Brak interaktywnej edycji obiektów na mapie
+**Status:** ✅ Kompletna obsługa edycji obiektów
 
-**Rozwiązanie tymczasowe:**
-Użyć `POST /api/layer/transaction/` z XML WFS-T
+### 2. Obsługa warstw rastrowych - ✅ CZĘŚCIOWO GOTOWE
 
-### 2. Obsługa warstw rastrowych
+**Nowe endpointy:**
+- ✅ `useAddRasterLayerMutation` - Dodawanie TIF/raster (GeoTIFF)
 
-**Brakujące endpointy:**
-- `POST /api/layer/add/raster/` - Dodawanie TIF/raster
-- `POST /api/layer/georefer` - Georeferencja obrazów
-- `POST /api/layer/mask` - Maskowanie rastra
-- `POST /api/layer/transparency` - Przezroczystość rastra
+**Pozostałe do zaimplementowania:**
+- ❌ `POST /api/layer/georefer` - Georeferencja obrazów
+- ❌ `POST /api/layer/mask` - Maskowanie rastra
+- ❌ `POST /api/layer/transparency` - Przezroczystość rastra
 
-**Wpływ:** ❌ Brak możliwości dodawania map rastrowych
+**Status:** ⚠️ Podstawowy upload rastra działa, zaawansowane funkcje czekają
 
-### 3. Kontrola widoczności warstw
+### 3. Kontrola widoczności warstw - ✅ GOTOWE
 
-**Brakujące endpointy:**
-- `POST /api/layer/opacity/set` - Ustawienie przezroczystości
-- `POST /api/layer/scale` - Widoczność zależna od skali
-- `POST /api/layer/published/set` - Publikacja warstwy
+**Nowe endpointy:**
+- ✅ `useSetLayerOpacityMutation` - Ustawienie przezroczystości
+- ✅ `useSetLayerScaleMutation` - Widoczność zależna od skali
+- ✅ `useSetLayerPublishedMutation` - Publikacja warstwy
 
-**Wpływ:** ⚠️ Ograniczona kontrola wyświetlania warstw
+**Status:** ✅ Kompletna kontrola wyświetlania warstw
+
+### 4. Filtrowanie i wyszukiwanie - ✅ GOTOWE
+
+**Nowe endpointy:**
+- ✅ `useGetDistinctValuesQuery` - Wartości do filtrowania
+- ✅ `useGetMinMaxValuesQuery` - Zakres liczbowy dla filtrów
+- ✅ `useGetNumericColumnsQuery` - Lista kolumn numerycznych
+- ✅ `useGlobalSearchQuery` - Wyszukiwanie w całym projekcie
+
+**Status:** ✅ Kompletne filtrowanie i wyszukiwanie
+
+## ❌ POZOSTAŁE BRAKUJĄCE FUNKCJE (Niski Priorytet)
 
 ---
 

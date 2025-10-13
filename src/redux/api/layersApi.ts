@@ -933,6 +933,184 @@ export const layersApi = createApi({
       ],
     }),
 
+    // ========================================================================
+    // NEW ENDPOINTS - Backend Compatibility (2025-01-13)
+    // ========================================================================
+
+    /**
+     * WFS Transaction - Add/Update/Delete features using WFS-T
+     * Endpoint: POST /api/layer/transaction/
+     * Priority: 🔴 High
+     * Used for feature editing when dedicated endpoints are not available
+     */
+    wfsTransaction: builder.mutation<
+      { success: boolean; message?: string },
+      {
+        projectName: string;
+        layerName: string;
+        transactionXml: string;
+      }
+    >({
+      query: ({ projectName, layerName, transactionXml }) => ({
+        url: '/api/layer/transaction/',
+        method: 'POST',
+        body: {
+          project_name: projectName,
+          layer_name: layerName,
+          transaction_xml: transactionXml,
+        },
+      }),
+      invalidatesTags: (result, error, arg) => [
+        { type: 'Features', id: `${arg.projectName}-${arg.layerName}` },
+        { type: 'Layer', id: `${arg.projectName}-${arg.layerName}` },
+      ],
+    }),
+
+    /**
+     * Add raster layer (TIFF, GeoTIFF, etc.)
+     * Endpoint: POST /api/layer/add/raster/
+     * Priority: 🟡 Medium
+     */
+    addRasterLayer: builder.mutation<
+      { success: boolean; layer_name: string },
+      {
+        projectName: string;
+        layerName: string;
+        file: File;
+        epsg?: string;
+      }
+    >({
+      query: ({ projectName, layerName, file, epsg }) => {
+        const formData = new FormData();
+        formData.append('project_name', projectName);
+        formData.append('layer_name', layerName);
+        formData.append('file', file);
+        if (epsg) formData.append('epsg', epsg);
+
+        return {
+          url: '/api/layer/add/raster/',
+          method: 'POST',
+          body: formData,
+        };
+      },
+      invalidatesTags: (result, error, arg) => [
+        { type: 'Project', id: arg.projectName },
+        { type: 'Layers', id: arg.projectName },
+        { type: 'Layers', id: 'LIST' },
+      ],
+    }),
+
+    /**
+     * Set layer opacity
+     * Endpoint: POST /api/layer/opacity/set
+     * Priority: 🟡 Medium
+     */
+    setLayerOpacity: builder.mutation<
+      { success: boolean },
+      {
+        projectName: string;
+        layerName: string;
+        opacity: number; // 0-100
+      }
+    >({
+      query: ({ projectName, layerName, opacity }) => ({
+        url: '/api/layer/opacity/set',
+        method: 'POST',
+        body: {
+          project_name: projectName,
+          layer_name: layerName,
+          opacity,
+        },
+      }),
+      invalidatesTags: (result, error, arg) => [
+        { type: 'Layer', id: `${arg.projectName}-${arg.layerName}` },
+      ],
+    }),
+
+    /**
+     * Set layer scale-dependent visibility
+     * Endpoint: POST /api/layer/scale
+     * Priority: 🟡 Medium
+     */
+    setLayerScale: builder.mutation<
+      { success: boolean },
+      {
+        projectName: string;
+        layerName: string;
+        minScale?: number;
+        maxScale?: number;
+      }
+    >({
+      query: ({ projectName, layerName, minScale, maxScale }) => ({
+        url: '/api/layer/scale',
+        method: 'POST',
+        body: {
+          project_name: projectName,
+          layer_name: layerName,
+          ...(minScale && { min_scale: minScale }),
+          ...(maxScale && { max_scale: maxScale }),
+        },
+      }),
+      invalidatesTags: (result, error, arg) => [
+        { type: 'Layer', id: `${arg.projectName}-${arg.layerName}` },
+      ],
+    }),
+
+    /**
+     * Set layer published status
+     * Endpoint: POST /api/layer/published/set
+     * Priority: 🟡 Medium
+     */
+    setLayerPublished: builder.mutation<
+      { success: boolean },
+      {
+        projectName: string;
+        layerName: string;
+        published: boolean;
+      }
+    >({
+      query: ({ projectName, layerName, published }) => ({
+        url: '/api/layer/published/set',
+        method: 'POST',
+        body: {
+          project_name: projectName,
+          layer_name: layerName,
+          published,
+        },
+      }),
+      invalidatesTags: (result, error, arg) => [
+        { type: 'Layer', id: `${arg.projectName}-${arg.layerName}` },
+      ],
+    }),
+
+    /**
+     * Remove multiple columns at once
+     * Endpoint: POST /api/layer/columns/remove
+     * Priority: 🟢 Low
+     */
+    removeColumns: builder.mutation<
+      { success: boolean },
+      {
+        projectName: string;
+        layerName: string;
+        columnNames: string[];
+      }
+    >({
+      query: ({ projectName, layerName, columnNames }) => ({
+        url: '/api/layer/columns/remove',
+        method: 'POST',
+        body: {
+          project_name: projectName,
+          layer_name: layerName,
+          column_names: columnNames,
+        },
+      }),
+      invalidatesTags: (result, error, arg) => [
+        { type: 'LayerAttributes', id: `${arg.projectName}-${arg.layerName}` },
+        { type: 'Features', id: `${arg.projectName}-${arg.layerName}` },
+      ],
+    }),
+
   }),
 });
 
@@ -940,7 +1118,7 @@ export const layersApi = createApi({
 // Export Hooks
 // ============================================================================
 
-// High Priority Hooks (9 endpoints)
+// High Priority Hooks (10 endpoints)
 export const {
   useAddGeoJsonLayerMutation,
   useAddShapefileLayerMutation,
@@ -953,7 +1131,7 @@ export const {
   useUpdateFeatureMutation,
   useDeleteFeatureMutation,
 
-  // Medium Priority Hooks (14 endpoints)
+  // Medium Priority Hooks (18 endpoints)
   useAddGMLLayerMutation,
   useResetLayerStyleMutation,
   useGetAttributeNamesQuery,
@@ -969,10 +1147,18 @@ export const {
   useRemoveLabelMutation,
   useGetColumnValuesQuery,
 
-  // Low Priority Hooks (6 endpoints)
+  // Low Priority Hooks (7 endpoints)
   useAddExistingLayerMutation,
   useCloneLayerMutation,
   useGetFeatureCoordinatesQuery,
   useCheckGeometryQuery,
   useGetValidationDetailsQuery,
+  useRemoveColumnsMutation,
+
+  // New Endpoints - Backend Compatibility (6 endpoints)
+  useWfsTransactionMutation,
+  useAddRasterLayerMutation,
+  useSetLayerOpacityMutation,
+  useSetLayerScaleMutation,
+  useSetLayerPublishedMutation,
 } = layersApi;

@@ -786,6 +786,71 @@ export const projectsApi = createApi({
         { type: 'Project', id: arg.project },
       ],
     }),
+
+    // ========================================================================
+    // NEW ENDPOINTS - Backend Compatibility (2025-01-13)
+    // ========================================================================
+
+    /**
+     * POST /api/projects/distinct
+     * Get distinct values for a column (for filtering)
+     */
+    getDistinctValues: builder.query<
+      { values: Array<string | number> },
+      { project_name: string; layer_name: string; column_name: string }
+    >({
+      query: (data) => ({
+        url: '/api/projects/distinct',
+        method: 'POST',
+        body: data,
+      }),
+    }),
+
+    /**
+     * POST /api/projects/filter/min-max
+     * Get min/max values for numeric column
+     */
+    getMinMaxValues: builder.query<
+      { min: number; max: number },
+      { project_name: string; layer_name: string; column_name: string }
+    >({
+      query: (data) => ({
+        url: '/api/projects/filter/min-max',
+        method: 'POST',
+        body: data,
+      }),
+    }),
+
+    /**
+     * POST /api/projects/filter/numeric-columns
+     * Get all numeric columns in layer
+     */
+    getNumericColumns: builder.query<
+      { columns: string[] },
+      { project_name: string; layer_name: string }
+    >({
+      query: (data) => ({
+        url: '/api/projects/filter/numeric-columns',
+        method: 'POST',
+        body: data,
+      }),
+    }),
+
+    /**
+     * POST /api/projects/global-search
+     * Search across all layers in project
+     */
+    globalSearch: builder.query<
+      { results: Array<{ layer_name: string; feature_id: number; properties: Record<string, any> }> },
+      { project_name: string; query: string; limit?: number }
+    >({
+      query: (data) => ({
+        url: '/api/projects/global-search',
+        method: 'POST',
+        body: data,
+      }),
+    }),
+
   }),
 });
 
@@ -843,4 +908,9 @@ export const {
   useRestoreProjectMutation,
   useSetBasemapMutation,
   usePreparePrintImageMutation,
+  // New Endpoints - Backend Compatibility
+  useGetDistinctValuesQuery,
+  useGetMinMaxValuesQuery,
+  useGetNumericColumnsQuery,
+  useGlobalSearchQuery,
 } = projectsApi;
