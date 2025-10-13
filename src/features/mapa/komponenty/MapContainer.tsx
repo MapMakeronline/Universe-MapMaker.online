@@ -89,6 +89,7 @@ const MapContainer: React.FC<MapContainerProps> = ({ children, projectName }) =>
   }, [dispatch]);
 
   const onLoad = useCallback(() => {
+    console.log('🗺️ Map onLoad event fired - setting isMapLoaded = true');
     dispatch(setMapLoaded(true));
   }, [dispatch]);
 
