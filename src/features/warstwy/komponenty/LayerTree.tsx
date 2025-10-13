@@ -505,78 +505,129 @@ export const LayerTree: React.FC<LayerTreeProps> = ({
                 onClick={(e) => {
                   e.stopPropagation();
 
-                  // Sprawdź czy warstwa ma extent
-                  if (!warstwa.extent || warstwa.extent.length !== 4) {
-                    console.warn('⚠️ Warstwa nie ma extent:', warstwa.name);
-                    return;
-                  }
+                  try {
+                    // Sprawdź czy warstwa ma extent
+                    if (!warstwa.extent || warstwa.extent.length !== 4) {
+                      console.warn('⚠️ Warstwa nie ma extent:', warstwa.name);
+                      alert('Ta warstwa nie ma zdefiniowanego zasięgu (extent)');
+                      return;
+                    }
 
-                  const [minX, minY, maxX, maxY] = warstwa.extent;
+                    const [minX, minY, maxX, maxY] = warstwa.extent;
 
-                  // Auto-detekcja CRS i transformacja do WGS84
-                  let minLng, minLat, maxLng, maxLat;
-                  const detectedCRS = detectCRS(minX, minY);
+                    // Walidacja wartości extent
+                    if (
+                      isNaN(minX) || isNaN(minY) || isNaN(maxX) || isNaN(maxY) ||
+                      !isFinite(minX) || !isFinite(minY) || !isFinite(maxX) || !isFinite(maxY) ||
+                      minX === 0 && minY === 0 && maxX === 0 && maxY === 0
+                    ) {
+                      console.error('❌ Invalid extent values:', warstwa.extent);
+                      alert('Zasięg warstwy zawiera nieprawidłowe wartości');
+                      return;
+                    }
 
-                  console.log('🔍 Zoom to layer:', {
-                    name: warstwa.name,
-                    extent: warstwa.extent,
-                    detectedCRS
-                  });
+                    // Auto-detekcja CRS i transformacja do WGS84
+                    let minLng, minLat, maxLng, maxLat;
+                    const detectedCRS = detectCRS(minX, minY);
 
-                  if (detectedCRS === 'EPSG:4326') {
-                    // Już w WGS84
-                    [minLng, minLat, maxLng, maxLat] = warstwa.extent;
-                    console.log('✅ Extent already in WGS84');
-                  } else if (detectedCRS === 'EPSG:3857') {
-                    // Transform z Web Mercator do WGS84
-                    [minLng, minLat, maxLng, maxLat] = transformExtentFromWebMercator(warstwa.extent);
-                    console.log('🔄 Transformed EPSG:3857 → WGS84:', {
-                      from: warstwa.extent,
-                      to: [minLng, minLat, maxLng, maxLat]
+                    console.log('🔍 Zoom to layer:', {
+                      name: warstwa.name,
+                      extent: warstwa.extent,
+                      detectedCRS
                     });
-                  } else if (detectedCRS === 'EPSG:2180') {
-                    // Transform z Polish Grid do WGS84
-                    [minLng, minLat, maxLng, maxLat] = transformExtent(warstwa.extent);
-                    console.log('🔄 Transformed EPSG:2180 → WGS84:', {
-                      from: warstwa.extent,
-                      to: [minLng, minLat, maxLng, maxLat]
+
+                    if (detectedCRS === 'EPSG:4326') {
+                      // Już w WGS84
+                      [minLng, minLat, maxLng, maxLat] = warstwa.extent;
+                      console.log('✅ Extent already in WGS84');
+                    } else if (detectedCRS === 'EPSG:3857') {
+                      // Transform z Web Mercator do WGS84
+                      [minLng, minLat, maxLng, maxLat] = transformExtentFromWebMercator(warstwa.extent);
+                      console.log('🔄 Transformed EPSG:3857 → WGS84:', {
+                        from: warstwa.extent,
+                        to: [minLng, minLat, maxLng, maxLat]
+                      });
+                    } else if (detectedCRS === 'EPSG:2180') {
+                      // Transform z Polish Grid do WGS84
+                      [minLng, minLat, maxLng, maxLat] = transformExtent(warstwa.extent);
+                      console.log('🔄 Transformed EPSG:2180 → WGS84:', {
+                        from: warstwa.extent,
+                        to: [minLng, minLat, maxLng, maxLat]
+                      });
+                    } else {
+                      console.warn('⚠️ Unknown CRS, cannot transform coordinates');
+                      alert('Nie można określić układu współrzędnych warstwy. Skontaktuj się z administratorem.');
+                      return;
+                    }
+
+                    // Walidacja przekształconych współrzędnych
+                    if (
+                      isNaN(minLng) || isNaN(minLat) || isNaN(maxLng) || isNaN(maxLat) ||
+                      !isFinite(minLng) || !isFinite(minLat) || !isFinite(maxLng) || !isFinite(maxLat)
+                    ) {
+                      console.error('❌ Transformation resulted in invalid coordinates:', {
+                        transformed: [minLng, minLat, maxLng, maxLat],
+                        original: warstwa.extent
+                      });
+                      alert('Błąd transformacji współrzędnych. Sprawdź ustawienia warstwy.');
+                      return;
+                    }
+
+                    // Sprawdź czy współrzędne są w prawidłowym zakresie WGS84
+                    if (
+                      minLng < -180 || minLng > 180 || maxLng < -180 || maxLng > 180 ||
+                      minLat < -90 || minLat > 90 || maxLat < -90 || maxLat > 90
+                    ) {
+                      console.error('❌ Coordinates out of WGS84 bounds:', {
+                        minLng, minLat, maxLng, maxLat
+                      });
+                      alert('Współrzędne warstwy są poza dopuszczalnym zakresem');
+                      return;
+                    }
+
+                    // Oblicz centrum
+                    const centerLng = (minLng + maxLng) / 2;
+                    const centerLat = (minLat + maxLat) / 2;
+
+                    // Walidacja centrum
+                    if (isNaN(centerLng) || isNaN(centerLat)) {
+                      console.error('❌ Invalid center coordinates:', { centerLng, centerLat });
+                      alert('Błąd obliczania centrum warstwy');
+                      return;
+                    }
+
+                    // Oblicz odpowiedni zoom level na podstawie wielkości extent
+                    const latDiff = Math.abs(maxLat - minLat);
+                    const lngDiff = Math.abs(maxLng - minLng);
+                    const maxDiff = Math.max(latDiff, lngDiff);
+
+                    // Heurystyka zoom level (im mniejszy extent, tym większy zoom)
+                    let zoom = 10;
+                    if (maxDiff < 0.001) zoom = 18; // Bardzo mała warstwa (budynki)
+                    else if (maxDiff < 0.01) zoom = 16;
+                    else if (maxDiff < 0.1) zoom = 14;
+                    else if (maxDiff < 1) zoom = 12;
+                    else if (maxDiff < 10) zoom = 10;
+                    else zoom = 8;
+
+                    console.log('🎯 Zooming to:', {
+                      center: [centerLng, centerLat],
+                      zoom,
+                      extentSize: maxDiff
                     });
-                  } else {
-                    console.warn('⚠️ Unknown CRS, using original coordinates');
-                    [minLng, minLat, maxLng, maxLat] = warstwa.extent;
+
+                    // Wyślij akcję zoom
+                    dispatch(setViewState({
+                      longitude: centerLng,
+                      latitude: centerLat,
+                      zoom,
+                      bearing: 0,
+                      pitch: 0,
+                    }));
+                  } catch (error) {
+                    console.error('❌ Error in zoom to layer:', error);
+                    alert(`Błąd podczas przybliżania do warstwy: ${error instanceof Error ? error.message : 'Nieznany błąd'}`);
                   }
-
-                  // Oblicz centrum
-                  const centerLng = (minLng + maxLng) / 2;
-                  const centerLat = (minLat + maxLat) / 2;
-
-                  // Oblicz odpowiedni zoom level na podstawie wielkości extent
-                  const latDiff = maxLat - minLat;
-                  const lngDiff = maxLng - minLng;
-                  const maxDiff = Math.max(latDiff, lngDiff);
-
-                  // Heurystyka zoom level (im mniejszy extent, tym większy zoom)
-                  let zoom = 10;
-                  if (maxDiff < 0.001) zoom = 18; // Bardzo mała warstwa (budynki)
-                  else if (maxDiff < 0.01) zoom = 16;
-                  else if (maxDiff < 0.1) zoom = 14;
-                  else if (maxDiff < 1) zoom = 12;
-                  else zoom = 10;
-
-                  console.log('🎯 Zooming to:', {
-                    center: [centerLng, centerLat],
-                    zoom,
-                    extentSize: maxDiff
-                  });
-
-                  // Wyślij akcję zoom
-                  dispatch(setViewState({
-                    longitude: centerLng,
-                    latitude: centerLat,
-                    zoom,
-                    bearing: 0,
-                    pitch: 0,
-                  }));
                 }}
                 sx={{
                   color: theme.palette.text.secondary,
