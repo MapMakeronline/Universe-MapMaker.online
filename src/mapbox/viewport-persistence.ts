@@ -50,11 +50,7 @@ export const saveViewport = (
 
   try {
     sessionStorage.setItem(VIEWPORT_KEY, JSON.stringify(data));
-    mapLogger.log('💾 Saved viewport to sessionStorage:', {
-      project: projectName,
-      viewport: viewState,
-      expiresIn: `${VIEWPORT_EXPIRY / 1000}s`
-    });
+    // Silent save to reduce console spam (viewport saved every 10 seconds)
   } catch (e) {
     mapLogger.error('❌ Failed to save viewport:', e);
   }
@@ -70,8 +66,7 @@ export const loadViewport = (projectName: string): ViewState | null => {
   try {
     const data = sessionStorage.getItem(VIEWPORT_KEY);
     if (!data) {
-      mapLogger.log('ℹ️ No saved viewport found');
-      return null;
+      return null; // Silent - no viewport saved
     }
 
     const stored: StoredViewport = JSON.parse(data);
@@ -79,28 +74,16 @@ export const loadViewport = (projectName: string): ViewState | null => {
     // Check if expired (5 minutes)
     const elapsed = Date.now() - stored.timestamp;
     if (elapsed > VIEWPORT_EXPIRY) {
-      mapLogger.log('⏰ Viewport expired (> 5 minutes), using default');
       sessionStorage.removeItem(VIEWPORT_KEY);
-      return null;
+      return null; // Expired, use default
     }
 
     // Check if same project
     if (stored.projectName !== projectName) {
-      mapLogger.log('🔄 Different project, using default viewport', {
-        saved: stored.projectName,
-        current: projectName
-      });
-      return null;
+      return null; // Different project, use default
     }
 
-    const remainingSeconds = Math.floor((VIEWPORT_EXPIRY - elapsed) / 1000);
-    mapLogger.log('✅ Restored viewport from sessionStorage:', {
-      project: projectName,
-      viewport: stored.viewState,
-      age: `${Math.floor(elapsed / 1000)}s`,
-      expiresIn: `${remainingSeconds}s`
-    });
-
+    // Silent restore (reduces console spam)
     return stored.viewState;
   } catch (e) {
     mapLogger.error('❌ Failed to load viewport:', e);
@@ -191,7 +174,7 @@ export const autoSaveViewport = (
   getViewState: () => ViewState | null,
   interval: number = 10000 // 10 seconds
 ): (() => void) => {
-  mapLogger.log('🔄 Started auto-save viewport', { interval: `${interval / 1000}s` });
+  // Silent auto-save start (reduces console spam)
 
   const intervalId = setInterval(() => {
     const viewState = getViewState();
@@ -203,6 +186,6 @@ export const autoSaveViewport = (
   // Return cleanup function
   return () => {
     clearInterval(intervalId);
-    mapLogger.log('⏹️ Stopped auto-save viewport');
+    // Silent stop (reduces console spam)
   };
 };

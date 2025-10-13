@@ -526,34 +526,19 @@ export const LayerTree: React.FC<LayerTreeProps> = ({
                       return;
                     }
 
-                    // Auto-detekcja CRS i transformacja do WGS84
+                    // Auto-detekcja CRS i transformacja do WGS84 (silent to reduce console spam)
                     let minLng, minLat, maxLng, maxLat;
                     const detectedCRS = detectCRS(minX, minY);
-
-                    console.log('🔍 Zoom to layer:', {
-                      name: warstwa.name,
-                      extent: warstwa.extent,
-                      detectedCRS
-                    });
 
                     if (detectedCRS === 'EPSG:4326') {
                       // Już w WGS84
                       [minLng, minLat, maxLng, maxLat] = warstwa.extent;
-                      console.log('✅ Extent already in WGS84');
                     } else if (detectedCRS === 'EPSG:3857') {
                       // Transform z Web Mercator do WGS84
                       [minLng, minLat, maxLng, maxLat] = transformExtentFromWebMercator(warstwa.extent);
-                      console.log('🔄 Transformed EPSG:3857 → WGS84:', {
-                        from: warstwa.extent,
-                        to: [minLng, minLat, maxLng, maxLat]
-                      });
                     } else if (detectedCRS === 'EPSG:2180') {
                       // Transform z Polish Grid do WGS84
                       [minLng, minLat, maxLng, maxLat] = transformExtent(warstwa.extent);
-                      console.log('🔄 Transformed EPSG:2180 → WGS84:', {
-                        from: warstwa.extent,
-                        to: [minLng, minLat, maxLng, maxLat]
-                      });
                     } else {
                       console.warn('⚠️ Unknown CRS, cannot transform coordinates');
                       alert('Nie można określić układu współrzędnych warstwy. Skontaktuj się z administratorem.');
@@ -610,13 +595,7 @@ export const LayerTree: React.FC<LayerTreeProps> = ({
                     else if (maxDiff < 10) zoom = 10;
                     else zoom = 8;
 
-                    console.log('🎯 Zooming to:', {
-                      center: [centerLng, centerLat],
-                      zoom,
-                      extentSize: maxDiff
-                    });
-
-                    // Wyślij akcję zoom
+                    // Zoom to layer (silent to reduce console spam)
                     dispatch(setViewState({
                       longitude: centerLng,
                       latitude: centerLat,

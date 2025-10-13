@@ -33,9 +33,34 @@ interface WMSLayerRendererProps {
 export function WMSLayerRenderer({ projectName, layer }: WMSLayerRendererProps) {
   const { current: map } = useMap();
 
+  // DEBUG: Log layer state
+  console.log('🔍 WMSLayerRenderer mount/update:', {
+    layerName: layer.name,
+    layerId: layer.id,
+    visible: layer.visible,
+    projectName,
+    hasMap: !!map
+  });
+
   // Add WMS layer on mount
   useEffect(() => {
-    if (!map || !layer.visible || !projectName || !layer.id) return;
+    // DEBUG: Why not adding WMS layer?
+    if (!map) {
+      console.log('⚠️ WMS not added - no map instance:', layer.name);
+      return;
+    }
+    if (!layer.visible) {
+      console.log('⚠️ WMS not added - layer not visible:', layer.name);
+      return;
+    }
+    if (!projectName) {
+      console.log('⚠️ WMS not added - no projectName:', layer.name);
+      return;
+    }
+    if (!layer.id) {
+      console.log('⚠️ WMS not added - no layer.id:', layer.name);
+      return;
+    }
 
     const mapInstance = map.getMap();
 

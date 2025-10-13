@@ -39,8 +39,7 @@ const MapContainer: React.FC<MapContainerProps> = ({ children, projectName }) =>
       mapLogger.error('❌ MAPBOX_TOKEN is missing in environment variables');
     } else {
       setTokenError('');
-      mapLogger.log('✅ MAPBOX_TOKEN loaded successfully:', MAPBOX_TOKEN.substring(0, 20) + '...');
-      mapLogger.log('🗺️ MapContainer: Mapbox access token is valid');
+      // Token loaded - no need to log (reduces console spam)
     }
   }, []);
 
@@ -51,11 +50,8 @@ const MapContainer: React.FC<MapContainerProps> = ({ children, projectName }) =>
     const savedViewport = loadViewport(projectName);
 
     if (savedViewport) {
-      // Restore viewport from sessionStorage
+      // Restore viewport from sessionStorage (silent to reduce console spam)
       dispatch(setViewState(savedViewport));
-      mapLogger.log('✅ Restored viewport from sessionStorage:', savedViewport);
-    } else {
-      mapLogger.log('ℹ️ No saved viewport found, using default or project extent');
     }
   }, [projectName, dispatch]);
 
@@ -77,7 +73,7 @@ const MapContainer: React.FC<MapContainerProps> = ({ children, projectName }) =>
     return () => {
       if (projectName && viewState) {
         saveViewport(projectName, viewState);
-        mapLogger.log('💾 Saved viewport on unmount');
+        // Silent save on unmount (reduces console spam)
       }
     };
   }, [projectName, viewState]);
@@ -119,8 +115,7 @@ const MapContainer: React.FC<MapContainerProps> = ({ children, projectName }) =>
       || (window.navigator as any).standalone === true;
 
     if (isStandalone) {
-      mapLogger.log('📱 PWA detected - enabling full gesture interaction');
-      // In PWA mode, ensure smooth interactions
+      // In PWA mode, ensure smooth interactions (silent to reduce console spam)
       map.scrollZoom.enable();
       map.dragRotate.enable();
       map.touchZoomRotate.enable();
@@ -131,8 +126,7 @@ const MapContainer: React.FC<MapContainerProps> = ({ children, projectName }) =>
     const handleViewportResize = () => {
       if (resizeTimeout) clearTimeout(resizeTimeout);
       resizeTimeout = setTimeout(() => {
-        mapLogger.log('📐 Viewport changed - resizing map (debounced)');
-        map.resize();
+        map.resize(); // Silent resize (no console spam)
       }, 300); // Debounce 300ms
     };
 
@@ -142,8 +136,7 @@ const MapContainer: React.FC<MapContainerProps> = ({ children, projectName }) =>
       if (!document.hidden) {
         if (visibilityTimeout) clearTimeout(visibilityTimeout);
         visibilityTimeout = setTimeout(() => {
-          mapLogger.log('👁️ Page visible - resizing map (debounced)');
-          map.resize();
+          map.resize(); // Silent resize (no console spam)
         }, 200); // Debounce 200ms
       }
     };
