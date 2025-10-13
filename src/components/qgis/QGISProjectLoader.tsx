@@ -22,63 +22,101 @@ interface QGISProjectLoaderProps {
 export function QGISProjectLoader({ projectName, onLoad }: QGISProjectLoaderProps) {
   const { current: map } = useMap();
   const [loadedLayers, setLoadedLayers] = useState<Set<string>>(new Set());
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const { data, isLoading, error } = useGetProjectDataQuery({
     project: projectName,
+    published: false,
   });
 
   useEffect(() => {
     if (!map || !data) return;
 
-    // Fly to project extent on load
-    if (data.extent && data.extent.length === 4) {
-      const [minX, minY, maxX, maxY] = data.extent;
-      const centerX = (minX + maxX) / 2;
-      const centerY = (minY + maxY) / 2;
+    try {
+      setLoadError(null);
 
-      // Convert from EPSG:3857 to EPSG:4326 (WGS84)
-      const lng = (centerX * 180) / 20037508.34;
-      const lat = (Math.atan(Math.exp((centerY * Math.PI) / 20037508.34)) * 360) / Math.PI - 90;
-
-      map.flyTo({
-        center: [lng, lat],
-        zoom: 12,
-        duration: 2000,
-      });
-
-      onLoad?.(data.extent);
-    }
-
-    // Render all visible layers
-    const layersToLoad: QGISLayerNode[] = [];
-
-    const collectVisibleLayers = (nodes: QGISLayerNode[]) => {
-      for (const node of nodes) {
-        if (isGroupLayer(node)) {
-          if (node.children) {
-            collectVisibleLayers(node.children);
-          }
-        } else if (node.visible && (isVectorLayer(node) || isRasterLayer(node))) {
-          layersToLoad.push(node);
-        }
+      // Validate project data
+      if (!data.children || data.children.length === 0) {
+        console.warn(`⚠️ Project "${projectName}" has no layers`);
+        return;
       }
-    };
 
-    collectVisibleLayers(data.children);
+      // Fly to project extent on load
+      if (data.extent && data.extent.length === 4) {
+        const [minX, minY, maxX, maxY] = data.extent;
+        const centerX = (minX + maxX) / 2;
+        const centerY = (minY + maxY) / 2;
 
-    // Add layers to map
-    layersToLoad.forEach((layer) => {
-      addQGISLayer(map, projectName, layer);
-    });
+        // Convert from EPSG:3857 to EPSG:4326 (WGS84)
+        const lng = (centerX * 180) / 20037508.34;
+        const lat = (Math.atan(Math.exp((centerY * Math.PI) / 20037508.34)) * 360) / Math.PI - 90;
 
-    setLoadedLayers(new Set(layersToLoad.map(l => l.id)));
+        // Validate coordinates
+        if (isNaN(lng) || isNaN(lat) || Math.abs(lng) > 180 || Math.abs(lat) > 90) {
+          console.error('❌ Invalid extent coordinates:', { lng, lat, extent: data.extent });
+          setLoadError('Nieprawidłowe współrzędne projektu');
+          return;
+        }
 
-    // Cleanup on unmount
-    return () => {
+        map.flyTo({
+          center: [lng, lat],
+          zoom: 12,
+          duration: 2000,
+        });
+
+        onLoad?.(data.extent);
+      }
+
+      // Render all visible layers
+      const layersToLoad: QGISLayerNode[] = [];
+
+      const collectVisibleLayers = (nodes: QGISLayerNode[]) => {
+        for (const node of nodes) {
+          if (isGroupLayer(node)) {
+            if (node.children) {
+              collectVisibleLayers(node.children);
+            }
+          } else if (node.visible && (isVectorLayer(node) || isRasterLayer(node))) {
+            layersToLoad.push(node);
+          }
+        }
+      };
+
+      collectVisibleLayers(data.children);
+
+      if (layersToLoad.length === 0) {
+        console.warn(`⚠️ No visible layers found in project "${projectName}"`);
+      }
+
+      // Add layers to map
+      let successCount = 0;
       layersToLoad.forEach((layer) => {
-        removeQGISLayer(map, layer.id);
+        try {
+          addQGISLayer(map, projectName, layer);
+          successCount++;
+        } catch (err) {
+          console.error(`❌ Failed to add layer ${layer.name}:`, err);
+        }
       });
-    };
+
+      setLoadedLayers(new Set(layersToLoad.map(l => l.id)));
+      console.log(`✅ Loaded ${successCount}/${layersToLoad.length} QGIS layers for project "${projectName}"`);
+
+      // Cleanup on unmount
+      return () => {
+        layersToLoad.forEach((layer) => {
+          try {
+            removeQGISLayer(map, layer.id);
+          } catch (err) {
+            console.error(`❌ Failed to remove layer ${layer.id}:`, err);
+          }
+        });
+      };
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Nieznany błąd';
+      console.error('❌ Failed to load QGIS project:', err);
+      setLoadError(errorMessage);
+    }
   }, [map, data, projectName, onLoad]);
 
   if (isLoading) {
@@ -91,13 +129,21 @@ export function QGISProjectLoader({ projectName, onLoad }: QGISProjectLoaderProp
     );
   }
 
-  if (error) {
+  if (error || loadError) {
     return (
       <Box sx={{ position: 'absolute', top: 16, left: 16, zIndex: 1000, maxWidth: 400 }}>
         <Alert severity="error">
-          <Typography variant="body2">Błąd ładowania projektu: {projectName}</Typography>
-          <Typography variant="caption">
-            {error && 'data' in error ? JSON.stringify(error.data) : 'Nieznany błąd'}
+          <Typography variant="body2" fontWeight={600}>
+            Błąd ładowania projektu QGIS: {projectName}
+          </Typography>
+          <Typography variant="caption" sx={{ display: 'block', mt: 0.5 }}>
+            {loadError || (error && 'status' in error && error.status === 404
+              ? 'Projekt nie został znaleziony'
+              : error && 'status' in error && error.status === 400
+              ? 'Projekt jest pusty lub uszkodzony (tree.json nie zawiera warstw)'
+              : error && 'data' in error
+              ? JSON.stringify(error.data)
+              : 'Nieznany błąd połączenia z serwerem')}
           </Typography>
         </Alert>
       </Box>
@@ -146,7 +192,8 @@ function addQGISLayer(
     `&FORMAT=image/png` +
     `&TRANSPARENT=true` +
     `&CRS=EPSG:3857` +
-    `&BBOX={bbox-epsg-3857}`;
+    `&BBOX={bbox-epsg-3857}` +
+    `&MAP=${encodeURIComponent(projectName)}/${encodeURIComponent(projectName)}.qgs`;
 
   // Add raster source
   map.addSource(sourceId, {

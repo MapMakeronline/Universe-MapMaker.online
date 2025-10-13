@@ -143,7 +143,7 @@ export function addWMSLayer(
       `BBOX={bbox-epsg-3857}&` + // Mapbox will replace this with actual bbox
       `FORMAT=image/png&` +
       `TRANSPARENT=true&` +
-      `MAP=${encodeURIComponent(projectName)}`; // Project name or path
+      `MAP=${encodeURIComponent(projectName)}/${encodeURIComponent(projectName)}.qgs`; // Full path to QGS file
 
     mapLogger.log(`📍 Adding WMS layer: ${layerName} from project ${projectName}`);
     mapLogger.log(`   URL template: ${wmsUrl.substring(0, 150)}...`);
@@ -251,7 +251,7 @@ export async function addWFSLayer(
       `OUTPUTFORMAT=application/json&` +
       `SRSNAME=${crs}&` +
       `MAXFEATURES=${maxFeatures}&` +
-      `MAP=${encodeURIComponent(projectName)}`;
+      `MAP=${encodeURIComponent(projectName)}/${encodeURIComponent(projectName)}.qgs`;
 
     mapLogger.log(`📍 Fetching WFS layer: ${layerName} from project ${projectName}`);
     mapLogger.log(`   URL: ${wfsUrl}`);
