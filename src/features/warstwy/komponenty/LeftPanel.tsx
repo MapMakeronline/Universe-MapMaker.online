@@ -19,6 +19,7 @@ import AddGroupModal from '../modale/AddGroupModal';
 import CreateConsultationModal from '../modale/CreateConsultationModal';
 import LayerManagerModal from '../modale/LayerManagerModal';
 import PrintConfigModal from '../modale/PrintConfigModal';
+import EditLayerStyleModal from '../modale/EditLayerStyleModal';
 import { useResizable, useDragDrop } from '@/hooks/index';
 import { useAppSelector, useAppDispatch } from '@/redux/hooks';
 import { LayerNode } from '@/typy/layers';
@@ -106,6 +107,7 @@ const LeftPanel: React.FC<LeftPanelProps> = ({ isOwner = true }) => {
   const [createConsultationModalOpen, setCreateConsultationModalOpen] = useState(false);
   const [layerManagerModalOpen, setLayerManagerModalOpen] = useState(false);
   const [printConfigModalOpen, setPrintConfigModalOpen] = useState(false);
+  const [editLayerStyleModalOpen, setEditLayerStyleModalOpen] = useState(false);
 
   const [expandedSections, setExpandedSections] = useState<{[key: string]: boolean}>({
     'informacje-ogolne': false,
@@ -715,7 +717,7 @@ const LeftPanel: React.FC<LeftPanelProps> = ({ isOwner = true }) => {
             onToggleSection={toggleSection}
             onToggleCheckbox={toggleCheckbox}
             onClosePanel={() => setSelectedLayer(null)}
-            onEditLayerStyle={() => console.log('Edit style')}
+            onEditLayerStyle={() => setEditLayerStyleModalOpen(true)}
             onManageLayer={() => console.log('Manage layer')}
             onLayerLabeling={() => console.log('Layer labeling')}
             findParentGroup={findParentGroup}
@@ -814,6 +816,13 @@ const LeftPanel: React.FC<LeftPanelProps> = ({ isOwner = true }) => {
         onClose={() => setPrintConfigModalOpen(false)}
         onSubmit={handlePrintConfig}
         projectLayers={layers}
+      />
+
+      {/* Edit Layer Style Modal */}
+      <EditLayerStyleModal
+        open={editLayerStyleModalOpen}
+        onClose={() => setEditLayerStyleModalOpen(false)}
+        layerName={selectedLayer?.name}
       />
     </>
   );
