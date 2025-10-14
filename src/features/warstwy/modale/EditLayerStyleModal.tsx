@@ -20,8 +20,13 @@ import {
   TableBody,
   TableRow,
   TableCell,
+  Collapse,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
+import AddIcon from '@mui/icons-material/Add';
+import RemoveIcon from '@mui/icons-material/Remove';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import { useTheme } from '@mui/material/styles';
 
 interface EditLayerStyleModalProps {
@@ -30,8 +35,9 @@ interface EditLayerStyleModalProps {
   layerName?: string;
 }
 
-// TypeScript interfaces for layer style data
-interface SingleSymbolStyle {
+// Interface for single fill layer
+interface FillLayer {
+  id: string;
   fillType: string;
   fillColor: string;
   fillOpacity: number;
@@ -43,6 +49,7 @@ interface SingleSymbolStyle {
   offsetX: number;
   offsetY: number;
   unit: string;
+  expanded: boolean;
 }
 
 interface CategorizedValue {
@@ -60,20 +67,24 @@ export default function EditLayerStyleModal({ open, onClose, layerName }: EditLa
   const theme = useTheme();
   const [activeTab, setActiveTab] = useState(0);
 
-  // Tab 1: Pojedynczy symbol - state
-  const [singleSymbol, setSingleSymbol] = useState<SingleSymbolStyle>({
-    fillType: 'Simple Fill',
-    fillColor: '#ea8989',
-    fillOpacity: 100,
-    strokeColor: '#000000',
-    strokeWidth: 0.26,
-    strokeStyle: 'Linia ciągła',
-    strokeOpacity: 100,
-    joinStyle: 'Ścięty',
-    offsetX: 0,
-    offsetY: 0,
-    unit: 'Milimetry',
-  });
+  // Tab 1: Pojedynczy symbol - ARRAY of fill layers
+  const [fillLayers, setFillLayers] = useState<FillLayer[]>([
+    {
+      id: '1',
+      fillType: 'Simple Fill',
+      fillColor: '#ea8989',
+      fillOpacity: 100,
+      strokeColor: '#000000',
+      strokeWidth: 0.26,
+      strokeStyle: 'Linia ciągła',
+      strokeOpacity: 100,
+      joinStyle: 'Ścięty',
+      offsetX: 0,
+      offsetY: 0,
+      unit: 'Milimetry',
+      expanded: true,
+    }
+  ]);
 
   // Tab 2: Wartość unikalna - state
   const [categorizedStyle, setCategorizedStyle] = useState<CategorizedStyle>({
@@ -85,10 +96,49 @@ export default function EditLayerStyleModal({ open, onClose, layerName }: EditLa
     setActiveTab(newValue);
   };
 
+  // Add new fill layer
+  const addFillLayer = () => {
+    const newFillLayer: FillLayer = {
+      id: Date.now().toString(),
+      fillType: 'Simple Fill',
+      fillColor: '#ea8989',
+      fillOpacity: 100,
+      strokeColor: '#000000',
+      strokeWidth: 0.26,
+      strokeStyle: 'Linia ciągła',
+      strokeOpacity: 100,
+      joinStyle: 'Ścięty',
+      offsetX: 0,
+      offsetY: 0,
+      unit: 'Milimetry',
+      expanded: true,
+    };
+    setFillLayers([...fillLayers, newFillLayer]);
+  };
+
+  // Remove fill layer
+  const removeFillLayer = (id: string) => {
+    setFillLayers(fillLayers.filter(layer => layer.id !== id));
+  };
+
+  // Toggle expand/collapse fill layer
+  const toggleFillLayer = (id: string) => {
+    setFillLayers(fillLayers.map(layer =>
+      layer.id === id ? { ...layer, expanded: !layer.expanded } : layer
+    ));
+  };
+
+  // Update fill layer property
+  const updateFillLayer = (id: string, updates: Partial<FillLayer>) => {
+    setFillLayers(fillLayers.map(layer =>
+      layer.id === id ? { ...layer, ...updates } : layer
+    ));
+  };
+
   const handleSave = () => {
     const styleData = {
       type: activeTab === 0 ? 'single' : 'categorized',
-      singleSymbol: activeTab === 0 ? singleSymbol : null,
+      fillLayers: activeTab === 0 ? fillLayers : null,
       categorizedStyle: activeTab === 1 ? categorizedStyle : null,
     };
 
@@ -167,247 +217,309 @@ export default function EditLayerStyleModal({ open, onClose, layerName }: EditLa
           minHeight: '400px',
         }}
       >
-        {/* Tab 1: Pojedynczy symbol */}
+        {/* Tab 1: Pojedynczy symbol - MULTIPLE FILL LAYERS */}
         {activeTab === 0 && (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-            {/* Wypełnienie */}
-            <Box>
-              <Typography sx={{ fontSize: '14px', fontWeight: 500, mb: 1 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {/* Wypełnienie + button */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+              <Typography sx={{ fontSize: '14px', fontWeight: 500 }}>
                 Wypełnienie
               </Typography>
-              <TextField
-                select
-                fullWidth
+              <IconButton
                 size="small"
-                value={singleSymbol.fillType}
-                onChange={(e) => setSingleSymbol({ ...singleSymbol, fillType: e.target.value })}
-              >
-                <MenuItem value="Simple Fill">Simple Fill</MenuItem>
-              </TextField>
-            </Box>
-
-            {/* Typ symbolu */}
-            <Box>
-              <Typography sx={{ fontSize: '14px', fontWeight: 500, mb: 1 }}>
-                Typ symbolu
-              </Typography>
-              <TextField
-                select
-                fullWidth
-                size="small"
-                value={singleSymbol.fillType}
-                onChange={(e) => setSingleSymbol({ ...singleSymbol, fillType: e.target.value })}
-              >
-                <MenuItem value="Simple Fill">Simple Fill</MenuItem>
-              </TextField>
-            </Box>
-
-            {/* Kolor wypełnienia */}
-            <Box>
-              <Typography sx={{ fontSize: '14px', fontWeight: 500, mb: 1 }}>
-                Kolor wypełnienia
-              </Typography>
-              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                <input
-                  type="color"
-                  value={singleSymbol.fillColor}
-                  onChange={(e) => setSingleSymbol({ ...singleSymbol, fillColor: e.target.value })}
-                  style={{ width: '60px', height: '38px', border: '1px solid #d1d5db', borderRadius: '4px', cursor: 'pointer' }}
-                />
-                <TextField
-                  fullWidth
-                  size="small"
-                  value={singleSymbol.fillColor}
-                  onChange={(e) => setSingleSymbol({ ...singleSymbol, fillColor: e.target.value })}
-                />
-              </Box>
-            </Box>
-
-            {/* Styl wypełnienia */}
-            <Box>
-              <Typography sx={{ fontSize: '14px', fontWeight: 500, mb: 1 }}>
-                Styl wypełnienia
-              </Typography>
-              <TextField
-                select
-                fullWidth
-                size="small"
-                value="Wypełniony"
-              >
-                <MenuItem value="Wypełniony">Wypełniony</MenuItem>
-              </TextField>
-            </Box>
-
-            {/* Kolor obrysu */}
-            <Box>
-              <Typography sx={{ fontSize: '14px', fontWeight: 500, mb: 1 }}>
-                Kolor obrysu
-              </Typography>
-              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                <input
-                  type="color"
-                  value={singleSymbol.strokeColor}
-                  onChange={(e) => setSingleSymbol({ ...singleSymbol, strokeColor: e.target.value })}
-                  style={{ width: '60px', height: '38px', border: '1px solid #d1d5db', borderRadius: '4px', cursor: 'pointer' }}
-                />
-                <TextField
-                  fullWidth
-                  size="small"
-                  value={singleSymbol.strokeColor}
-                  onChange={(e) => setSingleSymbol({ ...singleSymbol, strokeColor: e.target.value })}
-                />
-              </Box>
-            </Box>
-
-            {/* Szerokość obrysu */}
-            <Box>
-              <Typography sx={{ fontSize: '14px', fontWeight: 500, mb: 1 }}>
-                Szerokość obrysu
-              </Typography>
-              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                <TextField
-                  fullWidth
-                  size="small"
-                  type="number"
-                  value={singleSymbol.strokeWidth}
-                  onChange={(e) => setSingleSymbol({ ...singleSymbol, strokeWidth: parseFloat(e.target.value) })}
-                />
-                <TextField
-                  select
-                  size="small"
-                  value={singleSymbol.unit}
-                  onChange={(e) => setSingleSymbol({ ...singleSymbol, unit: e.target.value })}
-                  sx={{ minWidth: '140px' }}
-                >
-                  <MenuItem value="Milimetry">Milimetry</MenuItem>
-                  <MenuItem value="Piksele">Piksele</MenuItem>
-                  <MenuItem value="Punkty">Punkty</MenuItem>
-                </TextField>
-              </Box>
-            </Box>
-
-            {/* Styl obrysu */}
-            <Box>
-              <Typography sx={{ fontSize: '14px', fontWeight: 500, mb: 1 }}>
-                Styl obrysu
-              </Typography>
-              <TextField
-                select
-                fullWidth
-                size="small"
-                value={singleSymbol.strokeStyle}
-                onChange={(e) => setSingleSymbol({ ...singleSymbol, strokeStyle: e.target.value })}
-              >
-                <MenuItem value="Linia ciągła">Linia ciągła</MenuItem>
-                <MenuItem value="Linia przerywana">Linia przerywana</MenuItem>
-                <MenuItem value="Linia kropkowana">Linia kropkowana</MenuItem>
-              </TextField>
-            </Box>
-
-            {/* Styl połączenia */}
-            <Box>
-              <Typography sx={{ fontSize: '14px', fontWeight: 500, mb: 1 }}>
-                Styl połączenia
-              </Typography>
-              <TextField
-                select
-                fullWidth
-                size="small"
-                value={singleSymbol.joinStyle}
-                onChange={(e) => setSingleSymbol({ ...singleSymbol, joinStyle: e.target.value })}
-              >
-                <MenuItem value="Ścięty">Ścięty</MenuItem>
-                <MenuItem value="Zaokrąglony">Zaokrąglony</MenuItem>
-                <MenuItem value="Ostry">Ostry</MenuItem>
-              </TextField>
-            </Box>
-
-            {/* Przesunięcie */}
-            <Box>
-              <Typography sx={{ fontSize: '14px', fontWeight: 500, mb: 1 }}>
-                Przesunięcie
-              </Typography>
-              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flex: 1 }}>
-                  <Typography sx={{ fontSize: '12px', minWidth: '20px' }}>X:</Typography>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    type="number"
-                    value={singleSymbol.offsetX}
-                    onChange={(e) => setSingleSymbol({ ...singleSymbol, offsetX: parseFloat(e.target.value) })}
-                  />
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flex: 1 }}>
-                  <Typography sx={{ fontSize: '12px', minWidth: '20px' }}>Y:</Typography>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    type="number"
-                    value={singleSymbol.offsetY}
-                    onChange={(e) => setSingleSymbol({ ...singleSymbol, offsetY: parseFloat(e.target.value) })}
-                  />
-                </Box>
-                <TextField
-                  select
-                  size="small"
-                  value={singleSymbol.unit}
-                  sx={{ minWidth: '140px' }}
-                >
-                  <MenuItem value="Milimetry">Milimetry</MenuItem>
-                </TextField>
-              </Box>
-            </Box>
-
-            {/* Krycie (Opacity) */}
-            <Box>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                <Typography sx={{ fontSize: '14px', fontWeight: 500 }}>
-                  Krycie
-                </Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                  <TextField
-                    size="small"
-                    type="number"
-                    value={singleSymbol.fillOpacity}
-                    onChange={(e) => setSingleSymbol({ ...singleSymbol, fillOpacity: parseFloat(e.target.value) })}
-                    sx={{ width: '70px' }}
-                    inputProps={{ min: 0, max: 100 }}
-                  />
-                  <Typography sx={{ fontSize: '14px' }}>%</Typography>
-                </Box>
-              </Box>
-              <Slider
-                value={singleSymbol.fillOpacity}
-                onChange={(e, value) => setSingleSymbol({ ...singleSymbol, fillOpacity: value as number })}
-                min={0}
-                max={100}
+                onClick={addFillLayer}
                 sx={{
-                  '& .MuiSlider-thumb': {
-                    width: 16,
-                    height: 16,
-                  }
+                  bgcolor: '#4a5568',
+                  color: 'white',
+                  width: '24px',
+                  height: '24px',
+                  '&:hover': { bgcolor: '#2d3748' }
                 }}
-              />
+              >
+                <AddIcon sx={{ fontSize: '16px' }} />
+              </IconButton>
             </Box>
 
-            {/* Jednostka */}
-            <Box>
-              <Typography sx={{ fontSize: '14px', fontWeight: 500, mb: 1 }}>
-                Jednostka
-              </Typography>
-              <TextField
-                select
-                fullWidth
-                size="small"
-                value={singleSymbol.unit}
-                onChange={(e) => setSingleSymbol({ ...singleSymbol, unit: e.target.value })}
+            {/* List of fill layers */}
+            {fillLayers.map((fillLayer, index) => (
+              <Box
+                key={fillLayer.id}
+                sx={{
+                  border: `1px solid ${theme.palette.divider}`,
+                  borderRadius: '4px',
+                  overflow: 'hidden',
+                }}
               >
-                <MenuItem value="Milimetry">Milimetry</MenuItem>
-                <MenuItem value="Piksele">Piksele</MenuItem>
-                <MenuItem value="Punkty">Punkty</MenuItem>
-              </TextField>
-            </Box>
+                {/* Fill layer header (collapsible) */}
+                <Box
+                  sx={{
+                    bgcolor: '#3a4556',
+                    color: 'white',
+                    px: 2,
+                    py: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    cursor: 'pointer',
+                  }}
+                  onClick={() => toggleFillLayer(fillLayer.id)}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Typography sx={{ fontSize: '13px' }}>
+                      {fillLayer.fillType}
+                    </Typography>
+                    <IconButton
+                      size="small"
+                      sx={{ color: 'white', p: 0.5 }}
+                    >
+                      {fillLayer.expanded ? <ExpandLessIcon sx={{ fontSize: '18px' }} /> : <ExpandMoreIcon sx={{ fontSize: '18px' }} />}
+                    </IconButton>
+                  </Box>
+                  <IconButton
+                    size="small"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeFillLayer(fillLayer.id);
+                    }}
+                    sx={{
+                      color: 'white',
+                      p: 0.5,
+                      '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.1)' }
+                    }}
+                  >
+                    <RemoveIcon sx={{ fontSize: '18px' }} />
+                  </IconButton>
+                </Box>
+
+                {/* Fill layer content (collapsible) */}
+                <Collapse in={fillLayer.expanded}>
+                  <Box sx={{ bgcolor: 'white', p: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    {/* Typ symbolu */}
+                    <Box>
+                      <Typography sx={{ fontSize: '14px', fontWeight: 500, mb: 1 }}>
+                        Typ symbolu
+                      </Typography>
+                      <TextField
+                        select
+                        fullWidth
+                        size="small"
+                        value={fillLayer.fillType}
+                        onChange={(e) => updateFillLayer(fillLayer.id, { fillType: e.target.value })}
+                      >
+                        <MenuItem value="Simple Fill">Simple Fill</MenuItem>
+                      </TextField>
+                    </Box>
+
+                    {/* Kolor wypełnienia */}
+                    <Box>
+                      <Typography sx={{ fontSize: '14px', fontWeight: 500, mb: 1 }}>
+                        Kolor wypełnienia
+                      </Typography>
+                      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                        <input
+                          type="color"
+                          value={fillLayer.fillColor}
+                          onChange={(e) => updateFillLayer(fillLayer.id, { fillColor: e.target.value })}
+                          style={{ width: '60px', height: '38px', border: '1px solid #d1d5db', borderRadius: '4px', cursor: 'pointer' }}
+                        />
+                        <TextField
+                          fullWidth
+                          size="small"
+                          value={fillLayer.fillColor}
+                          onChange={(e) => updateFillLayer(fillLayer.id, { fillColor: e.target.value })}
+                        />
+                      </Box>
+                    </Box>
+
+                    {/* Styl wypełnienia */}
+                    <Box>
+                      <Typography sx={{ fontSize: '14px', fontWeight: 500, mb: 1 }}>
+                        Styl wypełnienia
+                      </Typography>
+                      <TextField
+                        select
+                        fullWidth
+                        size="small"
+                        value="Wypełniony"
+                      >
+                        <MenuItem value="Wypełniony">Wypełniony</MenuItem>
+                      </TextField>
+                    </Box>
+
+                    {/* Kolor obrysu */}
+                    <Box>
+                      <Typography sx={{ fontSize: '14px', fontWeight: 500, mb: 1 }}>
+                        Kolor obrysu
+                      </Typography>
+                      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                        <input
+                          type="color"
+                          value={fillLayer.strokeColor}
+                          onChange={(e) => updateFillLayer(fillLayer.id, { strokeColor: e.target.value })}
+                          style={{ width: '60px', height: '38px', border: '1px solid #d1d5db', borderRadius: '4px', cursor: 'pointer' }}
+                        />
+                        <TextField
+                          fullWidth
+                          size="small"
+                          value={fillLayer.strokeColor}
+                          onChange={(e) => updateFillLayer(fillLayer.id, { strokeColor: e.target.value })}
+                        />
+                      </Box>
+                    </Box>
+
+                    {/* Szerokość obrysu */}
+                    <Box>
+                      <Typography sx={{ fontSize: '14px', fontWeight: 500, mb: 1 }}>
+                        Szerokość obrysu
+                      </Typography>
+                      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                        <TextField
+                          fullWidth
+                          size="small"
+                          type="number"
+                          value={fillLayer.strokeWidth}
+                          onChange={(e) => updateFillLayer(fillLayer.id, { strokeWidth: parseFloat(e.target.value) })}
+                        />
+                        <TextField
+                          select
+                          size="small"
+                          value={fillLayer.unit}
+                          onChange={(e) => updateFillLayer(fillLayer.id, { unit: e.target.value })}
+                          sx={{ minWidth: '140px' }}
+                        >
+                          <MenuItem value="Milimetry">Milimetry</MenuItem>
+                          <MenuItem value="Piksele">Piksele</MenuItem>
+                          <MenuItem value="Punkty">Punkty</MenuItem>
+                        </TextField>
+                      </Box>
+                    </Box>
+
+                    {/* Styl obrysu */}
+                    <Box>
+                      <Typography sx={{ fontSize: '14px', fontWeight: 500, mb: 1 }}>
+                        Styl obrysu
+                      </Typography>
+                      <TextField
+                        select
+                        fullWidth
+                        size="small"
+                        value={fillLayer.strokeStyle}
+                        onChange={(e) => updateFillLayer(fillLayer.id, { strokeStyle: e.target.value })}
+                      >
+                        <MenuItem value="Linia ciągła">Linia ciągła</MenuItem>
+                        <MenuItem value="Linia przerywana">Linia przerywana</MenuItem>
+                        <MenuItem value="Linia kropkowana">Linia kropkowana</MenuItem>
+                      </TextField>
+                    </Box>
+
+                    {/* Styl połączenia */}
+                    <Box>
+                      <Typography sx={{ fontSize: '14px', fontWeight: 500, mb: 1 }}>
+                        Styl połączenia
+                      </Typography>
+                      <TextField
+                        select
+                        fullWidth
+                        size="small"
+                        value={fillLayer.joinStyle}
+                        onChange={(e) => updateFillLayer(fillLayer.id, { joinStyle: e.target.value })}
+                      >
+                        <MenuItem value="Ścięty">Ścięty</MenuItem>
+                        <MenuItem value="Zaokrąglony">Zaokrąglony</MenuItem>
+                        <MenuItem value="Ostry">Ostry</MenuItem>
+                      </TextField>
+                    </Box>
+
+                    {/* Przesunięcie */}
+                    <Box>
+                      <Typography sx={{ fontSize: '14px', fontWeight: 500, mb: 1 }}>
+                        Przesunięcie
+                      </Typography>
+                      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flex: 1 }}>
+                          <Typography sx={{ fontSize: '12px', minWidth: '20px' }}>X:</Typography>
+                          <TextField
+                            fullWidth
+                            size="small"
+                            type="number"
+                            value={fillLayer.offsetX}
+                            onChange={(e) => updateFillLayer(fillLayer.id, { offsetX: parseFloat(e.target.value) })}
+                          />
+                        </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flex: 1 }}>
+                          <Typography sx={{ fontSize: '12px', minWidth: '20px' }}>Y:</Typography>
+                          <TextField
+                            fullWidth
+                            size="small"
+                            type="number"
+                            value={fillLayer.offsetY}
+                            onChange={(e) => updateFillLayer(fillLayer.id, { offsetY: parseFloat(e.target.value) })}
+                          />
+                        </Box>
+                        <TextField
+                          select
+                          size="small"
+                          value={fillLayer.unit}
+                          sx={{ minWidth: '140px' }}
+                        >
+                          <MenuItem value="Milimetry">Milimetry</MenuItem>
+                        </TextField>
+                      </Box>
+                    </Box>
+
+                    {/* Krycie (Opacity) */}
+                    <Box>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                        <Typography sx={{ fontSize: '14px', fontWeight: 500 }}>
+                          Krycie
+                        </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <TextField
+                            size="small"
+                            type="number"
+                            value={fillLayer.fillOpacity}
+                            onChange={(e) => updateFillLayer(fillLayer.id, { fillOpacity: parseFloat(e.target.value) })}
+                            sx={{ width: '70px' }}
+                            inputProps={{ min: 0, max: 100 }}
+                          />
+                          <Typography sx={{ fontSize: '14px' }}>%</Typography>
+                        </Box>
+                      </Box>
+                      <Slider
+                        value={fillLayer.fillOpacity}
+                        onChange={(e, value) => updateFillLayer(fillLayer.id, { fillOpacity: value as number })}
+                        min={0}
+                        max={100}
+                        sx={{
+                          '& .MuiSlider-thumb': {
+                            width: 16,
+                            height: 16,
+                          }
+                        }}
+                      />
+                    </Box>
+
+                    {/* Jednostka */}
+                    <Box>
+                      <Typography sx={{ fontSize: '14px', fontWeight: 500, mb: 1 }}>
+                        Jednostka
+                      </Typography>
+                      <TextField
+                        select
+                        fullWidth
+                        size="small"
+                        value={fillLayer.unit}
+                        onChange={(e) => updateFillLayer(fillLayer.id, { unit: e.target.value })}
+                      >
+                        <MenuItem value="Milimetry">Milimetry</MenuItem>
+                        <MenuItem value="Piksele">Piksele</MenuItem>
+                        <MenuItem value="Punkty">Punkty</MenuItem>
+                      </TextField>
+                    </Box>
+                  </Box>
+                </Collapse>
+              </Box>
+            ))}
           </Box>
         )}
 
