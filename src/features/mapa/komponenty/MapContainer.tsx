@@ -59,30 +59,53 @@ const MapContainer: React.FC<MapContainerProps> = ({ children, projectName }) =>
   useEffect(() => {
     if (!projectName) return;
 
+    // Use mapRef to get CURRENT viewState, not stale closure
+    const getViewState = () => {
+      if (!mapRef.current) return viewState;
+      const map = mapRef.current.getMap();
+      const center = map.getCenter();
+      return {
+        longitude: center.lng,
+        latitude: center.lat,
+        zoom: map.getZoom(),
+        bearing: map.getBearing(),
+        pitch: map.getPitch(),
+      };
+    };
+
     const cleanup = autoSaveViewport(
       projectName,
-      () => viewState,
+      getViewState,
       10000 // 10 seconds
     );
 
     return cleanup;
-  }, [projectName, viewState]);
+  }, [projectName]); // REMOVED viewState dependency!
 
   // VIEWPORT PERSISTENCE: Save on unmount (page close/navigate)
   useEffect(() => {
     return () => {
-      if (projectName && viewState) {
-        saveViewport(projectName, viewState);
+      if (projectName && mapRef.current) {
+        const map = mapRef.current.getMap();
+        const center = map.getCenter();
+        const currentViewState = {
+          longitude: center.lng,
+          latitude: center.lat,
+          zoom: map.getZoom(),
+          bearing: map.getBearing(),
+          pitch: map.getPitch(),
+        };
+        saveViewport(projectName, currentViewState);
         // Silent save on unmount (reduces console spam)
       }
     };
-  }, [projectName, viewState]);
+  }, [projectName]); // REMOVED viewState dependency!
 
-  // Throttle onMove to reduce Redux updates (max 5 updates per second for better performance)
+  // Throttle onMove to reduce Redux updates (30 FPS = ~33ms between updates)
   const lastUpdateTime = useRef<number>(0);
   const onMove = useCallback((evt: any) => {
     const now = Date.now();
-    if (now - lastUpdateTime.current > 200) { // Throttle: max 5 updates/sec (doubled from 100ms)
+    if (now - lastUpdateTime.current > 33) { // Throttle: 30 FPS for smooth movement
       lastUpdateTime.current = now;
       dispatch(setViewState(evt.viewState));
     }
