@@ -53,7 +53,7 @@ interface FillLayer {
 }
 
 interface CategorizedValue {
-  symbol: string;
+  symbol: string; // hex color code (e.g., "#ea8989")
   value: string;
   legend: string;
 }
@@ -572,7 +572,7 @@ export default function EditLayerStyleModal({ open, onClose, layerName }: EditLa
                 }}
                 onClick={() => {
                   const newCategory: CategorizedValue = {
-                    symbol: '',
+                    symbol: '#ea8989', // default color
                     value: '',
                     legend: '',
                   };
@@ -649,17 +649,22 @@ export default function EditLayerStyleModal({ open, onClose, layerName }: EditLa
                   ) : (
                     categorizedStyle.categories.map((category, index) => (
                       <TableRow key={index} sx={{ '&:hover': { bgcolor: theme.palette.action.hover } }}>
-                        <TableCell sx={{ py: 1 }}>
-                          <TextField
-                            fullWidth
-                            size="small"
+                        <TableCell sx={{ py: 1, width: '80px' }}>
+                          <input
+                            type="color"
                             value={category.symbol}
                             onChange={(e) => {
                               const newCategories = [...categorizedStyle.categories];
                               newCategories[index].symbol = e.target.value;
                               setCategorizedStyle({ ...categorizedStyle, categories: newCategories });
                             }}
-                            placeholder="Symbol"
+                            style={{
+                              width: '50px',
+                              height: '38px',
+                              border: '1px solid #d1d5db',
+                              borderRadius: '4px',
+                              cursor: 'pointer'
+                            }}
                           />
                         </TableCell>
                         <TableCell sx={{ py: 1 }}>
