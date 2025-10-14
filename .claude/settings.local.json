@@ -59,7 +59,8 @@
       "Bash(git stash:*)",
       "Bash(sudo find:*)",
       "Bash(sudo docker ps:*)",
-      "Bash(git restore:*)"
+      "Bash(git restore:*)",
+      "Bash(git revert:*)"
     ],
     "deny": [],
     "ask": []

@@ -101,11 +101,11 @@ const MapContainer: React.FC<MapContainerProps> = ({ children, projectName }) =>
     };
   }, [projectName]); // REMOVED viewState dependency!
 
-  // Throttle onMove to reduce Redux updates (30 FPS = ~33ms between updates)
+  // Throttle onMove to reduce Redux updates (60 FPS = ~16ms between updates)
   const lastUpdateTime = useRef<number>(0);
   const onMove = useCallback((evt: any) => {
     const now = Date.now();
-    if (now - lastUpdateTime.current > 33) { // Throttle: 30 FPS for smooth movement
+    if (now - lastUpdateTime.current > 16) { // Throttle: 60 FPS for smooth movement
       lastUpdateTime.current = now;
       dispatch(setViewState(evt.viewState));
     }
