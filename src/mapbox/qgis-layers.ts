@@ -496,3 +496,96 @@ export function getQGISLayers(map: mapboxgl.Map): string[] {
     .filter(layer => layer.id.startsWith('qgis-wms-layer-') || layer.id.startsWith('qgis-wfs-layer-'))
     .map(layer => layer.id);
 }
+
+/**
+ * Refresh WMS layer by removing and re-adding it
+ *
+ * This forces QGIS Server to re-render the layer with updated styles/data.
+ * Use after:
+ * - Changing layer style in QGIS
+ * - Updating layer data
+ * - Modifying layer visibility/opacity
+ *
+ * @param map Mapbox GL JS map instance
+ * @param layerId Layer ID (e.g., 'qgis-wms-layer-MyProject_1-layer_uuid')
+ * @param layerName Original layer name from QGIS
+ * @param projectName Project name
+ * @param options Layer options (opacity, visibility, etc.)
+ */
+export function refreshWMSLayer(
+  map: mapboxgl.Map,
+  layerId: string,
+  layerName: string,
+  projectName: string,
+  options?: Partial<WMSLayerOptions>
+): boolean {
+  try {
+    mapLogger.log(`🔄 Refreshing WMS layer: ${layerId}`);
+
+    // Get current layer state
+    const layer = map.getLayer(layerId);
+    if (!layer) {
+      mapLogger.warn(`Layer not found: ${layerId}`);
+      return false;
+    }
+
+    const currentVisibility = map.getLayoutProperty(layerId, 'visibility');
+    const currentOpacity = map.getPaintProperty(layerId, 'raster-opacity') as number | undefined;
+
+    // Remove layer and source
+    removeQGISLayer(map, layerId);
+
+    // Re-add with current or new options
+    addWMSLayer(map, {
+      layerName,
+      projectName,
+      opacity: options?.opacity !== undefined ? options.opacity : (currentOpacity || 1),
+      visible: options?.visible !== undefined ? options.visible : currentVisibility === 'visible',
+      ...options
+    });
+
+    mapLogger.log(`✅ WMS layer refreshed: ${layerId}`);
+    return true;
+  } catch (error) {
+    mapLogger.error(`❌ Failed to refresh WMS layer ${layerId}:`, error);
+    return false;
+  }
+}
+
+/**
+ * Update project logo (thumbnail)
+ *
+ * Triggers backend to regenerate project thumbnail based on current layer visibility/styles.
+ * Call this after:
+ * - Changing layer visibility
+ * - Changing layer opacity
+ * - Reordering layers
+ * - Adding/removing layers
+ *
+ * @param projectName Project name
+ */
+export async function updateProjectLogo(projectName: string): Promise<boolean> {
+  try {
+    mapLogger.log(`📸 Updating project logo: ${projectName}`);
+
+    const response = await fetch(`${QGIS_SERVER_URL.replace('/ows', '')}/api/projects/logo/update/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Token ${localStorage.getItem('token')}`,
+      },
+      body: JSON.stringify({ project: projectName }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Logo update failed: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    mapLogger.log(`✅ Project logo updated: ${projectName}`);
+    return data.success || true;
+  } catch (error) {
+    mapLogger.error(`❌ Failed to update project logo ${projectName}:`, error);
+    return false;
+  }
+}

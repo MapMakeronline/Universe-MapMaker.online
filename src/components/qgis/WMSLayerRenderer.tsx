@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useMap } from 'react-map-gl';
 import { useAppSelector } from '@/redux/hooks';
 import type { LayerNode } from '@/typy/layers';
-import { addWMSLayer, removeQGISLayer, updateQGISLayerVisibility, updateQGISLayerOpacity } from '@/mapbox/qgis-layers';
+import { addWMSLayer, removeQGISLayer, updateQGISLayerVisibility, updateQGISLayerOpacity, updateProjectLogo } from '@/mapbox/qgis-layers';
 
 interface WMSLayerRendererProps {
   projectName: string;
@@ -110,6 +110,8 @@ export function WMSLayerRenderer({ projectName, layer }: WMSLayerRendererProps) 
 
     if (result) {
       console.log('✅ WMS layer added:', result.layerId);
+      // Update project logo after adding layer
+      updateProjectLogo(projectName);
     }
 
     // Cleanup on unmount
@@ -117,6 +119,8 @@ export function WMSLayerRenderer({ projectName, layer }: WMSLayerRendererProps) 
       if (result) {
         removeQGISLayer(map, result.layerId);
         console.log('🗑️ Removed WMS layer:', layer.name);
+        // Update project logo after removing layer
+        updateProjectLogo(projectName);
       }
     };
   }, [mapInstance, projectName, layer.id, layer.visible]); // Depend on mapInstance state!
@@ -131,6 +135,8 @@ export function WMSLayerRenderer({ projectName, layer }: WMSLayerRendererProps) 
     if (map.getLayer(layerId)) {
       updateQGISLayerVisibility(map, layerId, layer.visible);
       console.log(`👁️ Updated WMS visibility: ${layer.name} = ${layer.visible}`);
+      // Update project logo after visibility change
+      updateProjectLogo(projectName);
     }
   }, [mapInstance, layer.visible, layer.id, projectName]);
 
@@ -144,6 +150,8 @@ export function WMSLayerRenderer({ projectName, layer }: WMSLayerRendererProps) 
     if (map.getLayer(layerId)) {
       updateQGISLayerOpacity(map, layerId, layer.opacity || 1);
       console.log(`🎨 Updated WMS opacity: ${layer.name} = ${layer.opacity}`);
+      // Update project logo after opacity change
+      updateProjectLogo(projectName);
     }
   }, [mapInstance, layer.opacity, layer.id, projectName]);
 
