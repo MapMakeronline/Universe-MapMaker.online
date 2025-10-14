@@ -83,9 +83,11 @@ interface CategorizedStyle {
   categories: CategorizedValue[];
 }
 
-export default function EditLayerStyleModal({ open, onClose, layerName }: EditLayerStyleModalProps) {
+export default function EditLayerStyleModal({ open, onClose, layerName, layerId, projectName }: EditLayerStyleModalProps) {
   const theme = useTheme();
+  const dispatch = useAppDispatch();
   const [activeTab, setActiveTab] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Tab 1: Pojedynczy symbol - ARRAY of fill layers
   const [fillLayers, setFillLayers] = useState<FillLayer[]>([
@@ -111,6 +113,66 @@ export default function EditLayerStyleModal({ open, onClose, layerName }: EditLa
     columnName: '',
     categories: [],
   });
+
+  // RTK Query hooks
+  const { data: rendererData, isLoading: isLoadingRenderer } = useGetRendererQuery(
+    { project: projectName!, layer_id: layerId! },
+    { skip: !open || !projectName || !layerId }
+  );
+
+  const { data: attributesData } = useGetLayerAttributesQuery(
+    { projectName: projectName!, layerName: layerName! },
+    { skip: !open || !projectName || !layerName }
+  );
+
+  const [setStyle, { isLoading: isSaving }] = useSetStyleMutation();
+  const [classify, { isLoading: isClassifying }] = useClassifyMutation();
+
+  // Load existing style when modal opens
+  useEffect(() => {
+    if (!open || !rendererData) return;
+
+    console.log('📥 Loading existing style:', rendererData);
+
+    try {
+      if (rendererData.data.renderer === 'Single Symbol') {
+        // Convert backend Single Symbol to form state
+        const backendSymbol = rendererData.data.symbols;
+        const convertedFillLayers: FillLayer[] = backendSymbol.fills.map((fill, index) => ({
+          id: fill.id || `layer-${index}`,
+          fillType: fill.symbol_type,
+          fillColor: rgbaToHex(fill.attributes.fill_color),
+          fillOpacity: alphaToOpacity(fill.attributes.fill_color[3]),
+          strokeColor: rgbaToHex(fill.attributes.stroke_color),
+          strokeWidth: fill.attributes.stroke_width.width_value,
+          strokeStyle: getStrokeStyleName(fill.attributes.stroke_style),
+          strokeOpacity: alphaToOpacity(fill.attributes.stroke_color[3]),
+          joinStyle: getJoinStyleName(fill.attributes.join_style),
+          offsetX: fill.attributes.offset.x,
+          offsetY: fill.attributes.offset.y,
+          unit: getUnitName(fill.attributes.offset.unit),
+          expanded: index === 0, // Expand first layer by default
+        }));
+        setFillLayers(convertedFillLayers);
+        setActiveTab(0); // Switch to Single Symbol tab
+      } else if (rendererData.data.renderer === 'Categorized') {
+        // Convert backend Categorized to form state
+        const convertedCategories: CategorizedValue[] = rendererData.data.categories.map(cat => ({
+          symbol: rgbaToHex(cat.symbol.fill.color),
+          value: cat.value,
+          legend: cat.label,
+        }));
+        setCategorizedStyle({
+          columnName: rendererData.data.value,
+          categories: convertedCategories,
+        });
+        setActiveTab(1); // Switch to Categorized tab
+      }
+    } catch (error) {
+      console.error('❌ Error loading style:', error);
+      dispatch(showError('Nie udało się załadować stylu warstwy'));
+    }
+  }, [open, rendererData, dispatch]);
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setActiveTab(newValue);
@@ -155,15 +217,152 @@ export default function EditLayerStyleModal({ open, onClose, layerName }: EditLa
     ));
   };
 
-  const handleSave = () => {
-    const styleData = {
-      type: activeTab === 0 ? 'single' : 'categorized',
-      fillLayers: activeTab === 0 ? fillLayers : null,
-      categorizedStyle: activeTab === 1 ? categorizedStyle : null,
-    };
+  // Handle Classify button click (Tab 2)
+  const handleClassify = async () => {
+    if (!projectName || !layerId || !categorizedStyle.columnName) {
+      dispatch(showError('Wybierz kolumnę do klasyfikacji'));
+      return;
+    }
 
-    console.log('💾 Zapisywanie stylu warstwy:', styleData);
-    onClose();
+    try {
+      const result = await classify({
+        project: projectName,
+        layer_id: layerId,
+        column: categorizedStyle.columnName,
+      }).unwrap();
+
+      console.log('✅ Classified categories:', result.data);
+
+      // Convert backend categories to form state
+      const convertedCategories: CategorizedValue[] = result.data.map(cat => ({
+        symbol: rgbaToHex(cat.symbol.fill.color),
+        value: cat.value,
+        legend: cat.label,
+      }));
+
+      setCategorizedStyle({
+        ...categorizedStyle,
+        categories: convertedCategories,
+      });
+
+      dispatch(showSuccess(`Sklasyfikowano ${convertedCategories.length} kategorii`));
+    } catch (error: any) {
+      console.error('❌ Classify error:', error);
+      dispatch(showError(error?.data?.message || 'Nie udało się sklasyfikować wartości'));
+    }
+  };
+
+  const handleSave = async () => {
+    if (!projectName || !layerId) {
+      dispatch(showError('Brak wymaganych danych projektu'));
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      if (activeTab === 0) {
+        // Tab 1: Single Symbol - convert form state to backend format
+        const backendFills: SymbolLayer[] = fillLayers.map((fill, index) => ({
+          symbol_type: fill.fillType as any,
+          id: fill.id,
+          enabled: true,
+          attributes: {
+            fill_color: hexToRgba(fill.fillColor, opacityToAlpha(fill.fillOpacity)),
+            fill_style: 1, // Solid fill
+            stroke_color: hexToRgba(fill.strokeColor, opacityToAlpha(fill.strokeOpacity)),
+            stroke_width: {
+              width_value: fill.strokeWidth,
+              unit: getUnitValue(fill.unit),
+            },
+            stroke_style: getStrokeStyleValue(fill.strokeStyle),
+            join_style: getJoinStyleValue(fill.joinStyle),
+            offset: {
+              x: fill.offsetX,
+              y: fill.offsetY,
+              unit: getUnitValue(fill.unit),
+            },
+          },
+        }));
+
+        const backendSymbol: BackendSymbol = {
+          symbol_type: 'fill',
+          id: '0',
+          fill: {
+            color: hexToRgba(fillLayers[0].fillColor, opacityToAlpha(fillLayers[0].fillOpacity)),
+            opacity: fillLayers[0].fillOpacity / 100,
+            unit: getUnitValue(fillLayers[0].unit),
+          },
+          fills: backendFills,
+        };
+
+        await setStyle({
+          project: projectName,
+          id: layerId,
+          style_configuration: {
+            renderer: 'Single Symbol',
+            symbols: backendSymbol,
+          },
+        }).unwrap();
+
+        dispatch(showSuccess('Styl warstwy został zapisany'));
+        onClose();
+      } else {
+        // Tab 2: Categorized - convert form state to backend format
+        if (!categorizedStyle.columnName || categorizedStyle.categories.length === 0) {
+          dispatch(showError('Dodaj co najmniej jedną kategorię'));
+          return;
+        }
+
+        const backendCategories: Category[] = categorizedStyle.categories.map((cat, index) => ({
+          symbol: {
+            symbol_type: 'fill',
+            id: index.toString(),
+            fill: {
+              color: hexToRgba(cat.symbol, 255),
+              opacity: 1.0,
+              unit: 0,
+            },
+            fills: [
+              {
+                symbol_type: 'Simple Fill',
+                id: `${index}.0`,
+                enabled: true,
+                attributes: {
+                  fill_color: hexToRgba(cat.symbol, 255),
+                  fill_style: 1,
+                  stroke_color: [0, 0, 0, 255],
+                  stroke_width: { width_value: 0.26, unit: 0 },
+                  stroke_style: 1,
+                  join_style: 128,
+                  offset: { x: 0, y: 0, unit: 0 },
+                },
+              },
+            ],
+          },
+          value: cat.value,
+          label: cat.legend,
+        }));
+
+        await setStyle({
+          project: projectName,
+          id: layerId,
+          style_configuration: {
+            renderer: 'Categorized',
+            value: categorizedStyle.columnName,
+            categories: backendCategories,
+          },
+        }).unwrap();
+
+        dispatch(showSuccess('Styl kategorii został zapisany'));
+        onClose();
+      }
+    } catch (error: any) {
+      console.error('❌ Save style error:', error);
+      dispatch(showError(error?.data?.message || 'Nie udało się zapisać stylu warstwy'));
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -560,9 +759,11 @@ export default function EditLayerStyleModal({ open, onClose, layerName }: EditLa
                 placeholder="Wybierz z listy"
               >
                 <MenuItem value="">Wybierz z listy</MenuItem>
-                <MenuItem value="kategoria">kategoria</MenuItem>
-                <MenuItem value="typ">typ</MenuItem>
-                <MenuItem value="nazwa">nazwa</MenuItem>
+                {attributesData?.attributes.map((attr) => (
+                  <MenuItem key={attr.name} value={attr.name}>
+                    {attr.name}
+                  </MenuItem>
+                ))}
               </TextField>
             </Box>
 
@@ -577,7 +778,8 @@ export default function EditLayerStyleModal({ open, onClose, layerName }: EditLa
                   textTransform: 'none',
                   fontSize: '13px',
                 }}
-                onClick={() => console.log('Klasyfikuj clicked')}
+                onClick={handleClassify}
+                disabled={!categorizedStyle.columnName || isClassifying}
               >
                 Klasyfikuj
               </Button>
@@ -751,12 +953,13 @@ export default function EditLayerStyleModal({ open, onClose, layerName }: EditLa
         <Button
           onClick={handleSave}
           variant="contained"
+          disabled={isLoading || isSaving}
           sx={{
             bgcolor: theme.palette.primary.main,
             '&:hover': { bgcolor: theme.palette.primary.dark },
           }}
         >
-          Zapisz
+          {isLoading || isSaving ? 'Zapisywanie...' : 'Zapisz'}
         </Button>
       </DialogActions>
     </Dialog>
