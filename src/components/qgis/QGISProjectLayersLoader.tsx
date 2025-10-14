@@ -30,6 +30,8 @@ interface QGISProjectLayersLoaderProps {
  */
 export function QGISProjectLayersLoader({ projectName, projectData }: QGISProjectLayersLoaderProps) {
   const mapRef = useMap();
+  // PERFORMANCE: Subscribe only to isLoaded (not entire state.map)
+  // Prevents re-render when viewState changes during map panning
   const isMapLoaded = useAppSelector((state) => state.map.isLoaded);
 
   useEffect(() => {

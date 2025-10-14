@@ -17,7 +17,9 @@ const Building3DInteraction = () => {
   const { current: mapRef } = useMap();
   const dispatch = useAppDispatch();
   const { buildings, selectedBuildingId, isBuildingSelectModeActive } = useAppSelector((state) => state.buildings);
-  const { mapStyleKey } = useAppSelector((state) => state.map);
+  // PERFORMANCE: Subscribe only to mapStyleKey (not entire state.map)
+  // Prevents re-render when viewState changes during map panning
+  const mapStyleKey = useAppSelector((state) => state.map.mapStyleKey);
   const { identify, measurement } = useAppSelector((state) => state.draw);
 
   // Use refs to always have current values in event handlers

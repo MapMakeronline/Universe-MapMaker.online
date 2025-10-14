@@ -56,7 +56,10 @@
       "Bash(gcloud run services describe:*)",
       "Bash(npm run lint)",
       "Bash(git pull:*)",
-      "Bash(git stash:*)"
+      "Bash(git stash:*)",
+      "Bash(sudo find:*)",
+      "Bash(sudo docker ps:*)",
+      "Bash(git restore:*)"
     ],
     "deny": [],
     "ask": []

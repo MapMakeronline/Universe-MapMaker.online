@@ -58,7 +58,9 @@ const BASEMAP_CONFIG = {
 export const BasemapSelector: React.FC<BasemapSelectorProps> = () => {
   const theme = useTheme();
   const dispatch = useAppDispatch();
-  const { mapStyleKey } = useAppSelector((state) => state.map);
+  // PERFORMANCE: Subscribe only to mapStyleKey (not entire state.map)
+  // Prevents re-render when viewState changes during map panning
+  const mapStyleKey = useAppSelector((state) => state.map.mapStyleKey);
 
   const handleBasemapChange = (key: string) => {
     const style = MAP_STYLES[key];

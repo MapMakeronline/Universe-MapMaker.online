@@ -24,7 +24,9 @@ import {
 
 const Buildings3D = () => {
   const { current: mapRef } = useMap();
-  const { mapStyleKey, mapStyle } = useAppSelector((state) => state.map);
+  // PERFORMANCE: Subscribe only to mapStyleKey (not entire state.map)
+  // Prevents re-render when viewState changes during map panning
+  const mapStyleKey = useAppSelector((state) => state.map.mapStyleKey);
 
   useEffect(() => {
     if (!mapRef) {

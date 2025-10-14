@@ -33,6 +33,8 @@ interface WMSLayerRendererProps {
  */
 export function WMSLayerRenderer({ projectName, layer }: WMSLayerRendererProps) {
   const mapRef = useMap();
+  // PERFORMANCE: Subscribe only to isLoaded (not entire state.map)
+  // Prevents re-render when viewState changes during map panning
   const isMapLoaded = useAppSelector(state => state.map.isLoaded);
 
   // WORKAROUND: Force re-render when mapRef.current changes

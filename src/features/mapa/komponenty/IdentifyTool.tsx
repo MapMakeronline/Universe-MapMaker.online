@@ -33,7 +33,9 @@ const IdentifyTool = () => {
   const dispatch = useAppDispatch();
   const { identify } = useAppSelector((state) => state.draw);
   const { features, selectedFeatureId } = useAppSelector((state) => state.features);
-  const { mapStyleKey } = useAppSelector((state) => state.map);
+  // PERFORMANCE: Subscribe only to mapStyleKey (not entire state.map)
+  // Prevents re-render when viewState changes during map panning
+  const mapStyleKey = useAppSelector((state) => state.map.mapStyleKey);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [identifiedFeatures, setIdentifiedFeatures] = useState<IdentifiedFeature[]>([]);
