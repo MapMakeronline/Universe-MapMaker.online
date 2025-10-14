@@ -78,15 +78,61 @@ npm run build        # Production build
 npm run start        # Start production server (uses server.js)
 npm run lint         # Run ESLint
 
-# Cloud Deployment
-gcloud builds submit --region=europe-central2 --config=cloudbuild.yaml --substitutions=COMMIT_SHA=$(git rev-parse HEAD)
-gcloud run services describe universe-mapmaker --region=europe-central2
-
 # Browser Testing (Screenshots)
 .\screenshot.bat                                    # Screenshot localhost:3000 (Windows CMD)
 .\screenshot.bat http://localhost:3000/dashboard    # Screenshot specific page
 .\screenshot.ps1 http://localhost:3000              # PowerShell version
 powershell -ExecutionPolicy Bypass -File screenshot.ps1 "http://localhost:3000/dashboard"
+```
+
+## Deployment Workflow
+
+**IMPORTANT:** Cloud Build is integrated with GitHub - deployment happens automatically on push!
+
+### Automated Deployment (Recommended)
+
+**The project has GitHub → Cloud Build integration configured. Simply push to GitHub:**
+
+```bash
+# Standard workflow - automatic deployment
+git add .
+git commit -m "feat: your changes"
+git push origin main
+
+# Cloud Build automatically triggers and deploys to Cloud Run
+# No need to run gcloud builds submit manually!
+```
+
+**How it works:**
+1. Push to `main` branch triggers Cloud Build automatically
+2. Cloud Build uses `cloudbuild.yaml` configuration
+3. Builds Docker image with Next.js standalone output
+4. Pushes to Artifact Registry (`europe-central2-docker.pkg.dev`)
+5. Deploys to Cloud Run (`universe-mapmaker`)
+6. Updates run automatically with zero downtime
+
+**Monitor deployment:**
+```bash
+# Check Cloud Build status
+gcloud builds list --limit=5
+
+# Check Cloud Run service
+gcloud run services describe universe-mapmaker --region=europe-central2
+
+# View deployment logs
+gcloud logging read "resource.type=cloud_run_revision" --limit=50
+```
+
+### Manual Deployment (Not Recommended)
+
+**Only use manual deployment for testing or emergency fixes:**
+
+```bash
+# Manual Cloud Build trigger (bypasses GitHub integration)
+gcloud builds submit --region=europe-central2 --config=cloudbuild.yaml
+
+# This is slower and not tracked in GitHub Actions
+# Prefer using git push for all deployments!
 ```
 
 ## Testing & Browser Preview
