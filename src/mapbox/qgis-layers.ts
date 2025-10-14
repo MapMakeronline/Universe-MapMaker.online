@@ -613,7 +613,7 @@ export function addProjectLayers(
       // Add VectorLayer or RasterLayer as WMS
       if (item.type === 'VectorLayer' || item.type === 'RasterLayer') {
         const result = addWMSLayer(map, {
-          layerName: item.id || item.name,
+          layerName: item.name, // CRITICAL: Use item.name (layer name), NOT item.id (UUID)!
           projectName,
           opacity: item.opacity !== undefined ? item.opacity / 255 : 1, // QGIS uses 0-255, we use 0-1
           visible: item.visible !== false,
@@ -624,7 +624,7 @@ export function addProjectLayers(
 
         if (result) {
           layersAdded++;
-          mapLogger.log(`✅ Added WMS layer: ${item.name} (${item.id})`);
+          mapLogger.log(`✅ Added WMS layer: ${item.name} (ID: ${item.id})`);
         }
       }
 
