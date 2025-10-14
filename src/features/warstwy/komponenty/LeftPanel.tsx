@@ -823,6 +823,8 @@ const LeftPanel: React.FC<LeftPanelProps> = ({ isOwner = true }) => {
         open={editLayerStyleModalOpen}
         onClose={() => setEditLayerStyleModalOpen(false)}
         layerName={selectedLayer?.name}
+        layerId={selectedLayer?.id}
+        projectName={projectName}
       />
     </>
   );

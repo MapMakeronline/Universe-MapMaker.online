@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -21,6 +21,7 @@ import {
   TableRow,
   TableCell,
   Collapse,
+  CircularProgress,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import AddIcon from '@mui/icons-material/Add';
@@ -28,11 +29,30 @@ import RemoveIcon from '@mui/icons-material/Remove';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import { useTheme } from '@mui/material/styles';
+import { useGetRendererQuery, useSetStyleMutation, useClassifyMutation } from '@/redux/api/stylesApi';
+import { useGetLayerAttributesQuery } from '@/redux/api/layersApi';
+import { showSuccess, showError } from '@/redux/slices/notificationSlice';
+import { useAppDispatch } from '@/redux/hooks';
+import {
+  hexToRgba,
+  rgbaToHex,
+  getUnitValue,
+  getUnitName,
+  getStrokeStyleValue,
+  getStrokeStyleName,
+  getJoinStyleValue,
+  getJoinStyleName,
+  alphaToOpacity,
+  opacityToAlpha,
+} from '@/utils/colorConversion';
+import type { SymbolLayer, SimpleFillAttributes, Symbol as BackendSymbol, Category } from '@/redux/api/stylesApi';
 
 interface EditLayerStyleModalProps {
   open: boolean;
   onClose: () => void;
   layerName?: string;
+  layerId?: string; // UUID warstwy
+  projectName?: string; // Nazwa projektu z URL
 }
 
 // Interface for single fill layer

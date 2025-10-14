@@ -60,7 +60,8 @@
       "Bash(sudo find:*)",
       "Bash(sudo docker ps:*)",
       "Bash(git restore:*)",
-      "Bash(git revert:*)"
+      "Bash(git revert:*)",
+      "Bash(wc:*)"
     ],
     "deny": [],
     "ask": []
