@@ -589,3 +589,58 @@ export async function updateProjectLogo(projectName: string): Promise<boolean> {
     return false;
   }
 }
+
+/**
+ * Add all project layers from QGIS tree structure
+ *
+ * Recursively processes layer tree and adds all VectorLayer/RasterLayer as WMS layers.
+ * This matches the old project's `addProjectLayers()` function.
+ *
+ * @param map Mapbox GL JS map instance
+ * @param items Layer tree items from QGIS Server (can be nested groups)
+ * @param projectName Project name
+ * @returns Number of layers added
+ */
+export function addProjectLayers(
+  map: mapboxgl.Map,
+  items: any[],
+  projectName: string
+): number {
+  let layersAdded = 0;
+
+  const processItems = (items: any[]) => {
+    items.forEach((item) => {
+      // Add VectorLayer or RasterLayer as WMS
+      if (item.type === 'VectorLayer' || item.type === 'RasterLayer') {
+        const result = addWMSLayer(map, {
+          layerName: item.id || item.name,
+          projectName,
+          opacity: item.opacity !== undefined ? item.opacity / 255 : 1, // QGIS uses 0-255, we use 0-1
+          visible: item.visible !== false,
+          minZoom: 0,
+          maxZoom: 22,
+          crs: 'EPSG:3857',
+        });
+
+        if (result) {
+          layersAdded++;
+          mapLogger.log(`✅ Added WMS layer: ${item.name} (${item.id})`);
+        }
+      }
+
+      // Recursively process group children
+      if (item.type === 'group' && item.children && item.children.length > 0) {
+        processItems(item.children);
+      }
+    });
+  };
+
+  mapLogger.log(`📦 Adding project layers for: ${projectName}`);
+  processItems(items);
+  mapLogger.log(`✅ Added ${layersAdded} WMS layers`);
+
+  // Update project logo after adding all layers
+  updateProjectLogo(projectName);
+
+  return layersAdded;
+}

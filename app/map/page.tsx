@@ -7,9 +7,7 @@ import MapContainer from '@/features/mapa/komponenty/MapContainer';
 import LeftPanel from '@/features/warstwy/komponenty/LeftPanel';
 import RightToolbar from '@/features/narzedzia/RightToolbar';
 import { QGISProjectLoader } from '@/src/components/qgis/QGISProjectLoader';
-import { QGISLayerRenderer } from '@/src/components/qgis/QGISLayerRenderer';
-import { WMSLayerRenderer } from '@/src/components/qgis/WMSLayerRenderer';
-import { shouldUseWMS } from '@/src/components/qgis/layerRenderingUtils';
+import { QGISProjectLayersLoader } from '@/src/components/qgis/QGISProjectLayersLoader';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import { setCurrentProject } from '@/redux/slices/projectsSlice';
 import { loadLayers, resetLayers } from '@/redux/slices/layersSlice';
@@ -44,28 +42,6 @@ function convertQGISToLayerNode(qgisNode: QGISLayerNode): LayerNode {
   }
 
   return baseNode;
-}
-
-/**
- * Collect all visible layers (flatten nested structure)
- * For rendering on map - we need flat list of all layers
- */
-function collectAllLayers(nodes: LayerNode[]): LayerNode[] {
-  const result: LayerNode[] = [];
-
-  for (const node of nodes) {
-    // Add layer (not group) nodes
-    if (node.type !== 'group') {
-      result.push(node);
-    }
-
-    // Recursively collect children
-    if (node.children && node.children.length > 0) {
-      result.push(...collectAllLayers(node.children));
-    }
-  }
-
-  return result;
 }
 
 export default function MapPage() {
@@ -210,25 +186,17 @@ export default function MapPage() {
               👁️ Tryb podglądu (tylko odczyt)
             </Box>
           )}
-          <MapContainer projectName={projectName || undefined} />
-          {projectName && <QGISProjectLoader projectName={projectName} />}
-          {/* Render layers: WMS for complex styled layers, WFS for simple interactive layers */}
-          {projectName && layers && collectAllLayers(layers).map((layer) => {
-            const useWMS = shouldUseWMS(layer, projectName);
-            return useWMS ? (
-              <WMSLayerRenderer
-                key={layer.id}
+          <MapContainer projectName={projectName || undefined}>
+            {/* Load QGIS project metadata (extent, layers tree) */}
+            {projectName && <QGISProjectLoader projectName={projectName} />}
+            {/* Load ALL WMS layers at once (matches old project pattern) */}
+            {projectName && projectData && (
+              <QGISProjectLayersLoader
                 projectName={projectName}
-                layer={layer}
+                projectData={projectData}
               />
-            ) : (
-              <QGISLayerRenderer
-                key={layer.id}
-                projectName={projectName}
-                layer={layer}
-              />
-            );
-          })}
+            )}
+          </MapContainer>
         </Box>
         <RightToolbar />
       </Box>
