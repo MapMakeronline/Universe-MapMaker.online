@@ -205,6 +205,4 @@ const MobileFAB: React.FC<MobileFABProps> = () => {
   return renderFAB();
 };
 
-// PERFORMANCE: Memo to prevent re-renders when parent (MapContainer) re-renders
-// This component only needs to re-render when draw or identify state changes, not on viewState changes
-export default React.memo(MobileFAB);
+export default MobileFAB;

@@ -344,6 +344,4 @@ const IdentifyTool = () => {
   );
 };
 
-// PERFORMANCE: Memo to prevent re-renders when parent (MapContainer) re-renders
-// This component only needs to re-render when identify or features state changes, not on viewState changes
-export default React.memo(IdentifyTool);
+export default IdentifyTool;
