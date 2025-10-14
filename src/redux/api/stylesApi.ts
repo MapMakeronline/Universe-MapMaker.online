@@ -70,7 +70,6 @@ export interface FillConfig {
 /** Main symbol structure */
 export interface Symbol {
   symbol_type: SymbolType;
-  id: string;
   fill: FillConfig;
   fills: SymbolLayer[];
 }

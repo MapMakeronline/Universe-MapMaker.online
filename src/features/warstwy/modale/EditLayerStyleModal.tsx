@@ -253,6 +253,8 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
   };
 
   const handleSave = async () => {
+    console.log('🔵 handleSave called', { projectName, layerId, activeTab });
+
     if (!projectName || !layerId) {
       dispatch(showError('Brak wymaganych danych projektu'));
       return;
@@ -287,7 +289,6 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
 
         const backendSymbol: BackendSymbol = {
           symbol_type: 'fill',
-          id: '0',
           fill: {
             color: hexToRgba(fillLayers[0].fillColor, opacityToAlpha(fillLayers[0].fillOpacity)),
             opacity: fillLayers[0].fillOpacity / 100,
@@ -317,7 +318,6 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
         const backendCategories: Category[] = categorizedStyle.categories.map((cat, index) => ({
           symbol: {
             symbol_type: 'fill',
-            id: index.toString(),
             fill: {
               color: hexToRgba(cat.symbol, 255),
               opacity: 1.0,

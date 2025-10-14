@@ -61,7 +61,8 @@
       "Bash(sudo docker ps:*)",
       "Bash(git restore:*)",
       "Bash(git revert:*)",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "Bash(git ls-tree:*)"
     ],
     "deny": [],
     "ask": []
