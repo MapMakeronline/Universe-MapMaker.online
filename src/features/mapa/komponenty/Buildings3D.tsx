@@ -216,4 +216,6 @@ const Buildings3D = () => {
   return null;
 };
 
-export default Buildings3D;
+// PERFORMANCE: Memo to prevent re-renders when parent (MapContainer) re-renders
+// This component only needs to re-render when mapStyleKey changes, not on viewState changes
+export default React.memo(Buildings3D);

@@ -229,4 +229,6 @@ const DrawTools: React.FC = () => {
   return null; // This component doesn't render anything
 };
 
-export default DrawTools;
+// PERFORMANCE: Memo to prevent re-renders when parent (MapContainer) re-renders
+// This component only needs to re-render when draw state changes, not on viewState changes
+export default React.memo(DrawTools);
