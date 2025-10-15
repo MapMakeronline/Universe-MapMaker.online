@@ -34,18 +34,16 @@ const GeolocationFAB: React.FC = () => {
     }
   }
 
-  const fabRightPosition = isMobile ? '16px' : '24px'
-
   return (
     <Fab
       onClick={handleGeolocation}
       sx={{
         position: 'fixed',
-        bottom: 16,
-        right: fabRightPosition,
+        bottom: 86, // Above QGISIdentifyTool (16 + 56 + 14 spacing)
+        right: 16,
         zIndex: 1400,
-        width: isMobile ? 64 : 56,
-        height: isMobile ? 64 : 56,
+        width: 56,
+        height: 56,
         bgcolor: theme.palette.primary.main,
         color: 'white',
         transition: 'all 0.3s ease',
@@ -56,7 +54,7 @@ const GeolocationFAB: React.FC = () => {
         boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
       }}
     >
-      <MyLocation sx={{ fontSize: isMobile ? 32 : 24 }} />
+      <MyLocation sx={{ fontSize: 24 }} />
     </Fab>
   )
 }

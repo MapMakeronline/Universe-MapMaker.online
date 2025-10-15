@@ -182,20 +182,9 @@ export function QGISProjectLoader({ projectName, onLoad }: QGISProjectLoaderProp
     );
   }
 
-  if (!data) return null;
-
-  return (
-    <Box sx={{ position: 'absolute', top: 16, left: 16, zIndex: 1000 }}>
-      <Alert severity="success">
-        <Typography variant="body2">
-          Projekt QGIS: <strong>{data.name}</strong>
-        </Typography>
-        <Typography variant="caption">
-          Załadowano warstw: {loadedLayers.size}
-        </Typography>
-      </Alert>
-    </Box>
-  );
+  // Project loaded successfully - no visual indicator needed
+  // Layers are shown in LeftPanel layer tree
+  return null;
 }
 
 /**

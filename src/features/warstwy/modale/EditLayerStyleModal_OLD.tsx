@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -28,19 +28,9 @@ import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
-import UploadFileIcon from '@mui/icons-material/UploadFile';
 import { useTheme } from '@mui/material/styles';
-import {
-  useGetRendererQuery,
-  useSetStyleMutation,
-  useClassifyMutation,
-} from '@/redux/api/stylesApi';
-import {
-  useGetLayerAttributesQuery,
-  useImportStyleMutation,
-  useLazyExportStyleQuery,
-  useAddLabelMutation,
-} from '@/redux/api/layersApi';
+import { useGetRendererQuery, useSetStyleMutation, useClassifyMutation } from '@/redux/api/stylesApi';
+import { useGetLayerAttributesQuery } from '@/redux/api/layersApi';
 import { showSuccess, showError } from '@/redux/slices/notificationSlice';
 import { useAppDispatch } from '@/redux/hooks';
 import {
@@ -98,9 +88,6 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
   const dispatch = useAppDispatch();
   const [activeTab, setActiveTab] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [replaceExistingStyle, setReplaceExistingStyle] = useState(true);
 
   // Tab 1: Pojedynczy symbol - ARRAY of fill layers
   const [fillLayers, setFillLayers] = useState<FillLayer[]>([
@@ -127,15 +114,6 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
     categories: [],
   });
 
-  // Tab 4: Etykietowanie - state
-  const [labelConfig, setLabelConfig] = useState({
-    columnName: '',
-    color: '#000000',
-    size: 8,
-    minScale: 1,
-    maxScale: 1000000,
-  });
-
   // RTK Query hooks
   const { data: rendererData, isLoading: isLoadingRenderer } = useGetRendererQuery(
     { project: projectName!, layer_id: layerId! },
@@ -149,11 +127,8 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
 
   const [setStyle, { isLoading: isSaving }] = useSetStyleMutation();
   const [classify, { isLoading: isClassifying }] = useClassifyMutation();
-  const [importStyle, { isLoading: isImporting }] = useImportStyleMutation();
-  const [triggerExportStyle, { isLoading: isExporting }] = useLazyExportStyleQuery();
-  const [addLabel, { isLoading: isAddingLabel }] = useAddLabelMutation();
 
-  // Load existing style when modal opens (same as original)
+  // Load existing style when modal opens
   useEffect(() => {
     if (!open || !rendererData) return;
 
@@ -161,6 +136,7 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
 
     try {
       if (rendererData.data.renderer === 'Single Symbol') {
+        // Convert backend Single Symbol to form state
         const backendSymbol = rendererData.data.symbols;
         const convertedFillLayers: FillLayer[] = backendSymbol.fills.map((fill, index) => ({
           id: fill.id || `layer-${index}`,
@@ -175,11 +151,12 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
           offsetX: fill.attributes.offset.x,
           offsetY: fill.attributes.offset.y,
           unit: getUnitName(fill.attributes.offset.unit),
-          expanded: index === 0,
+          expanded: index === 0, // Expand first layer by default
         }));
         setFillLayers(convertedFillLayers);
-        setActiveTab(0);
+        setActiveTab(0); // Switch to Single Symbol tab
       } else if (rendererData.data.renderer === 'Categorized') {
+        // Convert backend Categorized to form state
         const convertedCategories: CategorizedValue[] = rendererData.data.categories.map(cat => ({
           symbol: rgbaToHex(cat.symbol.fill.color),
           value: cat.value,
@@ -189,7 +166,7 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
           columnName: rendererData.data.value,
           categories: convertedCategories,
         });
-        setActiveTab(1);
+        setActiveTab(1); // Switch to Categorized tab
       }
     } catch (error) {
       console.error('❌ Error loading style:', error);
@@ -256,6 +233,7 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
 
       console.log('✅ Classified categories:', result.data);
 
+      // Convert backend categories to form state
       const convertedCategories: CategorizedValue[] = result.data.map(cat => ({
         symbol: rgbaToHex(cat.symbol.fill.color),
         value: cat.value,
@@ -274,120 +252,6 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
     }
   };
 
-  // Handle file selection for import (Tab 3)
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const fileName = file.name.toLowerCase();
-      if (fileName.endsWith('.qml') || fileName.endsWith('.sld')) {
-        setSelectedFile(file);
-        dispatch(showSuccess(`Wybrano plik: ${file.name}`));
-      } else {
-        dispatch(showError('Nieobsługiwany format pliku. Wybierz plik .qml lub .sld'));
-        event.target.value = '';
-      }
-    }
-  };
-
-  // Handle import style from QML/SLD (Tab 3)
-  const handleImportStyle = async () => {
-    if (!selectedFile || !projectName || !layerId) {
-      dispatch(showError('Nie wybrano pliku lub brak danych projektu'));
-      return;
-    }
-
-    setIsLoading(true);
-
-    try {
-      await importStyle({
-        project: projectName,
-        layer_id: layerId,
-        styleFile: selectedFile,
-      }).unwrap();
-
-      dispatch(showSuccess('Styl został pomyślnie zaimportowany'));
-      setSelectedFile(null);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-      onClose();
-    } catch (error: any) {
-      console.error('❌ Import style error:', error);
-      console.error('❌ Error data:', JSON.stringify(error?.data, null, 2));
-      console.error('❌ Error status:', error?.status);
-
-      const errorMessage = error?.data?.message
-        || error?.data?.error
-        || error?.message
-        || 'Nie udało się zaimportować stylu';
-
-      dispatch(showError(errorMessage));
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Handle export style (Tab 1: Pobierz)
-  const handleExportStyle = async (format: 'qml' | 'sld') => {
-    if (!projectName || !layerId) {
-      dispatch(showError('Brak wymaganych danych projektu'));
-      return;
-    }
-
-    try {
-      const result = await triggerExportStyle({
-        project: projectName,
-        layer_id: layerId,
-        style_format: format,
-      }).unwrap();
-
-      // Create blob and download
-      const blob = result as Blob;
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${layerName}_style.${format}`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-
-      dispatch(showSuccess(`Styl został pobrany jako ${format.toUpperCase()}`));
-    } catch (error: any) {
-      console.error('❌ Export style error:', error);
-      dispatch(showError(error?.data?.message || 'Nie udało się pobrać stylu'));
-    }
-  };
-
-  // Handle add label (Tab 3: Etykietowanie)
-  const handleAddLabel = async () => {
-    if (!projectName || !layerId || !labelConfig.columnName) {
-      dispatch(showError('Wybierz kolumnę dla etykiet'));
-      return;
-    }
-
-    try {
-      // Convert hex color to RGBA array
-      const colorRgba = hexToRgba(labelConfig.color, 255);
-
-      await addLabel({
-        project: projectName,
-        layer_id: layerId,
-        textColor: colorRgba,
-        fontSize: labelConfig.size,
-        minScale: labelConfig.minScale,
-        maxScale: labelConfig.maxScale,
-        columnName: labelConfig.columnName,
-      }).unwrap();
-
-      dispatch(showSuccess('Etykiety zostały dodane do warstwy'));
-      onClose();
-    } catch (error: any) {
-      console.error('❌ Add label error:', error);
-      dispatch(showError(error?.data?.message || 'Nie udało się dodać etykiet'));
-    }
-  };
-
   const handleSave = async () => {
     console.log('🔵 handleSave called', { projectName, layerId, activeTab });
 
@@ -396,24 +260,18 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
       return;
     }
 
-    // Tab 3 uses separate import handler
-    if (activeTab === 2) {
-      await handleImportStyle();
-      return;
-    }
-
     setIsLoading(true);
 
     try {
       if (activeTab === 0) {
-        // Tab 1: Single Symbol - same as original implementation
+        // Tab 1: Single Symbol - convert form state to backend format
         const backendFills: SymbolLayer[] = fillLayers.map((fill, index) => ({
           symbol_type: fill.fillType as any,
           id: fill.id,
           enabled: true,
           attributes: {
             fill_color: hexToRgba(fill.fillColor, opacityToAlpha(fill.fillOpacity)),
-            fill_style: 1,
+            fill_style: 1, // Solid fill
             stroke_color: hexToRgba(fill.strokeColor, opacityToAlpha(fill.strokeOpacity)),
             stroke_width: {
               width_value: fill.strokeWidth,
@@ -439,19 +297,23 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
           fills: backendFills,
         };
 
-        await setStyle({
+        const payload = {
           project: projectName,
           id: layerId,
           style_configuration: {
-            renderer: 'Single Symbol' as const,
+            renderer: 'Single Symbol',
             symbols: backendSymbol,
           },
-        }).unwrap();
+        };
+
+        console.log('📤 Sending payload to backend:', JSON.stringify(payload, null, 2));
+
+        await setStyle(payload).unwrap();
 
         dispatch(showSuccess('Styl warstwy został zapisany'));
         onClose();
       } else {
-        // Tab 2: Categorized - same as original
+        // Tab 2: Categorized - convert form state to backend format
         if (!categorizedStyle.columnName || categorizedStyle.categories.length === 0) {
           dispatch(showError('Dodaj co najmniej jedną kategorię'));
           return;
@@ -537,7 +399,7 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
           m: 0,
         }}
       >
-        Zarządzaj stylem
+        Edytuj styl warstwy
         <IconButton
           onClick={onClose}
           size="small"
@@ -565,10 +427,8 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
           },
         }}
       >
-        <Tab label="Edytuj" />
-        <Tab label="Pobierz" />
-        <Tab label="Importuj" />
-        <Tab label="Etykietowanie" />
+        <Tab label="Pojedynczy symbol" />
+        <Tab label="Wartość unikalna" />
       </Tabs>
 
       {/* Content */}
@@ -580,7 +440,7 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
           minHeight: '400px',
         }}
       >
-        {/* Tab 1: Edytuj (Same as Pojedynczy symbol in original) */}
+        {/* Tab 1: Pojedynczy symbol - MULTIPLE FILL LAYERS */}
         {activeTab === 0 && (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             {/* Wypełnienie + button */}
@@ -603,7 +463,7 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
               </IconButton>
             </Box>
 
-            {/* List of fill layers - SAME AS ORIGINAL (lines 467-745) */}
+            {/* List of fill layers */}
             {fillLayers.map((fillLayer, index) => (
               <Box
                 key={fillLayer.id}
@@ -613,7 +473,7 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
                   overflow: 'hidden',
                 }}
               >
-                {/* Fill layer header */}
+                {/* Fill layer header (collapsible) */}
                 <Box
                   sx={{
                     bgcolor: '#3a4556',
@@ -654,9 +514,25 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
                   </IconButton>
                 </Box>
 
-                {/* Fill layer content */}
+                {/* Fill layer content (collapsible) */}
                 <Collapse in={fillLayer.expanded}>
                   <Box sx={{ bgcolor: 'white', p: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    {/* Typ symbolu */}
+                    <Box>
+                      <Typography sx={{ fontSize: '14px', fontWeight: 500, mb: 1 }}>
+                        Typ symbolu
+                      </Typography>
+                      <TextField
+                        select
+                        fullWidth
+                        size="small"
+                        value={fillLayer.fillType}
+                        onChange={(e) => updateFillLayer(fillLayer.id, { fillType: e.target.value })}
+                      >
+                        <MenuItem value="Simple Fill">Simple Fill</MenuItem>
+                      </TextField>
+                    </Box>
+
                     {/* Kolor wypełnienia */}
                     <Box>
                       <Typography sx={{ fontSize: '14px', fontWeight: 500, mb: 1 }}>
@@ -676,6 +552,21 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
                           onChange={(e) => updateFillLayer(fillLayer.id, { fillColor: e.target.value })}
                         />
                       </Box>
+                    </Box>
+
+                    {/* Styl wypełnienia */}
+                    <Box>
+                      <Typography sx={{ fontSize: '14px', fontWeight: 500, mb: 1 }}>
+                        Styl wypełnienia
+                      </Typography>
+                      <TextField
+                        select
+                        fullWidth
+                        size="small"
+                        value="Wypełniony"
+                      >
+                        <MenuItem value="Wypełniony">Wypełniony</MenuItem>
+                      </TextField>
                     </Box>
 
                     {/* Kolor obrysu */}
@@ -704,13 +595,99 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
                       <Typography sx={{ fontSize: '14px', fontWeight: 500, mb: 1 }}>
                         Szerokość obrysu
                       </Typography>
+                      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                        <TextField
+                          fullWidth
+                          size="small"
+                          type="number"
+                          value={fillLayer.strokeWidth}
+                          onChange={(e) => updateFillLayer(fillLayer.id, { strokeWidth: parseFloat(e.target.value) })}
+                        />
+                        <TextField
+                          select
+                          size="small"
+                          value={fillLayer.unit}
+                          onChange={(e) => updateFillLayer(fillLayer.id, { unit: e.target.value })}
+                          sx={{ minWidth: '140px' }}
+                        >
+                          <MenuItem value="Milimetry">Milimetry</MenuItem>
+                          <MenuItem value="Piksele">Piksele</MenuItem>
+                          <MenuItem value="Punkty">Punkty</MenuItem>
+                        </TextField>
+                      </Box>
+                    </Box>
+
+                    {/* Styl obrysu */}
+                    <Box>
+                      <Typography sx={{ fontSize: '14px', fontWeight: 500, mb: 1 }}>
+                        Styl obrysu
+                      </Typography>
                       <TextField
+                        select
                         fullWidth
                         size="small"
-                        type="number"
-                        value={fillLayer.strokeWidth}
-                        onChange={(e) => updateFillLayer(fillLayer.id, { strokeWidth: parseFloat(e.target.value) })}
-                      />
+                        value={fillLayer.strokeStyle}
+                        onChange={(e) => updateFillLayer(fillLayer.id, { strokeStyle: e.target.value })}
+                      >
+                        <MenuItem value="Linia ciągła">Linia ciągła</MenuItem>
+                        <MenuItem value="Linia przerywana">Linia przerywana</MenuItem>
+                        <MenuItem value="Linia kropkowana">Linia kropkowana</MenuItem>
+                      </TextField>
+                    </Box>
+
+                    {/* Styl połączenia */}
+                    <Box>
+                      <Typography sx={{ fontSize: '14px', fontWeight: 500, mb: 1 }}>
+                        Styl połączenia
+                      </Typography>
+                      <TextField
+                        select
+                        fullWidth
+                        size="small"
+                        value={fillLayer.joinStyle}
+                        onChange={(e) => updateFillLayer(fillLayer.id, { joinStyle: e.target.value })}
+                      >
+                        <MenuItem value="Ścięty">Ścięty</MenuItem>
+                        <MenuItem value="Zaokrąglony">Zaokrąglony</MenuItem>
+                        <MenuItem value="Ostry">Ostry</MenuItem>
+                      </TextField>
+                    </Box>
+
+                    {/* Przesunięcie */}
+                    <Box>
+                      <Typography sx={{ fontSize: '14px', fontWeight: 500, mb: 1 }}>
+                        Przesunięcie
+                      </Typography>
+                      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flex: 1 }}>
+                          <Typography sx={{ fontSize: '12px', minWidth: '20px' }}>X:</Typography>
+                          <TextField
+                            fullWidth
+                            size="small"
+                            type="number"
+                            value={fillLayer.offsetX}
+                            onChange={(e) => updateFillLayer(fillLayer.id, { offsetX: parseFloat(e.target.value) })}
+                          />
+                        </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flex: 1 }}>
+                          <Typography sx={{ fontSize: '12px', minWidth: '20px' }}>Y:</Typography>
+                          <TextField
+                            fullWidth
+                            size="small"
+                            type="number"
+                            value={fillLayer.offsetY}
+                            onChange={(e) => updateFillLayer(fillLayer.id, { offsetY: parseFloat(e.target.value) })}
+                          />
+                        </Box>
+                        <TextField
+                          select
+                          size="small"
+                          value={fillLayer.unit}
+                          sx={{ minWidth: '140px' }}
+                        >
+                          <MenuItem value="Milimetry">Milimetry</MenuItem>
+                        </TextField>
+                      </Box>
                     </Box>
 
                     {/* Krycie (Opacity) */}
@@ -744,6 +721,24 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
                         }}
                       />
                     </Box>
+
+                    {/* Jednostka */}
+                    <Box>
+                      <Typography sx={{ fontSize: '14px', fontWeight: 500, mb: 1 }}>
+                        Jednostka
+                      </Typography>
+                      <TextField
+                        select
+                        fullWidth
+                        size="small"
+                        value={fillLayer.unit}
+                        onChange={(e) => updateFillLayer(fillLayer.id, { unit: e.target.value })}
+                      >
+                        <MenuItem value="Milimetry">Milimetry</MenuItem>
+                        <MenuItem value="Piksele">Piksele</MenuItem>
+                        <MenuItem value="Punkty">Punkty</MenuItem>
+                      </TextField>
+                    </Box>
                   </Box>
                 </Collapse>
               </Box>
@@ -751,152 +746,8 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
           </Box>
         )}
 
-        {/* Tab 2: Pobierz (Download style file) */}
+        {/* Tab 2: Wartość unikalna */}
         {activeTab === 1 && (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'center', justifyContent: 'center', minHeight: '300px' }}>
-            <Typography sx={{ fontSize: '16px', fontWeight: 500, color: theme.palette.text.primary }}>
-              Pobierz styl warstwy
-            </Typography>
-            <Typography sx={{ fontSize: '14px', color: theme.palette.text.secondary, textAlign: 'center', maxWidth: '400px' }}>
-              Wybierz format do zapisania stylu warstwy ({layerName})
-            </Typography>
-
-            {/* Format selection buttons */}
-            <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
-              <Button
-                variant="contained"
-                size="large"
-                onClick={() => handleExportStyle('qml')}
-                disabled={isExporting}
-                sx={{
-                  bgcolor: '#4a5568',
-                  '&:hover': { bgcolor: '#2d3748' },
-                  minWidth: '150px',
-                  py: 1.5,
-                }}
-              >
-                {isExporting ? <CircularProgress size={20} sx={{ color: 'white' }} /> : 'Pobierz QML'}
-              </Button>
-              <Button
-                variant="contained"
-                size="large"
-                onClick={() => handleExportStyle('sld')}
-                disabled={isExporting}
-                sx={{
-                  bgcolor: '#4a5568',
-                  '&:hover': { bgcolor: '#2d3748' },
-                  minWidth: '150px',
-                  py: 1.5,
-                }}
-              >
-                {isExporting ? <CircularProgress size={20} sx={{ color: 'white' }} /> : 'Pobierz SLD'}
-              </Button>
-            </Box>
-
-            <Typography sx={{ fontSize: '12px', color: theme.palette.text.secondary, textAlign: 'center', maxWidth: '500px', mt: 2 }}>
-              • QML - format QGIS (rekomendowany dla projektów QGIS)<br />
-              • SLD - uniwersalny format OGC (kompatybilny z GeoServer, MapServer)
-            </Typography>
-          </Box>
-        )}
-
-        {/* Tab 3: Importuj */}
-        {activeTab === 2 && (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-            <Box>
-              <Typography sx={{ fontSize: '14px', color: theme.palette.text.secondary }}>
-                Zaimportuj styl z pliku QML lub SLD
-              </Typography>
-              <Typography sx={{ fontSize: '12px', color: theme.palette.warning.main, mt: 0.5 }}>
-                ⚠️ Uwaga: Import dodaje nowe warstwy symbolizacji do istniejących. Jeśli chcesz zastąpić cały styl, najpierw usuń istniejące warstwy w zakładce &quot;Edytuj&quot;.
-              </Typography>
-            </Box>
-
-            {/* File upload area */}
-            <Box
-              onClick={() => fileInputRef.current?.click()}
-              sx={{
-                border: `2px dashed ${theme.palette.divider}`,
-                borderRadius: '8px',
-                p: 4,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: 2,
-                cursor: 'pointer',
-                bgcolor: 'white',
-                transition: 'all 0.2s',
-                '&:hover': {
-                  borderColor: theme.palette.primary.main,
-                  bgcolor: '#fafafa',
-                },
-              }}
-            >
-              <UploadFileIcon sx={{ fontSize: '48px', color: theme.palette.text.secondary }} />
-              <Typography sx={{ fontSize: '14px', fontWeight: 500, textAlign: 'center' }}>
-                {selectedFile ? selectedFile.name : 'Upuść plik tutaj lub kliknij, aby wybrać z dysku (.qml)'}
-              </Typography>
-              <Typography sx={{ fontSize: '12px', color: theme.palette.text.secondary, textAlign: 'center' }}>
-                Obsługiwane formaty: QML, SLD
-              </Typography>
-            </Box>
-
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".qml,.sld"
-              onChange={handleFileSelect}
-              style={{ display: 'none' }}
-            />
-
-            {selectedFile && (
-              <Box
-                sx={{
-                  bgcolor: 'white',
-                  p: 2,
-                  borderRadius: '4px',
-                  border: `1px solid ${theme.palette.divider}`,
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
-              >
-                <Typography sx={{ fontSize: '14px', fontWeight: 500 }}>
-                  {selectedFile.name}
-                </Typography>
-                <IconButton
-                  size="small"
-                  onClick={() => {
-                    setSelectedFile(null);
-                    if (fileInputRef.current) {
-                      fileInputRef.current.value = '';
-                    }
-                  }}
-                  sx={{ color: theme.palette.text.secondary }}
-                >
-                  <CloseIcon sx={{ fontSize: '18px' }} />
-                </IconButton>
-              </Box>
-            )}
-
-            <Button
-              variant="contained"
-              fullWidth
-              onClick={handleImportStyle}
-              disabled={!selectedFile || isImporting}
-              sx={{
-                bgcolor: theme.palette.primary.main,
-                '&:hover': { bgcolor: theme.palette.primary.dark },
-                py: 1.5,
-              }}
-            >
-              {isImporting ? <CircularProgress size={20} sx={{ color: 'white' }} /> : 'Importuj'}
-            </Button>
-          </Box>
-        )}
-
-        {/* Tab 4: Etykietowanie */}
-        {activeTab === 3 && (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
             {/* Nazwa kolumny */}
             <Box>
@@ -907,10 +758,9 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
                 select
                 fullWidth
                 size="small"
-                value={labelConfig.columnName}
-                onChange={(e) => setLabelConfig({ ...labelConfig, columnName: e.target.value })}
-                placeholder="Wybierz kolumnę z tekstem etykiety"
-                sx={{ bgcolor: 'white' }}
+                value={categorizedStyle.columnName}
+                onChange={(e) => setCategorizedStyle({ ...categorizedStyle, columnName: e.target.value })}
+                placeholder="Wybierz z listy"
               >
                 <MenuItem value="">Wybierz z listy</MenuItem>
                 {attributesData?.attributes.map((attr) => (
@@ -921,126 +771,160 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
               </TextField>
             </Box>
 
-            {/* Kolor etykiety */}
-            <Box>
-              <Typography sx={{ fontSize: '14px', fontWeight: 500, mb: 1 }}>
-                Kolor etykiety
-              </Typography>
-              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                <input
-                  type="color"
-                  value={labelConfig.color}
-                  onChange={(e) => setLabelConfig({ ...labelConfig, color: e.target.value })}
-                  style={{
-                    width: '60px',
-                    height: '38px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '4px',
-                    cursor: 'pointer'
-                  }}
-                />
-                <TextField
-                  fullWidth
-                  size="small"
-                  value={labelConfig.color}
-                  onChange={(e) => setLabelConfig({ ...labelConfig, color: e.target.value })}
-                  sx={{ bgcolor: 'white' }}
-                />
-              </Box>
-            </Box>
-
-            {/* Rozmiar etykiety */}
-            <Box>
-              <Typography sx={{ fontSize: '14px', fontWeight: 500, mb: 1 }}>
-                Rozmiar etykiety
-              </Typography>
-              <TextField
-                select
-                fullWidth
+            {/* Przyciski akcji */}
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+              <Button
+                variant="contained"
                 size="small"
-                value={labelConfig.size}
-                onChange={(e) => setLabelConfig({ ...labelConfig, size: parseInt(e.target.value) })}
-                sx={{ bgcolor: 'white' }}
+                sx={{
+                  bgcolor: '#4a5568',
+                  '&:hover': { bgcolor: '#2d3748' },
+                  textTransform: 'none',
+                  fontSize: '13px',
+                }}
+                onClick={handleClassify}
+                disabled={!categorizedStyle.columnName || isClassifying}
               >
-                {[6, 7, 8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 40, 48].map((size) => (
-                  <MenuItem key={size} value={size}>
-                    {size} pt
-                  </MenuItem>
-                ))}
-              </TextField>
-            </Box>
-
-            {/* Minimalna skala */}
-            <Box>
-              <Typography sx={{ fontSize: '14px', fontWeight: 500, mb: 1 }}>
-                Minimalna skala
-              </Typography>
-              <TextField
-                select
-                fullWidth
+                Klasyfikuj
+              </Button>
+              <Button
+                variant="contained"
                 size="small"
-                value={labelConfig.minScale}
-                onChange={(e) => setLabelConfig({ ...labelConfig, minScale: parseInt(e.target.value) })}
-                sx={{ bgcolor: 'white' }}
+                sx={{
+                  bgcolor: '#4a5568',
+                  '&:hover': { bgcolor: '#2d3748' },
+                  textTransform: 'none',
+                  fontSize: '13px',
+                }}
+                onClick={() => {
+                  const newCategory: CategorizedValue = {
+                    symbol: '#ea8989', // default color
+                    value: '',
+                    legend: '',
+                  };
+                  setCategorizedStyle({
+                    ...categorizedStyle,
+                    categories: [...categorizedStyle.categories, newCategory],
+                  });
+                }}
               >
-                <MenuItem value={1}>1:1</MenuItem>
-                <MenuItem value={100}>1:100</MenuItem>
-                <MenuItem value={500}>1:500</MenuItem>
-                <MenuItem value={1000}>1:1,000</MenuItem>
-                <MenuItem value={2500}>1:2,500</MenuItem>
-                <MenuItem value={5000}>1:5,000</MenuItem>
-                <MenuItem value={10000}>1:10,000</MenuItem>
-                <MenuItem value={25000}>1:25,000</MenuItem>
-                <MenuItem value={50000}>1:50,000</MenuItem>
-              </TextField>
-              <Typography sx={{ fontSize: '12px', color: theme.palette.text.secondary, mt: 0.5 }}>
-                Etykiety będą widoczne przy zbliżeniu większym niż ta skala
-              </Typography>
-            </Box>
-
-            {/* Maksymalna skala */}
-            <Box>
-              <Typography sx={{ fontSize: '14px', fontWeight: 500, mb: 1 }}>
-                Maksymalna skala
-              </Typography>
-              <TextField
-                select
-                fullWidth
+                Dodaj
+              </Button>
+              <Button
+                variant="contained"
                 size="small"
-                value={labelConfig.maxScale}
-                onChange={(e) => setLabelConfig({ ...labelConfig, maxScale: parseInt(e.target.value) })}
-                sx={{ bgcolor: 'white' }}
+                sx={{
+                  bgcolor: '#4a5568',
+                  '&:hover': { bgcolor: '#2d3748' },
+                  textTransform: 'none',
+                  fontSize: '13px',
+                }}
+                onClick={() => {
+                  if (categorizedStyle.categories.length > 0) {
+                    setCategorizedStyle({
+                      ...categorizedStyle,
+                      categories: categorizedStyle.categories.slice(0, -1),
+                    });
+                  }
+                }}
               >
-                <MenuItem value={10000}>1:10,000</MenuItem>
-                <MenuItem value={25000}>1:25,000</MenuItem>
-                <MenuItem value={50000}>1:50,000</MenuItem>
-                <MenuItem value={100000}>1:100,000</MenuItem>
-                <MenuItem value={250000}>1:250,000</MenuItem>
-                <MenuItem value={500000}>1:500,000</MenuItem>
-                <MenuItem value={1000000}>1:1,000,000</MenuItem>
-                <MenuItem value={2500000}>1:2,500,000</MenuItem>
-                <MenuItem value={10000000}>1:10,000,000</MenuItem>
-              </TextField>
-              <Typography sx={{ fontSize: '12px', color: theme.palette.text.secondary, mt: 0.5 }}>
-                Etykiety będą widoczne przy oddaleniu mniejszym niż ta skala
-              </Typography>
+                Usuń
+              </Button>
+              <Button
+                variant="contained"
+                size="small"
+                sx={{
+                  bgcolor: '#4a5568',
+                  '&:hover': { bgcolor: '#2d3748' },
+                  textTransform: 'none',
+                  fontSize: '13px',
+                }}
+                onClick={() => setCategorizedStyle({ ...categorizedStyle, categories: [] })}
+              >
+                Usuń wszystkie
+              </Button>
             </Box>
 
-            {/* Add label button */}
-            <Button
-              variant="contained"
-              fullWidth
-              onClick={handleAddLabel}
-              disabled={!labelConfig.columnName || isAddingLabel}
-              sx={{
-                bgcolor: theme.palette.primary.main,
-                '&:hover': { bgcolor: theme.palette.primary.dark },
-                py: 1.5,
-                mt: 2,
-              }}
-            >
-              {isAddingLabel ? <CircularProgress size={20} sx={{ color: 'white' }} /> : 'Włącz'}
-            </Button>
+            {/* Tabela */}
+            <Box sx={{
+              border: `1px solid ${theme.palette.divider}`,
+              borderRadius: '4px',
+              overflow: 'hidden',
+            }}>
+              <Table size="small">
+                <TableHead>
+                  <TableRow sx={{ bgcolor: '#4a5568' }}>
+                    <TableCell sx={{ color: 'white', fontWeight: 600, fontSize: '13px', py: 1.5 }}>
+                      Symbol
+                    </TableCell>
+                    <TableCell sx={{ color: 'white', fontWeight: 600, fontSize: '13px', py: 1.5 }}>
+                      Wartość
+                    </TableCell>
+                    <TableCell sx={{ color: 'white', fontWeight: 600, fontSize: '13px', py: 1.5 }}>
+                      Legenda
+                    </TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {categorizedStyle.categories.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={3} sx={{ textAlign: 'center', py: 4, color: theme.palette.text.secondary, fontSize: '13px' }}>
+                        Brak kategorii. Kliknij "Dodaj" aby utworzyć nową kategorię.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    categorizedStyle.categories.map((category, index) => (
+                      <TableRow key={index} sx={{ '&:hover': { bgcolor: theme.palette.action.hover } }}>
+                        <TableCell sx={{ py: 1, width: '80px' }}>
+                          <input
+                            type="color"
+                            value={category.symbol}
+                            onChange={(e) => {
+                              const newCategories = [...categorizedStyle.categories];
+                              newCategories[index].symbol = e.target.value;
+                              setCategorizedStyle({ ...categorizedStyle, categories: newCategories });
+                            }}
+                            style={{
+                              width: '50px',
+                              height: '38px',
+                              border: '1px solid #d1d5db',
+                              borderRadius: '4px',
+                              cursor: 'pointer'
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell sx={{ py: 1 }}>
+                          <TextField
+                            fullWidth
+                            size="small"
+                            value={category.value}
+                            onChange={(e) => {
+                              const newCategories = [...categorizedStyle.categories];
+                              newCategories[index].value = e.target.value;
+                              setCategorizedStyle({ ...categorizedStyle, categories: newCategories });
+                            }}
+                            placeholder="Wartość"
+                          />
+                        </TableCell>
+                        <TableCell sx={{ py: 1 }}>
+                          <TextField
+                            fullWidth
+                            size="small"
+                            value={category.legend}
+                            onChange={(e) => {
+                              const newCategories = [...categorizedStyle.categories];
+                              newCategories[index].legend = e.target.value;
+                              setCategorizedStyle({ ...categorizedStyle, categories: newCategories });
+                            }}
+                            placeholder="Legenda"
+                          />
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </Box>
           </Box>
         )}
       </DialogContent>
@@ -1068,22 +952,19 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
             },
           }}
         >
-          {activeTab === 1 || activeTab === 3 ? 'Zamknij' : 'Anuluj'}
+          Anuluj
         </Button>
-        {/* Show Save/Import button only for tabs 0 and 2 */}
-        {(activeTab === 0 || activeTab === 2) && (
-          <Button
-            onClick={handleSave}
-            variant="contained"
-            disabled={isLoading || isSaving || (activeTab === 2 && !selectedFile)}
-            sx={{
-              bgcolor: theme.palette.primary.main,
-              '&:hover': { bgcolor: theme.palette.primary.dark },
-            }}
-          >
-            {isLoading || isSaving ? 'Zapisywanie...' : activeTab === 2 ? 'Importuj' : 'Zapisz'}
-          </Button>
-        )}
+        <Button
+          onClick={handleSave}
+          variant="contained"
+          disabled={isLoading || isSaving}
+          sx={{
+            bgcolor: theme.palette.primary.main,
+            '&:hover': { bgcolor: theme.palette.primary.dark },
+          }}
+        >
+          {isLoading || isSaving ? 'Zapisywanie...' : 'Zapisz'}
+        </Button>
       </DialogActions>
     </Dialog>
   );

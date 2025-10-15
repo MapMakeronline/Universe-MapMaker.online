@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useRef, useState, useEffect, useMemo } from 'react';
-import Map, { NavigationControl, GeolocateControl, FullscreenControl, ScaleControl, MapRef } from 'react-map-gl';
+import Map, { ScaleControl, MapRef } from 'react-map-gl';
 import Box from '@mui/material/Box';
 import Alert from '@mui/material/Alert';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
@@ -14,12 +14,13 @@ import MeasurementTools from '../narzedzia/MeasurementTools';
 import IdentifyTool from './IdentifyTool';
 import Buildings3D from './Buildings3D';
 import FeatureAttributesModal from '@/features/warstwy/modale/FeatureAttributesModal';
-import MobileFAB from './MobileFAB';
 import QGISIdentifyTool from './QGISIdentifyTool';
 import UserFAB from './UserFAB';
 import SearchFAB from './SearchFAB';
+import DroneFAB from './DroneFAB';
 import DocumentFAB from './DocumentFAB';
 import MeasurementFAB from './MeasurementFAB';
+import MobileFAB from './MobileFAB';
 import GeolocationFAB from './GeolocationFAB';
 
 // Import CSS dla Mapbox GL
@@ -33,10 +34,9 @@ interface MapContainerProps {
 const MapContainer: React.FC<MapContainerProps> = ({ children, projectName }) => {
   const dispatch = useAppDispatch();
   const mapRef = useRef<MapRef>(null);
-  const geolocateControlRef = useRef<any>(null);
   const [tokenError, setTokenError] = useState<string>('');
 
-  const { viewState, mapStyle, isFullscreen } = useAppSelector((state) => state.map);
+  const { viewState, mapStyle, isFullscreen, isMapLoaded } = useAppSelector((state) => state.map);
 
   // Check token on mount
   useEffect(() => {
@@ -233,38 +233,14 @@ const MapContainer: React.FC<MapContainerProps> = ({ children, projectName }) =>
           height: '100%',
         }}
       >
-        {/* Navigation Controls - lewy dolny róg */}
-        <NavigationControl
-          position="bottom-left"
-          showCompass={true}
-          showZoom={true}
-        />
-
-        {/* Geolocation Control - lewy dolny róg, poniżej navigation */}
-        <GeolocateControl
-          ref={geolocateControlRef}
-          position="bottom-left"
-          positionOptions={{ enableHighAccuracy: true }}
-          trackUserLocation={false}
-          showUserLocation={false}
-          showUserHeading={false}
-          fitBoundsOptions={{
-            maxZoom: 16,
-            duration: 1500, // Szybsza animacja (1.5s)
-          }}
-        />
-
-        {/* Fullscreen Control - lewy dolny róg, na dole */}
-        <FullscreenControl
-          position="bottom-left"
-        />
-
-        {/* Scale Control - lewy dolny róg */}
-        <ScaleControl
-          position="bottom-left"
-          maxWidth={100}
-          unit="metric"
-        />
+        {/* Scale Control - Bottom center with metric ruler (only after map loads) */}
+        {isMapLoaded && (
+          <ScaleControl
+            position="bottom-center"
+            maxWidth={200}
+            unit="metric"
+          />
+        )}
 
         {/* Geocoder - Search (disabled, now using SearchModal from RightToolbar) */}
         {/* <Geocoder /> */}
@@ -295,27 +271,20 @@ const MapContainer: React.FC<MapContainerProps> = ({ children, projectName }) =>
       {/* <SimpleDrawingToolbar />
       <SimpleMeasurementToolbar /> */}
 
-      {/* FAB Column (Right Side) - from top to bottom */}
+      {/* ===== FAB BUTTONS - Vertical Column on Right Side ===== */}
+      {/* Replaces the old RightToolbar - all functionality moved to FAB buttons */}
 
-      {/* User FAB - User account menu (bottom: 380px) */}
-      <UserFAB />
+      {/* TOP SECTION - Fixed from top */}
+      <UserFAB />           {/* User account (top: 16px) */}
+      <SearchFAB />         {/* Search (top: 86px) */}
+      <DroneFAB />          {/* Drone (top: 156px) */}
+      <DocumentFAB />       {/* Wypis i wyrys (top: 226px) */}
+      <MeasurementFAB />    {/* Mierzenie (top: 296px) */}
+      <MobileFAB />         {/* Rysowanie (top: 366px) */}
 
-      {/* Search FAB - Map search (bottom: 310px) */}
-      <SearchFAB />
-
-      {/* Document FAB - Wypis i wyrys (bottom: 240px) */}
-      <DocumentFAB />
-
-      {/* Measurement FAB - Mierzenie (bottom: 170px) */}
-      <MeasurementFAB />
-
-      {/* QGIS Identify Tool - bottom: 150px (already positioned) */}
-
-      {/* Mobile FAB - Drawing tools (bottom: 80px) */}
-      <MobileFAB />
-
-      {/* Geolocation FAB - Moja lokalizacja (bottom: 16px - lowest) */}
-      <GeolocationFAB />
+      {/* BOTTOM SECTION - Fixed from bottom */}
+      <GeolocationFAB />    {/* Geolocation (bottom: 86px) */}
+      {/* QGISIdentifyTool is rendered inside <Map> for map context access (bottom: 16px) */}
     </Box>
   );
 };

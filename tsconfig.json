@@ -35,7 +35,8 @@
       "@/mapbox/*": ["./src/mapbox/*"],
       "@/narzedzia/*": ["./src/narzedzia/*"],
       "@/typy/*": ["./src/typy/*"],
-      "@/utils/*": ["./src/utils/*"]
+      "@/utils/*": ["./src/utils/*"],
+      "@/lib/*": ["./src/lib/*"]
     },
     "target": "ES2017"
   },

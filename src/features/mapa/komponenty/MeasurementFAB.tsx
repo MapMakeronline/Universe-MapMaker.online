@@ -17,19 +17,17 @@ const MeasurementFAB: React.FC = () => {
   const { measurement } = useAppSelector((state) => state.draw)
   const isActive = measurement.isDistanceMode || measurement.isAreaMode
 
-  const fabRightPosition = isMobile ? '16px' : '24px'
-
   return (
     <>
       <Fab
         onClick={() => setMeasurementModalOpen(true)}
         sx={{
           position: 'fixed',
-          bottom: 170,
-          right: fabRightPosition,
+          top: 296, // Under DocumentFAB
+          right: 16,
           zIndex: 1400,
-          width: isMobile ? 64 : 56,
-          height: isMobile ? 64 : 56,
+          width: 56,
+          height: 56,
           bgcolor: isActive ? theme.palette.primary.dark : theme.palette.primary.main,
           color: 'white',
           transition: 'all 0.3s ease',
@@ -40,7 +38,7 @@ const MeasurementFAB: React.FC = () => {
           boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
         }}
       >
-        <Straighten sx={{ fontSize: isMobile ? 32 : 24 }} />
+        <Straighten sx={{ fontSize: 24 }} />
       </Fab>
 
       <MeasurementModal

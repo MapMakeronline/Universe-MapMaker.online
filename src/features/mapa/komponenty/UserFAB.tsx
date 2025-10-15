@@ -58,8 +58,6 @@ const UserFAB: React.FC = () => {
     handleUserMenuClose()
   }
 
-  const fabRightPosition = isMobile ? '16px' : '24px'
-
   return (
     <>
       {/* User FAB */}
@@ -67,11 +65,11 @@ const UserFAB: React.FC = () => {
         onClick={handleUserMenuOpen}
         sx={{
           position: 'fixed',
-          bottom: 380, // Najwyżej w kolumnie FAB-ów po prawej
-          right: fabRightPosition,
+          top: 16, // Top right corner
+          right: 16,
           zIndex: 1400,
-          width: isMobile ? 64 : 56,
-          height: isMobile ? 64 : 56,
+          width: 56,
+          height: 56,
           bgcolor: isAuthenticated ? '#10b981' : '#f97316',
           color: 'white',
           transition: 'all 0.3s ease',
@@ -82,7 +80,7 @@ const UserFAB: React.FC = () => {
           boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
         }}
       >
-        <AccountCircle sx={{ fontSize: isMobile ? 36 : 28 }} />
+        <AccountCircle sx={{ fontSize: 28 }} />
       </Fab>
 
       {/* User Menu */}

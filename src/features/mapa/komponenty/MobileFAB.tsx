@@ -33,10 +33,9 @@ const MobileFAB: React.FC<MobileFABProps> = () => {
   const dispatch = useAppDispatch();
   const { draw, identify } = useAppSelector((state) => state.draw);
 
-  // Responsywność - na mobile (sm i poniżej) toolbar jest przewijalny, więc FAB może być bliżej prawej krawędzi
-  // Na desktop (md i powyżej) FAB musi ustąpić prawemu toolbarowi
+  // Responsywność
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const fabRightPosition = isMobile ? 16 : RIGHT_TOOLBAR_WIDTH + RIGHT_TOOLBAR_MARGIN + 8;
+  const fabRightPosition = 16; // Fixed right position (no more right toolbar)
 
   const [mode, setMode] = useState<FABMode>('draw-select');
   const [selectedDrawType, setSelectedDrawType] = useState<DrawType>(null);
@@ -150,7 +149,7 @@ const MobileFAB: React.FC<MobileFABProps> = () => {
             }}
             sx={{
               position: 'fixed',
-              bottom: 80,
+              top: 366, // Under MeasurementFAB
               right: fabRightPosition,
               zIndex: 1400, // Higher than modals (1300) to stay on top
               transition: 'right 0.3s ease-in-out',
@@ -221,7 +220,7 @@ const MobileFAB: React.FC<MobileFABProps> = () => {
           <Box
             sx={{
               position: 'fixed',
-              bottom: 80,
+              top: 366, // Under MeasurementFAB
               right: fabRightPosition,
               zIndex: 1400, // Higher than modals (1300) to stay on top
               display: 'flex',

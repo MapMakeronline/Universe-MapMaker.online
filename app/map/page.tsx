@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useEffect } from 'react';
-import { Box, Alert, Snackbar } from '@mui/material';
+import React, { useEffect, useState } from 'react';
+import { Box, Alert, Snackbar, Backdrop } from '@mui/material';
 import { useSearchParams, useRouter } from 'next/navigation';
 import MapContainer from '@/features/mapa/komponenty/MapContainer';
 import LeftPanel from '@/features/warstwy/komponenty/LeftPanel';
-import RightToolbar from '@/features/narzedzia/RightToolbar';
+import LayersFAB from '@/features/mapa/komponenty/LayersFAB';
 import { QGISProjectLoader } from '@/src/components/qgis/QGISProjectLoader';
 import { QGISProjectLayersLoader } from '@/src/components/qgis/QGISProjectLayersLoader';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
@@ -52,6 +52,25 @@ export default function MapPage() {
   const currentProject = useAppSelector((state) => state.projects.currentProject);
   const layers = useAppSelector((state) => state.layers.layers);
   const projectName = searchParams.get('project');
+
+  // State for LeftPanel collapse (controlled by LayersFAB)
+  const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
+
+  // Toggle handler for LayersFAB
+  const handleToggleLeftPanel = () => {
+    setLeftPanelCollapsed(!leftPanelCollapsed);
+  };
+
+  // Count layers for badge (flatten layer tree to get total count)
+  const countLayers = (layerNodes: LayerNode[]): number => {
+    return layerNodes.reduce((count, layer) => {
+      if (layer.type === 'group' && layer.children) {
+        return count + countLayers(layer.children);
+      }
+      return count + 1;
+    }, 0);
+  };
+  const layersCount = countLayers(layers);
 
   // Fetch all user projects to get owner info
   const { data: projectsData } = useGetProjectsQuery(undefined, {
@@ -173,7 +192,11 @@ export default function MapPage() {
   return (
     <>
       <Box sx={{ display: 'flex', height: '100vh', overflow: 'hidden', position: 'relative' }}>
-        <LeftPanel isOwner={isOwner} />
+        <LeftPanel
+          isOwner={isOwner}
+          isCollapsed={leftPanelCollapsed}
+          onToggle={handleToggleLeftPanel}
+        />
         <Box component="main" sx={{ flexGrow: 1, position: 'relative', height: '100vh' }}>
           {isLoading && (
             <Box sx={{ position: 'absolute', top: 16, left: '50%', transform: 'translateX(-50%)', zIndex: 1000, bgcolor: 'rgba(255, 255, 255, 0.95)', px: 3, py: 1.5, borderRadius: 2, boxShadow: 2, fontSize: '14px', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 1.5 }}>
@@ -198,8 +221,16 @@ export default function MapPage() {
             )}
           </MapContainer>
         </Box>
-        <RightToolbar />
+        {/* RightToolbar removed - replaced by FAB buttons in MapContainer */}
       </Box>
+
+      {/* LayersFAB - Toggle button for layer panel (bottom left corner) */}
+      <LayersFAB
+        isOpen={!leftPanelCollapsed}
+        layersCount={layersCount}
+        onToggle={handleToggleLeftPanel}
+      />
+
       <Snackbar open={isError} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }} sx={{ bottom: 24 }}>
         <Alert severity="warning" variant="filled" sx={{ width: '100%', maxWidth: 600 }}>
           {error && 'status' in error && error.status === 404 ? `Projekt "${projectName}" nie został znaleziony` : error && 'status' in error && error.status === 400 ? `Nie można wczytać danych projektu "${projectName}". Projekt może być pusty lub uszkodzony.` : `Błąd podczas ładowania projektu "${projectName}"`}

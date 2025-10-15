@@ -62,7 +62,20 @@
       "Bash(git restore:*)",
       "Bash(git revert:*)",
       "Bash(wc:*)",
-      "Bash(git ls-tree:*)"
+      "Bash(git ls-tree:*)",
+      "Bash(dir:*)",
+      "Bash(git fetch:*)",
+      "Bash(for i in {1..5})",
+      "Bash(do curl -s \"https://api.universemapmaker.online/api/projects/new/json?project=graph&published=false&save=false\" -w \"\\nHTTP: %{http_code}\\n\" --max-time 3)",
+      "Bash(done)",
+      "Bash(git reset:*)",
+      "Bash(tasklist)",
+      "Bash(gcloud sql connect:*)",
+      "Bash(gcloud builds:*)",
+      "Bash(git log:*)",
+      "Bash(gcloud run revisions list:*)",
+      "Bash(start http://localhost:3000/map?project=graph)",
+      "Bash(gcloud run revisions describe:*)"
     ],
     "deny": [],
     "ask": []

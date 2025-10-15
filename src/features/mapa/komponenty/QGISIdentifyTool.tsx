@@ -480,8 +480,8 @@ const QGISIdentifyTool: React.FC<QGISIdentifyToolProps> = ({ projectName }) => {
           }}
           sx={{
             position: 'fixed',
-            bottom: 150, // Powyżej MobileFAB (80px)
-            right: fabRightPosition,
+            bottom: 16, // Bottom right corner
+            right: 16,
             zIndex: 1400,
             transition: 'right 0.3s ease-in-out',
             '& .MuiSpeedDial-fab': {
@@ -542,8 +542,8 @@ const QGISIdentifyTool: React.FC<QGISIdentifyToolProps> = ({ projectName }) => {
             aria-label="Wyłącz identyfikację"
             sx={{
               position: 'fixed',
-              bottom: 150,
-              right: fabRightPosition,
+              bottom: 16, // Bottom right corner
+              right: 16,
               zIndex: 1400,
               transition: 'right 0.3s ease-in-out',
               width: isMobile ? 64 : 56,

@@ -78,11 +78,17 @@ body {
 }
 
 .mapboxgl-ctrl-scale {
-  background-color: rgba(255, 255, 255, 0.9) !important;
-  border: 1px solid #ccc !important;
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  border: 2px solid #333 !important;
+  border-top: none !important;
   border-radius: 4px !important;
-  padding: 2px 5px !important;
+  padding: 4px 8px !important;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+  font-weight: 500 !important;
+  font-size: 13px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+  margin-bottom: 8px !important;
+  color: #333 !important;
 }
 
 /* Enhanced popup styles */

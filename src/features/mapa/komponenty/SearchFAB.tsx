@@ -13,19 +13,17 @@ const SearchFAB: React.FC = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
   const [searchModalOpen, setSearchModalOpen] = useState(false)
 
-  const fabRightPosition = isMobile ? '16px' : '24px'
-
   return (
     <>
       <Fab
         onClick={() => setSearchModalOpen(true)}
         sx={{
           position: 'fixed',
-          bottom: 310,
-          right: fabRightPosition,
+          top: 86, // Under UserFAB (16 + 56 + 14 spacing)
+          right: 16,
           zIndex: 1400,
-          width: isMobile ? 64 : 56,
-          height: isMobile ? 64 : 56,
+          width: 56,
+          height: 56,
           bgcolor: theme.palette.primary.main,
           color: 'white',
           transition: 'all 0.3s ease',
@@ -36,7 +34,7 @@ const SearchFAB: React.FC = () => {
           boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
         }}
       >
-        <Search sx={{ fontSize: isMobile ? 32 : 24 }} />
+        <Search sx={{ fontSize: 24 }} />
       </Fab>
 
       <SearchModal

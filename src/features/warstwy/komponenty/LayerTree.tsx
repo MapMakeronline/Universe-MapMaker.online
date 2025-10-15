@@ -497,7 +497,7 @@ export const LayerTree: React.FC<LayerTreeProps> = ({
           </Tooltip>
           
           {/* Ikony po prawej stronie jak na screenie */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: TREE_CONFIG.elements.actionButton.gap }}>
+          <Box className="layer-item__actions" sx={{ display: 'flex', alignItems: 'center', gap: TREE_CONFIG.elements.actionButton.gap, opacity: 1 }}>
             {/* Ikona celownika/GPS */}
             <Tooltip title="Przybliż do warstwy" arrow>
               <IconButton

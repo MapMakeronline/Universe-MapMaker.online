@@ -887,7 +887,7 @@ query: string (search term)
 
 Adds a new layer to the project (via QGIS Server integration).
 
-**Endpoint:** `POST /api/layers/add/`
+**Endpoint:** `POST /api/layer/add`
 
 **Permission:** `IsAuthenticated`
 

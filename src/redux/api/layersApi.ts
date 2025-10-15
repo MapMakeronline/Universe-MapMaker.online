@@ -254,9 +254,9 @@ export const layersApi = createApi({
 
     /**
      * Get layer features as GeoJSON
-     * Endpoint: POST /api/layer/features
+     * Endpoint: GET /api/layer/features
      * Priority: 🔴 High
-     * Used by: MapContainer
+     * Used by: MapContainer, QGISIdentifyTool
      */
     getFeatures: builder.query<
       GeoJSON.FeatureCollection,
@@ -271,15 +271,31 @@ export const layersApi = createApi({
         };
       }
     >({
-      query: ({ projectName, layerName, options }) => ({
-        url: '/api/layer/features',
-        method: 'POST',
-        body: {
-          project_name: projectName,
-          layer_name: layerName,
-          ...options,
-        },
-      }),
+      query: ({ projectName, layerName, options }) => {
+        const params = new URLSearchParams({
+          project: projectName,
+          layer_id: layerName,
+        });
+
+        // Add optional parameters if provided
+        if (options?.bbox) {
+          params.append('bbox', options.bbox.join(','));
+        }
+        if (options?.filter) {
+          params.append('filter', options.filter);
+        }
+        if (options?.limit) {
+          params.append('limit', String(options.limit));
+        }
+        if (options?.offset) {
+          params.append('offset', String(options.offset));
+        }
+
+        return {
+          url: `/api/layer/features?${params.toString()}`,
+          method: 'GET',
+        };
+      },
       providesTags: (result, error, arg) => [
         { type: 'Features', id: `${arg.projectName}-${arg.layerName}` },
       ],
@@ -1210,6 +1226,7 @@ export const {
   useGetLayerAttributesQuery,
   useSetLayerVisibilityMutation,
   useGetFeaturesQuery,
+  useLazyGetFeaturesQuery, // Lazy version for manual queries (e.g., IdentifyTool)
   useAddFeatureMutation,
   useUpdateFeatureMutation,
   useDeleteFeatureMutation,

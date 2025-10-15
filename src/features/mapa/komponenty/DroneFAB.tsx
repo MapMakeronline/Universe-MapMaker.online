@@ -4,15 +4,15 @@ import type React from "react"
 import { useTheme } from '@mui/material/styles'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import Fab from '@mui/material/Fab'
-import Description from '@mui/icons-material/Description'
+import FlightTakeoff from '@mui/icons-material/FlightTakeoff'
 
-const DocumentFAB: React.FC = () => {
+const DroneFAB: React.FC = () => {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
 
   const handleClick = () => {
-    // TODO: Implement document (wypis i wyrys) functionality
-    console.log("Document feature coming soon...")
+    // TODO: Implement drone functionality
+    console.log("Drone feature coming soon...")
   }
 
   return (
@@ -20,7 +20,7 @@ const DocumentFAB: React.FC = () => {
       onClick={handleClick}
       sx={{
         position: 'fixed',
-        top: 226, // Under DroneFAB
+        top: 156, // Under SearchFAB
         right: 16,
         zIndex: 1400,
         width: 56,
@@ -35,9 +35,9 @@ const DocumentFAB: React.FC = () => {
         boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
       }}
     >
-      <Description sx={{ fontSize: 24 }} />
+      <FlightTakeoff sx={{ fontSize: 24 }} />
     </Fab>
   )
 }
 
-export default DocumentFAB
+export default DroneFAB

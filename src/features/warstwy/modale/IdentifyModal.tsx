@@ -14,6 +14,7 @@ import TableBody from '@mui/material/TableBody';
 import TableRow from '@mui/material/TableRow';
 import TableCell from '@mui/material/TableCell';
 import Chip from '@mui/material/Chip';
+import CircularProgress from '@mui/material/CircularProgress';
 import { useTheme } from '@mui/material/styles';
 import Divider from '@mui/material/Divider';
 import CloseIcon from '@mui/icons-material/Close';
@@ -40,9 +41,10 @@ interface IdentifyModalProps {
   onClose: () => void;
   features: IdentifiedFeature[];
   coordinates?: [number, number];
+  isLoading?: boolean;
 }
 
-const IdentifyModal: React.FC<IdentifyModalProps> = ({ open, onClose, features, coordinates }) => {
+const IdentifyModal: React.FC<IdentifyModalProps> = ({ open, onClose, features, coordinates, isLoading = false }) => {
   const theme = useTheme();
 
   const formatValue = (value: any): string => {
@@ -137,8 +139,36 @@ const IdentifyModal: React.FC<IdentifyModalProps> = ({ open, onClose, features, 
           </Box>
         )}
 
+        {/* Loading State */}
+        {isLoading && (
+          <Box
+            sx={{
+              bgcolor: 'white',
+              p: 3,
+              borderRadius: '4px',
+              border: '1px solid #d1d5db',
+              textAlign: 'center',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 2,
+              mb: features.length > 0 ? 2 : 0,
+            }}
+          >
+            <CircularProgress size={20} />
+            <Typography
+              sx={{
+                fontSize: '14px',
+                color: theme.palette.text.secondary,
+              }}
+            >
+              Wyszukiwanie w warstwach QGIS...
+            </Typography>
+          </Box>
+        )}
+
         {/* Features List */}
-        {features.length === 0 ? (
+        {!isLoading && features.length === 0 ? (
           <Box
             sx={{
               bgcolor: 'white',
@@ -157,7 +187,7 @@ const IdentifyModal: React.FC<IdentifyModalProps> = ({ open, onClose, features, 
               Nie znaleziono obiektów w tym miejscu
             </Typography>
           </Box>
-        ) : (
+        ) : features.length > 0 ? (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             {features.map((feature, index) => (
               <Box
@@ -267,10 +297,11 @@ const IdentifyModal: React.FC<IdentifyModalProps> = ({ open, onClose, features, 
             >
               <Typography sx={{ fontSize: '12px', color: theme.palette.text.secondary }}>
                 Znaleziono {features.length} {features.length === 1 ? 'obiekt' : features.length < 5 ? 'obiekty' : 'obiektów'}
+                {isLoading && ' (ładowanie...)'}
               </Typography>
             </Box>
           </Box>
-        )}
+        ) : null}
       </DialogContent>
 
       {/* Footer */}

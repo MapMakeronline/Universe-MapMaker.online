@@ -2,10 +2,7 @@
 
 import React, { useState } from 'react';
 import Box from '@mui/material/Box';
-import IconButton from '@mui/material/IconButton';
 import { useTheme } from '@mui/material/styles';
-import MenuIcon from '@mui/icons-material/Menu';
-import CloseIcon from '@mui/icons-material/Close';
 import { Toolbar } from './Toolbar';
 import { SearchBar } from './SearchBar';
 import { LayerTree } from './LayerTree';
@@ -62,9 +59,17 @@ const SIDEBAR_CONFIG = {
 
 interface LeftPanelProps {
   isOwner?: boolean;
+  isCollapsed?: boolean;
+  onToggle?: () => void;
+  width?: number;
 }
 
-const LeftPanel: React.FC<LeftPanelProps> = ({ isOwner = true }) => {
+const LeftPanel: React.FC<LeftPanelProps> = ({
+  isOwner = true,
+  isCollapsed: externalCollapsed,
+  onToggle: externalOnToggle,
+  width: externalWidth
+}) => {
   const theme = useTheme();
   const dispatch = useAppDispatch();
 
@@ -91,7 +96,10 @@ const LeftPanel: React.FC<LeftPanelProps> = ({ isOwner = true }) => {
     { skip: !projectName }
   );
 
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  // Use external control if provided, otherwise use internal state
+  const [internalCollapsed, setInternalCollapsed] = useState(false);
+  const sidebarCollapsed = externalCollapsed !== undefined ? externalCollapsed : internalCollapsed;
+  const toggleSidebar = externalOnToggle || (() => setInternalCollapsed(!internalCollapsed));
   const [searchFilter, setSearchFilter] = useState('');
   const [filterMenuOpen, setFilterMenuOpen] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState<FilterType>('wszystko');
@@ -138,12 +146,15 @@ const LeftPanel: React.FC<LeftPanelProps> = ({ isOwner = true }) => {
   // Layer state - NO local state, use Redux directly!
   const layers = reduxLayers; // Direct reference to Redux state
 
-  // Hooks
-  const { width, isResizing, handleMouseDown } = useResizable({
-    initialWidth: parseInt(SIDEBAR_CONFIG.sidebar.width),
+  // Hooks - use external width if provided
+  const resizable = useResizable({
+    initialWidth: externalWidth || parseInt(SIDEBAR_CONFIG.sidebar.width),
     minWidth: parseInt(SIDEBAR_CONFIG.sidebar.minWidth),
     maxWidth: parseInt(SIDEBAR_CONFIG.sidebar.maxWidth),
   });
+  const width = externalWidth || resizable.width;
+  const isResizing = resizable.isResizing;
+  const handleMouseDown = resizable.handleMouseDown;
 
   // Helper: Extract flat list of layer IDs in order (for backend)
   const extractLayerOrder = (layers: LayerNode[]): string[] => {
@@ -605,26 +616,6 @@ const LeftPanel: React.FC<LeftPanelProps> = ({ isOwner = true }) => {
 
   return (
     <>
-      {/* Toggle button */}
-      <IconButton
-        onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-        sx={{
-          position: 'fixed',
-          top: 20,
-          left: sidebarCollapsed ? 20 : width + 20,
-          zIndex: 1300,
-          transition: isResizing ? 'none' : 'left 0.3s ease',
-          bgcolor: theme.palette.background.paper,
-          color: theme.palette.text.primary,
-          boxShadow: 2,
-          '&:hover': {
-            bgcolor: theme.palette.action.hover,
-          }
-        }}
-      >
-        {sidebarCollapsed ? <MenuIcon /> : <CloseIcon />}
-      </IconButton>
-
       {/* Sidebar */}
       <Box
         sx={{

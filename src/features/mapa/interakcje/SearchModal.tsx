@@ -204,7 +204,7 @@ const SearchModal: React.FC<SearchModalProps> = ({ open, onClose }) => {
             <Box sx={{ textAlign: 'center', py: 4, px: 3 }}>
               <LocationIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 2 }} />
               <Typography variant="body2" color="text.secondary">
-                Nie znaleziono wyników dla "{searchQuery}"
+                Nie znaleziono wyników dla &quot;{searchQuery}&quot;
               </Typography>
             </Box>
           )}

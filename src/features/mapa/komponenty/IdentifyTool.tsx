@@ -10,6 +10,8 @@ import { setDrawMode } from '@/redux/slices/drawSlice';
 import type { MapFeature } from '@/redux/slices/featuresSlice';
 import { query3DBuildingsAtPoint, get3DBuildingsSource } from '@/mapbox/3d-picking';
 import { detect3DLayers, has3DLayers } from '@/mapbox/3d-layer-detection';
+import { getQGISFeatureInfoMultiLayer, type QGISFeature } from '@/lib/qgis/getFeatureInfo';
+import { useSearchParams } from 'next/navigation';
 
 interface FeatureProperty {
   key: string;
@@ -31,8 +33,13 @@ interface IdentifiedFeature {
 const IdentifyTool = () => {
   const { current: mapRef } = useMap();
   const dispatch = useAppDispatch();
+  const searchParams = useSearchParams();
+  const projectName = searchParams.get('project') || 'graph'; // Get project name from URL
+
   const { identify } = useAppSelector((state) => state.draw);
   const { features, selectedFeatureId } = useAppSelector((state) => state.features);
+  const layers = useAppSelector((state) => state.layers.layers); // Get layer tree
+
   // PERFORMANCE: Subscribe only to mapStyleKey (not entire state.map)
   // Prevents re-render when viewState changes during map panning
   const mapStyleKey = useAppSelector((state) => state.map.mapStyleKey);
@@ -40,6 +47,7 @@ const IdentifyTool = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [identifiedFeatures, setIdentifiedFeatures] = useState<IdentifiedFeature[]>([]);
   const [clickCoordinates, setClickCoordinates] = useState<[number, number] | undefined>();
+  const [isLoadingQGIS, setIsLoadingQGIS] = useState(false);
 
   const selectedFeatureIdRef = useRef(selectedFeatureId);
 
@@ -63,7 +71,7 @@ const IdentifyTool = () => {
     // Track touch start for tap vs drag detection (mobile)
     let touchStartPt: { x: number; y: number } | null = null;
 
-    const handleMapClick = (e: any) => {
+    const handleMapClick = async (e: any) => {
       mapLogger.log('🔍 Identify: Click/Tap received', {
         isActive: identify.isActive,
         point: e.point,
@@ -265,12 +273,185 @@ const IdentifyTool = () => {
           };
         });
 
-        setIdentifiedFeatures(transformed);
+        // ==================== QUERY QGIS SERVER (WMS/WFS LAYERS) ====================
+        // Get visible QGIS layers from layer tree
+        const getVisibleQGISLayers = (): string[] => {
+          const visibleLayers: string[] = [];
+
+          const traverse = (items: any[]) => {
+            items.forEach((item) => {
+              if (item.type === 'group' && item.children) {
+                traverse(item.children);
+              } else if (item.type === 'layer' && item.visible && item.name) {
+                // Only query QGIS layers (not Mapbox layers)
+                // QGIS layers have specific properties from tree.json
+                visibleLayers.push(item.name);
+              }
+            });
+          };
+
+          traverse(layers);
+          return visibleLayers;
+        };
+
+        const qgisLayers = getVisibleQGISLayers();
+
+        mapLogger.log('🗺️ Identify: Querying QGIS Server layers', {
+          projectName,
+          layerCount: qgisLayers.length,
+          layers: qgisLayers
+        });
+
+        // Query QGIS Server if project and layers exist
+        if (projectName && qgisLayers.length > 0) {
+          try {
+            setIsLoadingQGIS(true);
+
+            const canvas = map.getCanvas();
+            const qgisResult = await getQGISFeatureInfoMultiLayer(
+              {
+                project: projectName,
+                clickPoint: e.lngLat,
+                bounds: map.getBounds(),
+                width: canvas.width,
+                height: canvas.height,
+                featureCount: 10,
+              },
+              qgisLayers
+            );
+
+            mapLogger.log('✅ QGIS Server response', {
+              featureCount: qgisResult.features.length,
+              features: qgisResult.features.map(f => ({
+                id: f.id,
+                properties: Object.keys(f.properties)
+              }))
+            });
+
+            // Transform QGIS features to IdentifiedFeature format
+            const qgisTransformed: IdentifiedFeature[] = qgisResult.features.map((feature: QGISFeature) => {
+              const properties: FeatureProperty[] = Object.entries(feature.properties).map(
+                ([key, value]) => ({
+                  key,
+                  value,
+                })
+              );
+
+              // Extract layer name from feature ID (e.g., "test.88" → "test")
+              const layerName = feature.id.split('.')[0];
+
+              return {
+                layer: layerName,
+                sourceLayer: 'QGIS WMS',
+                properties,
+                geometry: feature.geometry ? {
+                  type: feature.geometry.type,
+                  coordinates: feature.geometry.coordinates,
+                } : undefined,
+              };
+            });
+
+            // Combine Mapbox features with QGIS features
+            const allFeatures = [...transformed, ...qgisTransformed];
+
+            mapLogger.log('🔍 Identify: Combined results', {
+              mapboxFeatures: transformed.length,
+              qgisFeatures: qgisTransformed.length,
+              total: allFeatures.length
+            });
+
+            setIdentifiedFeatures(allFeatures);
+          } catch (error) {
+            mapLogger.error('❌ QGIS Server query failed:', error);
+            // Show only Mapbox features if QGIS query fails
+            setIdentifiedFeatures(transformed);
+          } finally {
+            setIsLoadingQGIS(false);
+          }
+        } else {
+          // No QGIS layers, show only Mapbox features
+          setIdentifiedFeatures(transformed);
+        }
+
         setClickCoordinates([e.lngLat.lng, e.lngLat.lat]);
         setModalOpen(true);
       } else {
-        // Show modal even with no features
-        setIdentifiedFeatures([]);
+        // No Mapbox features found - try QGIS Server only
+        const getVisibleQGISLayers = (): string[] => {
+          const visibleLayers: string[] = [];
+
+          const traverse = (items: any[]) => {
+            items.forEach((item) => {
+              if (item.type === 'group' && item.children) {
+                traverse(item.children);
+              } else if (item.type === 'layer' && item.visible && item.name) {
+                visibleLayers.push(item.name);
+              }
+            });
+          };
+
+          traverse(layers);
+          return visibleLayers;
+        };
+
+        const qgisLayers = getVisibleQGISLayers();
+
+        if (projectName && qgisLayers.length > 0) {
+          try {
+            setIsLoadingQGIS(true);
+
+            const canvas = map.getCanvas();
+            const qgisResult = await getQGISFeatureInfoMultiLayer(
+              {
+                project: projectName,
+                clickPoint: e.lngLat,
+                bounds: map.getBounds(),
+                width: canvas.width,
+                height: canvas.height,
+                featureCount: 10,
+              },
+              qgisLayers
+            );
+
+            if (qgisResult.features.length > 0) {
+              // Transform QGIS features
+              const qgisTransformed: IdentifiedFeature[] = qgisResult.features.map((feature: QGISFeature) => {
+                const properties: FeatureProperty[] = Object.entries(feature.properties).map(
+                  ([key, value]) => ({
+                    key,
+                    value,
+                  })
+                );
+
+                const layerName = feature.id.split('.')[0];
+
+                return {
+                  layer: layerName,
+                  sourceLayer: 'QGIS WMS',
+                  properties,
+                  geometry: feature.geometry ? {
+                    type: feature.geometry.type,
+                    coordinates: feature.geometry.coordinates,
+                  } : undefined,
+                };
+              });
+
+              setIdentifiedFeatures(qgisTransformed);
+            } else {
+              // No features from QGIS either
+              setIdentifiedFeatures([]);
+            }
+          } catch (error) {
+            mapLogger.error('❌ QGIS Server query failed:', error);
+            setIdentifiedFeatures([]);
+          } finally {
+            setIsLoadingQGIS(false);
+          }
+        } else {
+          // No QGIS layers
+          setIdentifiedFeatures([]);
+        }
+
         setClickCoordinates([e.lngLat.lng, e.lngLat.lat]);
         setModalOpen(true);
       }
@@ -326,7 +507,7 @@ const IdentifyTool = () => {
       map.off('touchend', handleTouchEnd);
       map.getCanvas().style.cursor = '';
     };
-  }, [mapRef, identify.isActive, mapStyleKey, dispatch, features]);
+  }, [mapRef, identify.isActive, mapStyleKey, dispatch, features, projectName, layers]);
 
   const handleCloseModal = () => {
     setModalOpen(false);
@@ -340,6 +521,7 @@ const IdentifyTool = () => {
       onClose={handleCloseModal}
       features={identifiedFeatures}
       coordinates={clickCoordinates}
+      isLoading={isLoadingQGIS}
     />
   );
 };

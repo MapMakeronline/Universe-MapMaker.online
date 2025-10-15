@@ -62,10 +62,10 @@ class UnifiedProjectsService {
 
   /**
    * Get specific project data with layers, map state, and features
-   * Endpoint: GET /dashboard/projects/{projectName}/
+   * Endpoint: GET /api/projects/new/json
    */
   async getProjectData(projectName: string): Promise<ProjectData> {
-    return apiClient.get(`/dashboard/projects/${encodeURIComponent(projectName)}/`);
+    return apiClient.get(`/api/projects/new/json?project=${encodeURIComponent(projectName)}&published=false`);
   }
 
   // REMOVED: Duplicate of RTK Query useCreateProjectMutation

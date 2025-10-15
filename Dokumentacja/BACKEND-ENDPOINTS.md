@@ -1,374 +1,355 @@
-# Backend API Endpoints - Status Integracji
+# Backend API Endpoints - Complete List
 
-**Dokument śledzi status integracji 243+ endpointów Django REST API z frontendem Universe-MapMaker.**
+**Dokument zawiera kompletną listę wszystkich 128 endpointów Django REST API.**
 
 **Base URL:** `https://api.universemapmaker.online`
 
-**Postęp ogólny:** 28.8% (70/243 endpointów zintegrowanych)
-
-## 📚 Backend Documentation Reference
-
-**IMPORTANT:** Complete backend documentation available at:
-- **`Universe-Mapmaker-Backend/README.md`** - Full system architecture, deployment, modules
-- `geocraft_api/*/service.py` - Business logic for each module (projects, layers, groups)
-- `geocraft_api/*/serializers.py` - Request/response formats for all endpoints
-- `geocraft_api/models/` - Database schema (ProjectItem, Layer, CustomUser, etc.)
-
-**Production Infrastructure (from README.md):**
-- **VM**: universe-backend (34.0.251.33, europe-central2-a)
-- **Database**: Railway PostgreSQL (centerbeam.proxy.rlwy.net:38178) with PostGIS
-- **Storage FASE**: Cloud Storage `gs://universe-qgis-projects` mounted at `/mnt/qgis-projects`
-- **Django API**: Port 8000 → `https://api.universemapmaker.online/api/*`
-- **QGIS Server**: Port 8080 → `https://api.universemapmaker.online/ows`
-- **Frontend**: Cloud Run → `https://universemapmaker.online`
-
-**Key Backend Modules:**
-| Module | File | Size | Description |
-|--------|------|------|-------------|
-| Projects | `geocraft_api/projects/service.py` | 195KB | Project CRUD, QGS generation, import/export |
-| Layers | `geocraft_api/layers/service.py` | 183KB | Layer import, styling, PostGIS operations |
-| Groups | `geocraft_api/groups/service.py` | 144KB | Group management, INSPIRE groups |
-| Layer DB | `geocraft_api/layers/db_utils.py` | 80KB | PostGIS operations, spatial queries |
-| Serializers | `geocraft_api/serializers.py` | 77KB | Main API serializers |
-| DAO | `geocraft_api/dao.py` | 41KB | Database access layer |
-
-## 📊 Statystyki Integracji
-
-| Kategoria | Zintegrowane | Planowane | Razem | Postęp |
-|-----------|--------------|-----------|-------|--------|
-| **Authentication** | 5/5 | 0 | 5 | 100% ✅ |
-| **Projects Core** | 6/10 | 4 | 10 | 60% |
-| **Projects Advanced** | 22/50+ | 28+ | 50+ | 44% |
-| **Layers Core** | 7/15 | 8 | 15 | 47% |
-| **Layers Advanced** | 23/30+ | 7+ | 30+ | 77% |
-| **User Profile** | 4/10 | 6 | 10 | 40% |
-| **Dashboard** | 3/5 | 2 | 5 | 60% |
-| **Groups** | 0/9 | 9 | 9 | 0% |
-| **Documents** | 0/15 | 15 | 15 | 0% |
-| **Wypis** | 0/20 | 20 | 20 | 0% |
-| **Admin** | 0/50+ | 50+ | 50+ | 0% |
-| **RAZEM** | **70/243+** | **173+** | **243+** | **28.8%** |
-
-## Legend
-
-- ✅ **Zintegrowane** - Endpoint zaimplementowany w `src/api/endpointy/`
-- 🔨 **W trakcie** - Obecnie testowane
-- ⏳ **Planowane** - Czeka na implementację
-- ❌ **Nie działa** - Backend endpoint ma problemy
-- 📝 **Wymaga wyjaśnienia** - Niejasne zachowanie
+**Łączna liczba endpointów:** 128
 
 ---
 
-## 1. 🔐 Authentication (`src/api/endpointy/auth.ts`)
+## 📚 Podział według modułów
 
-**Status:** ✅ **100% Zintegrowane (5/5)**
-
-| Endpoint | Metoda | Status | Funkcja | Komponenty |
-|----------|--------|--------|---------|------------|
-| `/auth/register` | POST | ✅ | `authService.register()` | RegisterPage.tsx |
-| `/auth/login` | POST | ✅ | `authService.login()` | LoginPage.tsx |
-| `/auth/logout` | POST | ✅ | `authService.logout()` | DashboardLayout.tsx |
-| `/auth/profile` | GET | ✅ | `authService.getProfile()` | UserSettings.tsx |
-| Token management | - | ✅ | `isAuthenticated()`, `setToken()`, `removeToken()` | localStorage |
-
-**Wykorzystanie:**
-- `src/features/autoryzacja/` - Login/Register komponenty
-- Token przechowywany w `localStorage` jako `authToken`
-- Automatyczna autoryzacja wszystkich requestów przez `apiClient`
-
-**Source:** `geocraft_api/auth/urls.py`
+| Moduł | Liczba endpointów | Prefix |
+|-------|-------------------|--------|
+| **Auth** | 4 | `/auth/*` |
+| **Groups** | 9 | `/api/groups/*` |
+| **Layers** | 58 | `/api/layer/*` |
+| **Styles** | 7 | `/api/styles/*` |
+| **Dashboard** | 5 | `/dashboard/*` |
+| **Projects** | 45 | `/api/projects/*` |
 
 ---
 
-## 2. Dashboard (`/dashboard/*`)
+## 📌 1. Moduł Auth (Autoryzacja)
 
-Base: `/dashboard/`
+**Prefix:** `/auth/`
 
-| Endpoint | Method | Status | RTK Slice | Description | Notes |
-|----------|--------|--------|-----------|-------------|-------|
-| `projects/` | GET | ✅ | `projectsApi` | Get user's projects | RTK Query implemented |
-| `projects/create/` | POST | ✅ | `projectsApi` | Create new project | RTK Query implemented |
-| `projects/update/` | PUT | ⏳ | - | Update project | Need to implement |
-| `projects/delete/` | DELETE | ✅ | `projectsApi` | Delete project | RTK Query implemented |
-| `projects/public/` | GET | ✅ | `projectsApi` | Get public projects | RTK Query implemented |
-| `projects/<project_name>/` | GET | ⏳ | - | Get project details | Need to implement |
-| `profile/` | GET | ⏳ | - | Get user profile | Duplicate of /auth/profile? |
-| `settings/profile/` | PUT | ⏳ | - | Update profile | Need to implement |
-| `settings/password/` | POST | ⏳ | - | Change password | Need to implement |
-| `contact/` | POST | ⏳ | - | Contact form | Need to implement |
+| # | Endpoint | Metoda | Opis |
+|---|----------|--------|------|
+| 1 | `/auth/register` | POST | Rejestracja użytkownika |
+| 2 | `/auth/login` | POST | Logowanie |
+| 3 | `/auth/logout` | POST | Wylogowanie |
+| 4 | `/auth/profile` | GET | Profil użytkownika |
 
-**Source:** `geocraft_api/dashboard/urls.py`
+**Autoryzacja:**
+- `/auth/register` i `/auth/login` - bez tokenu
+- Pozostałe - wymagają tokenu w nagłówku: `Authorization: Token {token}`
 
 ---
 
-## 3. 📁 Projects API (`src/api/endpointy/unified-projects.ts`)
+## 📌 2. Moduł Groups (Grupy)
 
-**Status:** ✅ **47% Zintegrowane (28/60+)**
+**Prefix:** `/api/groups/`
 
-### 📌 Core Operations (✅ 6/10)
-
-| Endpoint | Metoda | Status | Funkcja | Komponenty |
-|----------|--------|--------|---------|------------|
-| `/dashboard/projects/` | GET | ✅ | `getProjects()` | OwnProjects.tsx |
-| `/dashboard/projects/public/` | GET | ✅ | `getPublicProjects()` | PublicProjects.tsx |
-| `/dashboard/projects/{name}/` | GET | ✅ | `getProjectData()` | MapContainer.tsx |
-| `/dashboard/projects/create/` | POST | ✅ | `createProject()` | CreateProjectModal.tsx |
-| `/dashboard/projects/update/` | PUT | ✅ | `updateProject()` | EditProjectModal.tsx |
-| `/dashboard/projects/delete/` | DELETE | ✅ | `deleteProject()` | OwnProjects.tsx |
-| `/api/projects/duplicate` | POST | ⏳ | - | Clone project |
-| `/api/projects/archive` | POST | ⏳ | - | Archive project |
-| `/api/projects/recent` | GET | ⏳ | - | Recently viewed |
-| `/api/projects/favorites` | POST | ⏳ | - | Toggle favorite |
-
-### 📤 Import & Export (✅ 3/5)
-
-| Endpoint | Metoda | Status | Funkcja | Notatki |
-|----------|--------|--------|---------|---------|
-| `/api/projects/export` | POST | ✅ | `exportProject()` | QGS/QGZ export |
-| `/api/projects/import/qgs/` | POST | ✅ | `importQGS()` | **Fully integrated!** |
-| `/api/projects/import/qgz/` | POST | ✅ | `importQGZ()` | **Fully integrated!** |
-| `missing-layer/add/` | POST | ⏳ | - | Add missing layer | Need clarification |
-| `remove/` | POST | ⏳ | - | Remove project | Different from dashboard delete? |
-| `export` | GET | ⏳ | - | Export project | Format? QGS/QGZ? |
-| `order` | GET/POST | ⏳ | - | Get/set layer order | Need clarification |
-| `publish` | POST | ⏳ | - | Publish project | Set published=True? |
-| `document/import` | POST | ⏳ | - | Upload document | File upload |
-| `document` | GET/DELETE | ⏳ | - | Get/delete document | Need clarification |
-| `documentsAll` | GET | ⏳ | - | Get all documents | For project? |
-| `remove/database` | DELETE | ⏳ | - | Remove from database | Hard delete? |
-| `subdomainAvailability` | POST | ⏳ | - | Check subdomain available | Validation |
-| `domain/change` | POST | ⏳ | - | Change project domain | Update subdomain |
-| `wypis/add/documents` | POST | ⏳ | - | Add wypis documents | Polish land registry feature |
-| `wypis/add/configuration` | POST | ⏳ | - | Add wypis config | Polish land registry feature |
-| `wypis/get/configuration` | GET | ⏳ | - | Get wypis config | Polish land registry feature |
-| `wypis/precinct_and_number` | GET | ⏳ | - | Get precinct and number | Polish land registry feature |
-| `wypis/plotspatialdevelopment` | GET | ⏳ | - | Get plot spatial dev | Polish land registry feature |
-| `wypis/create` | POST | ⏳ | - | Create wypis | Polish land registry feature |
-| `wypis/remove` | DELETE | ⏳ | - | Remove wypis | Polish land registry feature |
-| `new/json` | POST | ⏳ | - | Create new JSON | Need clarification |
-| `tree/order` | POST | ⏳ | - | Change tree order | Layer tree reordering |
-| `space/get` | GET | ⏳ | - | Get project space | Disk usage? |
-| `print` | POST | ⏳ | - | Prepare image | Map screenshot/export |
-| `thumbnail/<project_name>/` | GET | ⏳ | - | Get project thumbnail | Image preview |
-| `logo/update/` | POST | ⏳ | - | Update project logo | File upload |
-| `app/set` | POST | ⏳ | - | Set app config | Need clarification |
-| `metadata` | POST | ⏳ | - | Set project metadata | INSPIRE metadata |
-| `restore` | POST | ⏳ | - | Restore project | From backup? |
-| `plot` | POST | ⏳ | - | Add plots config | Cadastral plots |
-| `plot/reset` | POST | ⏳ | - | Reset plots config | Cadastral plots |
-| `search` | GET | ⏳ | - | Search projects | Full-text search |
-| `sort/app` | POST | ⏳ | - | Sort app | Need clarification |
-| `app/publish` | POST | ⏳ | - | Publish app | Need clarification |
-| `app/unpublish` | POST | ⏳ | - | Unpublish app | Need clarification |
-| `services/publish` | POST | ⏳ | - | Publish services | WMS/WFS publishing |
-| `logs/error/send` | POST | ⏳ | - | Send error log | Error reporting |
-| `basemap/set` | POST | ⏳ | - | Set project basemap | Default basemap |
-| `repair` | POST | ⏳ | - | Repair project | Fix corrupted data? |
-| `reload` | POST | ⏳ | - | Reload project | Refresh QGIS cache? |
-| `distinct` | GET | ⏳ | - | Filter distinct values | For columns |
-| `filter/min-max` | GET | ⏳ | - | Filter min-max | For numeric columns |
-| `filter/numeric-columns` | GET | ⏳ | - | Get numeric columns | For filtering |
-| `global-search` | GET | ⏳ | - | Global search | Cross-project search |
-
-**Source:** `geocraft_api/projects/urls.py`
-
-**Questions for User:**
-1. What's the difference between `/api/projects/create/` and `/dashboard/projects/create/`?
-2. What's the difference between `/api/projects/remove/` and `/dashboard/projects/delete/`?
-3. What format does `/api/projects/export` return? QGS/QGZ/ZIP?
-4. Are "wypis" endpoints only for Polish land registry features?
+| # | Endpoint | Metoda | Opis |
+|---|----------|--------|------|
+| 5 | `/api/groups/add` | POST | Dodawanie grupy |
+| 6 | `/api/groups/layer/remove` | POST | Usuwanie grupy i warstw |
+| 7 | `/api/groups/inspire/add` | POST | Dodawanie grupy INSPIRE |
+| 8 | `/api/groups/name` | POST | Zmiana nazwy grupy |
+| 9 | `/api/groups/export` | GET | Eksport grupy |
+| 10 | `/api/groups/krajowy/version/add` | POST | Dodawanie wersji aplikacji |
+| 11 | `/api/groups/krajowy/version/get` | GET | Pobieranie historii aplikacji |
+| 12 | `/api/groups/krajowy/restore` | POST | Przywracanie aplikacji |
+| 13 | `/api/groups/selection` | POST | Ustawianie widoczności grupy |
 
 ---
 
-## 4. Layers (`/api/layer/*`)
+## 📌 3. Moduł Layers (Warstwy)
 
-Base: `/api/layer/`
+**Prefix:** `/api/layer/`
 
-| Endpoint | Method | Status | RTK Slice | Description | Notes |
-|----------|--------|--------|-----------|-------------|-------|
-| `add` | POST | ⏳ | - | Add map layer | From what source? |
-| `add/existing` | POST | ⏳ | - | Add existing layer | From another project? |
-| `style` | POST | ⏳ | - | Set layer style | SLD/QML format? |
-| `style/reset` | POST | ⏳ | - | Reset style to default | |
-| `remove/database` | DELETE | ⏳ | - | Remove layer from DB | Hard delete? |
-| `add/shp/` | POST | ⏳ | - | Add Shapefile layer | File upload |
-| `add/gml/` | POST | ⏳ | - | Add GML layer | File upload |
-| `add/app` | POST | ⏳ | - | Add app layer | Need clarification |
-| `add/geojson/` | POST | ⏳ | - | Add GeoJSON layer | File upload |
-| `column/add` | POST | ⏳ | - | Add column to layer | |
-| `column/rename` | POST | ⏳ | - | Rename column | |
-| `column/remove` | POST | ⏳ | - | Remove column | |
-| `columns/remove` | POST | ⏳ | - | Remove multiple columns | |
-| `column/exclude` | POST | ⏳ | - | Exclude columns | Hide from view? |
-| `column/merge` | POST | ⏳ | - | Merge columns | Concatenate values? |
-| `sql/method/apply` | POST | ⏳ | - | Apply SQL method | Custom SQL query? |
-| `create/intersections` | POST | ⏳ | - | Create layer from intersections | PostGIS overlay |
-| `get/intersections` | GET | ⏳ | - | Get intersection geometries | |
-| `postgis/rpoints/remove` | POST | ⏳ | - | Remove repeated points | Geometry cleaning |
-| `postgis/offsetcurve` | POST | ⏳ | - | Offset curve | Buffer operation? |
-| `create/postgis/method` | POST | ⏳ | - | Create layer from PostGIS method | |
-| `get/postgis/method` | GET | ⏳ | - | Get geoms as GeoJSON | |
-| `get/postgis/method/geojson` | GET | ⏳ | - | Get geoms from GeoJSON input | |
-| `validation/details` | GET | ⏳ | - | Get geometry validation details | Check topology errors |
-| `add/raster/` | POST | ⏳ | - | Add raster layer (TIFF) | File upload |
-| `georefer` | POST | ⏳ | - | Georeference raster | Set projection/bounds |
-| `name` | POST | ⏳ | - | Change layer name | |
-| `selection` | POST | ⏳ | - | Set layer visibility | Show/hide layer |
-| `attributes/names` | GET | ⏳ | - | Get attribute names | Column names |
-| `attributes/names_and_types` | GET | ⏳ | - | Get attribute names and types | Column schema |
-| `label` | POST | ⏳ | - | Add label | Layer labeling |
-| `label/remove` | POST | ⏳ | - | Remove label | |
-| `attributes` | GET | ⏳ | - | Get layer attributes | All column data? |
-| `copy/geometry` | POST | ⏳ | - | Merge layer | Copy features? |
-| `clone` | POST | ⏳ | - | Clone layer | Duplicate layer |
-| `geometry/check` | POST | ⏳ | - | Check geometry validity | Topology check |
-| `constraints` | GET | ⏳ | - | Get layer constraints | DB constraints |
-| `export` | GET | ⏳ | - | Export layer | Format? SHP/GeoJSON? |
-| `style/add` | POST | ⏳ | - | Add style | Same as `style`? |
-| `features` | GET | ⏳ | - | Get features | GeoJSON features |
-| `feature/coordinates` | GET | ⏳ | - | Get feature coordinates | Single feature |
-| `geometry` | GET | ⏳ | - | Get geometry | GeoJSON geometry |
-| `style/export` | GET | ⏳ | - | Export style | SLD/QML file |
-| `column/values` | GET | ⏳ | - | Get column values | Unique values |
-| `transaction/` | POST | ⏳ | - | Layer transaction | Edit features |
-| `transaction/consultation` | POST | ⏳ | - | Transaction for consultations | Need clarification |
-| `mask` | POST | ⏳ | - | Mask TIFF | Clip raster |
-| `transparency` | POST | ⏳ | - | Set transparency | Layer opacity |
-| `features/selected` | GET | ⏳ | - | Get selected features | User selection |
-| `multipleSaving` | POST | ⏳ | - | Multiple save | Batch feature edit |
-| `scale` | POST | ⏳ | - | Set visibility scale | Min/max scale |
-| `opacity/set` | POST | ⏳ | - | Set layer opacity | 0-100? |
-| `published/set` | POST | ⏳ | - | Set layer published | Public/private |
-| `get/gaps` | GET | ⏳ | - | Get gaps | Topology gaps |
-| `get/layers_subusers_to_append` | GET | ⏳ | - | Get layers to append | Collaboration |
-| `get/layers_subusers` | GET | ⏳ | - | Get sub-user layers | Collaboration |
-| `insert_sub_users_to_layer` | POST | ⏳ | - | Add sub-users to layer | Collaboration |
-| `delete_sub_users_from_layer` | DELETE | ⏳ | - | Remove sub-users | Collaboration |
+### Zarządzanie warstwami (11 endpointów)
 
-**Source:** `geocraft_api/layers/urls.py`
+| # | Endpoint | Metoda | Opis |
+|---|----------|--------|------|
+| 14 | `/api/layer/add` | POST | Dodawanie nowej warstwy |
+| 15 | `/api/layer/add/existing` | POST | Dodawanie istniejącej warstwy |
+| 16 | `/api/layer/clone` | POST | Klonowanie warstwy |
+| 17 | `/api/layer/remove/database` | POST | Usuwanie warstw z bazy danych |
+| 18 | `/api/layer/name` | POST | Zmiana nazwy warstwy |
+| 19 | `/api/layer/selection` | POST | Ustawianie widoczności |
+| 20 | `/api/layer/scale` | POST | Ustawianie skali widoczności |
+| 21 | `/api/layer/export` | GET | Eksport warstwy |
+| 22 | `/api/layer/published/set` | POST | Ustawianie statusu publikacji |
+| 23 | `/api/layer/get/layers_subusers` | GET | Pobieranie warstw podużytkowników |
+| 24 | `/api/layer/get/layers_subusers_to_append` | GET | Pobieranie warstw do przypisania |
 
-**Questions for User:**
-1. What's the difference between `style` and `style/add`?
-2. What format does `export` return by default?
-3. Are "sub-users" for layer-level permissions?
-4. What's the "app" in `add/app`?
+### Import warstw (7 endpointów)
 
----
+| # | Endpoint | Metoda | Opis |
+|---|----------|--------|------|
+| 25 | `/api/layer/add/shp/` | POST | Import pliku SHP |
+| 26 | `/api/layer/add/geojson/` | POST | Import pliku GeoJSON |
+| 27 | `/api/layer/add/gml/` | POST | Import pliku GML |
+| 28 | `/api/layer/add/app` | POST | Import aplikacji krajowej |
+| 29 | `/api/layer/add/raster/` | POST | Import pliku TIF (raster) |
+| 30 | `/api/layer/georefer` | POST | Georeferencja obrazu |
+| 31 | `/api/layer/mask` | POST | Obcinanie rastru |
 
-## 5. Groups (`/api/groups/*`)
+### Stylowanie (7 endpointów)
 
-Base: `/api/groups/`
+| # | Endpoint | Metoda | Opis |
+|---|----------|--------|------|
+| 32 | `/api/layer/style` | GET/POST | Pobieranie/ustawianie stylu warstwy |
+| 33 | `/api/layer/style/reset` | POST | Resetowanie stylu |
+| 34 | `/api/layer/style/add` | POST | Import stylu (QML/SLD) |
+| 35 | `/api/layer/style/export` | GET | Eksport stylu |
+| 36 | `/api/layer/opacity/set` | POST | Zmiana przezroczystości warstwy |
+| 37 | `/api/layer/transparency` | POST | Ustawienie przezroczystości rastru |
+| 38 | `/api/layer/label` | POST | Dodawanie etykiet |
 
-| Endpoint | Method | Status | RTK Slice | Description | Notes |
-|----------|--------|--------|-----------|-------------|-------|
-| `add` | POST | ⏳ | - | Add layer group | |
-| `export` | GET | ⏳ | - | Export group | |
-| `layer/remove` | DELETE | ⏳ | - | Remove layer from group | |
-| `inspire/add` | POST | ⏳ | - | Add INSPIRE group | EU standard |
-| `name` | POST | ⏳ | - | Change group name | |
-| `krajowy/version/add` | POST | ⏳ | - | Add krajowy version | Polish national standard |
-| `krajowy/version/get` | GET | ⏳ | - | Get krajowy history | Version history |
-| `krajowy/restore` | POST | ⏳ | - | Restore krajowy version | Rollback |
-| `selection` | POST | ⏳ | - | Set group visibility | Show/hide group |
+### Zarządzanie kolumnami (9 endpointów)
 
-**Source:** `geocraft_api/groups/urls.py`
+| # | Endpoint | Metoda | Opis |
+|---|----------|--------|------|
+| 39 | `/api/layer/column/add` | POST | Dodawanie kolumny |
+| 40 | `/api/layer/column/rename` | POST | Zmiana nazwy kolumny |
+| 41 | `/api/layer/column/remove` | POST | Usuwanie kolumny |
+| 42 | `/api/layer/columns/remove` | POST | Usuwanie wielu kolumn |
+| 43 | `/api/layer/column/exclude` | POST | Wykluczanie kolumn |
+| 44 | `/api/layer/column/merge` | POST | Scalanie kolumn |
+| 45 | `/api/layer/column/values` | GET | Pobieranie wartości kolumny |
+| 46 | `/api/layer/label/remove` | POST | Usuwanie etykiet |
+| 47 | `/api/layer/insert_sub_users_to_layer` | POST | Dodawanie podużytkowników do warstwy |
 
-**Questions for User:**
-1. What's "krajowy"? Polish national mapping standard?
-2. Is INSPIRE group different from regular group?
+### Atrybuty i dane (7 endpointów)
 
----
+| # | Endpoint | Metoda | Opis |
+|---|----------|--------|------|
+| 48 | `/api/layer/attributes/names` | GET | Pobieranie nazw atrybutów |
+| 49 | `/api/layer/attributes/names_and_types` | GET | Pobieranie nazw i typów atrybutów |
+| 50 | `/api/layer/attributes` | GET | Pobieranie atrybutów |
+| 51 | `/api/layer/constraints` | GET | Pobieranie ograniczeń |
+| 52 | `/api/layer/features` | GET | Pobieranie obiektów |
+| 53 | `/api/layer/geometry` | GET | Pobieranie geometrii |
+| 54 | `/api/layer/feature/coordinates` | GET | Pobieranie współrzędnych |
 
-## 6. Styles (`/api/styles/*`)
+### Geometria i operacje przestrzenne (11 endpointów)
 
-Base: `/api/styles/`
+| # | Endpoint | Metoda | Opis |
+|---|----------|--------|------|
+| 55 | `/api/layer/geometry/check` | GET | Sprawdzanie geometrii |
+| 56 | `/api/layer/validation/details` | GET | Walidacja geometrii |
+| 57 | `/api/layer/copy/geometry` | POST | Kopiowanie geometrii |
+| 58 | `/api/layer/create/intersections` | POST | Tworzenie warstwy z przecięć |
+| 59 | `/api/layer/get/intersections` | GET | Pobieranie geometrii przecięć |
+| 60 | `/api/layer/postgis/rpoints/remove` | POST | Usuwanie powtarzających się punktów |
+| 61 | `/api/layer/postgis/offsetcurve` | POST | Krzywa przesunięcia (offset curve) |
+| 62 | `/api/layer/create/postgis/method` | POST | Tworzenie metodą PostGIS |
+| 63 | `/api/layer/get/postgis/method` | GET | Pobieranie metodą PostGIS |
+| 64 | `/api/layer/get/postgis/method/geojson` | GET | Pobieranie metodą PostGIS (GeoJSON) |
+| 65 | `/api/layer/get/gaps` | GET | Wykrywanie luk |
 
-| Endpoint | Method | Status | RTK Slice | Description | Notes |
-|----------|--------|--------|-----------|-------------|-------|
-| (To be documented) | - | ⏳ | - | - | Need to read styles/urls.py |
+### Inne operacje (6 endpointów)
 
-**Source:** `geocraft_api/styles/urls.py` (not yet read)
+| # | Endpoint | Metoda | Opis |
+|---|----------|--------|------|
+| 66 | `/api/layer/multipleSaving` | POST | Zapis wielu rekordów |
+| 67 | `/api/layer/transaction/` | POST | Transakcje WFS |
+| 68 | `/api/layer/transaction/consultation` | POST | Transakcje WFS dla konsultacji |
+| 69 | `/api/layer/sql/method/apply` | POST | Zastosowanie metody SQL |
+| 70 | `/api/layer/features/selected` | GET | Zaznaczone obiekty |
+| 71 | `/api/layer/delete_sub_users_from_layer` | POST | Usuwanie podużytkowników z warstwy |
 
 ---
 
-## 7. Parcels (`/api/parcel/*`)
+## 📌 4. Moduł Styles (Style)
 
-Base: `/api/parcel/`
+**Prefix:** `/api/styles/`
 
-| Endpoint | Method | Status | RTK Slice | Description | Notes |
-|----------|--------|--------|-----------|-------------|-------|
-| (To be documented) | - | ⏳ | - | - | Need to read parcel/urls.py |
-
-**Source:** `geocraft_api/parcel/urls.py` (not yet read)
-
----
-
-## 8. Admin Stats (`/api/admin/*`)
-
-Base: `/api/admin/`
-
-| Endpoint | Method | Status | RTK Slice | Description | Notes |
-|----------|--------|--------|-----------|-------------|-------|
-| (To be documented) | - | ⏳ | - | - | Need to read admin_stats/urls.py |
-
-**Source:** `geocraft_api/admin_stats/urls.py` (not yet read)
+| # | Endpoint | Metoda | Opis |
+|---|----------|--------|------|
+| 72 | `/api/styles/renderer` | POST | Ustawienie renderera |
+| 73 | `/api/styles/renderer/possible` | GET | Pobieranie możliwych rendererów |
+| 74 | `/api/styles/set` | POST | Ustawienie stylu |
+| 75 | `/api/styles/symbol` | POST | Ustawienie symbolu |
+| 76 | `/api/styles/symbol/image` | POST | Ustawienie obrazu symbolu |
+| 77 | `/api/styles/symbol/random/color` | GET | Generowanie losowych kolorów |
+| 78 | `/api/styles/classify` | POST | Klasyfikacja stylów |
 
 ---
 
-## Integration Priority
+## 📌 5. Moduł Dashboard
 
-**Phase 1: Core Features (Current)**
-1. ✅ Authentication (login, register, profile)
-2. ✅ Dashboard projects list (GET /dashboard/projects/)
-3. ✅ Public projects (GET /dashboard/projects/public/)
-4. ✅ Create project (POST /dashboard/projects/create/)
-5. ✅ Delete project (DELETE /dashboard/projects/delete/)
-6. 🔨 QGIS Import (POST /api/projects/import/qgs/, /api/projects/import/qgz/)
+**Prefix:** `/dashboard/`
 
-**Phase 2: Project Management**
-1. Update project (PUT /dashboard/projects/update/)
-2. Get project details (GET /dashboard/projects/<name>/)
-3. Publish/unpublish project
-4. Change domain
-5. Project metadata
-
-**Phase 3: Layer Management**
-1. Add layers (Shapefile, GeoJSON, GML, Raster)
-2. Layer styling
-3. Layer visibility/opacity
-4. Get features
-5. Export layers
-
-**Phase 4: Advanced Features**
-1. Groups and INSPIRE
-2. PostGIS operations
-3. Wypis (land registry)
-4. Collaboration (sub-users)
-5. Admin statistics
+| # | Endpoint | Metoda | Opis |
+|---|----------|--------|------|
+| 79 | `/dashboard/projects/` | GET | Lista projektów użytkownika |
+| 80 | `/dashboard/projects/update/` | POST | Aktualizacja projektu |
+| 81 | `/dashboard/settings/profile/` | POST | Aktualizacja profilu |
+| 82 | `/dashboard/settings/password/` | POST | Zmiana hasła |
+| 83 | `/dashboard/contact/` | POST | Formularz kontaktowy |
 
 ---
 
-## Testing Checklist
+## 📌 6. Moduł Projects (Projekty)
 
-For each endpoint integration:
+**Prefix:** `/api/projects/`
 
-- [ ] Read backend view implementation
-- [ ] Document request payload format
-- [ ] Document response format
-- [ ] Create RTK Query mutation/query
-- [ ] Create UI component for testing
-- [ ] Test with real data
-- [ ] Handle errors gracefully
-- [ ] Ask user if behavior unclear
-- [ ] Commit and push to GitHub
-- [ ] Update this document with ✅ status
+### Zarządzanie projektami (10 endpointów)
+
+| # | Endpoint | Metoda | Opis |
+|---|----------|--------|------|
+| 84 | `/api/projects/create/` | POST | Tworzenie projektu |
+| 85 | `/api/projects/import/qgs/` | POST | Import pliku QGS |
+| 86 | `/api/projects/import/qgz/` | POST | Import pliku QGZ |
+| 87 | `/api/projects/export` | GET | Eksport projektu |
+| 88 | `/api/projects/remove/` | POST | Usuwanie projektu |
+| 89 | `/api/projects/restore` | POST | Przywracanie projektu |
+| 90 | `/api/projects/repair` | POST | Naprawa projektu |
+| 91 | `/api/projects/reload` | POST | Przeładowanie projektu |
+| 92 | `/api/projects/new/json` | GET | Pobieranie struktury nowego projektu |
+| 93 | `/api/projects/remove/database` | POST | Usunięcie projektu z bazy danych |
+
+### Kolejność warstw (2 endpointy)
+
+| # | Endpoint | Metoda | Opis |
+|---|----------|--------|------|
+| 94 | `/api/projects/order` | POST | Kolejność warstw |
+| 95 | `/api/projects/tree/order` | POST | Kolejność drzewa warstw |
+
+### Informacje o przestrzeni (1 endpoint)
+
+| # | Endpoint | Metoda | Opis |
+|---|----------|--------|------|
+| 96 | `/api/projects/space/get` | GET | Informacja o przestrzeni dyskowej |
+
+### Publikacja i domeny (3 endpointy)
+
+| # | Endpoint | Metoda | Opis |
+|---|----------|--------|------|
+| 97 | `/api/projects/publish` | POST | Publikacja projektu |
+| 98 | `/api/projects/subdomainAvailability` | GET | Sprawdzenie dostępności subdomeny |
+| 99 | `/api/projects/domain/change` | POST | Zmiana domeny |
+
+### Logo i miniatura (2 endpointy)
+
+| # | Endpoint | Metoda | Opis |
+|---|----------|--------|------|
+| 100 | `/api/projects/logo/update/` | POST | Aktualizacja logo |
+| 101 | `/api/projects/thumbnail/<project_name>/` | GET | Pobieranie miniatury |
+
+### Wydruki i eksport (1 endpoint)
+
+| # | Endpoint | Metoda | Opis |
+|---|----------|--------|------|
+| 102 | `/api/projects/print` | GET | Wydruk projektu |
+
+### Aplikacje planistyczne (3 endpointy)
+
+| # | Endpoint | Metoda | Opis |
+|---|----------|--------|------|
+| 103 | `/api/projects/app/set` | POST | Ustawienie aplikacji |
+| 104 | `/api/projects/app/publish` | POST | Publikacja aplikacji |
+| 105 | `/api/projects/app/unpublish` | POST | Cofnięcie publikacji aplikacji |
+
+### Publikacja serwisów (1 endpoint)
+
+| # | Endpoint | Metoda | Opis |
+|---|----------|--------|------|
+| 106 | `/api/projects/services/publish` | POST | Publikacja serwisów |
+
+### Wypisy i wyrysy (7 endpointów)
+
+| # | Endpoint | Metoda | Opis |
+|---|----------|--------|------|
+| 107 | `/api/projects/wypis/add/documents` | POST | Dodawanie dokumentów do wypisu |
+| 108 | `/api/projects/wypis/add/configuration` | POST | Konfiguracja wypisu |
+| 109 | `/api/projects/wypis/get/configuration` | GET | Pobieranie konfiguracji wypisu |
+| 110 | `/api/projects/wypis/precinct_and_number` | GET | Obręb i numer działki |
+| 111 | `/api/projects/wypis/plotspatialdevelopment` | GET | Zagospodarowanie przestrzenne działki |
+| 112 | `/api/projects/wypis/create` | POST | Tworzenie wypisu |
+| 113 | `/api/projects/wypis/remove` | POST | Usuwanie wypisu |
+
+### Dokumenty (3 endpointy)
+
+| # | Endpoint | Metoda | Opis |
+|---|----------|--------|------|
+| 114 | `/api/projects/document/import` | POST | Import dokumentu |
+| 115 | `/api/projects/document` | GET | Pobieranie dokumentu |
+| 116 | `/api/projects/documentsAll` | GET | Pobieranie wszystkich dokumentów |
+
+### Wyszukiwanie i filtrowanie (6 endpointów)
+
+| # | Endpoint | Metoda | Opis |
+|---|----------|--------|------|
+| 117 | `/api/projects/search` | POST | Wyszukiwanie |
+| 118 | `/api/projects/distinct` | GET | Unikalne wartości |
+| 119 | `/api/projects/filter/min-max` | GET | Min-max dla kolumn numerycznych |
+| 120 | `/api/projects/filter/numeric-columns` | GET | Pobieranie kolumn numerycznych |
+| 121 | `/api/projects/global-search` | POST | Wyszukiwanie globalne |
+| 122 | `/api/projects/missing-layer/add/` | POST | Dodawanie brakującej warstwy |
+
+### Metadane i ustawienia (6 endpointów)
+
+| # | Endpoint | Metoda | Opis |
+|---|----------|--------|------|
+| 123 | `/api/projects/metadata` | POST | Ustawienie metadanych |
+| 124 | `/api/projects/plot` | POST | Ustawienie działki |
+| 125 | `/api/projects/plot/reset` | POST | Reset działki |
+| 126 | `/api/projects/sort/app` | POST | Sortowanie aplikacji |
+| 127 | `/api/projects/basemap/set` | POST | Ustawienie mapy bazowej |
+| 128 | `/api/projects/logs/error/send` | POST | Wysyłanie logów błędów |
 
 ---
 
-## Notes
+## 📊 Podsumowanie
 
-- **Always use `/api/` prefix** for projects, layers, groups, styles endpoints
-- **Use `/dashboard/` prefix** for dashboard-specific endpoints
-- **Use `/auth/` prefix** for authentication endpoints
-- **Check CORS** - only `localhost:3000` is allowed
-- **Token authentication** - Use `Token <token>` format (not `Bearer`)
+**Łączna liczba endpointów:** 128
+
+**Podział według metod HTTP:**
+- **GET:** 38 endpointów
+- **POST:** 89 endpointów
+- **GET/POST:** 1 endpoint (`/api/layer/style`)
+
+**Podział według modułów:**
+- **Auth:** 4 endpointy
+- **Groups:** 9 endpointów
+- **Layers:** 58 endpointów
+- **Styles:** 7 endpointów
+- **Dashboard:** 5 endpointów
+- **Projects:** 45 endpointów
+
+---
+
+## ⚠️ Wymagania autoryzacji
+
+**Większość endpointów (poza `/auth/register` i `/auth/login`) wymaga autoryzacji tokenem:**
+
+```
+Authorization: Token {token}
+```
+
+lub
+
+```
+Authorization: Bearer {token}
+```
+
+---
+
+## 📋 Formaty odpowiedzi
+
+- **JSON** dla większości endpointów
+- **ZIP** dla eksportów (`groups/export`, `layer/export`, `projects/export`)
+- **Pliki binarne** dla obrazów i dokumentów (logo, thumbnail, documents)
+
+---
+
+## 🔗 Powiązane dokumenty
+
+- **CLAUDE.md** - Główne instrukcje dla Claude Code
+- **BACKEND-API-REFERENCE.md** - Szczegółowa dokumentacja API z przykładami
+- **BACKEND-INTEGRATION.md** - Status integracji z frontendem
+- **projects_api_docs.md** - Dokumentacja modułu Projects
+- **layers_api_docs.md** - Dokumentacja modułu Layers
+- **auth_api_docs.md** - Dokumentacja modułu Auth
+- **groups_api_docs.md** - Dokumentacja modułu Groups
+- **styles_api_docs.md** - Dokumentacja modułu Styles
+
+---
+
+**Ostatnia aktualizacja:** 15 października 2025

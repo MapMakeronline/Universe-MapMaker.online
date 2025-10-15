@@ -49,26 +49,26 @@ export interface ContactFormData {
 class UnifiedUserService {
   /**
    * Get user profile
-   * Endpoint: GET /dashboard/profile/
+   * Endpoint: GET /auth/profile
    */
   async getProfile(): Promise<UserProfile> {
-    return apiClient.get<UserProfile>('/dashboard/profile/');
+    return apiClient.get<UserProfile>('/auth/profile');
   }
 
   /**
    * Update user profile
-   * Endpoint: PUT /dashboard/settings/profile/
+   * Endpoint: POST /dashboard/settings/profile/
    */
   async updateProfile(data: UpdateProfileData): Promise<{ message: string; user: any }> {
-    return apiClient.put('/dashboard/settings/profile/', data);
+    return apiClient.post('/dashboard/settings/profile/', data);
   }
 
   /**
    * Change user password
-   * Endpoint: PUT /dashboard/settings/password/
+   * Endpoint: POST /dashboard/settings/password/
    */
   async changePassword(data: ChangePasswordData): Promise<{ message: string }> {
-    return apiClient.put('/dashboard/settings/password/', data);
+    return apiClient.post('/dashboard/settings/password/', data);
   }
 
   /**
