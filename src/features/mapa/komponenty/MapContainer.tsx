@@ -16,6 +16,7 @@ import Buildings3D from './Buildings3D';
 import FeatureAttributesModal from '@/features/warstwy/modale/FeatureAttributesModal';
 import MobileFAB from './MobileFAB';
 import QGISIdentifyTool from './QGISIdentifyTool';
+import UserFAB from './UserFAB';
 
 // Import CSS dla Mapbox GL
 import 'mapbox-gl/dist/mapbox-gl.css';
@@ -292,6 +293,9 @@ const MapContainer: React.FC<MapContainerProps> = ({ children, projectName }) =>
 
       {/* Mobile FAB - Floating Action Button for drawing tools */}
       <MobileFAB />
+
+      {/* User FAB - User account menu (highest position on the right) */}
+      <UserFAB />
     </Box>
   );
 };
