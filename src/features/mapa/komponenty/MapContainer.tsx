@@ -15,6 +15,7 @@ import IdentifyTool from './IdentifyTool';
 import Buildings3D from './Buildings3D';
 import FeatureAttributesModal from '@/features/warstwy/modale/FeatureAttributesModal';
 import MobileFAB from './MobileFAB';
+import QGISIdentifyTool from './QGISIdentifyTool';
 
 // Import CSS dla Mapbox GL
 import 'mapbox-gl/dist/mapbox-gl.css';
@@ -275,6 +276,9 @@ const MapContainer: React.FC<MapContainerProps> = ({ children, projectName }) =>
         {/* 3D Buildings */}
         <Buildings3D />
 
+        {/* QGIS Identify Tool - MUST be inside <Map> to access map context */}
+        <QGISIdentifyTool projectName={projectName} />
+
         {/* Dodatkowe komponenty (Markers, Popup) */}
         {children}
       </Map>
@@ -286,7 +290,7 @@ const MapContainer: React.FC<MapContainerProps> = ({ children, projectName }) =>
       {/* <SimpleDrawingToolbar />
       <SimpleMeasurementToolbar /> */}
 
-      {/* Mobile FAB - Floating Action Button (działa na wszystkich urządzeniach) */}
+      {/* Mobile FAB - Floating Action Button for drawing tools */}
       <MobileFAB />
     </Box>
   );
