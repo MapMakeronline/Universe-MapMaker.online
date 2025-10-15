@@ -209,7 +209,7 @@ const QGISIdentifyTool: React.FC<QGISIdentifyToolProps> = ({ projectName }) => {
     return allFeatures;
   }, [projectName, layers, getVisibleLayers, token, transformWGS84toWebMercator]);
 
-  // Obsługa kliknięcia na mapę
+  // Obsługa kliknięcia na mapę (MOBILE + DESKTOP COMPATIBLE)
   useEffect(() => {
     mapLogger.log('🔍 QGIS Identify: useEffect triggered', {
       hasMapRef: !!mapRef,
@@ -252,6 +252,9 @@ const QGISIdentifyTool: React.FC<QGISIdentifyToolProps> = ({ projectName }) => {
     map.getCanvas().style.cursor = 'help';
     mapLogger.log('🔍 QGIS Identify: Cursor changed to "help"');
 
+    // Track touch start for tap vs drag detection (MOBILE FIX!)
+    let touchStartPt: { x: number; y: number } | null = null;
+
     const handleMapClick = async (e: any) => {
       mapLogger.log('🔍 QGIS Identify: ===== KLIKNIĘCIE NA MAPĘ =====', {
         lngLat: e.lngLat,
@@ -289,12 +292,50 @@ const QGISIdentifyTool: React.FC<QGISIdentifyToolProps> = ({ projectName }) => {
       setIsLoading(false);
     };
 
+    // Desktop: click handler (works after tap on mobile when no drag/pinch)
     map.on('click', handleMapClick);
-    mapLogger.log('🔍 QGIS Identify: Event listener zarejestrowany! Czekam na kliknięcia...');
+    mapLogger.log('🔍 QGIS Identify: ✅ Desktop click listener registered');
+
+    // Mobile fallback: touchstart/touchend pattern (tap vs drag detection)
+    const handleTouchStart = (e: any) => {
+      if (e.points?.length === 1) {
+        touchStartPt = { x: e.point.x, y: e.point.y };
+        mapLogger.log('🔍 QGIS Identify: 📱 Touch start detected');
+      }
+    };
+
+    const handleTouchEnd = (e: any) => {
+      if (e.points?.length !== 1 || !touchStartPt) {
+        touchStartPt = null;
+        return;
+      }
+
+      // Check if user moved finger (drag vs tap)
+      const dx = Math.abs(e.point.x - touchStartPt.x);
+      const dy = Math.abs(e.point.y - touchStartPt.y);
+      const moved = Math.max(dx, dy) > 8; // 8px tolerance
+
+      touchStartPt = null;
+
+      if (moved) {
+        mapLogger.log('🔍 QGIS Identify: 🔄 Touch moved - ignoring (drag, not tap)');
+        return; // Was a drag, not a tap
+      }
+
+      // Clean tap detected - trigger identify
+      mapLogger.log('🔍 QGIS Identify: ✅ Clean tap detected (touchend fallback)');
+      handleMapClick(e);
+    };
+
+    map.on('touchstart', handleTouchStart);
+    map.on('touchend', handleTouchEnd);
+    mapLogger.log('🔍 QGIS Identify: ✅ Mobile touch listeners registered');
 
     return () => {
-      mapLogger.log('🔍 QGIS Identify: Cleanup - usuwam event listener');
+      mapLogger.log('🔍 QGIS Identify: Cleanup - usuwam event listeners');
       map.off('click', handleMapClick);
+      map.off('touchstart', handleTouchStart);
+      map.off('touchend', handleTouchEnd);
       map.getCanvas().style.cursor = '';
     };
   }, [mapRef, isActive, projectName, layers, queryQGISFeatures]);
