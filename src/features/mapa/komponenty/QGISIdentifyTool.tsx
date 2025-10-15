@@ -263,6 +263,8 @@ const QGISIdentifyTool: React.FC<QGISIdentifyToolProps> = ({ projectName }) => {
         projectName
       });
 
+      triggerHapticFeedback(); // Haptic feedback on map click
+
       setIsLoading(true);
 
       const clickPoint: [number, number] = [e.lngLat.lng, e.lngLat.lat];
@@ -290,6 +292,11 @@ const QGISIdentifyTool: React.FC<QGISIdentifyToolProps> = ({ projectName }) => {
       setFeatures(qgisFeatures);
       setModalOpen(true);
       setIsLoading(false);
+
+      // Haptic feedback when features found (stronger vibration)
+      if (qgisFeatures.length > 0) {
+        triggerHapticFeedback();
+      }
     };
 
     // Desktop: click handler (works after tap on mobile when no drag/pinch)
@@ -340,7 +347,15 @@ const QGISIdentifyTool: React.FC<QGISIdentifyToolProps> = ({ projectName }) => {
     };
   }, [mapRef, isActive, projectName, layers, queryQGISFeatures]);
 
+  // Haptic feedback for mobile devices
+  const triggerHapticFeedback = () => {
+    if ('vibrate' in navigator) {
+      navigator.vibrate(50); // 50ms vibration
+    }
+  };
+
   const handleToggle = () => {
+    triggerHapticFeedback(); // Haptic feedback on toggle
     const newState = !isActive;
     setIsActive(newState);
     mapLogger.log(`🔍 QGIS Identify FAB: ${newState ? 'AKTYWOWANY' : 'DEZAKTYWOWANY'}`);
@@ -354,13 +369,14 @@ const QGISIdentifyTool: React.FC<QGISIdentifyToolProps> = ({ projectName }) => {
 
   return (
     <>
-      {/* FAB Button */}
+      {/* FAB Button - larger on mobile for better touch target */}
       <Tooltip
         title={isActive ? 'Wyłącz identyfikację QGIS' : 'Włącz identyfikację QGIS (kliknij na mapę)'}
         placement="left"
       >
         <Fab
           onClick={handleToggle}
+          size={isMobile ? 'large' : 'medium'}
           aria-label={isActive ? 'Wyłącz identyfikację' : 'Włącz identyfikację'}
           sx={{
             position: 'fixed',
@@ -368,18 +384,22 @@ const QGISIdentifyTool: React.FC<QGISIdentifyToolProps> = ({ projectName }) => {
             right: fabRightPosition,
             zIndex: 1300,
             transition: 'right 0.3s ease-in-out',
+            width: isMobile ? 64 : 56, // Larger touch target on mobile
+            height: isMobile ? 64 : 56,
             bgcolor: theme.palette.primary.main,
             color: 'white',
             '&:hover': {
               bgcolor: theme.palette.primary.dark,
             },
             opacity: isActive ? 1 : 0.7,
+            // Better touch feedback
             '&:active': {
               transform: 'scale(0.95)',
+              bgcolor: theme.palette.primary.dark,
             },
           }}
         >
-          {isActive ? <InfoIcon /> : <InfoOutlinedIcon />}
+          {isActive ? <InfoIcon sx={{ fontSize: isMobile ? 32 : 24 }} /> : <InfoOutlinedIcon sx={{ fontSize: isMobile ? 32 : 24 }} />}
         </Fab>
       </Tooltip>
 

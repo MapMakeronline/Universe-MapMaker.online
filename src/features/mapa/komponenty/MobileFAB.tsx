@@ -53,7 +53,16 @@ const MobileFAB: React.FC<MobileFABProps> = () => {
     }
   }, [identify.isActive, mode, dispatch]);
 
+  // Haptic feedback for mobile devices
+  const triggerHapticFeedback = () => {
+    if ('vibrate' in navigator) {
+      navigator.vibrate(50); // 50ms vibration
+    }
+  };
+
   const handleDrawTypeSelect = (type: DrawType) => {
+    triggerHapticFeedback(); // Haptic feedback on selection
+
     setSelectedDrawType(type);
     setMode('drawing');
     setSpeedDialOpen(false);
@@ -74,10 +83,12 @@ const MobileFAB: React.FC<MobileFABProps> = () => {
     }
 
     dispatch(setDrawMode(drawMode as any));
-    console.log('Activated Mapbox GL Draw mode:', drawMode, '- można dodać wiele elementów');
+    console.log('📱 Activated Mapbox GL Draw mode:', drawMode, '- można dodać wiele elementów');
   };
 
   const handleConfirmDrawing = () => {
+    triggerHapticFeedback(); // Haptic feedback on confirm
+
     // Pobierz WSZYSTKIE narysowane features z Redux
     if (draw.features.length > 0) {
       const typeName = selectedDrawType === 'point' ? 'Punkty'
@@ -92,7 +103,7 @@ const MobileFAB: React.FC<MobileFABProps> = () => {
         minute: '2-digit'
       })}`;
 
-      console.log(`Tworzenie nowej warstwy: "${newLayerName}" z ${draw.features.length} elementami:`, draw.features);
+      console.log(`📱 Tworzenie nowej warstwy: "${newLayerName}" z ${draw.features.length} elementami:`, draw.features);
 
       // Zapisz jako warstwę w drzewie warstw
       dispatch(addDrawnLayer({
@@ -126,11 +137,17 @@ const MobileFAB: React.FC<MobileFABProps> = () => {
         return (
           <SpeedDial
             ariaLabel="Drawing tools"
-            icon={<SpeedDialIcon icon={<Add />} />}
+            icon={<SpeedDialIcon icon={<Add sx={{ fontSize: 28 }} />} />}
             onClose={() => setSpeedDialOpen(false)}
-            onOpen={() => setSpeedDialOpen(true)}
+            onOpen={() => {
+              triggerHapticFeedback();
+              setSpeedDialOpen(true);
+            }}
             open={speedDialOpen}
             direction="left"
+            FabProps={{
+              size: isMobile ? 'large' : 'medium', // Larger on mobile for better touch target
+            }}
             sx={{
               position: 'fixed',
               bottom: 80,
@@ -139,29 +156,62 @@ const MobileFAB: React.FC<MobileFABProps> = () => {
               transition: 'right 0.3s ease-in-out',
               '& .MuiSpeedDial-fab': {
                 bgcolor: theme.palette.primary.main,
+                width: isMobile ? 64 : 56, // Larger touch target on mobile
+                height: isMobile ? 64 : 56,
                 '&:hover': {
                   bgcolor: theme.palette.primary.dark,
+                },
+                // Better touch feedback
+                '&:active': {
+                  transform: 'scale(0.95)',
                 },
               },
             }}
           >
             <SpeedDialAction
               key="point"
-              icon={<Place />}
+              icon={<Place sx={{ fontSize: 24 }} />}
               tooltipTitle="Punkt"
               onClick={() => handleDrawTypeSelect('point')}
+              FabProps={{
+                sx: {
+                  width: isMobile ? 52 : 48, // Larger action buttons on mobile
+                  height: isMobile ? 52 : 48,
+                  '&:active': {
+                    transform: 'scale(0.9)',
+                  },
+                },
+              }}
             />
             <SpeedDialAction
               key="line"
-              icon={<Timeline />}
+              icon={<Timeline sx={{ fontSize: 24 }} />}
               tooltipTitle="Linia"
               onClick={() => handleDrawTypeSelect('line')}
+              FabProps={{
+                sx: {
+                  width: isMobile ? 52 : 48,
+                  height: isMobile ? 52 : 48,
+                  '&:active': {
+                    transform: 'scale(0.9)',
+                  },
+                },
+              }}
             />
             <SpeedDialAction
               key="polygon"
-              icon={<Polyline />}
+              icon={<Polyline sx={{ fontSize: 24 }} />}
               tooltipTitle="Poligon"
               onClick={() => handleDrawTypeSelect('polygon')}
+              FabProps={{
+                sx: {
+                  width: isMobile ? 52 : 48,
+                  height: isMobile ? 52 : 48,
+                  '&:active': {
+                    transform: 'scale(0.9)',
+                  },
+                },
+              }}
             />
           </SpeedDial>
         );
@@ -180,19 +230,26 @@ const MobileFAB: React.FC<MobileFABProps> = () => {
               transition: 'right 0.3s ease-in-out',
             }}
           >
-            {/* Confirm button */}
+            {/* Confirm button - larger on mobile for better touch target */}
             <Fab
               color="success"
-              size="medium"
+              size={isMobile ? 'large' : 'medium'}
               onClick={handleConfirmDrawing}
               sx={{
                 bgcolor: theme.palette.success.main,
+                width: isMobile ? 64 : 56, // Larger touch target on mobile
+                height: isMobile ? 64 : 56,
                 '&:hover': {
+                  bgcolor: theme.palette.success.dark,
+                },
+                // Better touch feedback
+                '&:active': {
+                  transform: 'scale(0.95)',
                   bgcolor: theme.palette.success.dark,
                 },
               }}
             >
-              <Check />
+              <Check sx={{ fontSize: isMobile ? 32 : 24 }} />
             </Fab>
           </Box>
         );
