@@ -606,6 +606,7 @@ export const layersApi = createApi({
      * Endpoint: GET /layer/export
      * Priority: 🟡 Medium
      * Note: Uses direct fetch due to Blob response
+     * keepUnusedDataFor: 0 prevents caching Blob (non-serializable)
      */
     exportLayer: builder.mutation<
       Blob,
@@ -646,6 +647,7 @@ export const layersApi = createApi({
           return { error: { status: 'FETCH_ERROR', data: error.message } };
         }
       },
+      keepUnusedDataFor: 0, // Don't cache Blob (non-serializable)
     }),
 
     /**
@@ -800,6 +802,7 @@ export const layersApi = createApi({
      * Export layer style to QML/SLD file
      * Endpoint: GET /api/layer/style/export
      * Priority: 🟡 Medium
+     * Note: keepUnusedDataFor: 0 prevents caching Blob (non-serializable)
      */
     exportStyle: builder.query<
       Blob,
@@ -837,6 +840,7 @@ export const layersApi = createApi({
           return { error: { status: 'FETCH_ERROR', data: error.message } };
         }
       },
+      keepUnusedDataFor: 0, // Don't cache Blob (non-serializable)
     }),
 
     /**

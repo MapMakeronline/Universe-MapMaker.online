@@ -548,8 +548,6 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                       console.log('🎨 Opening Edit Layer Style Modal');
                       onEditLayerStyle();
                     }, '60px')}
-                    {renderActionButton('Zarządzaj', onManageLayer, '70px')}
-                    {renderActionButton('Etykietowanie', onLayerLabeling, '90px')}
                   </Box>
                 ), true)}
               </>

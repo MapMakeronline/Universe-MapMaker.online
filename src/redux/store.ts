@@ -33,9 +33,16 @@ export const makeStore = () => {
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware({
         serializableCheck: {
-          // Ignoruj nieserializowalne dane w Redux (np. funkcje z Mapbox)
-          ignoredActions: ['map/setViewState'],
-          ignoredPaths: ['map.mapInstance'],
+          // Ignoruj nieserializowalne dane w Redux (np. funkcje z Mapbox, Blob z API)
+          ignoredActions: [
+            'map/setViewState',
+            'layersApi/executeQuery/fulfilled', // exportStyle Blob response
+            'layersApi/executeMutation/fulfilled', // exportLayer Blob response
+          ],
+          ignoredPaths: [
+            'map.mapInstance',
+            'layersApi.queries', // Ignore all layersApi query cache (Blob responses)
+          ],
         },
       })
         // Phase 3: Add RTK Query middleware for caching, invalidation, polling, etc.
