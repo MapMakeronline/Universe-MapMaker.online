@@ -137,20 +137,45 @@ export function QGISProjectLoader({ projectName, onLoad }: QGISProjectLoaderProp
   }
 
   if (error || loadError) {
+    // Enhanced error messages with backend context
+    let errorTitle = 'Błąd ładowania projektu QGIS';
+    let errorMessage = 'Nieznany błąd połączenia z serwerem';
+    let errorSeverity: 'error' | 'warning' = 'error';
+
+    if (loadError) {
+      errorMessage = loadError;
+    } else if (error && 'status' in error) {
+      if (error.status === 404) {
+        errorMessage = 'Projekt nie został znaleziony w bazie danych';
+      } else if (error.status === 400) {
+        errorTitle = 'Problem z odczytem projektu na serwerze';
+        errorMessage =
+          'Backend nie może odczytać projektu z powodu problemu wielowątkowości PyQGIS. ' +
+          'Jest to znany problem backendowy związany z QObject threading. ' +
+          'Spróbuj odświeżyć stronę (F5) lub poczekać chwilę.';
+        errorSeverity = 'warning';
+      } else if (error.status === 401) {
+        errorMessage = 'Brak autoryzacji - zaloguj się ponownie';
+      } else if (error.status === 500) {
+        errorMessage = 'Błąd serwera (500) - skontaktuj się z administratorem';
+      }
+    } else if (error && 'data' in error) {
+      try {
+        const errorData = error.data as any;
+        errorMessage = errorData?.message || JSON.stringify(errorData);
+      } catch {
+        errorMessage = 'Błąd parsowania odpowiedzi serwera';
+      }
+    }
+
     return (
-      <Box sx={{ position: 'absolute', top: 16, left: 16, zIndex: 1000, maxWidth: 400 }}>
-        <Alert severity="error">
+      <Box sx={{ position: 'absolute', top: 16, left: 16, zIndex: 1000, maxWidth: 500 }}>
+        <Alert severity={errorSeverity}>
           <Typography variant="body2" fontWeight={600}>
-            Błąd ładowania projektu QGIS: {projectName}
+            {errorTitle}: {projectName}
           </Typography>
           <Typography variant="caption" sx={{ display: 'block', mt: 0.5 }}>
-            {loadError || (error && 'status' in error && error.status === 404
-              ? 'Projekt nie został znaleziony'
-              : error && 'status' in error && error.status === 400
-              ? 'Projekt jest pusty lub uszkodzony (tree.json nie zawiera warstw)'
-              : error && 'data' in error
-              ? JSON.stringify(error.data)
-              : 'Nieznany błąd połączenia z serwerem')}
+            {errorMessage}
           </Typography>
         </Alert>
       </Box>
