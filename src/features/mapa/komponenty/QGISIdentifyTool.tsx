@@ -382,7 +382,7 @@ const QGISIdentifyTool: React.FC<QGISIdentifyToolProps> = ({ projectName }) => {
             position: 'fixed',
             bottom: 150, // Powyżej MobileFAB (80px)
             right: fabRightPosition,
-            zIndex: 1300,
+            zIndex: 1400, // Higher than modals (1300) to stay on top
             transition: 'right 0.3s ease-in-out',
             width: isMobile ? 64 : 56, // Larger touch target on mobile
             height: isMobile ? 64 : 56,

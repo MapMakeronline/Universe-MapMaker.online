@@ -152,7 +152,7 @@ const MobileFAB: React.FC<MobileFABProps> = () => {
               position: 'fixed',
               bottom: 80,
               right: fabRightPosition,
-              zIndex: 1300,
+              zIndex: 1400, // Higher than modals (1300) to stay on top
               transition: 'right 0.3s ease-in-out',
               '& .MuiSpeedDial-fab': {
                 bgcolor: theme.palette.primary.main,
@@ -223,7 +223,7 @@ const MobileFAB: React.FC<MobileFABProps> = () => {
               position: 'fixed',
               bottom: 80,
               right: fabRightPosition,
-              zIndex: 1300,
+              zIndex: 1400, // Higher than modals (1300) to stay on top
               display: 'flex',
               flexDirection: 'column',
               gap: 1,
