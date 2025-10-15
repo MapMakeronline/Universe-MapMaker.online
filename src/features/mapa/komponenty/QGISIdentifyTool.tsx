@@ -3,6 +3,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useMap } from 'react-map-gl';
 import Fab from '@mui/material/Fab';
+import SpeedDial from '@mui/material/SpeedDial';
+import SpeedDialAction from '@mui/material/SpeedDialAction';
+import SpeedDialIcon from '@mui/material/SpeedDialIcon';
 import Tooltip from '@mui/material/Tooltip';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
@@ -21,9 +24,15 @@ import InfoIcon from '@mui/icons-material/Info';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import CloseIcon from '@mui/icons-material/Close';
 import LayersIcon from '@mui/icons-material/Layers';
-import { useAppSelector } from '@/redux/hooks';
+import ApartmentIcon from '@mui/icons-material/Apartment'; // Ikona budynku (3D Buildings)
+import HexagonIcon from '@mui/icons-material/Hexagon'; // Ikona poligonu (QGIS layers)
+import { useAppSelector, useAppDispatch } from '@/redux/hooks';
 import { mapLogger } from '@/narzedzia/logger';
 import type { LayerNode } from '@/typy/layers';
+import { addFeature, selectFeature, setAttributeModalOpen } from '@/redux/slices/featuresSlice';
+import type { MapFeature } from '@/redux/slices/featuresSlice';
+import { query3DBuildingsAtPoint, get3DBuildingsSource } from '@/mapbox/3d-picking';
+import { detect3DLayers, has3DLayers } from '@/mapbox/3d-layer-detection';
 
 // Szerokość prawego toolbara + marginesy (IDENTYCZNE jak w MobileFAB)
 const RIGHT_TOOLBAR_WIDTH = 56;
@@ -53,13 +62,17 @@ interface QGISIdentifyToolProps {
 const QGISIdentifyTool: React.FC<QGISIdentifyToolProps> = ({ projectName }) => {
   const theme = useTheme();
   const { current: mapRef } = useMap();
+  const dispatch = useAppDispatch();
   const layers = useAppSelector((state) => state.layers.layers);
   const token = useAppSelector((state) => state.auth.token); // Pobierz token z Redux
+  const mapboxFeaturesStore = useAppSelector((state) => state.features); // For 3D buildings (Mapbox)
 
   // Własny state (NIE używa drawSlice!)
   const [isActive, setIsActive] = useState(false);
+  const [identifyType, setIdentifyType] = useState<'qgis' | '3d-buildings' | null>(null);
+  const [speedDialOpen, setSpeedDialOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
-  const [features, setFeatures] = useState<QGISFeature[]>([]);
+  const [features, setFeatures] = useState<QGISFeature[]>([]); // QGIS backend features
   const [clickCoordinates, setClickCoordinates] = useState<[number, number] | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -270,8 +283,12 @@ const QGISIdentifyTool: React.FC<QGISIdentifyToolProps> = ({ projectName }) => {
       const clickPoint: [number, number] = [e.lngLat.lng, e.lngLat.lat];
       setClickCoordinates(clickPoint);
 
-      // Utwórz bbox wokół punktu kliknięcia (tolerance: 0.01 stopnia ~ 1km)
-      const tolerance = 0.01; // Zwiększono z 0.001 dla lepszego wykrywania
+      // Utwórz bbox wokół punktu kliknięcia (tolerance dla polygonów: ~10m)
+      // UWAGA: Backend ma swój własny buffer (ST_Buffer):
+      // - polygon/MultiPolygon: 0m (kliknięcie musi być w środku)
+      // - line/point: 1000m (backend buffer, nie frontend tolerance)
+      // Frontend tolerance jest używana tylko do bbox (nieistotne dla backendu)
+      const tolerance = 0.00009; // 0.00009° ≈ 10 metrów (dla polygonów)
       const bbox: [number, number, number, number] = [
         e.lngLat.lng - tolerance, // minLng (West)
         e.lngLat.lat - tolerance, // minLat (South)
@@ -283,19 +300,87 @@ const QGISIdentifyTool: React.FC<QGISIdentifyToolProps> = ({ projectName }) => {
         lon: clickPoint[0],
         lat: clickPoint[1],
         bbox,
-        tolerance: `${tolerance}° (~1km)`
+        tolerance: `${tolerance}° (~10m)`
       });
 
-      // Zapytaj QGIS Server
-      const qgisFeatures = await queryQGISFeatures(clickPoint, bbox);
+      // ==================== IDENTIFY MODE LOGIC ====================
+      if (identifyType === '3d-buildings') {
+        // ==================== 3D BUILDINGS MODE ====================
+        const mapHas3DLayers = has3DLayers(map);
 
-      setFeatures(qgisFeatures);
-      setModalOpen(true);
-      setIsLoading(false);
+        mapLogger.log('🏢 3D Buildings Identify: Checking for 3D layers', {
+          has3DLayers: mapHas3DLayers,
+          pitch: map.getPitch(),
+        });
 
-      // Haptic feedback when features found (stronger vibration)
-      if (qgisFeatures.length > 0) {
+        if (!mapHas3DLayers) {
+          mapLogger.warn('🏢 3D Buildings Identify: No 3D layers found - switching to 2D style may help');
+          setIsLoading(false);
+          return;
+        }
+
+        // Use 3D picking utility (12px tolerance)
+        const building3DFeatures = query3DBuildingsAtPoint(map, e.point, 12);
+
+        if (building3DFeatures.length === 0) {
+          mapLogger.log('🏢 3D Buildings Identify: No buildings found at this point');
+          setIsLoading(false);
+          return;
+        }
+
+        const firstFeature = building3DFeatures[0];
+        const featureId = firstFeature.id?.toString() || `building-${Date.now()}`;
+
+        mapLogger.log('🏢 3D Buildings Identify: Building selected', {
+          id: featureId,
+          properties: firstFeature.properties
+        });
+
         triggerHapticFeedback();
+
+        // Check if building already exists in Redux store
+        let building = mapboxFeaturesStore.features[featureId];
+
+        if (!building) {
+          // Create new building entry
+          const coordinates: [number, number] = firstFeature.geometry?.type === 'Point'
+            ? (firstFeature.geometry.coordinates as [number, number])
+            : [e.lngLat.lng, e.lngLat.lat];
+
+          const newBuilding: MapFeature = {
+            id: featureId,
+            type: 'building',
+            name: `Budynek ${featureId}`,
+            coordinates,
+            layer: get3DBuildingsSource(map) || '3d-buildings',
+            geometry: firstFeature.geometry,
+            attributes: Object.entries(firstFeature.properties || {}).map(([key, value]) => ({
+              key,
+              value,
+            })),
+          };
+
+          dispatch(addFeature(newBuilding));
+          building = newBuilding;
+        }
+
+        // Select and open modal
+        dispatch(selectFeature(building.id));
+        dispatch(setAttributeModalOpen(true));
+        setIsLoading(false);
+
+      } else if (identifyType === 'qgis') {
+        // ==================== QGIS LAYERS MODE ====================
+        const qgisFeatures = await queryQGISFeatures(clickPoint, bbox);
+
+        setFeatures(qgisFeatures);
+        setModalOpen(true);
+        setIsLoading(false);
+
+        // Haptic feedback when features found
+        if (qgisFeatures.length > 0) {
+          triggerHapticFeedback();
+        }
       }
     };
 
@@ -354,11 +439,20 @@ const QGISIdentifyTool: React.FC<QGISIdentifyToolProps> = ({ projectName }) => {
     }
   };
 
-  const handleToggle = () => {
-    triggerHapticFeedback(); // Haptic feedback on toggle
-    const newState = !isActive;
-    setIsActive(newState);
-    mapLogger.log(`🔍 QGIS Identify FAB: ${newState ? 'AKTYWOWANY' : 'DEZAKTYWOWANY'}`);
+  const handleIdentifyTypeSelect = (type: 'qgis' | '3d-buildings') => {
+    triggerHapticFeedback(); // Haptic feedback on selection
+    setIdentifyType(type);
+    setIsActive(true);
+    setSpeedDialOpen(false);
+    mapLogger.log(`🔍 Identify: Aktywowano tryb ${type === 'qgis' ? 'QGIS Layers' : '3D Buildings'}`);
+  };
+
+  const handleDeactivate = () => {
+    triggerHapticFeedback();
+    setIsActive(false);
+    setIdentifyType(null);
+    setSpeedDialOpen(false);
+    mapLogger.log('🔍 Identify: DEZAKTYWOWANY');
   };
 
   const handleCloseModal = () => {
@@ -369,39 +463,111 @@ const QGISIdentifyTool: React.FC<QGISIdentifyToolProps> = ({ projectName }) => {
 
   return (
     <>
-      {/* FAB Button - larger on mobile for better touch target */}
-      <Tooltip
-        title={isActive ? 'Wyłącz identyfikację QGIS' : 'Włącz identyfikację QGIS (kliknij na mapę)'}
-        placement="left"
-      >
-        <Fab
-          onClick={handleToggle}
-          size={isMobile ? 'large' : 'medium'}
-          aria-label={isActive ? 'Wyłącz identyfikację' : 'Włącz identyfikację'}
+      {/* SpeedDial with identify options */}
+      {!isActive ? (
+        <SpeedDial
+          ariaLabel="Identify tools"
+          icon={<SpeedDialIcon icon={<InfoOutlinedIcon sx={{ fontSize: 28 }} />} />}
+          onClose={() => setSpeedDialOpen(false)}
+          onOpen={() => {
+            triggerHapticFeedback();
+            setSpeedDialOpen(true);
+          }}
+          open={speedDialOpen}
+          direction="left"
+          FabProps={{
+            size: isMobile ? 'large' : 'medium',
+          }}
           sx={{
             position: 'fixed',
             bottom: 150, // Powyżej MobileFAB (80px)
             right: fabRightPosition,
-            zIndex: 1400, // Higher than modals (1300) to stay on top
+            zIndex: 1400,
             transition: 'right 0.3s ease-in-out',
-            width: isMobile ? 64 : 56, // Larger touch target on mobile
-            height: isMobile ? 64 : 56,
-            bgcolor: theme.palette.primary.main,
-            color: 'white',
-            '&:hover': {
-              bgcolor: theme.palette.primary.dark,
-            },
-            opacity: isActive ? 1 : 0.7,
-            // Better touch feedback
-            '&:active': {
-              transform: 'scale(0.95)',
-              bgcolor: theme.palette.primary.dark,
+            '& .MuiSpeedDial-fab': {
+              bgcolor: theme.palette.primary.main,
+              width: isMobile ? 64 : 56,
+              height: isMobile ? 64 : 56,
+              '&:hover': {
+                bgcolor: theme.palette.primary.dark,
+              },
+              '&:active': {
+                transform: 'scale(0.95)',
+              },
             },
           }}
         >
-          {isActive ? <InfoIcon sx={{ fontSize: isMobile ? 32 : 24 }} /> : <InfoOutlinedIcon sx={{ fontSize: isMobile ? 32 : 24 }} />}
-        </Fab>
-      </Tooltip>
+          {/* QGIS Layers Identify */}
+          <SpeedDialAction
+            key="qgis"
+            icon={<HexagonIcon sx={{ fontSize: 24 }} />}
+            tooltipTitle="Identyfikuj warstwy QGIS"
+            onClick={() => handleIdentifyTypeSelect('qgis')}
+            FabProps={{
+              sx: {
+                width: isMobile ? 52 : 48,
+                height: isMobile ? 52 : 48,
+                '&:active': {
+                  transform: 'scale(0.9)',
+                },
+              },
+            }}
+          />
+          {/* 3D Buildings Identify */}
+          <SpeedDialAction
+            key="3d-buildings"
+            icon={<ApartmentIcon sx={{ fontSize: 24 }} />}
+            tooltipTitle="Identyfikuj budynki 3D"
+            onClick={() => handleIdentifyTypeSelect('3d-buildings')}
+            FabProps={{
+              sx: {
+                width: isMobile ? 52 : 48,
+                height: isMobile ? 52 : 48,
+                '&:active': {
+                  transform: 'scale(0.9)',
+                },
+              },
+            }}
+          />
+        </SpeedDial>
+      ) : (
+        // Active mode - show active icon (changes based on selected type)
+        <Tooltip
+          title={`Aktywne: ${identifyType === 'qgis' ? 'QGIS Layers' : '3D Buildings'} (kliknij aby wyłączyć)`}
+          placement="left"
+        >
+          <Fab
+            onClick={handleDeactivate}
+            size={isMobile ? 'large' : 'medium'}
+            aria-label="Wyłącz identyfikację"
+            sx={{
+              position: 'fixed',
+              bottom: 150,
+              right: fabRightPosition,
+              zIndex: 1400,
+              transition: 'right 0.3s ease-in-out',
+              width: isMobile ? 64 : 56,
+              height: isMobile ? 64 : 56,
+              bgcolor: theme.palette.primary.main, // Primary color when active
+              color: 'white',
+              '&:hover': {
+                bgcolor: theme.palette.primary.dark,
+              },
+              '&:active': {
+                transform: 'scale(0.95)',
+                bgcolor: theme.palette.primary.dark,
+              },
+            }}
+          >
+            {/* Show icon based on active identify type */}
+            {identifyType === 'qgis' ? (
+              <HexagonIcon sx={{ fontSize: isMobile ? 32 : 24 }} />
+            ) : (
+              <ApartmentIcon sx={{ fontSize: isMobile ? 32 : 24 }} />
+            )}
+          </Fab>
+        </Tooltip>
+      )}
 
       {/* Modal z wynikami */}
       <Dialog
