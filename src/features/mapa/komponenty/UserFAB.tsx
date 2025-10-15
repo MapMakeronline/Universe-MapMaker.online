@@ -67,7 +67,7 @@ const UserFAB: React.FC = () => {
         onClick={handleUserMenuOpen}
         sx={{
           position: 'fixed',
-          bottom: 220, // Najwyżej - nad QGIS Identify (150px) i MobileFAB
+          bottom: 380, // Najwyżej w kolumnie FAB-ów po prawej
           right: fabRightPosition,
           zIndex: 1400,
           width: isMobile ? 64 : 56,

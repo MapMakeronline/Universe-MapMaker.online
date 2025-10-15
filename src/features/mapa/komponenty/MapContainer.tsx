@@ -17,6 +17,10 @@ import FeatureAttributesModal from '@/features/warstwy/modale/FeatureAttributesM
 import MobileFAB from './MobileFAB';
 import QGISIdentifyTool from './QGISIdentifyTool';
 import UserFAB from './UserFAB';
+import SearchFAB from './SearchFAB';
+import DocumentFAB from './DocumentFAB';
+import MeasurementFAB from './MeasurementFAB';
+import GeolocationFAB from './GeolocationFAB';
 
 // Import CSS dla Mapbox GL
 import 'mapbox-gl/dist/mapbox-gl.css';
@@ -291,11 +295,27 @@ const MapContainer: React.FC<MapContainerProps> = ({ children, projectName }) =>
       {/* <SimpleDrawingToolbar />
       <SimpleMeasurementToolbar /> */}
 
-      {/* Mobile FAB - Floating Action Button for drawing tools */}
+      {/* FAB Column (Right Side) - from top to bottom */}
+
+      {/* User FAB - User account menu (bottom: 380px) */}
+      <UserFAB />
+
+      {/* Search FAB - Map search (bottom: 310px) */}
+      <SearchFAB />
+
+      {/* Document FAB - Wypis i wyrys (bottom: 240px) */}
+      <DocumentFAB />
+
+      {/* Measurement FAB - Mierzenie (bottom: 170px) */}
+      <MeasurementFAB />
+
+      {/* QGIS Identify Tool - bottom: 150px (already positioned) */}
+
+      {/* Mobile FAB - Drawing tools (bottom: 80px) */}
       <MobileFAB />
 
-      {/* User FAB - User account menu (highest position on the right) */}
-      <UserFAB />
+      {/* Geolocation FAB - Moja lokalizacja (bottom: 16px - lowest) */}
+      <GeolocationFAB />
     </Box>
   );
 };
