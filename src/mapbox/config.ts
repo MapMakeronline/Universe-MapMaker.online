@@ -62,6 +62,9 @@ export const MAP_STYLES: MapStyles = {
 };
 
 export const MAP_CONFIG = {
+  // ==================== PROJECTION (EPSG:3857 - Web Mercator) ====================
+  projection: 'mercator' as const, // Force Web Mercator projection (EPSG:3857) - matches backend PostGIS data
+
   // ==================== RENDERING OPTIMIZATIONS ====================
   antialias: false, // Wyłącz antialiasing dla lepszej wydajności (30% szybsze renderowanie)
   preserveDrawingBuffer: false, // Lepsze FPS (oszczędza memory)
