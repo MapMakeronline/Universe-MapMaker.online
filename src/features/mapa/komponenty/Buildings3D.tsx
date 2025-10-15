@@ -183,17 +183,44 @@ const Buildings3D = () => {
     map.on('style.load', handleStyleLoad);
 
     // ==================== WEBGL CONTEXT LOSS RECOVERY ====================
-    // iOS Safari can lose WebGL context during memory pressure
-    // This ensures 3D features are restored after context recovery
+    // Handle WebGL context loss (happens during memory pressure or GPU issues)
+    // IMPORTANT: Don't try to restore immediately - wait for browser to recover
+    let isContextLost = false;
+    let restoreTimer: NodeJS.Timeout | null = null;
+
     const handleContextLost = (e: any) => {
       e.preventDefault();
-      mapLogger.error('❌ WebGL context lost - 3D rendering stopped');
+      isContextLost = true;
+      mapLogger.warn('⚠️ WebGL context lost - waiting for recovery...');
+
+      // Clear any pending restore timer
+      if (restoreTimer) {
+        clearTimeout(restoreTimer);
+        restoreTimer = null;
+      }
     };
 
     const handleContextRestored = () => {
-      mapLogger.log('✅ WebGL context restored - re-initializing 3D features');
-      // Re-apply 3D features after context is restored
-      setTimeout(() => onStyleLoad(), 100);
+      if (!isContextLost) return;
+
+      mapLogger.log('✅ WebGL context restored');
+      isContextLost = false;
+
+      // CRITICAL: Wait longer before re-initializing to ensure full recovery
+      // Immediate re-initialization can cause cascading context losses
+      if (restoreTimer) {
+        clearTimeout(restoreTimer);
+      }
+
+      restoreTimer = setTimeout(() => {
+        try {
+          mapLogger.log('🔄 Re-initializing 3D features after context recovery');
+          onStyleLoad();
+        } catch (err) {
+          mapLogger.error('❌ Failed to restore 3D features:', err);
+        }
+        restoreTimer = null;
+      }, 1000); // Wait 1 second for full GPU recovery
     };
 
     const canvas = map.getCanvas();
@@ -202,13 +229,23 @@ const Buildings3D = () => {
 
     return () => {
       mapLogger.log('🏢 Cleaning up Buildings3D component');
+
+      // Clear restore timer if pending
+      if (restoreTimer) {
+        clearTimeout(restoreTimer);
+        restoreTimer = null;
+      }
+
+      // Remove event listeners
       map.off('style.load', handleStyleLoad);
       canvas.removeEventListener('webglcontextlost', handleContextLost);
       canvas.removeEventListener('webglcontextrestored', handleContextRestored);
+
+      // Cleanup 3D features
       try {
         disableFull3DMode(map);
       } catch (e) {
-        // Layers already removed
+        // Layers already removed - that's OK
       }
     };
   }, [mapRef, mapStyleKey]);
