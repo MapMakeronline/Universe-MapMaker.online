@@ -568,11 +568,19 @@ export async function updateProjectLogo(projectName: string): Promise<boolean> {
   try {
     mapLogger.log(`📸 Updating project logo: ${projectName}`);
 
+    // Get auth token from localStorage (stored as 'authToken', not 'token')
+    const authToken = localStorage.getItem('authToken');
+
+    if (!authToken) {
+      mapLogger.warn(`⚠️ No auth token found - skipping logo update for ${projectName}`);
+      return false;
+    }
+
     const response = await fetch(`${QGIS_SERVER_URL.replace('/ows', '')}/api/projects/logo/update/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Token ${localStorage.getItem('token')}`,
+        'Authorization': `Token ${authToken}`,
       },
       body: JSON.stringify({ project: projectName }),
     });
