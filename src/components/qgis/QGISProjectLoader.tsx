@@ -20,7 +20,7 @@ interface QGISProjectLoaderProps {
  * Renders WMS layers via QGIS Server at /ows endpoint
  */
 export function QGISProjectLoader({ projectName, onLoad }: QGISProjectLoaderProps) {
-  const { current: map } = useMap();
+  const mapContext = useMap();
   const [loadedLayers, setLoadedLayers] = useState<Set<string>>(new Set());
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -30,7 +30,11 @@ export function QGISProjectLoader({ projectName, onLoad }: QGISProjectLoaderProp
   });
 
   useEffect(() => {
-    if (!map || !data) return;
+    // Get native Mapbox GL instance from React Map GL context
+    const mapInstance = mapContext.current?.getMap();
+    if (!mapInstance || !data) return;
+
+    const map = mapInstance;
 
     try {
       setLoadError(null);
@@ -104,9 +108,12 @@ export function QGISProjectLoader({ projectName, onLoad }: QGISProjectLoaderProp
 
       // Cleanup on unmount
       return () => {
+        const cleanupMap = mapContext.current?.getMap();
+        if (!cleanupMap) return;
+
         layersToLoad.forEach((layer) => {
           try {
-            removeQGISLayer(map, layer.id);
+            removeQGISLayer(cleanupMap, layer.id);
           } catch (err) {
             console.error(`❌ Failed to remove layer ${layer.id}:`, err);
           }
@@ -117,7 +124,7 @@ export function QGISProjectLoader({ projectName, onLoad }: QGISProjectLoaderProp
       console.error('❌ Failed to load QGIS project:', err);
       setLoadError(errorMessage);
     }
-  }, [map, data, projectName, onLoad]);
+  }, [mapContext, data, projectName, onLoad]);
 
   if (isLoading) {
     return (
@@ -184,10 +191,13 @@ function addQGISLayer(
   }
 
   // WMS GetMap request URL
+  // CRITICAL: LAYERS parameter must use layer NAME, not layer ID (UUID)!
+  // QGIS Server matches by layer name, not database UUID.
+  // MAP parameter uses absolute path: /projects/{project_name}/{project_name}.qgs
   const wmsUrl =
     `https://api.universemapmaker.online/ows?` +
     `SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap` +
-    `&LAYERS=${layer.id}` +
+    `&LAYERS=${encodeURIComponent(layer.name)}` +
     `&STYLES=` +
     `&WIDTH=256&HEIGHT=256` +
     `&FORMAT=image/png` +
