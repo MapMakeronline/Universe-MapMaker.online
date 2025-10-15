@@ -710,31 +710,36 @@ export const layersApi = createApi({
      * Add label to layer
      * Endpoint: POST /api/layer/label
      * Priority: 🟡 Medium
+     * Backend expects: project, layer_id, textColor, fontSize, minScale, maxScale, columnName
      */
     addLabel: builder.mutation<
-      { success: boolean },
+      { success: boolean; message: string },
       {
-        projectName: string;
-        layerName: string;
-        labelConfig: {
-          field: string;
-          size?: number;
-          color?: string;
-          font?: string;
-        };
+        project: string;
+        layer_id: string;
+        textColor: [number, number, number, number]; // RGBA
+        fontSize: number;
+        minScale: number;
+        maxScale: number;
+        columnName: string;
       }
     >({
-      query: ({ projectName, layerName, labelConfig }) => ({
+      query: ({ project, layer_id, textColor, fontSize, minScale, maxScale, columnName }) => ({
         url: '/api/layer/label',
         method: 'POST',
         body: {
-          project_name: projectName,
-          layer_name: layerName,
-          ...labelConfig,
+          project,
+          layer_id,
+          textColor,
+          fontSize,
+          minScale,
+          maxScale,
+          columnName,
         },
       }),
       invalidatesTags: (result, error, arg) => [
-        { type: 'Layer', id: `${arg.projectName}-${arg.layerName}` },
+        { type: 'Layer', id: arg.layer_id },
+        { type: 'Project', id: arg.project },
       ],
     }),
 
@@ -758,6 +763,80 @@ export const layersApi = createApi({
       invalidatesTags: (result, error, arg) => [
         { type: 'Layer', id: `${arg.projectName}-${arg.layerName}` },
       ],
+    }),
+
+    /**
+     * Import layer style from QML/SLD file
+     * Endpoint: POST /api/layer/style/add
+     * Priority: 🟡 Medium
+     */
+    importStyle: builder.mutation<
+      { success: boolean; message: string },
+      {
+        project: string;
+        layer_id: string;
+        styleFile: File;
+      }
+    >({
+      query: ({ project, layer_id, styleFile }) => {
+        const formData = new FormData();
+        formData.append('project', project);
+        formData.append('layer_id', layer_id);
+        formData.append('new_style', styleFile);
+
+        return {
+          url: '/api/layer/style/add',
+          method: 'POST',
+          body: formData,
+        };
+      },
+      invalidatesTags: (result, error, arg) => [
+        { type: 'Layer', id: arg.layer_id },
+        { type: 'Project', id: arg.project },
+      ],
+    }),
+
+    /**
+     * Export layer style to QML/SLD file
+     * Endpoint: GET /api/layer/style/export
+     * Priority: 🟡 Medium
+     */
+    exportStyle: builder.query<
+      Blob,
+      {
+        project: string;
+        layer_id: string;
+        style_format: 'qml' | 'sld';
+      }
+    >({
+      queryFn: async ({ project, layer_id, style_format }, _api, _extraOptions, baseQuery) => {
+        const token = getToken();
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.universemapmaker.online';
+
+        const params = new URLSearchParams({
+          project,
+          layer_id,
+          style_format,
+        });
+
+        try {
+          const response = await fetch(`${baseUrl}/api/layer/style/export?${params}`, {
+            method: 'GET',
+            headers: {
+              ...(token && { Authorization: `Token ${token}` }),
+            },
+          });
+
+          if (!response.ok) {
+            return { error: { status: response.status, data: `Style export failed: ${response.statusText}` } };
+          }
+
+          const blob = await response.blob();
+          return { data: blob };
+        } catch (error: any) {
+          return { error: { status: 'FETCH_ERROR', data: error.message } };
+        }
+      },
     }),
 
     /**
@@ -1131,7 +1210,7 @@ export const {
   useUpdateFeatureMutation,
   useDeleteFeatureMutation,
 
-  // Medium Priority Hooks (18 endpoints)
+  // Medium Priority Hooks (21 endpoints)
   useAddGMLLayerMutation,
   useResetLayerStyleMutation,
   useGetAttributeNamesQuery,
@@ -1145,6 +1224,9 @@ export const {
   useGetGeometryQuery,
   useAddLabelMutation,
   useRemoveLabelMutation,
+  useImportStyleMutation,
+  useExportStyleQuery,
+  useLazyExportStyleQuery,
   useGetColumnValuesQuery,
 
   // Low Priority Hooks (7 endpoints)

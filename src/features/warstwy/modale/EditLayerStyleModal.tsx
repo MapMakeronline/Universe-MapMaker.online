@@ -34,9 +34,13 @@ import {
   useGetRendererQuery,
   useSetStyleMutation,
   useClassifyMutation,
-  useImportStyleMutation
 } from '@/redux/api/stylesApi';
-import { useGetLayerAttributesQuery } from '@/redux/api/layersApi';
+import {
+  useGetLayerAttributesQuery,
+  useImportStyleMutation,
+  useLazyExportStyleQuery,
+  useAddLabelMutation,
+} from '@/redux/api/layersApi';
 import { showSuccess, showError } from '@/redux/slices/notificationSlice';
 import { useAppDispatch } from '@/redux/hooks';
 import {
@@ -123,6 +127,15 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
     categories: [],
   });
 
+  // Tab 4: Etykietowanie - state
+  const [labelConfig, setLabelConfig] = useState({
+    columnName: '',
+    color: '#000000',
+    size: 8,
+    minScale: 1,
+    maxScale: 1000000,
+  });
+
   // RTK Query hooks
   const { data: rendererData, isLoading: isLoadingRenderer } = useGetRendererQuery(
     { project: projectName!, layer_id: layerId! },
@@ -137,6 +150,8 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
   const [setStyle, { isLoading: isSaving }] = useSetStyleMutation();
   const [classify, { isLoading: isClassifying }] = useClassifyMutation();
   const [importStyle, { isLoading: isImporting }] = useImportStyleMutation();
+  const [triggerExportStyle, { isLoading: isExporting }] = useLazyExportStyleQuery();
+  const [addLabel, { isLoading: isAddingLabel }] = useAddLabelMutation();
 
   // Load existing style when modal opens (same as original)
   useEffect(() => {
@@ -312,6 +327,67 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
     }
   };
 
+  // Handle export style (Tab 1: Pobierz)
+  const handleExportStyle = async (format: 'qml' | 'sld') => {
+    if (!projectName || !layerId) {
+      dispatch(showError('Brak wymaganych danych projektu'));
+      return;
+    }
+
+    try {
+      const result = await triggerExportStyle({
+        project: projectName,
+        layer_id: layerId,
+        style_format: format,
+      }).unwrap();
+
+      // Create blob and download
+      const blob = result as Blob;
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${layerName}_style.${format}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      dispatch(showSuccess(`Styl został pobrany jako ${format.toUpperCase()}`));
+    } catch (error: any) {
+      console.error('❌ Export style error:', error);
+      dispatch(showError(error?.data?.message || 'Nie udało się pobrać stylu'));
+    }
+  };
+
+  // Handle add label (Tab 3: Etykietowanie)
+  const handleAddLabel = async () => {
+    if (!projectName || !layerId || !labelConfig.columnName) {
+      dispatch(showError('Wybierz kolumnę dla etykiet'));
+      return;
+    }
+
+    try {
+      // Convert hex color to RGBA array
+      const colorRgba = hexToRgba(labelConfig.color, 255);
+
+      await addLabel({
+        project: projectName,
+        layer_id: layerId,
+        textColor: colorRgba,
+        fontSize: labelConfig.size,
+        minScale: labelConfig.minScale,
+        maxScale: labelConfig.maxScale,
+        columnName: labelConfig.columnName,
+      }).unwrap();
+
+      dispatch(showSuccess('Etykiety zostały dodane do warstwy'));
+      onClose();
+    } catch (error: any) {
+      console.error('❌ Add label error:', error);
+      dispatch(showError(error?.data?.message || 'Nie udało się dodać etykiet'));
+    }
+  };
+
   const handleSave = async () => {
     console.log('🔵 handleSave called', { projectName, layerId, activeTab });
 
@@ -363,18 +439,14 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
           fills: backendFills,
         };
 
-        const payload = {
+        await setStyle({
           project: projectName,
           id: layerId,
           style_configuration: {
-            renderer: 'Single Symbol',
+            renderer: 'Single Symbol' as const,
             symbols: backendSymbol,
           },
-        };
-
-        console.log('📤 Sending payload to backend:', JSON.stringify(payload, null, 2));
-
-        await setStyle(payload).unwrap();
+        }).unwrap();
 
         dispatch(showSuccess('Styl warstwy został zapisany'));
         onClose();
@@ -496,6 +568,7 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
         <Tab label="Edytuj" />
         <Tab label="Pobierz" />
         <Tab label="Importuj" />
+        <Tab label="Etykietowanie" />
       </Tabs>
 
       {/* Content */}
@@ -678,14 +751,51 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
           </Box>
         )}
 
-        {/* Tab 2: Pobierz (Download style file - placeholder) */}
+        {/* Tab 2: Pobierz (Download style file) */}
         {activeTab === 1 && (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, alignItems: 'center', justifyContent: 'center', minHeight: '300px' }}>
-            <Typography sx={{ fontSize: '16px', fontWeight: 500, color: theme.palette.text.secondary }}>
-              Funkcja pobierania stylu będzie wkrótce dostępna
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'center', justifyContent: 'center', minHeight: '300px' }}>
+            <Typography sx={{ fontSize: '16px', fontWeight: 500, color: theme.palette.text.primary }}>
+              Pobierz styl warstwy
             </Typography>
             <Typography sx={{ fontSize: '14px', color: theme.palette.text.secondary, textAlign: 'center', maxWidth: '400px' }}>
-              Tutaj będzie możliwe pobranie stylu warstwy w formacie QML lub SLD
+              Wybierz format do zapisania stylu warstwy ({layerName})
+            </Typography>
+
+            {/* Format selection buttons */}
+            <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
+              <Button
+                variant="contained"
+                size="large"
+                onClick={() => handleExportStyle('qml')}
+                disabled={isExporting}
+                sx={{
+                  bgcolor: '#4a5568',
+                  '&:hover': { bgcolor: '#2d3748' },
+                  minWidth: '150px',
+                  py: 1.5,
+                }}
+              >
+                {isExporting ? <CircularProgress size={20} sx={{ color: 'white' }} /> : 'Pobierz QML'}
+              </Button>
+              <Button
+                variant="contained"
+                size="large"
+                onClick={() => handleExportStyle('sld')}
+                disabled={isExporting}
+                sx={{
+                  bgcolor: '#4a5568',
+                  '&:hover': { bgcolor: '#2d3748' },
+                  minWidth: '150px',
+                  py: 1.5,
+                }}
+              >
+                {isExporting ? <CircularProgress size={20} sx={{ color: 'white' }} /> : 'Pobierz SLD'}
+              </Button>
+            </Box>
+
+            <Typography sx={{ fontSize: '12px', color: theme.palette.text.secondary, textAlign: 'center', maxWidth: '500px', mt: 2 }}>
+              • QML - format QGIS (rekomendowany dla projektów QGIS)<br />
+              • SLD - uniwersalny format OGC (kompatybilny z GeoServer, MapServer)
             </Typography>
           </Box>
         )}
@@ -784,6 +894,155 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
             </Button>
           </Box>
         )}
+
+        {/* Tab 4: Etykietowanie */}
+        {activeTab === 3 && (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+            {/* Nazwa kolumny */}
+            <Box>
+              <Typography sx={{ fontSize: '14px', fontWeight: 500, mb: 1 }}>
+                Nazwa kolumny
+              </Typography>
+              <TextField
+                select
+                fullWidth
+                size="small"
+                value={labelConfig.columnName}
+                onChange={(e) => setLabelConfig({ ...labelConfig, columnName: e.target.value })}
+                placeholder="Wybierz kolumnę z tekstem etykiety"
+                sx={{ bgcolor: 'white' }}
+              >
+                <MenuItem value="">Wybierz z listy</MenuItem>
+                {attributesData?.attributes.map((attr) => (
+                  <MenuItem key={attr.name} value={attr.name}>
+                    {attr.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Box>
+
+            {/* Kolor etykiety */}
+            <Box>
+              <Typography sx={{ fontSize: '14px', fontWeight: 500, mb: 1 }}>
+                Kolor etykiety
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                <input
+                  type="color"
+                  value={labelConfig.color}
+                  onChange={(e) => setLabelConfig({ ...labelConfig, color: e.target.value })}
+                  style={{
+                    width: '60px',
+                    height: '38px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '4px',
+                    cursor: 'pointer'
+                  }}
+                />
+                <TextField
+                  fullWidth
+                  size="small"
+                  value={labelConfig.color}
+                  onChange={(e) => setLabelConfig({ ...labelConfig, color: e.target.value })}
+                  sx={{ bgcolor: 'white' }}
+                />
+              </Box>
+            </Box>
+
+            {/* Rozmiar etykiety */}
+            <Box>
+              <Typography sx={{ fontSize: '14px', fontWeight: 500, mb: 1 }}>
+                Rozmiar etykiety
+              </Typography>
+              <TextField
+                select
+                fullWidth
+                size="small"
+                value={labelConfig.size}
+                onChange={(e) => setLabelConfig({ ...labelConfig, size: parseInt(e.target.value) })}
+                sx={{ bgcolor: 'white' }}
+              >
+                {[6, 7, 8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 40, 48].map((size) => (
+                  <MenuItem key={size} value={size}>
+                    {size} pt
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Box>
+
+            {/* Minimalna skala */}
+            <Box>
+              <Typography sx={{ fontSize: '14px', fontWeight: 500, mb: 1 }}>
+                Minimalna skala
+              </Typography>
+              <TextField
+                select
+                fullWidth
+                size="small"
+                value={labelConfig.minScale}
+                onChange={(e) => setLabelConfig({ ...labelConfig, minScale: parseInt(e.target.value) })}
+                sx={{ bgcolor: 'white' }}
+              >
+                <MenuItem value={1}>1:1</MenuItem>
+                <MenuItem value={100}>1:100</MenuItem>
+                <MenuItem value={500}>1:500</MenuItem>
+                <MenuItem value={1000}>1:1,000</MenuItem>
+                <MenuItem value={2500}>1:2,500</MenuItem>
+                <MenuItem value={5000}>1:5,000</MenuItem>
+                <MenuItem value={10000}>1:10,000</MenuItem>
+                <MenuItem value={25000}>1:25,000</MenuItem>
+                <MenuItem value={50000}>1:50,000</MenuItem>
+              </TextField>
+              <Typography sx={{ fontSize: '12px', color: theme.palette.text.secondary, mt: 0.5 }}>
+                Etykiety będą widoczne przy zbliżeniu większym niż ta skala
+              </Typography>
+            </Box>
+
+            {/* Maksymalna skala */}
+            <Box>
+              <Typography sx={{ fontSize: '14px', fontWeight: 500, mb: 1 }}>
+                Maksymalna skala
+              </Typography>
+              <TextField
+                select
+                fullWidth
+                size="small"
+                value={labelConfig.maxScale}
+                onChange={(e) => setLabelConfig({ ...labelConfig, maxScale: parseInt(e.target.value) })}
+                sx={{ bgcolor: 'white' }}
+              >
+                <MenuItem value={10000}>1:10,000</MenuItem>
+                <MenuItem value={25000}>1:25,000</MenuItem>
+                <MenuItem value={50000}>1:50,000</MenuItem>
+                <MenuItem value={100000}>1:100,000</MenuItem>
+                <MenuItem value={250000}>1:250,000</MenuItem>
+                <MenuItem value={500000}>1:500,000</MenuItem>
+                <MenuItem value={1000000}>1:1,000,000</MenuItem>
+                <MenuItem value={2500000}>1:2,500,000</MenuItem>
+                <MenuItem value={10000000}>1:10,000,000</MenuItem>
+              </TextField>
+              <Typography sx={{ fontSize: '12px', color: theme.palette.text.secondary, mt: 0.5 }}>
+                Etykiety będą widoczne przy oddaleniu mniejszym niż ta skala
+              </Typography>
+            </Box>
+
+            {/* Add label button */}
+            <Button
+              variant="contained"
+              fullWidth
+              onClick={handleAddLabel}
+              disabled={!labelConfig.columnName || isAddingLabel}
+              sx={{
+                bgcolor: theme.palette.primary.main,
+                '&:hover': { bgcolor: theme.palette.primary.dark },
+                py: 1.5,
+                mt: 2,
+              }}
+            >
+              {isAddingLabel ? <CircularProgress size={20} sx={{ color: 'white' }} /> : 'Włącz'}
+            </Button>
+          </Box>
+        )}
       </DialogContent>
 
       {/* Footer */}
@@ -809,19 +1068,22 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
             },
           }}
         >
-          Anuluj
+          {activeTab === 1 || activeTab === 3 ? 'Zamknij' : 'Anuluj'}
         </Button>
-        <Button
-          onClick={handleSave}
-          variant="contained"
-          disabled={isLoading || isSaving || (activeTab === 2 && !selectedFile)}
-          sx={{
-            bgcolor: theme.palette.primary.main,
-            '&:hover': { bgcolor: theme.palette.primary.dark },
-          }}
-        >
-          {isLoading || isSaving ? 'Zapisywanie...' : activeTab === 2 ? 'Importuj' : 'Zapisz'}
-        </Button>
+        {/* Show Save/Import button only for tabs 0 and 2 */}
+        {(activeTab === 0 || activeTab === 2) && (
+          <Button
+            onClick={handleSave}
+            variant="contained"
+            disabled={isLoading || isSaving || (activeTab === 2 && !selectedFile)}
+            sx={{
+              bgcolor: theme.palette.primary.main,
+              '&:hover': { bgcolor: theme.palette.primary.dark },
+            }}
+          >
+            {isLoading || isSaving ? 'Zapisywanie...' : activeTab === 2 ? 'Importuj' : 'Zapisz'}
+          </Button>
+        )}
       </DialogActions>
     </Dialog>
   );
