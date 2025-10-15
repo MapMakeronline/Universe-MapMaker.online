@@ -544,7 +544,10 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
 
                 {renderSection('warstwa-styl-warstwy', 'Styl warstwy', (
                   <Box sx={{ display: 'flex', gap: 0.5, mb: 0.8, flexWrap: 'wrap' }}>
-                    {renderActionButton('Edytuj', onEditLayerStyle, '60px')}
+                    {renderActionButton('Edytuj', () => {
+                      console.log('🎨 Opening Edit Layer Style Modal');
+                      onEditLayerStyle();
+                    }, '60px')}
                     {renderActionButton('Zarządzaj', onManageLayer, '70px')}
                     {renderActionButton('Etykietowanie', onLayerLabeling, '90px')}
                   </Box>

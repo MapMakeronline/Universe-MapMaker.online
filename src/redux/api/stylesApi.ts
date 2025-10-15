@@ -298,6 +298,29 @@ export const stylesApi = createApi({
       }),
     }),
 
+    /**
+     * Import layer style from QML/SLD file
+     * POST /api/layer/style/add
+     */
+    importStyle: builder.mutation<SetStyleResponse, { project: string; layer_id: string; styleFile: File }>({
+      query: ({ project, layer_id, styleFile }) => {
+        const formData = new FormData();
+        formData.append('project', project);
+        formData.append('layer_id', layer_id);
+
+        // Backend expects field name "style" (not "new_style.qml" or "new_style.sld")
+        // The file extension (.qml or .sld) is automatically detected from the uploaded file
+        formData.append('style', styleFile);
+
+        return {
+          url: '/api/layer/style/add',
+          method: 'POST',
+          body: formData,
+        };
+      },
+      invalidatesTags: (result, error, { layer_id }) => [{ type: 'LayerStyle', id: layer_id }],
+    }),
+
   }),
 });
 
@@ -310,4 +333,5 @@ export const {
   useGetSymbolImageMutation,
   useGetRandomColorSymbolMutation,
   useClassifyMutation,
+  useImportStyleMutation,
 } = stylesApi;
