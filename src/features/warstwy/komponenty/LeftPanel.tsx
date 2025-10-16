@@ -15,7 +15,7 @@ import ImportLayerModal from '../modale/ImportLayerModal';
 import AddGroupModal from '../modale/AddGroupModal';
 import CreateConsultationModal from '../modale/CreateConsultationModal';
 import LayerManagerModal from '../modale/LayerManagerModal';
-import PrintConfigModal from '../modale/PrintConfigModal';
+import WypisConfigModal from '../../mapa/komponenty/WypisConfigModal';
 import EditLayerStyleModal from '../modale/EditLayerStyleModal';
 import { useResizable, useDragDrop } from '@/hooks/index';
 import { useAppSelector, useAppDispatch } from '@/redux/hooks';
@@ -116,6 +116,9 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
   const [layerManagerModalOpen, setLayerManagerModalOpen] = useState(false);
   const [printConfigModalOpen, setPrintConfigModalOpen] = useState(false);
   const [editLayerStyleModalOpen, setEditLayerStyleModalOpen] = useState(false);
+
+  // Wypis configurations state
+  const [existingWypisConfigs, setExistingWypisConfigs] = useState<any[]>([]);
 
   const [expandedSections, setExpandedSections] = useState<{[key: string]: boolean}>({
     'informacje-ogolne': false,
@@ -591,14 +594,27 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
     dispatch(showInfo('Zarządzanie warstwami - wkrótce dostępne'));
   };
 
-  const handlePrintConfig = (data: {
-    nazwaWypisu: string;
-    warstwaId: string;
-    kolumnaObreb: string;
-    kolumnaNumerDzialki: string;
-    warstwyPrzeznaczenia: any[];
-  }) => {
-    console.log('Print config data:', data);
+  const handleSaveWypisConfig = (config: any) => {
+    console.log('💾 Saving wypis config:', config);
+
+    // Check if updating existing or adding new
+    const existingIndex = existingWypisConfigs.findIndex(c => c.id === config.id);
+
+    if (existingIndex >= 0) {
+      // Update existing
+      const updatedConfigs = [...existingWypisConfigs];
+      updatedConfigs[existingIndex] = config;
+      setExistingWypisConfigs(updatedConfigs);
+      dispatch(showSuccess(`Konfiguracja "${config.nazwa}" została zaktualizowana`, 3000));
+    } else {
+      // Add new
+      setExistingWypisConfigs([...existingWypisConfigs, config]);
+      dispatch(showSuccess(`Konfiguracja "${config.nazwa}" została utworzona`, 3000));
+    }
+
+    // TODO: Save to backend
+    // await saveWypisConfigToBackend(config);
+
     setPrintConfigModalOpen(false);
   };
 
@@ -801,12 +817,13 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
         existingGroups={layers}
       />
 
-      {/* Print Config Modal */}
-      <PrintConfigModal
+      {/* Wypis Config Modal */}
+      <WypisConfigModal
         open={printConfigModalOpen}
         onClose={() => setPrintConfigModalOpen(false)}
-        onSubmit={handlePrintConfig}
-        projectLayers={layers}
+        onSave={handleSaveWypisConfig}
+        existingConfigs={existingWypisConfigs}
+        projectLayers={layers.filter(l => l.type !== 'group').map(l => ({ id: l.id, name: l.name }))}
       />
 
       {/* Edit Layer Style Modal */}
