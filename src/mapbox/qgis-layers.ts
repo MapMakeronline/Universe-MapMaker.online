@@ -741,8 +741,8 @@ export async function getFeatureInfo(
 
     // QGIS Server returns GeoJSON FeatureCollection
     // { "type": "FeatureCollection", "features": [...] }
-    const featureCount = data.features?.length || 0;
-    mapLogger.log(`✅ GetFeatureInfo: Found ${featureCount} features`);
+    const featuresFound = data.features?.length || 0;
+    mapLogger.log(`✅ GetFeatureInfo: Found ${featuresFound} features`);
 
     return { success: true, data };
 
