@@ -1,8 +1,16 @@
 import path from 'path';
 import { fileURLToPath } from 'url';
+import bundleAnalyzer from '@next/bundle-analyzer';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// 📊 BUNDLE ANALYZER - Visualize what's in your bundle
+// Run: ANALYZE=true npm run build
+// Opens interactive treemap in browser showing bundle composition
+const withBundleAnalyzer = bundleAnalyzer({
+  enabled: process.env.ANALYZE === 'true',
+});
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -33,6 +41,15 @@ const nextConfig = {
     NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN: process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN,
   },
 
+  // 🌳 TREE-SHAKING - Automatic modular imports for MUI
+  // Transforms: import { Button } from '@mui/material'
+  // Into:       import Button from '@mui/material/Button'
+  // Result:     Only loads components you actually use (not entire MUI library!)
+  // Bundle size reduction: ~10-15% for typical apps
+  experimental: {
+    optimizePackageImports: ['@mui/material', '@mui/icons-material'],
+  },
+
   webpack: (config) => {
     config.module.rules.push({
       test: /\.m?js$/,
@@ -43,4 +60,4 @@ const nextConfig = {
   },
 }
 
-export default nextConfig
+export default withBundleAnalyzer(nextConfig);
