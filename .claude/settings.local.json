@@ -75,7 +75,9 @@
       "Bash(git log:*)",
       "Bash(gcloud run revisions list:*)",
       "Bash(start http://localhost:3000/map?project=graph)",
-      "Bash(gcloud run revisions describe:*)"
+      "Bash(gcloud run revisions describe:*)",
+      "Bash(start cmd /c \"npm run dev\")",
+      "Bash(start:*)"
     ],
     "deny": [],
     "ask": []
