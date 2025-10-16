@@ -599,6 +599,154 @@ export async function updateProjectLogo(projectName: string): Promise<boolean> {
 }
 
 /**
+ * WGS84 (EPSG:4326) → Web Mercator (EPSG:3857) coordinate transformation
+ *
+ * Converts longitude/latitude to Web Mercator projection (meters).
+ * Used for QGIS Server WMS requests which expect EPSG:3857 coordinates.
+ *
+ * @param lon Longitude in degrees (-180 to 180)
+ * @param lat Latitude in degrees (-85.0511 to 85.0511)
+ * @returns [x, y] coordinates in meters (EPSG:3857)
+ */
+function lngLatToWebMercator(lon: number, lat: number): [number, number] {
+  const R = 6378137; // Earth radius in meters (WGS84 semi-major axis)
+
+  // X coordinate (longitude → meters)
+  const x = R * (lon * Math.PI / 180);
+
+  // Y coordinate (latitude → meters, using Mercator projection)
+  // Formula: y = R * ln(tan(π/4 + φ/2))
+  const y = R * Math.log(Math.tan((Math.PI / 4) + (lat * Math.PI / 360)));
+
+  return [x, y];
+}
+
+/**
+ * Get feature information from QGIS Server (WMS GetFeatureInfo)
+ *
+ * Queries QGIS Server for features at a specific map click point.
+ * Uses WMS 1.3.0 GetFeatureInfo request with BBOX and pixel coordinates.
+ *
+ * **Tolerance Control:**
+ * - Backend buffer is controlled by QGIS Server configuration
+ * - Frontend sends BBOX matching visible viewport
+ * - `FEATURE_COUNT` limits max results (default: 10)
+ *
+ * Example:
+ * ```ts
+ * const result = await getFeatureInfo('MyProject', 'buildings', [21.012, 52.229], map);
+ * if (result.success) {
+ *   console.log('Features found:', result.data.features);
+ * }
+ * ```
+ *
+ * @param projectName QGIS project name (e.g., "MyProject_1")
+ * @param layerName Layer name from QGIS project (NOT layer UUID!)
+ * @param lngLat Click coordinates [longitude, latitude] in WGS84
+ * @param map Mapbox GL JS map instance (used for viewport calculations)
+ * @param featureCount Maximum number of features to return (default: 10)
+ * @returns Promise with success status and feature data
+ */
+export async function getFeatureInfo(
+  projectName: string,
+  layerName: string,
+  lngLat: [number, number],
+  map: mapboxgl.Map,
+  featureCount: number = 10
+): Promise<{ success: boolean; data?: any; error?: string }> {
+  try {
+    // Get map container dimensions (for BBOX calculation)
+    const container = map.getContainer();
+    const width = container.offsetWidth;
+    const height = container.offsetHeight;
+
+    // Convert click coordinates to pixel position
+    const point = map.project(lngLat);
+
+    // Get viewport bounds (SW and NE corners)
+    const sw = map.unproject([0, height]); // Bottom-left corner
+    const ne = map.unproject([width, 0]);  // Top-right corner
+
+    // Transform viewport bounds to Web Mercator (EPSG:3857)
+    const [swX, swY] = lngLatToWebMercator(sw.lng, sw.lat);
+    const [neX, neY] = lngLatToWebMercator(ne.lng, ne.lat);
+
+    mapLogger.log('🔍 GetFeatureInfo: Building WMS request', {
+      projectName,
+      layerName,
+      clickPoint: lngLat,
+      pixelPoint: { x: Math.round(point.x), y: Math.round(point.y) },
+      viewport: { width, height },
+      bbox: {
+        sw: [swX.toFixed(2), swY.toFixed(2)],
+        ne: [neX.toFixed(2), neY.toFixed(2)]
+      }
+    });
+
+    // Build WMS GetFeatureInfo request
+    // QGIS Server expects:
+    // - SERVICE=WMS
+    // - VERSION=1.3.0 (newer standard)
+    // - REQUEST=GetFeatureInfo
+    // - LAYERS=layer_name (layers to query)
+    // - QUERY_LAYERS=layer_name (layers to identify)
+    // - STYLES= (empty for default)
+    // - FORMAT=image/png (map format, not feature format!)
+    // - FEATURE_COUNT=10 (max features to return)
+    // - INFO_FORMAT=application/json (feature format)
+    // - CRS=EPSG:3857 (coordinate system)
+    // - WIDTH=viewport_width (map width in pixels)
+    // - HEIGHT=viewport_height (map height in pixels)
+    // - BBOX=minX,minY,maxX,maxY (viewport bounds in EPSG:3857)
+    // - I=x (pixel X coordinate - WMS 1.3.0 uses I/J instead of X/Y)
+    // - J=y (pixel Y coordinate)
+    // - MAP=/projects/ProjectName/ProjectName.qgs (absolute path)
+    const params = new URLSearchParams({
+      SERVICE: 'WMS',
+      VERSION: '1.3.0',
+      REQUEST: 'GetFeatureInfo',
+      LAYERS: layerName,
+      QUERY_LAYERS: layerName,
+      STYLES: '',
+      FORMAT: 'image/png',
+      FEATURE_COUNT: featureCount.toString(),
+      INFO_FORMAT: 'application/json',
+      CRS: 'EPSG:3857', // WMS 1.3.0 uses CRS (not SRS)
+      WIDTH: width.toString(),
+      HEIGHT: height.toString(),
+      BBOX: `${swX},${swY},${neX},${neY}`, // Viewport bounds
+      I: Math.round(point.x).toString(), // Pixel X (WMS 1.3.0)
+      J: Math.round(point.y).toString(), // Pixel Y (WMS 1.3.0)
+      map: `/projects/${projectName}/${projectName}.qgs`, // Absolute path to QGS file
+    });
+
+    const url = `${QGIS_SERVER_URL}?${params}`;
+    mapLogger.log(`🌐 GetFeatureInfo URL: ${url.substring(0, 200)}...`);
+
+    // Fetch feature data from QGIS Server
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+
+    // QGIS Server returns GeoJSON FeatureCollection
+    // { "type": "FeatureCollection", "features": [...] }
+    const featureCount = data.features?.length || 0;
+    mapLogger.log(`✅ GetFeatureInfo: Found ${featureCount} features`);
+
+    return { success: true, data };
+
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    mapLogger.error('❌ GetFeatureInfo error:', errorMessage);
+    return { success: false, error: errorMessage };
+  }
+}
+
+/**
  * Add all project layers from QGIS tree structure
  *
  * Recursively processes layer tree and adds all VectorLayer/RasterLayer as WMS layers.

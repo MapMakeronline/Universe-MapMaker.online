@@ -33,6 +33,7 @@ import { addFeature, selectFeature, setAttributeModalOpen } from '@/redux/slices
 import type { MapFeature } from '@/redux/slices/featuresSlice';
 import { query3DBuildingsAtPoint, get3DBuildingsSource } from '@/mapbox/3d-picking';
 import { detect3DLayers, has3DLayers } from '@/mapbox/3d-layer-detection';
+import { getFeatureInfo } from '@/mapbox/qgis-layers';
 
 // Szerokość prawego toolbara + marginesy (IDENTYCZNE jak w MobileFAB)
 const RIGHT_TOOLBAR_WIDTH = 56;
@@ -64,7 +65,6 @@ const QGISIdentifyTool: React.FC<QGISIdentifyToolProps> = ({ projectName }) => {
   const { current: mapRef } = useMap();
   const dispatch = useAppDispatch();
   const layers = useAppSelector((state) => state.layers.layers);
-  const token = useAppSelector((state) => state.auth.token); // Pobierz token z Redux
   const mapboxFeaturesStore = useAppSelector((state) => state.features); // For 3D buildings (Mapbox)
 
   // Własny state (NIE używa drawSlice!)
@@ -80,18 +80,7 @@ const QGISIdentifyTool: React.FC<QGISIdentifyToolProps> = ({ projectName }) => {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const fabRightPosition = isMobile ? 16 : RIGHT_TOOLBAR_WIDTH + RIGHT_TOOLBAR_MARGIN + 8;
 
-  // Helper: Transformacja współrzędnych WGS84 (EPSG:4326) → Web Mercator (EPSG:3857)
-  // WORKAROUND dla backend bug: backend nie transformuje współrzędnych!
-  const transformWGS84toWebMercator = useCallback((lon: number, lat: number): [number, number] => {
-    // Web Mercator projection (EPSG:3857)
-    // https://en.wikipedia.org/wiki/Web_Mercator_projection
-    const R = 6378137; // Earth radius in meters
-
-    const x = R * (lon * Math.PI / 180);
-    const y = R * Math.log(Math.tan((Math.PI / 4) + (lat * Math.PI / 360)));
-
-    return [x, y];
-  }, []);
+  // REMOVED: transformWGS84toWebMercator - now handled by getFeatureInfo in qgis-layers.ts
 
   // Helper: Pobierz wszystkie widoczne warstwy z ID (rekurencyjnie)
   const getVisibleLayers = useCallback((layerNodes: LayerNode[]): Array<{ id: string; name: string; type: string }> => {
@@ -111,10 +100,10 @@ const QGISIdentifyTool: React.FC<QGISIdentifyToolProps> = ({ projectName }) => {
     return visible;
   }, []);
 
-  // Helper: Zapytanie do QGIS Server (używa /api/layer/feature/coordinates POST)
+  // Helper: Zapytanie do QGIS Server (WMS GetFeatureInfo)
   const queryQGISFeatures = useCallback(async (
     point: [number, number],
-    bbox: [number, number, number, number]
+    mapInstance: mapboxgl.Map
   ): Promise<QGISFeature[]> => {
     if (!projectName) {
       mapLogger.log('🔍 QGIS Identify: Brak nazwy projektu');
@@ -127,11 +116,10 @@ const QGISIdentifyTool: React.FC<QGISIdentifyToolProps> = ({ projectName }) => {
       return [];
     }
 
-    mapLogger.log('🔍 QGIS Identify: Odpytywanie warstw', {
+    mapLogger.log('🔍 QGIS Identify: Odpytywanie warstw przez QGIS Server (WMS GetFeatureInfo)', {
       project: projectName,
       layers: visibleLayers.map(l => `${l.name} (${l.id})`),
-      point,
-      bbox
+      point
     });
 
     const allFeatures: QGISFeature[] = [];
@@ -139,78 +127,37 @@ const QGISIdentifyTool: React.FC<QGISIdentifyToolProps> = ({ projectName }) => {
     // Zapytaj wszystkie widoczne warstwy (sekwencyjnie)
     for (const layer of visibleLayers) {
       try {
-        // Przygotuj headers z tokenem autoryzacyjnym
-        const headers: HeadersInit = {
-          'Content-Type': 'application/json',
-        };
+        mapLogger.log(`🔍 QGIS Identify: Zapytanie do warstwy "${layer.name}"...`);
 
-        // Dodaj token jeśli jest dostępny
-        if (token) {
-          headers['Authorization'] = `Token ${token}`;
-        } else {
-          mapLogger.warn('🔍 QGIS Identify: Brak tokenu autoryzacyjnego - zapytanie może się nie powieść');
-        }
+        // Użyj getFeatureInfo z qgis-layers.ts (WMS GetFeatureInfo)
+        const result = await getFeatureInfo(
+          projectName,
+          layer.name, // WAŻNE: Używamy layer.name (nazwa warstwy), NIE layer.id (UUID)!
+          point,
+          mapInstance,
+          10 // FEATURE_COUNT: max 10 obiektów na warstwę
+        );
 
-        // WORKAROUND: Transformuj współrzędne WGS84 → EPSG:3857
-        // Backend BUG: nie transformuje współrzędnych poprawnie!
-        // Backend tworzy punkt z WGS84 współrzędnych ale z SRID 3857 bez transformacji
-        const [x3857, y3857] = transformWGS84toWebMercator(point[0], point[1]);
-
-        mapLogger.log(`🔍 QGIS Identify: Transformacja współrzędnych dla "${layer.name}":`, {
-          wgs84: point,
-          epsg3857: [x3857.toFixed(2), y3857.toFixed(2)]
-        });
-
-        // Używamy FETCH bezpośrednio - endpoint /api/layer/feature/coordinates wymaga POST!
-        // WAŻNE: Wysyłamy współrzędne w EPSG:3857 (Web Mercator) zamiast WGS84!
-        const response = await fetch('https://api.universemapmaker.online/api/layer/feature/coordinates', {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            project: projectName,
-            layer_id: layer.id,  // UŻYWAMY ID, NIE NAZWY!
-            point: [x3857, y3857], // EPSG:3857 - Web Mercator (metry, nie stopnie!)
-            layer_type: layer.type // "polygon", "line", "point"
-          })
-        });
-
-        if (response.status === 401) {
-          mapLogger.error('🔍 QGIS Identify: ❌ Token nieważny lub wygasł (401 Unauthorized)');
+        if (!result.success) {
+          mapLogger.error(`🔍 QGIS Identify: Błąd dla warstwy "${layer.name}"`, result.error);
           continue;
         }
 
-        if (!response.ok) {
-          const errorText = await response.text();
-          mapLogger.error(`🔍 QGIS Identify: Błąd HTTP ${response.status} dla warstwy "${layer.name}"`, errorText);
-          continue;
-        }
+        // QGIS Server zwraca GeoJSON FeatureCollection
+        const features = result.data?.features || [];
 
-        const data = await response.json();
+        if (features.length > 0) {
+          mapLogger.log(`🔍 QGIS Identify: ✅ Znaleziono ${features.length} obiektów w warstwie "${layer.name}"`);
 
-        // DEBUG: Wyświetl pełną odpowiedź backendu
-        mapLogger.log(`🔍 QGIS Identify: 📦 Odpowiedź dla warstwy "${layer.name}":`, {
-          success: data.success,
-          message: data.message,
-          hasData: !!data.data,
-          hasFeaturesKey: !!data.data?.features,
-          featuresCount: data.data?.features?.length || 0,
-          fullResponse: data
-        });
-
-        if (data.success && data.data?.features && data.data.features.length > 0) {
-          mapLogger.log(`🔍 QGIS Identify: ✅ Znaleziono ${data.data.features.length} obiektów w warstwie "${layer.name}"`);
-
-          // Transformuj features
-          const transformed: QGISFeature[] = data.data.features.map((feature: any) => ({
+          // Transformuj features do QGISFeature interface
+          const transformed: QGISFeature[] = features.map((feature: any) => ({
             layerName: layer.name,
             properties: feature.properties || {},
             geometry: feature.geometry,
           }));
 
           allFeatures.push(...transformed);
-        } else if (!data.success) {
-          mapLogger.warn(`🔍 QGIS Identify: ⚠️ API zwróciło success: false dla "${layer.name}"`, data.message);
-        } else if (data.data?.features?.length === 0) {
+        } else {
           mapLogger.log(`🔍 QGIS Identify: ℹ️ Brak obiektów w tym miejscu dla warstwy "${layer.name}"`);
         }
       } catch (error) {
@@ -220,7 +167,7 @@ const QGISIdentifyTool: React.FC<QGISIdentifyToolProps> = ({ projectName }) => {
 
     mapLogger.log(`🔍 QGIS Identify: Łącznie znaleziono obiektów: ${allFeatures.length}`);
     return allFeatures;
-  }, [projectName, layers, getVisibleLayers, token, transformWGS84toWebMercator]);
+  }, [projectName, layers, getVisibleLayers]);
 
   // Obsługa kliknięcia na mapę (MOBILE + DESKTOP COMPATIBLE)
   useEffect(() => {
@@ -283,24 +230,9 @@ const QGISIdentifyTool: React.FC<QGISIdentifyToolProps> = ({ projectName }) => {
       const clickPoint: [number, number] = [e.lngLat.lng, e.lngLat.lat];
       setClickCoordinates(clickPoint);
 
-      // Utwórz bbox wokół punktu kliknięcia (tolerance dla polygonów: ~10m)
-      // UWAGA: Backend ma swój własny buffer (ST_Buffer):
-      // - polygon/MultiPolygon: 0m (kliknięcie musi być w środku)
-      // - line/point: 1000m (backend buffer, nie frontend tolerance)
-      // Frontend tolerance jest używana tylko do bbox (nieistotne dla backendu)
-      const tolerance = 0.00009; // 0.00009° ≈ 10 metrów (dla polygonów)
-      const bbox: [number, number, number, number] = [
-        e.lngLat.lng - tolerance, // minLng (West)
-        e.lngLat.lat - tolerance, // minLat (South)
-        e.lngLat.lng + tolerance, // maxLng (East)
-        e.lngLat.lat + tolerance  // maxLat (North)
-      ];
-
       mapLogger.log('🔍 QGIS Identify: 📍 Kliknięcie w:', {
         lon: clickPoint[0],
-        lat: clickPoint[1],
-        bbox,
-        tolerance: `${tolerance}° (~10m)`
+        lat: clickPoint[1]
       });
 
       // ==================== IDENTIFY MODE LOGIC ====================
@@ -371,7 +303,7 @@ const QGISIdentifyTool: React.FC<QGISIdentifyToolProps> = ({ projectName }) => {
 
       } else if (identifyType === 'qgis') {
         // ==================== QGIS LAYERS MODE ====================
-        const qgisFeatures = await queryQGISFeatures(clickPoint, bbox);
+        const qgisFeatures = await queryQGISFeatures(clickPoint, map);
 
         setFeatures(qgisFeatures);
         setModalOpen(true);
