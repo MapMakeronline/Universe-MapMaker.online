@@ -721,7 +721,14 @@ export async function getFeatureInfo(
     });
 
     const url = `${QGIS_SERVER_URL}?${params}`;
-    mapLogger.log(`🌐 GetFeatureInfo URL: ${url.substring(0, 200)}...`);
+    mapLogger.log(`🌐 GetFeatureInfo FULL URL:`, url);
+    mapLogger.log(`🌐 GetFeatureInfo parameters:`, {
+      layerName,
+      projectName,
+      clickPoint: lngLat,
+      pixelPoint: { x: Math.round(point.x), y: Math.round(point.y) },
+      featureCount
+    });
 
     // Fetch feature data from QGIS Server
     const response = await fetch(url);
