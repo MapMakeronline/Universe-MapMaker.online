@@ -233,6 +233,11 @@ export const layersApi = createApi({
      * Endpoint: POST /api/layer/selection
      * Priority: 🔴 High
      * Used by: LayerTree
+     *
+     * Backend expects:
+     * - project: string (NOT project_name)
+     * - layer_id: string (NOT layer_name)
+     * - checked: boolean (NOT visible)
      */
     setLayerVisibility: builder.mutation<
       { success: boolean },
@@ -242,9 +247,9 @@ export const layersApi = createApi({
         url: '/api/layer/selection',
         method: 'POST',
         body: {
-          project_name: projectName,
-          layer_name: layerName,
-          visible,
+          project: projectName,
+          layer_id: layerName,
+          checked: visible,
         },
       }),
       invalidatesTags: (result, error, arg) => [
