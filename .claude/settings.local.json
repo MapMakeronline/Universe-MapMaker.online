@@ -81,7 +81,9 @@
       "Bash(cmd /c screenshot.bat \"http://localhost:3000/map?project=test\")",
       "Bash(cloc:*)",
       "Bash(set ANALYZE=true)",
-      "Bash(npm run analyze:*)"
+      "Bash(npm run analyze:*)",
+      "Bash(depcheck:*)",
+      "Bash(npm uninstall:*)"
     ],
     "deny": [],
     "ask": []
