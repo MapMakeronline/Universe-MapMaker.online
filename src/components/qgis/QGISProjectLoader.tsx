@@ -153,39 +153,18 @@ export function QGISProjectLoader({ projectName, onLoad }: QGISProjectLoaderProp
 
     flattenLayers(reduxLayers);
 
-    // Create mapping from QGIS layer name → layer ID (UUID)
-    const qgisLayerMap = new Map<string, string>();
-
-    const mapQGISLayers = (nodes: QGISLayerNode[]) => {
-      for (const node of nodes) {
-        if (isGroupLayer(node)) {
-          if (node.children) {
-            mapQGISLayers(node.children);
-          }
-        } else {
-          qgisLayerMap.set(node.name, node.id);
-        }
-      }
-    };
-
-    if (data.children) {
-      mapQGISLayers(data.children);
-    }
-
-    // Update visibility for all layers by matching name → ID → Mapbox layer
+    // Update visibility for all layers
+    // WMS layer ID format: qgis-wms-layer-{projectName}-{layerName}
     layerVisibilityMap.forEach((visible, layerName) => {
-      const qgisLayerId = qgisLayerMap.get(layerName);
-      if (!qgisLayerId) return;
+      const wmsLayerId = `qgis-wms-layer-${projectName}-${layerName}`;
 
-      const mapLayerId = `layer-${qgisLayerId}`;
-
-      if (map.getLayer(mapLayerId)) {
+      if (map.getLayer(wmsLayerId)) {
         const visibility = visible ? 'visible' : 'none';
-        map.setLayoutProperty(mapLayerId, 'visibility', visibility);
-        console.log(`👁️ Toggling layer visibility: ${layerName} (${qgisLayerId}) → ${visibility}`);
+        map.setLayoutProperty(wmsLayerId, 'visibility', visibility);
+        console.log(`👁️ Toggling WMS layer visibility: ${layerName} → ${visibility}`);
       }
     });
-  }, [mapContext, reduxLayers, data]);
+  }, [mapContext, reduxLayers, data, projectName]);
 
   if (isLoading) {
     return (
