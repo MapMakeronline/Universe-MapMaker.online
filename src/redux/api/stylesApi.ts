@@ -308,9 +308,11 @@ export const stylesApi = createApi({
         formData.append('project', project);
         formData.append('layer_id', layer_id);
 
-        // Backend expects field name "style" (not "new_style.qml" or "new_style.sld")
-        // The file extension (.qml or .sld) is automatically detected from the uploaded file
-        formData.append('style', styleFile);
+        // Backend expects field name "new_style.qml" or "new_style.sld" (with extension!)
+        // Determine field name based on file extension
+        const fileName = styleFile.name.toLowerCase();
+        const fieldName = fileName.endsWith('.sld') ? 'new_style.sld' : 'new_style.qml';
+        formData.append(fieldName, styleFile);
 
         return {
           url: '/api/layer/style/add',
