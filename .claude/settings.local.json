@@ -83,7 +83,8 @@
       "Bash(set ANALYZE=true)",
       "Bash(npm run analyze:*)",
       "Bash(depcheck:*)",
-      "Bash(npm uninstall:*)"
+      "Bash(npm uninstall:*)",
+      "Bash(ts-prune:*)"
     ],
     "deny": [],
     "ask": []

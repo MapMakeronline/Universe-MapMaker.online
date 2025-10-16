@@ -30,7 +30,7 @@ export default function ForgotPasswordPage() {
   };
 
   const handleBackToLogin = () => {
-    router.push('/login');
+    router.push('/auth?tab=0');
   };
 
   return (
