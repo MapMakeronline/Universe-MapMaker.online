@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
-import { theme } from '@/style/theme';
+import { theme } from '@/styles/theme';
 import DashboardLayout from './DashboardLayout';
 import OwnProjects from './OwnProjects';
 import PublicProjects from './PublicProjects';

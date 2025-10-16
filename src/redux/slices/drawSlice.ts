@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { DrawState, MeasurementState, Measurement } from '@/typy/geometry';
+import { DrawState, MeasurementState, Measurement } from '@/types-app/geometry';
 import { Feature, Geometry, GeoJsonProperties } from 'geojson';
 
 const initialDrawState: DrawState = {

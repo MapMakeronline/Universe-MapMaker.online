@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useMap } from 'react-map-gl';
 import { useAppSelector, useAppDispatch } from '@/redux/hooks';
-import { mapLogger } from '@/narzedzia/logger';
+import { mapLogger } from '@/tools/logger';
 import IdentifyModal from '@/features/warstwy/modale/IdentifyModal';
 import { addFeature, selectFeature, setAttributeModalOpen } from '@/redux/slices/featuresSlice';
 import { setDrawMode } from '@/redux/slices/drawSlice';

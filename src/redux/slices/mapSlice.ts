@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { MapState, ViewState } from '@/typy/map';
+import { MapState, ViewState } from '@/types-app/map';
 
 const initialState: MapState = {
   viewState: {

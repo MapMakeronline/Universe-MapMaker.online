@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { LayersState, LayerNode } from '@/typy/layers';
+import { LayersState, LayerNode } from '@/types-app/layers';
 
 // Mock layers removed - projects start with empty layer tree
 // Layers will be loaded from backend API per project

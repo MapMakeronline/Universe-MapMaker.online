@@ -26,7 +26,7 @@ import { useAppDispatch } from '@/redux/hooks';
 import { setViewState } from '@/redux/slices/mapSlice';
 import { transformExtentFromWebMercator, detectCRS, transformExtent } from '@/mapbox/coordinates';
 // Types
-import { LayerNode } from '@/typy/layers';
+import { LayerNode } from '@/types-app/layers';
 
 type DropPosition = 'before' | 'after' | 'inside';
 

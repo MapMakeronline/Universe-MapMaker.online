@@ -14,7 +14,7 @@
  */
 
 import mapboxgl from 'mapbox-gl';
-import { mapLogger } from '@/narzedzia/logger';
+import { mapLogger } from '@/tools/logger';
 
 /**
  * Custom 3D Model configuration

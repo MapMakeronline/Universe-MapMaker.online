@@ -1,6 +1,6 @@
 import { jsPDF } from 'jspdf';
 import type { ExportConfig } from '@/features/warstwy/modale/ExportPDFModal';
-import { mapLogger } from '@/narzedzia/logger';
+import { mapLogger } from '@/tools/logger';
 
 interface PageDimensions {
   width: number;

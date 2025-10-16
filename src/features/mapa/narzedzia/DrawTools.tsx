@@ -12,7 +12,7 @@ import {
   setSelectedFeature,
 } from '@/redux/slices/drawSlice';
 import { DRAW_STYLES } from '@/mapbox/draw-styles';
-import { drawLogger } from '@/narzedzia/logger';
+import { drawLogger } from '@/tools/logger';
 
 // Import styles for Mapbox GL Draw
 import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';

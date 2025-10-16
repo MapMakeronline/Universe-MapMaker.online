@@ -1,7 +1,7 @@
 // HTTP Client for GeoCraft Backend API
 // Provides centralized request handling with authentication, error handling, and logging
 
-import { mapLogger } from '@/narzedzia/logger';
+import { mapLogger } from '@/tools/logger';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.universemapmaker.online';
 

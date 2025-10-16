@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { useMap } from 'react-map-gl';
 import { useAppSelector } from '@/redux/hooks';
 import { addProjectLayers } from '@/mapbox/qgis-layers';
-import { mapLogger } from '@/narzedzia/logger';
+import { mapLogger } from '@/tools/logger';
 
 interface QGISProjectLayersLoaderProps {
   projectName: string;

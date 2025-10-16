@@ -13,7 +13,7 @@
 
 import mapboxgl from 'mapbox-gl';
 import { detect3DLayers } from './3d-layer-detection';
-import { mapLogger } from '@/narzedzia/logger';
+import { mapLogger } from '@/tools/logger';
 
 /**
  * Query 3D buildings using ray-casting approach

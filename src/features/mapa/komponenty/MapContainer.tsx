@@ -7,7 +7,7 @@ import Alert from '@mui/material/Alert';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import { setViewState, setMapLoaded, setFullscreen } from '@/redux/slices/mapSlice';
 import { MAPBOX_TOKEN, MAP_CONFIG } from '@/mapbox/config';
-import { mapLogger } from '@/narzedzia/logger';
+import { mapLogger } from '@/tools/logger';
 import { saveViewport, loadViewport, autoSaveViewport } from '@/mapbox/viewport-persistence';
 import DrawTools from '../narzedzia/DrawTools';
 import MeasurementTools from '../narzedzia/MeasurementTools';

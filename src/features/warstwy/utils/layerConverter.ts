@@ -4,7 +4,7 @@
  * Tymczasowe rozwiązanie do czasu pełnego refaktoru LeftPanel
  */
 
-import { LayerNode } from '@/typy/layers';
+import { LayerNode } from '@/types-app/layers';
 
 // Legacy interface from LeftPanel
 export interface Warstwa {

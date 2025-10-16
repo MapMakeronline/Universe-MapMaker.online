@@ -42,7 +42,7 @@ declare module '@mui/material/styles' {
  * 5. Performance-optimized configuration
  *
  * Usage:
- * import { themeOptimized } from '@/style/theme.optimized';
+ * import { themeOptimized } from '@/styles/theme.optimized';
  * <ThemeProvider theme={themeOptimized}>...</ThemeProvider>
  */
 

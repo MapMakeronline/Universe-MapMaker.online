@@ -3,11 +3,47 @@
 import React, { useEffect, useState } from 'react';
 import { Box, Alert, Snackbar, Backdrop } from '@mui/material';
 import { useSearchParams, useRouter } from 'next/navigation';
-import MapContainer from '@/features/mapa/komponenty/MapContainer';
-import LeftPanel from '@/features/warstwy/komponenty/LeftPanel';
-import LayersFAB from '@/features/mapa/komponenty/LayersFAB';
-import { QGISProjectLoader } from '@/src/components/qgis/QGISProjectLoader';
-import { QGISProjectLayersLoader } from '@/src/components/qgis/QGISProjectLayersLoader';
+import dynamic from 'next/dynamic';
+
+// 🚀 DYNAMIC IMPORTS - Lazy load heavy components (499 KB → 250 KB bundle!)
+// Why? MapContainer includes Mapbox GL JS (~150 KB), LeftPanel includes MUI Tree (~50 KB)
+// Load them ONLY when user actually opens the map page, not on initial page load
+
+const MapContainer = dynamic(
+  () => import('@/features/mapa/komponenty/MapContainer'),
+  {
+    ssr: false, // Mapbox GL requires browser APIs (window, document)
+    loading: () => (
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
+        <Box sx={{ textAlign: 'center' }}>
+          <Box sx={{ width: 40, height: 40, border: '4px solid', borderColor: 'primary.main', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto', '@keyframes spin': { '0%': { transform: 'rotate(0deg)' }, '100%': { transform: 'rotate(360deg)' } } }} />
+          <Box sx={{ mt: 2, fontSize: '14px', color: 'text.secondary' }}>Ładowanie mapy...</Box>
+        </Box>
+      </Box>
+    ),
+  }
+);
+
+const LeftPanel = dynamic(
+  () => import('@/features/warstwy/komponenty/LeftPanel'),
+  { ssr: false }
+);
+
+const LayersFAB = dynamic(
+  () => import('@/features/mapa/komponenty/LayersFAB'),
+  { ssr: false }
+);
+
+const QGISProjectLoader = dynamic(
+  () => import('@/src/components/qgis/QGISProjectLoader').then(mod => ({ default: mod.QGISProjectLoader })),
+  { ssr: false }
+);
+
+const QGISProjectLayersLoader = dynamic(
+  () => import('@/src/components/qgis/QGISProjectLayersLoader').then(mod => ({ default: mod.QGISProjectLayersLoader })),
+  { ssr: false }
+);
+
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import { setCurrentProject } from '@/redux/slices/projectsSlice';
 import { loadLayers, resetLayers } from '@/redux/slices/layersSlice';
@@ -16,7 +52,7 @@ import { useGetProjectDataQuery, useGetProjectsQuery } from '@/redux/api/project
 import { MAP_STYLES } from '@/mapbox/config';
 import { transformExtent, transformExtentFromWebMercator, detectCRS, isValidWGS84 } from '@/mapbox/coordinates';
 import type { QGISLayerNode } from '@/types/qgis';
-import type { LayerNode } from '@/typy/layers';
+import type { LayerNode } from '@/types-app/layers';
 
 /**
  * Convert QGIS backend structure to frontend LayerNode structure

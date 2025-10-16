@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAppDispatch } from '@/redux/hooks';
 import { setAuth, setLoading } from '@/redux/slices/authSlice';
-import { restoreAuthState } from '@/narzedzia/auth/auth-init';
+import { restoreAuthState } from '@/tools/auth/auth-init';
 
 interface AuthProviderProps {
   children: React.ReactNode;

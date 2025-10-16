@@ -9,7 +9,7 @@ import Container from '@mui/material/Container';
 import ErrorOutline from '@mui/icons-material/ErrorOutline';
 import Refresh from '@mui/icons-material/Refresh';
 import Home from '@mui/icons-material/Home';
-import { logger } from '@/narzedzia/logger';
+import { logger } from '@/tools/logger';
 
 interface Props {
   children: ReactNode;

@@ -7,7 +7,7 @@ import {
   bbox
 } from '@turf/turf';
 import { default as length } from '@turf/length';
-import { Measurement } from '@/typy/geometry';
+import { Measurement } from '@/types-app/geometry';
 
 export function calculateDistance(coordinates: [number, number][]): number {
   if (coordinates.length < 2) return 0;

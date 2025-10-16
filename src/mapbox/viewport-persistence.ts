@@ -10,7 +10,7 @@
  * - User closes tab and reopens → viewport cleared (sessionStorage cleared)
  */
 
-import { mapLogger } from '@/narzedzia/logger';
+import { mapLogger } from '@/tools/logger';
 
 /**
  * ViewState interface matching Redux mapSlice

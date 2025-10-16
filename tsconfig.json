@@ -27,14 +27,14 @@
         "./*"
       ],
       "@/features/*": ["./src/features/*"],
-      "@/wspolne/*": ["./src/wspolne/*"],
+      "@/common/*": ["./src/common/*"],
       "@/hooks/*": ["./src/hooks/*"],
       "@/api/*": ["./src/api/*"],
       "@/redux/*": ["./src/redux/*"],
-      "@/style/*": ["./src/style/*"],
+      "@/styles/*": ["./src/styles/*"],
       "@/mapbox/*": ["./src/mapbox/*"],
-      "@/narzedzia/*": ["./src/narzedzia/*"],
-      "@/typy/*": ["./src/typy/*"],
+      "@/tools/*": ["./src/tools/*"],
+      "@/types-app/*": ["./src/types-app/*"],
       "@/utils/*": ["./src/utils/*"],
       "@/lib/*": ["./src/lib/*"]
     },

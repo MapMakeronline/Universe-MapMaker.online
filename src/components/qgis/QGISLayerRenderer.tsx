@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useMap } from 'react-map-gl';
-import type { LayerNode } from '@/typy/layers';
+import type { LayerNode } from '@/types-app/layers';
 
 interface QGISLayerRendererProps {
   projectName: string;

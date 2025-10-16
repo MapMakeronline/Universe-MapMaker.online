@@ -14,7 +14,7 @@ import {
   enableFull3DMode,
   disableFull3DMode
 } from '@/mapbox/map3d';
-import { mapLogger } from '@/narzedzia/logger';
+import { mapLogger } from '@/tools/logger';
 import {
   isIOS,
   getDeviceMemory,

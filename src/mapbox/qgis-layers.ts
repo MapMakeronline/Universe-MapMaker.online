@@ -13,7 +13,7 @@
  */
 
 import mapboxgl from 'mapbox-gl';
-import { mapLogger } from '@/narzedzia/logger';
+import { mapLogger } from '@/tools/logger';
 
 /**
  * QGIS Server base URL

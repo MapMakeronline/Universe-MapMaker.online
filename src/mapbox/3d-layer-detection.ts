@@ -11,7 +11,7 @@
  */
 
 import mapboxgl from 'mapbox-gl';
-import { mapLogger } from '@/narzedzia/logger';
+import { mapLogger } from '@/tools/logger';
 
 /**
  * Detect all 3D layers on the map

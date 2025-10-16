@@ -4,7 +4,7 @@ import { useEffect, useRef } from 'react';
 import { useMap } from 'react-map-gl';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import { addBuilding, selectBuilding, setAttributeModalOpen } from '@/redux/slices/buildingsSlice';
-import { mapLogger } from '@/narzedzia/logger';
+import { mapLogger } from '@/tools/logger';
 
 /**
  * Building3DInteraction Component

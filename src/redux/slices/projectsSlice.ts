@@ -10,7 +10,7 @@ import type {
   UpdateProjectData,
   DbInfo,
 } from '@/api/typy/types';
-import { mapLogger } from '@/narzedzia/logger';
+import { mapLogger } from '@/tools/logger';
 import type { RootState } from '../store';
 
 // ============================================================================

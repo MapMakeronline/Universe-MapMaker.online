@@ -5,10 +5,10 @@ import { Provider } from 'react-redux';
 import { ThemeProvider } from '@mui/material/styles';
 import { CssBaseline } from '@mui/material';
 import { makeStore, AppStore } from '@/redux/store';
-import { themeOptimized as theme } from '@/style/theme.optimized';
-import ErrorBoundary from '@/wspolne/ErrorBoundary';
+import { themeOptimized as theme } from '@/styles/theme.optimized';
+import ErrorBoundary from '@/common/ErrorBoundary';
 import AuthProvider from '@/features/autoryzacja/AuthProvider';
-import { NotificationProvider } from '@/wspolne/NotificationProvider';
+import { NotificationProvider } from '@/common/NotificationProvider';
 
 interface ProvidersProps {
   children: React.ReactNode;

@@ -1,4 +1,4 @@
-import type { LayerNode } from '@/typy/layers';
+import type { LayerNode } from '@/types-app/layers';
 
 /**
  * Determine whether to use WMS (raster tiles) or WFS (GeoJSON) for rendering a layer

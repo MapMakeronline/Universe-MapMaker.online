@@ -1,8 +1,8 @@
 import type React from "react"
 import type { Metadata, Viewport } from "next"
 import "./globals.css"
-import Providers from "@/wspolne/Providers"
-import GoogleAnalytics from "@/wspolne/GoogleAnalytics"
+import Providers from "@/common/Providers"
+import GoogleAnalytics from "@/common/GoogleAnalytics"
 
 export const viewport: Viewport = {
   width: 'device-width',

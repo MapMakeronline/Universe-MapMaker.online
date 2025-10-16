@@ -7,7 +7,7 @@ import { useMap } from 'react-map-gl';
 import type { QGISLayerNode, QGISVectorLayer, QGISRasterLayer } from '@/src/types/qgis';
 import { isVectorLayer, isRasterLayer, isGroupLayer } from '@/src/types/qgis';
 import { useAppSelector } from '@/redux/hooks';
-import type { LayerNode } from '@/typy/layers';
+import type { LayerNode } from '@/types-app/layers';
 
 interface QGISProjectLoaderProps {
   projectName: string;

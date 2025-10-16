@@ -17,7 +17,7 @@ import LayersIcon from '@mui/icons-material/Layers';
 import { useMap } from 'react-map-gl';
 import { detect3DLayers, getExtrusionLayers, getModelLayers, get3DLayerStats } from '@/mapbox/3d-layer-detection';
 import { removeCustom3DModel, listCustom3DModels } from '@/mapbox/custom-3d-models';
-import { mapLogger } from '@/narzedzia/logger';
+import { mapLogger } from '@/tools/logger';
 
 /**
  * 3D Objects Panel Component

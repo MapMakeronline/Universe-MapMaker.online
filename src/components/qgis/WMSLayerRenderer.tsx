@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useMap } from 'react-map-gl';
 import { useAppSelector } from '@/redux/hooks';
-import type { LayerNode } from '@/typy/layers';
+import type { LayerNode } from '@/types-app/layers';
 import { addWMSLayer, removeQGISLayer, updateQGISLayerVisibility, updateQGISLayerOpacity, updateProjectLogo } from '@/mapbox/qgis-layers';
 
 interface WMSLayerRendererProps {

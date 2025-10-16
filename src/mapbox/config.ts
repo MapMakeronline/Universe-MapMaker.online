@@ -1,4 +1,4 @@
-import { MapStyles } from '@/typy/map';
+import { MapStyles } from '@/types-app/map';
 
 // Get token directly from environment variable
 export const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || 'pk.eyJ1IjoibWFwbWFrZXItb25saW5lIiwiYSI6ImNtZzN3bm8wYTBwaXIybHM5dDlpc3YwOTQifQ.8Hrv97gishqnvI_h7PiqlQ';

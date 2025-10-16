@@ -27,8 +27,8 @@ import LayersIcon from '@mui/icons-material/Layers';
 import ApartmentIcon from '@mui/icons-material/Apartment'; // Ikona budynku (3D Buildings)
 import HexagonIcon from '@mui/icons-material/Hexagon'; // Ikona poligonu (QGIS layers)
 import { useAppSelector, useAppDispatch } from '@/redux/hooks';
-import { mapLogger } from '@/narzedzia/logger';
-import type { LayerNode } from '@/typy/layers';
+import { mapLogger } from '@/tools/logger';
+import type { LayerNode } from '@/types-app/layers';
 import { addFeature, selectFeature, setAttributeModalOpen } from '@/redux/slices/featuresSlice';
 import type { MapFeature } from '@/redux/slices/featuresSlice';
 import { query3DBuildingsAtPoint, get3DBuildingsSource } from '@/mapbox/3d-picking';

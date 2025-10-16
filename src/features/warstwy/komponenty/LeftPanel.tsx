@@ -19,7 +19,7 @@ import WypisConfigModal from '../../mapa/komponenty/WypisConfigModal';
 import EditLayerStyleModal from '../modale/EditLayerStyleModal';
 import { useResizable, useDragDrop } from '@/hooks/index';
 import { useAppSelector, useAppDispatch } from '@/redux/hooks';
-import { LayerNode } from '@/typy/layers';
+import { LayerNode } from '@/types-app/layers';
 import {
   toggleLayerVisibility,
   toggleGroupExpanded,

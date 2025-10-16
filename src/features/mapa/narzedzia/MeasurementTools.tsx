@@ -12,7 +12,7 @@ import {
 import {
   createDistanceMeasurement,
   createAreaMeasurement,
-} from '@/narzedzia/turf/measurements';
+} from '@/tools/turf/measurements';
 
 const MeasurementTools: React.FC = () => {
   const { current: map } = useMap();

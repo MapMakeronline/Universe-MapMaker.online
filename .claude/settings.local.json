@@ -78,7 +78,8 @@
       "Bash(gcloud run revisions describe:*)",
       "Bash(start cmd /c \"npm run dev\")",
       "Bash(start:*)",
-      "Bash(cmd /c screenshot.bat \"http://localhost:3000/map?project=test\")"
+      "Bash(cmd /c screenshot.bat \"http://localhost:3000/map?project=test\")",
+      "Bash(cloc:*)"
     ],
     "deny": [],
     "ask": []
