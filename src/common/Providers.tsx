@@ -5,7 +5,7 @@ import { Provider } from 'react-redux';
 import { ThemeProvider } from '@mui/material/styles';
 import { CssBaseline } from '@mui/material';
 import { makeStore, AppStore } from '@/redux/store';
-import { themeOptimized as theme } from '@/styles/theme.optimized';
+import { themeOptimized as theme } from '@/styles/theme';
 import ErrorBoundary from '@/common/ErrorBoundary';
 import AuthProvider from '@/features/autoryzacja/AuthProvider';
 import { NotificationProvider } from '@/common/NotificationProvider';

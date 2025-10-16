@@ -84,7 +84,9 @@
       "Bash(npm run analyze:*)",
       "Bash(depcheck:*)",
       "Bash(npm uninstall:*)",
-      "Bash(ts-prune:*)"
+      "Bash(ts-prune:*)",
+      "Bash(jsinspect:*)",
+      "Bash(jscpd:*)"
     ],
     "deny": [],
     "ask": []
