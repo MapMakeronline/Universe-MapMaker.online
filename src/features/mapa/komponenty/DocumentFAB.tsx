@@ -95,15 +95,22 @@ const DocumentFAB: React.FC = () => {
         fullScreen={isMobile}
         PaperComponent={isMobile ? Paper : DraggablePaper}
         aria-labelledby="draggable-dialog-title"
-        hideBackdrop={!isMobile}
+        hideBackdrop
         disableScrollLock
+        disableEnforceFocus
+        disableAutoFocus
+        disableRestoreFocus
         PaperProps={{
           sx: {
             borderRadius: isMobile ? 0 : '12px',
             maxWidth: '480px',
             m: 0,
-            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)', // Stronger shadow since no backdrop
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
+            pointerEvents: 'auto', // Modal catches events
           }
+        }}
+        sx={{
+          pointerEvents: 'none', // Dialog wrapper doesn't catch events (pass-through)
         }}
       >
         {/* Header - Draggable */}
