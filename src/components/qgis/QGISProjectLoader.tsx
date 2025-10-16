@@ -6,6 +6,8 @@ import { CircularProgress, Alert, Box, Typography } from '@mui/material';
 import { useMap } from 'react-map-gl';
 import type { QGISLayerNode, QGISVectorLayer, QGISRasterLayer } from '@/src/types/qgis';
 import { isVectorLayer, isRasterLayer, isGroupLayer } from '@/src/types/qgis';
+import { useAppSelector } from '@/redux/hooks';
+import type { LayerNode } from '@/typy/layers';
 
 interface QGISProjectLoaderProps {
   projectName: string;
@@ -23,6 +25,9 @@ export function QGISProjectLoader({ projectName, onLoad }: QGISProjectLoaderProp
   const mapContext = useMap();
   const [loadedLayers, setLoadedLayers] = useState<Set<string>>(new Set());
   const [loadError, setLoadError] = useState<string | null>(null);
+
+  // Get Redux layer state for visibility sync
+  const reduxLayers = useAppSelector((state) => state.layers.layers);
 
   const { data, isLoading, error } = useGetProjectDataQuery({
     project: projectName,
@@ -125,6 +130,62 @@ export function QGISProjectLoader({ projectName, onLoad }: QGISProjectLoaderProp
       setLoadError(errorMessage);
     }
   }, [mapContext, data, projectName, onLoad]);
+
+  // Sync visibility from Redux to Mapbox layers
+  useEffect(() => {
+    const mapInstance = mapContext.current?.getMap();
+    if (!mapInstance || reduxLayers.length === 0 || !data) return;
+
+    const map = mapInstance;
+
+    // Create a flat map of layer name → visibility from Redux
+    const layerVisibilityMap = new Map<string, boolean>();
+
+    const flattenLayers = (layers: LayerNode[]) => {
+      for (const layer of layers) {
+        if (layer.type === 'group' && layer.children) {
+          flattenLayers(layer.children);
+        } else {
+          layerVisibilityMap.set(layer.name, layer.visible);
+        }
+      }
+    };
+
+    flattenLayers(reduxLayers);
+
+    // Create mapping from QGIS layer name → layer ID (UUID)
+    const qgisLayerMap = new Map<string, string>();
+
+    const mapQGISLayers = (nodes: QGISLayerNode[]) => {
+      for (const node of nodes) {
+        if (isGroupLayer(node)) {
+          if (node.children) {
+            mapQGISLayers(node.children);
+          }
+        } else {
+          qgisLayerMap.set(node.name, node.id);
+        }
+      }
+    };
+
+    if (data.children) {
+      mapQGISLayers(data.children);
+    }
+
+    // Update visibility for all layers by matching name → ID → Mapbox layer
+    layerVisibilityMap.forEach((visible, layerName) => {
+      const qgisLayerId = qgisLayerMap.get(layerName);
+      if (!qgisLayerId) return;
+
+      const mapLayerId = `layer-${qgisLayerId}`;
+
+      if (map.getLayer(mapLayerId)) {
+        const visibility = visible ? 'visible' : 'none';
+        map.setLayoutProperty(mapLayerId, 'visibility', visibility);
+        console.log(`👁️ Toggling layer visibility: ${layerName} (${qgisLayerId}) → ${visibility}`);
+      }
+    });
+  }, [mapContext, reduxLayers, data]);
 
   if (isLoading) {
     return (
