@@ -68,7 +68,7 @@ const DocumentFAB: React.FC = () => {
         onClick={handleOpenModal}
         sx={{
           position: 'fixed',
-          top: 226, // Under DroneFAB
+          top: 226,
           right: 16,
           zIndex: 1400,
           width: 56,
