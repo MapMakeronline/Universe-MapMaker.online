@@ -39,7 +39,7 @@ const GeolocationFAB: React.FC = () => {
       onClick={handleGeolocation}
       sx={{
         position: 'fixed',
-        bottom: 86, // Above QGISIdentifyTool (16 + 56 + 14 spacing)
+        bottom: 86, // Above IdentifyTool (16 + 56 + 14 spacing)
         right: 16,
         zIndex: 1400,
         width: 56,

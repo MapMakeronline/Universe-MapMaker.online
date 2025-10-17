@@ -261,7 +261,7 @@ export const layersApi = createApi({
      * Get layer features as GeoJSON
      * Endpoint: GET /api/layer/features
      * Priority: 🔴 High
-     * Used by: MapContainer, QGISIdentifyTool
+     * Used by: MapContainer, IdentifyTool
      */
     getFeatures: builder.query<
       GeoJSON.FeatureCollection,
