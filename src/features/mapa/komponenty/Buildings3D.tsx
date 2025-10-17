@@ -15,12 +15,32 @@ import {
   disableFull3DMode
 } from '@/mapbox/map3d';
 import { mapLogger } from '@/tools/logger';
-import {
-  isIOS,
-  getDeviceMemory,
-  getBuildingHeightMultiplier,
-  getDeviceLogPrefix
-} from '@/mapbox/device-detection';
+
+// Device detection utilities (inline to avoid extra file)
+const isIOS = () => {
+  if (typeof window === 'undefined') return false;
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+};
+
+const getDeviceMemory = () => {
+  if (typeof window === 'undefined') return 8;
+  return (navigator as any).deviceMemory || 8;
+};
+
+const getBuildingHeightMultiplier = () => {
+  const memory = getDeviceMemory();
+  const ios = isIOS();
+  // Lower height multiplier for low-memory devices
+  if (ios || memory <= 2) return 0.7;
+  if (memory <= 4) return 0.85;
+  return 1.0;
+};
+
+const getDeviceLogPrefix = () => {
+  const ios = isIOS();
+  const memory = getDeviceMemory();
+  return ios ? `📱 iOS (${memory}GB)` : `💻 Desktop (${memory}GB)`;
+};
 
 const Buildings3D = () => {
   const { current: mapRef } = useMap();
