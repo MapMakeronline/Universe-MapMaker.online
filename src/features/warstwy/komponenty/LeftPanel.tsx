@@ -7,7 +7,6 @@ import { Toolbar } from './Toolbar';
 import { SearchBar } from './SearchBar';
 import { LayerTree } from './LayerTree';
 import { PropertiesPanel } from './PropertiesPanel';
-import BuildingsPanel from './BuildingsPanel';
 import AddDatasetModal from '../modale/AddDatasetModal';
 import AddNationalLawModal from '../modale/AddNationalLawModal';
 import AddLayerModal from '../modale/AddLayerModal';
@@ -693,9 +692,6 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
           minHeight: 0,
           overflow: 'hidden'
         }}>
-          {/* 3D Buildings Panel */}
-          <BuildingsPanel />
-
           <LayerTree
             warstwy={layers}
             selectedLayer={selectedLayer}

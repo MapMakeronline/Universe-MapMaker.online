@@ -18,8 +18,9 @@ const restoreAuthState = async (): Promise<{ token: string | null; user: any | n
   }
 
   try {
-    const token = localStorage.getItem('auth_token');
-    const userStr = localStorage.getItem('auth_user');
+    // ✅ FIXED: Use same keys as authSlice.ts (authToken, user)
+    const token = localStorage.getItem('authToken');
+    const userStr = localStorage.getItem('user');
     const user = userStr ? JSON.parse(userStr) : null;
 
     return { token, user };

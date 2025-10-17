@@ -98,7 +98,9 @@
       "Bash(SCREENSHOT_URL=\"http://localhost:3000\" SCREENSHOT_NAME=\"local-with-backend.png\" npm run screenshot:*)",
       "Bash(rm:*)",
       "Bash(rmdir:*)",
-      "Bash(test:*)"
+      "Bash(test:*)",
+      "Bash(cmd /c taskkill /F /PID 16912)",
+      "Bash(cmd /c screenshot.bat http://localhost:3002/map?project=test fab-toolbar-updated.png)"
     ],
     "deny": [],
     "ask": []

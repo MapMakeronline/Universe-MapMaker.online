@@ -14,13 +14,7 @@ import MeasurementTools from '../narzedzia/MeasurementTools';
 import IdentifyTool from './IdentifyTool';
 import Buildings3D from './Buildings3D';
 import FeatureAttributesModal from '@/features/warstwy/modale/FeatureAttributesModal';
-import UserFAB from './UserFAB';
-import SearchFAB from './SearchFAB';
-import DroneFAB from './DroneFAB';
-import DocumentFAB from './DocumentFAB';
-import MeasurementFAB from './MeasurementFAB';
-import MobileFAB from './MobileFAB';
-import GeolocationFAB from './GeolocationFAB';
+import RightFABToolbar from '@/features/narzedzia/RightFABToolbar';
 
 // Import CSS dla Mapbox GL
 import 'mapbox-gl/dist/mapbox-gl.css';
@@ -184,9 +178,6 @@ const MapContainer: React.FC<MapContainerProps> = ({ children, projectName }) =>
     };
   }, [mapRef]);
 
-  // Building click handling is now done via direct layer listeners in Building3DInteraction
-  // No need for onClick or interactiveLayerIds here
-
   // Show error state
   if (tokenError) {
     return (
@@ -267,20 +258,9 @@ const MapContainer: React.FC<MapContainerProps> = ({ children, projectName }) =>
       {/* <SimpleDrawingToolbar />
       <SimpleMeasurementToolbar /> */}
 
-      {/* ===== FAB BUTTONS - Vertical Column on Right Side ===== */}
-      {/* Replaces the old RightToolbar - all functionality moved to FAB buttons */}
-
-      {/* TOP SECTION - Fixed from top */}
-      <UserFAB />           {/* User account (top: 16px) */}
-      <SearchFAB />         {/* Search (top: 86px) */}
-      <DroneFAB />          {/* Drone (top: 156px) */}
-      <DocumentFAB />       {/* Wypis i wyrys (top: 226px) */}
-      <MeasurementFAB />    {/* Mierzenie (top: 296px) */}
-      <MobileFAB />         {/* Rysowanie (top: 366px) */}
-
-      {/* BOTTOM SECTION - Fixed from bottom */}
-      <GeolocationFAB />    {/* Geolocation (bottom: 86px) */}
-      {/* IdentifyTool is rendered inside <Map> for map context access */}
+      {/* ===== RIGHT FAB TOOLBAR - Unified Material Icons FABs ===== */}
+      {/* All tools in one vertical column with consistent styling */}
+      <RightFABToolbar />
     </Box>
   );
 };
