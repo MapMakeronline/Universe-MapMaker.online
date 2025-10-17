@@ -14,14 +14,6 @@ export const isIOS = (): boolean => {
 };
 
 /**
- * Detect if the browser is Safari (both iOS and macOS)
- */
-export const isSafari = (): boolean => {
-  if (typeof window === 'undefined') return false;
-  return /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-};
-
-/**
  * Get device memory in GB (Navigator.deviceMemory API)
  * Defaults to 4GB if not available.
  * Low memory devices (< 4GB) need more aggressive optimization.
@@ -32,34 +24,16 @@ export const getDeviceMemory = (): number => {
 };
 
 /**
- * Check if the browser supports WebGL rendering
- */
-export const supportsWebGL = (): boolean => {
-  if (typeof window === 'undefined') return false;
-  try {
-    const canvas = document.createElement('canvas');
-    return !!(
-      window.WebGLRenderingContext &&
-      (canvas.getContext('webgl') || canvas.getContext('experimental-webgl'))
-    );
-  } catch (e) {
-    return false;
-  }
-};
-
-/**
  * Detect if the device is a low-end mobile device
- * Uses multiple heuristics: iOS detection, device memory, WebGL support
+ * Uses multiple heuristics: iOS detection, device memory
  */
 export const isLowEndDevice = (): boolean => {
   const ios = isIOS();
   const memory = getDeviceMemory();
-  const webglSupported = supportsWebGL();
 
   // Low-end criteria:
   // - iOS device with < 4GB RAM
-  // - No WebGL support
-  return (ios && memory < 4) || !webglSupported;
+  return ios && memory < 4;
 };
 
 /**
@@ -77,25 +51,15 @@ export const getBuildingHeightMultiplier = (): number => {
 };
 
 /**
- * Get optimal building opacity based on device
- * iOS Safari has better performance with slightly lower opacity.
- */
-export const getBuildingOpacity = (): number => {
-  return isIOS() ? 0.7 : 0.8;
-};
-
-/**
  * Get device-specific log prefix for debugging
  */
 export const getDeviceLogPrefix = (): string => {
   const ios = isIOS();
-  const safari = isSafari();
   const memory = getDeviceMemory();
   const lowEnd = isLowEndDevice();
 
   const parts = [];
   if (ios) parts.push('iOS');
-  if (safari && !ios) parts.push('Safari');
   if (lowEnd) parts.push('Low-End');
   parts.push(`${memory}GB RAM`);
 

@@ -49,27 +49,6 @@ export const detect3DLayers = (map: mapboxgl.Map): string[] => {
 };
 
 /**
- * Check if a specific layer is 3D (fill-extrusion or model)
- *
- * @param map - Mapbox GL map instance
- * @param layerId - Layer ID to check
- * @returns True if layer is 3D
- */
-export const is3DLayer = (map: mapboxgl.Map, layerId: string): boolean => {
-  const layer = map.getLayer(layerId);
-  if (!layer) {
-    mapLogger.warn(`⚠️ Layer not found: ${layerId}`);
-    return false;
-  }
-
-  const layerType = (layer as any).type;
-  const is3D = layerType === 'fill-extrusion' || layerType === 'model';
-
-  mapLogger.log(`🔍 Layer ${layerId} is ${is3D ? '3D' : '2D'} (type: ${layerType})`);
-  return is3D;
-};
-
-/**
  * Get all fill-extrusion layers (buildings)
  *
  * @param map - Mapbox GL map instance
@@ -103,45 +82,6 @@ export const getModelLayers = (map: mapboxgl.Map): string[] => {
 
   mapLogger.log(`🎨 Found ${modelLayers.length} model layers:`, modelLayers);
   return modelLayers;
-};
-
-/**
- * Query all 3D features at a point (any 3D layer)
- * Uses universal detection to query ALL 3D layers, not just '3d-buildings'
- *
- * @param map - Mapbox GL map instance
- * @param point - Screen coordinates { x, y }
- * @param tolerance - Pixel tolerance for bbox query (default: 12px)
- * @returns Array of features from all 3D layers
- */
-export const queryAll3DFeatures = (
-  map: mapboxgl.Map,
-  point: { x: number; y: number },
-  tolerance: number = 12
-): any[] => {
-  const layers3D = detect3DLayers(map);
-
-  if (layers3D.length === 0) {
-    mapLogger.log('⚠️ No 3D layers found on map - skipping query');
-    return [];
-  }
-
-  const bbox: [mapboxgl.PointLike, mapboxgl.PointLike] = [
-    [point.x - tolerance, point.y - tolerance],
-    [point.x + tolerance, point.y + tolerance]
-  ];
-
-  const features = map.queryRenderedFeatures(bbox, {
-    layers: layers3D
-  });
-
-  mapLogger.log(`🎯 Queried ${layers3D.length} 3D layers, found ${features.length} features`, {
-    layers: layers3D,
-    bbox,
-    point
-  });
-
-  return features;
 };
 
 /**

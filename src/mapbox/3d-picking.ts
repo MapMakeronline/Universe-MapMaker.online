@@ -118,40 +118,6 @@ export const query3DBuildingsAtPoint = (
 };
 
 /**
- * Query 3D buildings with smaller tolerance for hover detection
- * Used for hover effects to avoid selecting buildings too far from cursor
- *
- * @param map - Mapbox GL map instance
- * @param point - Screen coordinates of mouse/touch position
- * @returns Single closest building feature or null
- */
-export const query3DBuildingsForHover = (
-  map: mapboxgl.Map,
-  point: { x: number; y: number }
-): any | null => {
-  // Use smaller tolerance for hover (8px instead of 12px)
-  const features = query3DBuildingsAtPoint(map, point, 8);
-  return features.length > 0 ? features[0] : null;
-};
-
-/**
- * Check if 3D buildings layer exists and is visible
- * Useful for determining if 3D picking should be enabled
- *
- * UPDATED: Now uses universal detection to check for ANY 3D layers!
- *
- * @param map - Mapbox GL map instance
- * @returns True if any 3D layers exist
- */
-export const has3DBuildingsLayer = (map: mapboxgl.Map): boolean => {
-  const layers3D = detect3DLayers(map);
-  const hasLayers = layers3D.length > 0;
-
-  mapLogger.log(`🔍 has3DBuildingsLayer: ${hasLayers ? 'YES' : 'NO'} (${layers3D.length} layers)`);
-  return hasLayers;
-};
-
-/**
  * Get building source ID (composite or mapbox-3d-buildings)
  * Different map styles use different sources for 3D buildings
  *

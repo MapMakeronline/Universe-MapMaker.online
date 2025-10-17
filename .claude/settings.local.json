@@ -95,7 +95,10 @@
       "Bash(SCREENSHOT_URL=\"http://localhost:3000\" SCREENSHOT_NAME=\"playwright-homepage.png\" npx playwright test:*)",
       "Bash(SCREENSHOT_URL=\"http://localhost:3000/dashboard\" SCREENSHOT_NAME=\"dashboard-npm-test.png\" npm run screenshot:*)",
       "Bash(where:*)",
-      "Bash(SCREENSHOT_URL=\"http://localhost:3000\" SCREENSHOT_NAME=\"local-with-backend.png\" npm run screenshot:*)"
+      "Bash(SCREENSHOT_URL=\"http://localhost:3000\" SCREENSHOT_NAME=\"local-with-backend.png\" npm run screenshot:*)",
+      "Bash(rm:*)",
+      "Bash(rmdir:*)",
+      "Bash(test:*)"
     ],
     "deny": [],
     "ask": []

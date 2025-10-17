@@ -84,37 +84,6 @@ export function transformExtent(
 }
 
 /**
- * Transform single point from EPSG:2180 to EPSG:4326
- *
- * @param x - X coordinate in EPSG:2180 (easting, meters)
- * @param y - Y coordinate in EPSG:2180 (northing, meters)
- * @returns [longitude, latitude] in EPSG:4326 (degrees)
- *
- * @example
- * const [lng, lat] = transformPoint(2132403, 6651920);
- * // Result: [19.25, 52.14] (approximately Warsaw)
- */
-export function transformPoint(x: number, y: number): [number, number] {
-  return proj4('EPSG:2180', 'EPSG:4326', [x, y]);
-}
-
-/**
- * Transform coordinates from EPSG:4326 to EPSG:2180
- * (Reverse transformation - WGS84 to Polish National Grid)
- *
- * @param lng - Longitude in degrees
- * @param lat - Latitude in degrees
- * @returns [x, y] in EPSG:2180 (meters)
- *
- * @example
- * const [x, y] = transformToPolishGrid(19.25, 52.14);
- * // Result: [2132403, 6651920] (approximately Warsaw in EPSG:2180)
- */
-export function transformToPolishGrid(lng: number, lat: number): [number, number] {
-  return proj4('EPSG:4326', 'EPSG:2180', [lng, lat]);
-}
-
-/**
  * Validate if coordinates are valid WGS84 (EPSG:4326)
  *
  * @param lng - Longitude
@@ -158,17 +127,6 @@ export function transformExtentFromWebMercator(
   const [maxLng, maxLat] = proj4('EPSG:3857', 'EPSG:4326', [maxX, maxY]);
 
   return [minLng, minLat, maxLng, maxLat];
-}
-
-/**
- * Transform single point from EPSG:3857 to EPSG:4326
- *
- * @param x - X coordinate in EPSG:3857 (meters)
- * @param y - Y coordinate in EPSG:3857 (meters)
- * @returns [longitude, latitude] in EPSG:4326 (degrees)
- */
-export function transformPointFromWebMercator(x: number, y: number): [number, number] {
-  return proj4('EPSG:3857', 'EPSG:4326', [x, y]);
 }
 
 /**
