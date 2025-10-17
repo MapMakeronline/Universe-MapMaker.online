@@ -817,7 +817,7 @@ if (!projectData.children || projectData.children.length === 0) {
 - **`docs/backend/projects_api_docs.md`** - Complete Projects API documentation (THIS REPO!)
 
 **Projects API Documentation (docs/backend/projects_api_docs.md):**
-- **60+ endpoints** for project management
+- **45 endpoints** for project management
 - Complete request/response examples for each endpoint
 - Error codes and handling
 - File formats and validation rules
