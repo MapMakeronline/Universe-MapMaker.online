@@ -3,11 +3,31 @@
 import React, { useEffect, useState } from 'react';
 import { useAppDispatch } from '@/redux/hooks';
 import { setAuth, setLoading } from '@/redux/slices/authSlice';
-import { restoreAuthState } from '@/tools/auth/auth-init';
 
 interface AuthProviderProps {
   children: React.ReactNode;
 }
+
+/**
+ * Restore authentication state from localStorage
+ * Returns stored token and user data if available
+ */
+const restoreAuthState = async (): Promise<{ token: string | null; user: any | null }> => {
+  if (typeof window === 'undefined') {
+    return { token: null, user: null };
+  }
+
+  try {
+    const token = localStorage.getItem('auth_token');
+    const userStr = localStorage.getItem('auth_user');
+    const user = userStr ? JSON.parse(userStr) : null;
+
+    return { token, user };
+  } catch (error) {
+    console.error('Failed to restore auth state:', error);
+    return { token: null, user: null };
+  }
+};
 
 /**
  * AuthProvider - Restores authentication state from localStorage on app startup
