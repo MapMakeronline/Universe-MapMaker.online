@@ -14,7 +14,6 @@ import MeasurementTools from '../narzedzia/MeasurementTools';
 import IdentifyTool from './IdentifyTool';
 import Buildings3D from './Buildings3D';
 import FeatureAttributesModal from '@/features/warstwy/modale/FeatureAttributesModal';
-import QGISIdentifyTool from './QGISIdentifyTool';
 import UserFAB from './UserFAB';
 import SearchFAB from './SearchFAB';
 import DroneFAB from './DroneFAB';
@@ -257,9 +256,6 @@ const MapContainer: React.FC<MapContainerProps> = ({ children, projectName }) =>
         {/* 3D Buildings */}
         <Buildings3D />
 
-        {/* QGIS Identify Tool - MUST be inside <Map> to access map context */}
-        <QGISIdentifyTool projectName={projectName} />
-
         {/* Dodatkowe komponenty (Markers, Popup) */}
         {children}
       </Map>
@@ -284,7 +280,7 @@ const MapContainer: React.FC<MapContainerProps> = ({ children, projectName }) =>
 
       {/* BOTTOM SECTION - Fixed from bottom */}
       <GeolocationFAB />    {/* Geolocation (bottom: 86px) */}
-      {/* QGISIdentifyTool is rendered inside <Map> for map context access (bottom: 16px) */}
+      {/* IdentifyTool is rendered inside <Map> for map context access */}
     </Box>
   );
 };
