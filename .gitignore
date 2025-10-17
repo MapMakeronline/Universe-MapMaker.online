@@ -48,3 +48,10 @@ docs/backend/
 /playwright/.cache/
 .env.test
 nul
+
+# Screenshot testing tools
+screenshot.bat
+screenshot.ps1
+screenshot.sh
+screenshot.js
+screenshotshomepage-test.png

@@ -947,64 +947,134 @@ theme.palette.modal.border      // #e5e7eb - Border gray
 ```
 
 ### Using Theme in Components
-```typescript
-import { ThemeProvider } from '@mui/material';
-import { theme } from '@/lib/theme';
 
-// In your component:
-<ThemeProvider theme={theme}>
-  {/* Your content */}
-</ThemeProvider>
-```
-
-### Theme Utilities (`src/lib/theme-utils.tsx`)
-
-Helper components and utilities for rapid development:
+**CRITICAL:** Theme is managed globally through `app/layout.tsx > Providers.tsx`. Never create local ThemeProvider instances!
 
 ```typescript
-import { FormField, FormContainer, DialogHeader, responsive, commonSx } from '@/lib/theme-utils';
+import { useTheme } from '@mui/material';
 
-// Form field with auto-styled label
-<FormField label="Nazwa">
-  <TextField fullWidth value={value} onChange={onChange} />
-</FormField>
-
-// Form container with consistent spacing
-<FormContainer gap={2.5}>
-  <FormField label="Field 1">...</FormField>
-  <FormField label="Field 2">...</FormField>
-</FormContainer>
-
-// Dialog header with close button
-<DialogTitle>
-  <DialogHeader title="My Dialog" onClose={handleClose} />
-</DialogTitle>
-
-// Responsive utilities
-<Box sx={responsive.hideOnMobile}>Desktop only</Box>
-<Box sx={responsive.padding}>Responsive padding</Box>
-
-// Common sx patterns
-<Box sx={commonSx.centerContent}>Centered</Box>
-<Box sx={commonSx.scrollable}>Scrollable with custom scrollbar</Box>
+// Access theme in any component:
+const theme = useTheme();
+const primaryColor = theme.palette.primary.main;
 ```
 
-**Available Helper Components:**
-- `<FormLabel>` - Consistent label styling (14px, medium weight)
-- `<FormField>` - Label + input wrapper
-- `<FormContainer>` - Flex column with gap spacing
-- `<DialogHeader>` - Title + close button in one component
+### Styling Architecture
 
-**Available Utilities:**
-- `responsive.hideOnMobile` / `hideOnDesktop` - Responsive visibility
-- `responsive.padding` - Responsive padding (xs: 2, sm: 3)
-- `responsive.fontSize.*` - Small, medium, large, xlarge responsive fonts
-- `commonSx.centerContent` - Flexbox centering
-- `commonSx.fullSize` - 100% width and height
-- `commonSx.scrollable` - Styled scrollbar
-- `commonSx.cardShadow` - Card shadow with hover effect
-- `commonSx.transition()` - Create theme-aware transitions
-- `conditionalSx(condition, trueSx, falseSx)` - Conditional styles
+The application uses a **centralized styling system** with MUI theme configuration:
+
+**File Structure:**
+```
+src/styles/
+├── theme.ts           ← Single source of truth for all styles
+└── (no other files)   ← All styling consolidated here!
+
+app/
+├── layout.tsx         ← Imports Providers with ThemeProvider
+└── globals.css        ← ONLY Mapbox-specific overrides
+```
+
+**Theme Configuration ([src/styles/theme.ts](src/styles/theme.ts)):**
+```typescript
+// Global theme with component defaults
+const baseTheme = createTheme({
+  cssVariables: true,  // Performance: CSS variables
+  palette: {
+    primary: { main: '#f75e4c' },    // Coral brand color
+    secondary: { main: '#1c679d' },  // Blue accent
+    modal: {                         // Custom palette extension
+      header: '#4a5568',
+      content: '#f7f9fc',
+    },
+  },
+  typography: {
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", ...',
+  },
+  components: {
+    MuiCssBaseline: {
+      styleOverrides: {
+        // Global styles (box-sizing, height, touch-action)
+        // Applied automatically via <CssBaseline />
+      },
+    },
+    MuiButton: {
+      styleOverrides: {
+        root: { textTransform: 'none' }, // No uppercase
+      },
+    },
+    MuiTextField: {
+      defaultProps: {
+        size: 'small',
+      },
+      styleOverrides: {
+        root: {
+          '& .MuiOutlinedInput-root': {
+            bgcolor: 'white',
+            // Auto-styled, no inline sx needed!
+          },
+        },
+      },
+    },
+    // ... 20+ components with optimized defaults
+  },
+});
+
+export const themeOptimized = responsiveFontSizes(baseTheme);
+```
+
+### How to Style Components
+
+**1. Use theme colors directly:**
+```typescript
+<Box sx={{ color: 'primary.main', bgcolor: 'modal.content' }}>
+  Text
+</Box>
+```
+
+**2. Use useTheme() hook:**
+```typescript
+const theme = useTheme();
+<Box sx={{
+  color: theme.palette.primary.main,
+  padding: theme.spacing(2),
+}}>
+```
+
+**3. Use responsive breakpoints:**
+```typescript
+<Box sx={{
+  display: { xs: 'none', md: 'block' },  // Hide on mobile
+  p: { xs: 2, sm: 3 },                   // Responsive padding
+  fontSize: { xs: '0.875rem', sm: '1rem' },
+}}>
+```
+
+**4. Use theme transitions:**
+```typescript
+<Box sx={{
+  transition: (theme) => theme.transitions.create(['color', 'background'], {
+    duration: theme.transitions.duration.short,
+  }),
+}}>
+```
+
+### Custom Palette Extensions
+
+Access custom colors defined in theme:
+```typescript
+// In theme.ts:
+declare module '@mui/material/styles' {
+  interface Palette {
+    modal: {
+      header: string;
+      content: string;
+    };
+  }
+}
+
+// In components:
+theme.palette.modal.header   // #4a5568
+theme.palette.modal.content  // #f7f9fc
+```
 
 ### Logo Assets
 - **Full Logo:** `/logo.svg` - Use for login screens and large branding

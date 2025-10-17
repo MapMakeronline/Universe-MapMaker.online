@@ -114,7 +114,7 @@ const baseTheme = createTheme({
   },
 
   typography: {
-    fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif',
     // Base font sizes - will be made responsive by responsiveFontSizes()
     h1: {
       fontWeight: 600,
@@ -177,16 +177,28 @@ const baseTheme = createTheme({
     // MuiCssBaseline - Global styles (hoisted, non-rerendering)
     MuiCssBaseline: {
       styleOverrides: {
-        html: {
-          height: '100%',
-        },
-        body: {
-          height: '100%',
-          margin: 0,
+        '*': {
+          boxSizing: 'border-box',
           padding: 0,
+          margin: 0,
+        },
+        'html, body': {
+          maxWidth: '100vw',
+          overflowX: 'hidden',
+          height: '100%',
+          WebkitFontSmoothing: 'antialiased',
+          MozOsxFontSmoothing: 'grayscale',
+          // Enable smooth touch interactions
+          WebkitTapHighlightColor: 'transparent',
+          WebkitTouchCallout: 'none',
+          touchAction: 'pan-x pan-y',
         },
         '#__next': {
-          height: '100%',
+          height: '100dvh', // New mobile viewport height
+          fallbacks: [{ height: '100vh' }], // Fallback for older browsers
+          '@supports (-webkit-touch-callout: none)': {
+            height: '-webkit-fill-available', // iOS PWA support
+          },
         },
       },
     },

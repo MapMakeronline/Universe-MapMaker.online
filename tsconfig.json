@@ -26,6 +26,7 @@
       "@/*": [
         "./*"
       ],
+      "@/components/*": ["./src/components/*"],
       "@/features/*": ["./src/features/*"],
       "@/common/*": ["./src/common/*"],
       "@/hooks/*": ["./src/hooks/*"],

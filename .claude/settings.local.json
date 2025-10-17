@@ -86,7 +86,16 @@
       "Bash(npm uninstall:*)",
       "Bash(ts-prune:*)",
       "Bash(jsinspect:*)",
-      "Bash(jscpd:*)"
+      "Bash(jscpd:*)",
+      "Bash(npm init playwright@latest)",
+      "Bash(cmd /c screenshot.bat http://localhost:3000)",
+      "Bash(chmod:*)",
+      "Bash(./screenshot.sh:*)",
+      "Bash(SCREENSHOT_URL=\"http://localhost:3000\" SCREENSHOT_NAME=\"playwright-test.png\" npx playwright test:*)",
+      "Bash(SCREENSHOT_URL=\"http://localhost:3000\" SCREENSHOT_NAME=\"playwright-homepage.png\" npx playwright test:*)",
+      "Bash(SCREENSHOT_URL=\"http://localhost:3000/dashboard\" SCREENSHOT_NAME=\"dashboard-npm-test.png\" npm run screenshot:*)",
+      "Bash(where:*)",
+      "Bash(SCREENSHOT_URL=\"http://localhost:3000\" SCREENSHOT_NAME=\"local-with-backend.png\" npm run screenshot:*)"
     ],
     "deny": [],
     "ask": []

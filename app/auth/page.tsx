@@ -3,7 +3,6 @@
 import React, { useState, Suspense } from 'react';
 import {
   Box,
-  Container,
   Card,
   CardContent,
   Tabs,
@@ -22,14 +21,13 @@ import {
   Visibility,
   VisibilityOff,
   Google as GoogleIcon,
-  ArrowBack,
 } from '@mui/icons-material';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Image from 'next/image';
 import { useTheme } from '@mui/material/styles';
 import { authService } from '@/api/endpointy/auth';
 import { useAppDispatch } from '@/redux/hooks';
 import { setAuth, setLoading } from '@/redux/slices/authSlice';
+import { AuthLayout } from '@/components/auth';
 
 // Force dynamic rendering for this page (uses useSearchParams)
 export const dynamic = 'force-dynamic';
@@ -152,40 +150,14 @@ function AuthPageContent() {
   };
 
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.secondary.main} 100%)`,
-        display: 'flex',
-        alignItems: 'center',
-        py: 4,
-        position: 'relative',
-      }}
-    >
-      {/* Back Button */}
-      <IconButton
-        onClick={() => router.push('/')}
+    <AuthLayout backTo="/" maxWidth="sm">
+      <Card
         sx={{
-          position: 'absolute',
-          top: 16,
-          left: 16,
-          color: 'white',
-          bgcolor: 'rgba(255, 255, 255, 0.1)',
-          '&:hover': {
-            bgcolor: 'rgba(255, 255, 255, 0.2)',
-          },
+          boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
+          borderRadius: 3,
+          width: '100%',
         }}
       >
-        <ArrowBack />
-      </IconButton>
-
-      <Container maxWidth="sm">
-        <Card
-          sx={{
-            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
-            borderRadius: 3,
-          }}
-        >
           {/* Logo */}
           <Box
             sx={{
@@ -409,27 +381,26 @@ function AuthPageContent() {
               </Typography>
             </Box>
           </CardContent>
-        </Card>
+      </Card>
 
-        {/* Browse as Guest */}
-        <Box sx={{ textAlign: 'center', mt: 3 }}>
-          <Button
-            variant="text"
-            onClick={() => router.push('/dashboard?tab=1')}
-            sx={{
-              color: 'white',
-              textTransform: 'none',
-              fontSize: '1rem',
-              '&:hover': {
-                bgcolor: 'rgba(255, 255, 255, 0.1)',
-              },
-            }}
-          >
-            Przeglądaj jako gość →
-          </Button>
-        </Box>
-      </Container>
-    </Box>
+      {/* Browse as Guest */}
+      <Box sx={{ textAlign: 'center', mt: 3 }}>
+        <Button
+          variant="text"
+          onClick={() => router.push('/dashboard?tab=1')}
+          sx={{
+            color: 'white',
+            textTransform: 'none',
+            fontSize: '1rem',
+            '&:hover': {
+              bgcolor: 'rgba(255, 255, 255, 0.1)',
+            },
+          }}
+        >
+          Przeglądaj jako gość →
+        </Button>
+      </Box>
+    </AuthLayout>
   );
 }
 
