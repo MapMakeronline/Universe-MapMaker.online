@@ -72,7 +72,35 @@ Kompleksowa dokumentacja systemu autentykacji i persystencji stanu logowania.
 
 ---
 
-### 3. [Right FAB Toolbar System](RIGHT_FAB_TOOLBAR_SYSTEM.md) 🎨
+### 3. [Backend API Documentation](backend/) 📡
+**Rozmiar:** 153 KB (6 plików) | **Data:** 2025-10-02 | **Status:** ✅ Oficjalna dokumentacja backendu
+
+Kompletna dokumentacja API backendu Django REST Framework z oficjalnych źródeł.
+
+**Zawartość:**
+- ✅ **[Projects API](backend/projects_api_docs.md)** - 45 endpointów (projekty, QGS import/export, publikacja)
+- ✅ **[Layers API](backend/layer_api_docs.md)** - 57 endpointów (warstwy, GeoJSON, Shapefile, styling)
+- ✅ **[Styles API](backend/styles_api_docs.md)** - 7 endpointów (renderery, symbole, klasyfikacja)
+- ✅ **[Auth API](backend/auth_api_docs.md)** - 4 endpointy (rejestracja, logowanie, profil)
+- ✅ **[Groups API](backend/groups_api_docs.md)** - 9 endpointów (grupy użytkowników)
+- ✅ **[Dashboard API](backend/dashboard_api_docs.md)** - 5 endpointów (dashboard, statystyki)
+
+**RAZEM: 127 endpointów backendu** (aktualna wersja z 2 października 2025)
+
+**Przydatne dla:**
+- Implementacji nowych funkcji (sprawdź co backend oferuje)
+- Debugowania błędów integracji
+- Zrozumienia dostępnych operacji backendu
+- Planowania rozwoju aplikacji
+
+**Kluczowe Różnice vs Frontend:**
+- Backend ma **127 endpointów**, frontend zaimplementował **76 w RTK Query**
+- **Groups API** (9 endpointów) - nie zaimplementowane w frontendzie
+- Niektóre endpointy Projects i Layers czekają na implementację
+
+---
+
+### 4. [Right FAB Toolbar System](RIGHT_FAB_TOOLBAR_SYSTEM.md) 🎨
 **Rozmiar:** 7 KB | **Data:** 2025-10-17 | **Status:** ✅ Aktualny
 
 Dokumentacja zunifikowanego systemu Floating Action Buttons (FAB) na prawym pasku mapy.
@@ -153,11 +181,13 @@ Dokumentacja zunifikowanego systemu Floating Action Buttons (FAB) na prawym pask
 
 | Metryka | Wartość |
 |---------|---------|
-| **Total API Endpoints** | 120 |
+| **Backend API Endpoints (Total)** | 127 |
+| **Frontend Implemented (RTK Query)** | 76 (60%) |
+| **Not Yet Implemented** | 51 (40%) |
 | **RTK Query APIs** | 4 (projectsApi, layersApi, stylesApi, adminApi) |
-| **Auto-generated Hooks** | 67 |
-| **Authenticated Endpoints** | 108 (90%) |
-| **Public Endpoints** | 12 (10%) |
+| **Auto-generated Hooks** | 76 |
+| **Authenticated Endpoints** | ~115 (90%) |
+| **Public Endpoints** | ~12 (10%) |
 | **FAB Components** | 12 |
 | **Auth-Required FABs** | 4 (Place, Edit, Architecture, Crop) |
 | **Redux Slices** | 8 (map, layers, draw, auth, features, projects, notification, + 4 RTK Query) |
@@ -275,11 +305,20 @@ dispatch(projectsApi.util.invalidateTags([{ type: 'Projects', id: 'LIST' }]));
 
 | Dokument | Data Utworzenia | Ostatnia Aktualizacja | Rozmiar | Status |
 |----------|-----------------|------------------------|---------|--------|
-| API_ENDPOINTS.md | 2025-10-17 | 2025-10-17 19:58 | 27 KB | ✅ Aktualny |
+| API_ENDPOINTS.md | 2025-10-17 | 2025-10-17 19:58 | 27 KB | ⚠️ Częściowo nieaktualny |
 | AUTHENTICATION_SYSTEM.md | 2025-10-17 | 2025-10-17 19:39 | 20 KB | ✅ Aktualny |
 | RIGHT_FAB_TOOLBAR_SYSTEM.md | 2025-10-17 | 2025-10-17 18:32 | 7 KB | ✅ Aktualny |
+| **backend/projects_api_docs.md** | 2025-10-02 | 2025-10-02 | 45 KB | ✅ Oficjalna |
+| **backend/layer_api_docs.md** | 2025-10-02 | 2025-10-02 | 60 KB | ✅ Oficjalna |
+| **backend/styles_api_docs.md** | 2025-09-30 | 2025-09-30 | 15 KB | ✅ Oficjalna |
+| **backend/auth_api_docs.md** | 2025-09-30 | 2025-09-30 | 9 KB | ✅ Oficjalna |
+| **backend/groups_api_docs.md** | 2025-09-30 | 2025-09-30 | 10 KB | ✅ Oficjalna |
+| **backend/dashboard_api_docs.md** | 2025-09-30 | 2025-09-30 | 14 KB | ✅ Oficjalna |
 
-**Total Documentation Size:** 54 KB (3 files)
+**Total Documentation Size:** 207 KB (9 files)
+
+**Frontend Docs:** 54 KB (3 files)
+**Backend Docs (Oficjalne):** 153 KB (6 files)
 
 **Poprzednio:** 54 dokumenty (51 przestarzałych usuniętych)
 

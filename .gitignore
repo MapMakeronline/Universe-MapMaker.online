@@ -40,7 +40,7 @@ backup-*/
 
 # legacy folders
 mapmaker_test-main/
-docs/backend/
+# docs/backend/ - Re-enabled for official backend API documentation
 
 # Playwright
 /test-results/
