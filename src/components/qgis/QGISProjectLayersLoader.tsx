@@ -53,6 +53,13 @@ export function QGISProjectLayersLoader({ projectName, projectData }: QGISProjec
       return;
     }
 
+    // ✅ FIX: Check if layers already exist before adding
+    const firstLayerId = `qgis-wms-layer-${projectName}-${layers[0].name}`;
+    if (map.getLayer(firstLayerId)) {
+      mapLogger.log(`⏭️ Layers already loaded for project: ${projectName} - skipping`);
+      return;
+    }
+
     mapLogger.log(`🚀 Loading ${layers.length} layers from QGIS Server for project: ${projectName}`);
 
     // Add all layers at once (matches old project pattern)
