@@ -20,7 +20,12 @@ import CloseIcon from '@mui/icons-material/Close';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import LockIcon from '@mui/icons-material/Lock';
+import SettingsIcon from '@mui/icons-material/Settings';
 import { BasemapSelector } from './BasemapSelector';
+import { PublishServicesModal } from '../modale/PublishServicesModal';
+import { usePublishWMSWFSMutation } from '@/redux/api/projectsApi';
+import { useAppDispatch } from '@/redux/hooks';
+import { showSuccess, showError, showInfo } from '@/redux/slices/notificationSlice';
 // Types defined locally for now
 interface Warstwa {
   id: string;
@@ -51,6 +56,9 @@ interface PropertiesPanelProps {
   onManageLayer: () => void;
   onLayerLabeling: () => void;
   findParentGroup: (layers: Warstwa[], childId: string) => Warstwa | null;
+  projectName?: string;
+  wmsUrl?: string;
+  wfsUrl?: string;
 }
 
 // ===== KONFIGURACJA WIELKOŚCI I STYLÓW =====
@@ -115,10 +123,116 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   onEditLayerStyle,
   onManageLayer,
   onLayerLabeling,
-  findParentGroup
+  findParentGroup,
+  projectName = '',
+  wmsUrl = '',
+  wfsUrl = ''
 }) => {
   const theme = useTheme();
+  const dispatch = useAppDispatch();
   const [isPanelCollapsed, setIsPanelCollapsed] = React.useState(true); // Domyślnie zwinięty
+
+  // WMS/WFS Publication State
+  const [publishModalOpen, setPublishModalOpen] = React.useState(false);
+  const [publishWMSWFS, { isLoading: isPublishing }] = usePublishWMSWFSMutation();
+
+  // Handle WMS/WFS Publication
+  const handlePublish = async (selectedLayerIds: string[]) => {
+    if (!projectName) {
+      dispatch(showError('Nie można opublikować - brak nazwy projektu'));
+      return;
+    }
+
+    if (selectedLayerIds.length === 0) {
+      dispatch(showError('Wybierz co najmniej jedną warstwę do publikacji'));
+      return;
+    }
+
+    // Check auth token
+    const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
+    console.log('🔐 WMS/WFS Publish - Auth token:', token ? '✅ present' : '❌ missing');
+    console.log('📦 Publishing layers:', selectedLayerIds);
+    console.log('📁 Project:', projectName);
+
+    // Build children array with layer tree structure
+    // Backend expects: { project_name: string, children: [{type: 'VectorLayer', id, name, geometry}] }
+    const buildLayerTree = (layerIds: string[], allLayers: Warstwa[]): any[] => {
+      const children: any[] = [];
+
+      // Helper to find layer by ID in tree
+      const findLayer = (id: string, layers: Warstwa[]): Warstwa | null => {
+        for (const layer of layers) {
+          if (layer.id === id) return layer;
+          if (layer.dzieci) {
+            const found = findLayer(id, layer.dzieci);
+            if (found) return found;
+          }
+        }
+        return null;
+      };
+
+      for (const layerId of layerIds) {
+        const layer = findLayer(layerId, allLayers);
+        if (layer) {
+          // Map local types to QGIS types
+          let layerType = 'VectorLayer';
+          if (layer.typ === 'raster') layerType = 'RasterLayer';
+          else if (layer.typ === 'grupa') layerType = 'group';
+
+          children.push({
+            type: layerType,
+            id: layer.id,
+            name: layer.nazwa,
+            visible: layer.widoczna,
+            // Add geometry for vector layers (backend needs this)
+            geometry: layer.typ === 'wektor' ? 'MultiPolygon' : undefined
+          });
+        }
+      }
+
+      return children;
+    };
+
+    const children = buildLayerTree(selectedLayerIds, warstwy);
+    console.log('🌳 Built layer tree for publication:', children);
+    console.log('🌳 Layer tree JSON:', JSON.stringify(children, null, 2));
+
+    // Show loading notification
+    dispatch(showInfo(`Publikowanie ${selectedLayerIds.length} warstw jako WMS/WFS...`, 10000));
+
+    try {
+      const result = await publishWMSWFS({
+        project_name: projectName, // Backend expects project_name, not project!
+        children: children,        // Backend expects children array, not layers array!
+      }).unwrap();
+
+      console.log('✅ WMS/WFS Publication successful:', result);
+
+      // Extract URLs from result.data (backend wraps URLs in data object)
+      const wmsUrl = result.data?.wms_url || result.wms_url || '';
+      const wfsUrl = result.data?.wfs_url || result.wfs_url || '';
+
+      // Show success with URLs
+      const successMsg = `Opublikowano ${selectedLayerIds.length} warstw!\n` +
+        `WMS: ${wmsUrl}\n` +
+        `WFS: ${wfsUrl}`;
+      dispatch(showSuccess(successMsg, 8000));
+
+      setPublishModalOpen(false);
+
+      // RTK Query automatically invalidates cache and refetches project data with new URLs
+    } catch (error: any) {
+      console.error('❌ WMS/WFS Publication failed:', error);
+      console.error('❌ Error status:', error?.status);
+      console.error('❌ Error data:', error?.data);
+      console.error('❌ Full error object:', JSON.stringify(error, null, 2));
+
+      // Extract error message from backend response
+      const errorMessage = error?.data?.message || error?.data?.detail || error?.message || 'Nieznany błąd';
+      dispatch(showError(`Nie udało się opublikować usług: ${errorMessage}`, 8000));
+    }
+  };
+
   // Pomocnicze funkcje do renderowania elementów z konfiguracją
   const renderLabel = (text: string) => (
     <Typography sx={{ 
@@ -205,54 +319,68 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   );
 
   const renderSection = (
-    sectionId: string, 
-    title: string, 
-    children: React.ReactNode, 
-    hasLock: boolean = false
+    sectionId: string,
+    title: string,
+    children: React.ReactNode,
+    hasLock: boolean = false,
+    actionIcon?: React.ReactNode
   ) => (
     <Box sx={{ mb: PANEL_CONFIG.elements.sectionMarginBottom }}>
       <Box
-        onClick={() => onToggleSection(sectionId)}
         sx={{
           display: 'flex',
           alignItems: 'center',
-          cursor: 'pointer',
           mb: 1,
-          '&:hover': { color: theme.palette.primary.main }
         }}
       >
-        {expandedSections[sectionId] ?
-          <ExpandMoreIcon sx={{
-            fontSize: PANEL_CONFIG.typography.iconSize,
-            color: theme.palette.text.secondary,
-            mr: 0.5
-          }} /> :
-          <ChevronRightIcon sx={{
-            fontSize: PANEL_CONFIG.typography.iconSize,
-            color: theme.palette.text.secondary,
-            mr: 0.5
-          }} />
-        }
-        <Typography sx={{ 
-          color: theme.palette.text.primary, 
-          fontSize: PANEL_CONFIG.typography.sectionTitleFontSize, 
-          fontWeight: 500 
-        }}>
-          {title}
-        </Typography>
-        {hasLock && (
-          <LockIcon sx={{ 
-            ml: 1,
-            fontSize: '12px',
-            color: theme.palette.text.secondary,
-            cursor: 'help'
-          }} />
+        <Box
+          onClick={() => onToggleSection(sectionId)}
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            cursor: 'pointer',
+            flex: 1,
+            '&:hover': { color: theme.palette.primary.main }
+          }}
+        >
+          {expandedSections[sectionId] ?
+            <ExpandMoreIcon sx={{
+              fontSize: PANEL_CONFIG.typography.iconSize,
+              color: theme.palette.text.secondary,
+              mr: 0.5
+            }} /> :
+            <ChevronRightIcon sx={{
+              fontSize: PANEL_CONFIG.typography.iconSize,
+              color: theme.palette.text.secondary,
+              mr: 0.5
+            }} />
+          }
+          <Typography sx={{
+            color: theme.palette.text.primary,
+            fontSize: PANEL_CONFIG.typography.sectionTitleFontSize,
+            fontWeight: 500
+          }}>
+            {title}
+          </Typography>
+          {hasLock && (
+            <LockIcon sx={{
+              ml: 1,
+              fontSize: '12px',
+              color: theme.palette.text.secondary,
+              cursor: 'help'
+            }} />
+          )}
+        </Box>
+        {actionIcon && (
+          <Box sx={{ ml: 'auto' }}>
+            {actionIcon}
+          </Box>
         )}
       </Box>
-      
+
       {expandedSections[sectionId] && (
-        <Box sx={{ 
-          ml: PANEL_CONFIG.elements.sectionContentMarginLeft, 
+        <Box sx={{
+          ml: PANEL_CONFIG.elements.sectionContentMarginLeft,
           mt: PANEL_CONFIG.elements.sectionContentMarginTop
         }}>
           {children}
@@ -558,11 +686,106 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
         ) : (
           <>
             {/* WŁAŚCIWOŚCI PROJEKTU */}
-            {renderSection('uslugi', 'Usługi', (
-              <Typography sx={{ fontSize: '10px', color: theme.palette.text.secondary, mb: 1, fontStyle: 'italic' }}>
-                Brak udostępnionych usług
-              </Typography>
-            ))}
+            {renderSection(
+              'uslugi',
+              'Usługi',
+              (
+                <>
+                  {wmsUrl || wfsUrl ? (
+                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+                      {wmsUrl && (
+                        <Box
+                          sx={{
+                            bgcolor: 'rgba(76, 175, 80, 0.2)',
+                            border: '1px solid rgba(76, 175, 80, 0.4)',
+                            borderRadius: '4px',
+                            px: 1.5,
+                            py: 0.5,
+                            cursor: 'pointer',
+                            fontSize: '10px',
+                            color: '#66bb6a',
+                            fontWeight: 500,
+                            '&:hover': {
+                              bgcolor: 'rgba(76, 175, 80, 0.3)',
+                            }
+                          }}
+                          onClick={() => {
+                            navigator.clipboard.writeText(wmsUrl);
+                            console.log('✅ WMS URL copied:', wmsUrl);
+                            dispatch(showSuccess('Skopiowano WMS URL do schowka', 3000));
+                          }}
+                        >
+                          WMS
+                        </Box>
+                      )}
+                      {wfsUrl && (
+                        <Box
+                          sx={{
+                            bgcolor: 'rgba(33, 150, 243, 0.2)',
+                            border: '1px solid rgba(33, 150, 243, 0.4)',
+                            borderRadius: '4px',
+                            px: 1.5,
+                            py: 0.5,
+                            cursor: 'pointer',
+                            fontSize: '10px',
+                            color: '#42a5f5',
+                            fontWeight: 500,
+                            '&:hover': {
+                              bgcolor: 'rgba(33, 150, 243, 0.3)',
+                            }
+                          }}
+                          onClick={() => {
+                            navigator.clipboard.writeText(wfsUrl);
+                            console.log('✅ WFS URL copied:', wfsUrl);
+                            dispatch(showSuccess('Skopiowano WFS URL do schowka', 3000));
+                          }}
+                        >
+                          WFS
+                        </Box>
+                      )}
+                      <Box
+                        sx={{
+                          bgcolor: 'rgba(255, 152, 0, 0.2)',
+                          border: '1px solid rgba(255, 152, 0, 0.4)',
+                          borderRadius: '4px',
+                          px: 1.5,
+                          py: 0.5,
+                          cursor: 'pointer',
+                          fontSize: '10px',
+                          color: '#ffa726',
+                          fontWeight: 500,
+                          '&:hover': {
+                            bgcolor: 'rgba(255, 152, 0, 0.3)',
+                          }
+                        }}
+                        onClick={() => console.log('CSW clicked')}
+                      >
+                        CSW
+                      </Box>
+                    </Box>
+                  ) : (
+                    <Typography sx={{ fontSize: '10px', color: theme.palette.text.secondary, mb: 1, fontStyle: 'italic' }}>
+                      Brak udostępnionych usług
+                    </Typography>
+                  )}
+                </>
+              ),
+              false,
+              <IconButton
+                size="small"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setPublishModalOpen(true);
+                }}
+                sx={{
+                  color: theme.palette.text.secondary,
+                  p: 0.5,
+                  '&:hover': { color: theme.palette.primary.main }
+                }}
+              >
+                <SettingsIcon sx={{ fontSize: '14px' }} />
+              </IconButton>
+            )}
 
             {renderSection('pobieranie', 'Pobieranie', (
               <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -699,6 +922,16 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
 
       {/* Mapa podkładowa - ZAWSZE widoczna (nawet gdy panel collapsed) */}
       <BasemapSelector />
+
+      {/* WMS/WFS Publication Modal */}
+      <PublishServicesModal
+        open={publishModalOpen}
+        projectName={projectName}
+        layers={warstwy}
+        onClose={() => setPublishModalOpen(false)}
+        onPublish={handlePublish}
+        isLoading={isPublishing}
+      />
     </Box>
   );
 };

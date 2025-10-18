@@ -805,7 +805,7 @@ export const layersApi = createApi({
         const formData = new FormData();
         formData.append('project', project);
         formData.append('layer_id', layer_id);
-        formData.append('new_style', styleFile);
+        formData.append('style', styleFile); // Backend expects 'style' not 'new_style'
 
         return {
           url: '/api/layer/style/add',

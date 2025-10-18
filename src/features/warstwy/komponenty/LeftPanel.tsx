@@ -95,6 +95,9 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
     { skip: !projectName }
   );
 
+  // Get current project info from Redux (includes custom_project_name)
+  const currentProject = useAppSelector((state) => state.projects.currentProject);
+
   // Use external control if provided, otherwise use internal state
   const [internalCollapsed, setInternalCollapsed] = useState(false);
   const sidebarCollapsed = externalCollapsed !== undefined ? externalCollapsed : internalCollapsed;
@@ -413,6 +416,12 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
 
         case 'shp':
           // Extract files by extension from FileList
+          console.log('🔍 DEBUG - Shapefile import data:', {
+            hasFiles: !!data.files,
+            filesCount: data.files?.length,
+            filesList: data.files ? Array.from(data.files).map(f => f.name) : []
+          });
+
           const filesArray = Array.from(data.files || []);
           const shpFile = filesArray.find(f => f.name.toLowerCase().endsWith('.shp'));
           const shxFile = filesArray.find(f => f.name.toLowerCase().endsWith('.shx'));
@@ -421,7 +430,17 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
           const cpgFile = filesArray.find(f => f.name.toLowerCase().endsWith('.cpg'));
           const qpjFile = filesArray.find(f => f.name.toLowerCase().endsWith('.qpj'));
 
+          console.log('📦 Extracted Shapefile components:', {
+            shp: shpFile?.name,
+            shx: shxFile?.name,
+            dbf: dbfFile?.name,
+            prj: prjFile?.name,
+            cpg: cpgFile?.name,
+            qpj: qpjFile?.name
+          });
+
           if (!shpFile) {
+            console.error('❌ No .shp file found in:', filesArray.map(f => f.name));
             throw new Error('Plik .shp jest wymagany');
           }
 
@@ -668,7 +687,8 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
               margin: 0
             }}
           >
-            {projectData?.name || projectName || 'universe-mapmaker.online'}
+            {/* ✅ Display custom_project_name (user-friendly) instead of .qgs filename */}
+            {currentProject?.custom_project_name || projectName || 'universe-mapmaker.online'}
           </Box>
 
           <Toolbar {...toolbarHandlers} selectedLayer={selectedLayer} isOwner={isOwner} />
@@ -724,6 +744,9 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
             onManageLayer={() => console.log('Manage layer')}
             onLayerLabeling={() => console.log('Layer labeling')}
             findParentGroup={findParentGroup}
+            projectName={projectName}
+            wmsUrl={projectData?.wms_url || ''}
+            wfsUrl={projectData?.wfs_url || ''}
           />
         </Box>
 
