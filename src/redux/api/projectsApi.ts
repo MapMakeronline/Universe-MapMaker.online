@@ -176,10 +176,37 @@ export const projectsApi = createApi({
         method: 'POST',
         body: { project, remove_permanently },
       }),
+      // IMPORTANT: Invalidate cache even if deletion fails (error case)
+      // This ensures UI updates even when backend returns 200 with error message
       invalidatesTags: (result, error, { project }) => [
         { type: 'Project', id: project },
         { type: 'Projects', id: 'LIST' },
       ],
+      // Optimistic update + Force refetch after deletion
+      async onQueryStarted({ project }, { dispatch, queryFulfilled }) {
+        // OPTIMISTIC UPDATE: Remove project from cache immediately
+        const patchResult = dispatch(
+          projectsApi.util.updateQueryData('getProjects', undefined, (draft) => {
+            // Immer requires in-place mutation - find index and splice
+            const index = draft.list_of_projects.findIndex((p) => p.project_name === project);
+            if (index !== -1) {
+              draft.list_of_projects.splice(index, 1);
+            }
+          })
+        );
+
+        try {
+          await queryFulfilled;
+          console.log('✅ Project deleted successfully:', project);
+          // Success - optimistic update stays, no need to refetch
+        } catch (error) {
+          console.error('❌ Project deletion failed:', error);
+          // Rollback optimistic update on error
+          patchResult.undo();
+          // Force refetch to get correct state from backend
+          dispatch(projectsApi.util.invalidateTags([{ type: 'Projects', id: 'LIST' }]));
+        }
+      },
     }),
 
     /**
@@ -669,18 +696,25 @@ export const projectsApi = createApi({
     /**
      * POST /api/projects/reload
      * Reload project (refresh from QGIS)
+     *
+     * Backend expects: { "project": "project_name" }
+     * Response: { "data": "", "success": true, "message": "" }
+     *
+     * Regenerates tree.json from QGS file - useful for fixing projects
+     * with QThread errors or corrupted layer trees.
      */
     reloadProject: builder.mutation<
-      { success: boolean },
-      { project_name: string }
+      { data: string; success: boolean; message: string },
+      { project: string }
     >({
-      query: (data) => ({
+      query: ({ project }) => ({
         url: '/api/projects/reload',
         method: 'POST',
-        body: data,
+        body: { project },  // Backend expects "project", not "project_name"
       }),
       invalidatesTags: (result, error, arg) => [
-        { type: 'Project', id: arg.project_name },
+        { type: 'Project', id: arg.project },
+        { type: 'Projects', id: 'LIST' },  // Refresh projects list too
       ],
     }),
 
@@ -851,6 +885,205 @@ export const projectsApi = createApi({
       }),
     }),
 
+    /**
+     * POST /api/projects/services/publish
+     * Publish project layers as WMS/WFS services
+     *
+     * Backend expects:
+     * {
+     *   "project_name": "moj_projekt",
+     *   "children": [{ type: "group", name: "...", children: [...] }]
+     * }
+     *
+     * Returns WMS and WFS URLs for accessing published layers via OGC standards.
+     * Creates GeoServer workspace, datastore, and publishes selected layers.
+     */
+    publishWMSWFS: builder.mutation<
+      { data: { wms_url: string; wfs_url: string }; success: boolean; message: string },
+      { project_name: string; children: any[] }
+    >({
+      query: (data) => ({
+        url: '/api/projects/services/publish',
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: (result, error, arg) => [
+        { type: 'Project', id: arg.project_name },
+        { type: 'Projects', id: 'LIST' },
+      ],
+    }),
+
+    /**
+     * POST /api/projects/services/unpublish
+     * Unpublish WMS/WFS services for project
+     *
+     * Removes published layers from GeoServer and clears wms_url/wfs_url fields.
+     */
+    unpublishWMSWFS: builder.mutation<
+      { success: boolean; message: string },
+      { project: string }
+    >({
+      query: (data) => ({
+        url: '/api/projects/services/unpublish',
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: (result, error, arg) => [
+        { type: 'Project', id: arg.project },
+        { type: 'Projects', id: 'LIST' },
+      ],
+    }),
+
+    /**
+     * POST /api/projects/missing-layer/add/
+     * Add missing layer to project (vector or raster)
+     *
+     * Supports multiple file formats:
+     * - Vector: shapefile (.shp + .shx, .dbf, .prj, .cpg, .qpj), .geojson, .gml
+     * - Raster: .tif, .tiff
+     *
+     * Backend Process:
+     * 1. Validates layer exists in QGS file
+     * 2. Imports file to PostGIS (vector) or copies to project folder (raster)
+     * 3. Creates Layer record in database
+     * 4. Updates tree.json with new layer
+     *
+     * Response:
+     * - "Brakująca warstwa wektorowa została dodana" (vector)
+     * - "Brakująca warstwa rastrowa została dodana" (raster)
+     *
+     * IMPORTANT: This endpoint DOES update tree.json automatically!
+     *
+     * NOTE: Uses custom queryFn to support multipart/form-data with file uploads
+     */
+    addMissingLayer: builder.mutation<
+      { data: string; success: boolean; message: string },
+      {
+        project: string;
+        layer_id: string;
+        layer_name: string;
+        // Vector files (shapefile components)
+        shp?: File;
+        shx?: File;
+        dbf?: File;
+        prj?: File;
+        cpg?: File;
+        qpj?: File;
+        // Vector files (other formats)
+        geo_json?: File;
+        gml?: File;
+        // Raster files
+        tif?: File;
+      }
+    >({
+      queryFn: async (
+        { project, layer_id, layer_name, shp, shx, dbf, prj, cpg, qpj, geo_json, gml, tif },
+        _api,
+        _extraOptions,
+        baseQuery
+      ) => {
+        const token = getToken();
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.universemapmaker.online';
+
+        console.log('🚀 addMissingLayer mutation called with:');
+        console.log('  - project:', project);
+        console.log('  - layer_id:', layer_id);
+        console.log('  - layer_name:', layer_name);
+        console.log('  - files:', { shp: shp?.name, shx: shx?.name, dbf: dbf?.name, prj: prj?.name, cpg: cpg?.name, qpj: qpj?.name, geo_json: geo_json?.name, gml: gml?.name, tif: tif?.name });
+        console.log('  - token:', token ? '✅ present' : '❌ missing');
+
+        return new Promise((resolve) => {
+          const xhr = new XMLHttpRequest();
+          const formData = new FormData();
+
+          // Required fields
+          formData.append('project', project);
+          formData.append('layer_id', layer_id);
+          formData.append('layer_name', layer_name);
+
+          // Optional files
+          if (shp) formData.append('shp', shp);
+          if (shx) formData.append('shx', shx);
+          if (dbf) formData.append('dbf', dbf);
+          if (prj) formData.append('prj', prj);
+          if (cpg) formData.append('cpg', cpg);
+          if (qpj) formData.append('qpj', qpj);
+          if (geo_json) formData.append('geo_json', geo_json);
+          if (gml) formData.append('gml', gml);
+          if (tif) formData.append('tif', tif);
+
+          // Response handlers
+          xhr.addEventListener('load', () => {
+            console.log('📡 Response received, status:', xhr.status);
+            console.log('📄 Response text:', xhr.responseText.substring(0, 500));
+
+            if (xhr.status >= 200 && xhr.status < 300) {
+              try {
+                const data = JSON.parse(xhr.responseText);
+                console.log('✅ Parsed response data:', data);
+
+                if (data.success === false || data.error) {
+                  console.error('❌ Backend returned error in 200 response:', data);
+                  resolve({
+                    error: {
+                      status: xhr.status,
+                      data: {
+                        message: data.message || data.error || 'Add missing layer failed',
+                        details: data
+                      }
+                    }
+                  });
+                } else {
+                  console.log('🎉 Add missing layer successful!');
+                  resolve({ data });
+                }
+              } catch (error) {
+                resolve({ error: { status: xhr.status, data: 'Invalid JSON response' } });
+              }
+            } else {
+              try {
+                const errorData = JSON.parse(xhr.responseText);
+                resolve({
+                  error: {
+                    status: xhr.status,
+                    data: {
+                      message: errorData.message || errorData.detail || 'HTTP Error',
+                      details: errorData
+                    }
+                  }
+                });
+              } catch {
+                resolve({ error: { status: xhr.status, data: { message: xhr.responseText || 'Unknown error' } } });
+              }
+            }
+          });
+
+          xhr.addEventListener('error', (e) => {
+            console.error('❌ XHR error event:', e);
+            resolve({ error: { status: 'FETCH_ERROR', error: 'Network error' } });
+          });
+
+          xhr.addEventListener('abort', (e) => {
+            console.warn('⚠️ XHR abort event:', e);
+            resolve({ error: { status: 'FETCH_ERROR', error: 'Upload aborted' } });
+          });
+
+          // Send request
+          const requestUrl = `${baseUrl}/api/projects/missing-layer/add/`;
+          console.log('📤 Sending POST request to:', requestUrl);
+          xhr.open('POST', requestUrl);
+          xhr.setRequestHeader('Authorization', `Token ${token}`);
+          console.log('📦 Sending FormData with project:', project, 'layer_id:', layer_id, 'layer_name:', layer_name);
+          xhr.send(formData);
+          console.log('▶️ Request sent, waiting for response...');
+        });
+      },
+      invalidatesTags: (result, error, arg) => [
+        { type: 'Project', id: arg.project },
+        { type: 'Projects', id: 'LIST' },
+      ],
+    }),
+
   }),
 });
 
@@ -913,4 +1146,9 @@ export const {
   useGetMinMaxValuesQuery,
   useGetNumericColumnsQuery,
   useGlobalSearchQuery,
+  // WMS/WFS Service Publication
+  usePublishWMSWFSMutation,
+  useUnpublishWMSWFSMutation,
+  // Missing Layer Management
+  useAddMissingLayerMutation,
 } = projectsApi;
