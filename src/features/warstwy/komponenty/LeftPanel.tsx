@@ -694,7 +694,8 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
             {currentProject?.custom_project_name || projectName || 'universe-mapmaker.online'}
           </Box>
 
-          <Toolbar {...toolbarHandlers} selectedLayer={selectedLayer} isOwner={isOwner} />
+          {/* TEMPORARY: Always show full toolbar during development (isOwner={true}) */}
+          <Toolbar {...toolbarHandlers} selectedLayer={selectedLayer} isOwner={true} />
           <SearchBar
             searchFilter={searchFilter}
             onSearchChange={setSearchFilter}
