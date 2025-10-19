@@ -37,7 +37,7 @@ import {
   endpointCategories,
   getEndpointsByCategory,
   type DjangoEndpoint,
-} from '@/data/djangoEndpoints';
+} from '../../../../data/djangoEndpoints';
 
 interface TestResult {
   endpoint: string;

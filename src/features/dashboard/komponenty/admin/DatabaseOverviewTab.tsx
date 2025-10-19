@@ -19,7 +19,7 @@ import Chip from '@mui/material/Chip';
 import PersonIcon from '@mui/icons-material/Person';
 import FolderIcon from '@mui/icons-material/Folder';
 import LayersIcon from '@mui/icons-material/Layers';
-import StorageIcon from '@mui/material/Storage';
+import StorageIcon from '@mui/icons-material/Storage';
 import { useGetAdminStatsQuery, useGetAllProjectsQuery } from '@/redux/api/adminApi';
 
 export default function DatabaseOverviewTab() {
