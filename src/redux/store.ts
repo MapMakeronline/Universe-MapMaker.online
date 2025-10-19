@@ -6,10 +6,15 @@ import authReducer from './slices/authSlice';
 import featuresReducer from './slices/featuresSlice';
 import projectsReducer from './slices/projectsSlice';
 import notificationReducer from './slices/notificationSlice';
-import { projectsApi } from './api/projectsApi'; // Phase 3: RTK Query API
-import { adminApi } from './api/adminApi'; // Admin API for user management
-import { layersApi } from './api/layersApi'; // Layers API for layer operations
-import { stylesApi } from './api/stylesApi'; // Styles API for layer styling
+
+// NEW: Single baseApi for all backend communication (RTK Query)
+import { baseApi } from '@/backend';
+
+// OLD: Individual APIs (kept for backwards compatibility during migration)
+import { projectsApi } from './api/projectsApi';
+import { adminApi } from './api/adminApi';
+import { layersApi } from './api/layersApi';
+import { stylesApi } from './api/stylesApi';
 
 // Create a makeStore function for Next.js App Router
 export const makeStore = () => {
@@ -22,7 +27,11 @@ export const makeStore = () => {
       features: featuresReducer,
       projects: projectsReducer,
       notification: notificationReducer,
-      // Phase 3: RTK Query API reducer
+
+      // NEW: Single baseApi (all modules: auth, projects, layers, users)
+      [baseApi.reducerPath]: baseApi.reducer,
+
+      // OLD: Individual APIs (kept for backwards compatibility)
       [projectsApi.reducerPath]: projectsApi.reducer,
       [adminApi.reducerPath]: adminApi.reducer,
       [layersApi.reducerPath]: layersApi.reducer,
@@ -43,7 +52,10 @@ export const makeStore = () => {
           ],
         },
       })
-        // Phase 3: Add RTK Query middleware for caching, invalidation, polling, etc.
+        // NEW: Single baseApi middleware (handles all modules)
+        .concat(baseApi.middleware)
+
+        // OLD: Individual API middleware (backwards compatibility)
         .concat(projectsApi.middleware)
         .concat(adminApi.middleware)
         .concat(layersApi.middleware)

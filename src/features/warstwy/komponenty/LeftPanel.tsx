@@ -72,6 +72,9 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
   const theme = useTheme();
   const dispatch = useAppDispatch();
 
+  // DEBUG: Log isOwner prop
+  console.log('🔧 LeftPanel received props:', { isOwner, externalCollapsed });
+
   // Get layers and expandedGroups from Redux
   const reduxLayers = useAppSelector((state) => state.layers.layers);
   const expandedGroups = useAppSelector((state) => state.layers.expandedGroups);

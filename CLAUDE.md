@@ -206,15 +206,52 @@ Screenshots are saved to `screenshots/` folder (gitignored by default).
      - `CustomUser` - User accounts
    - Always verify schema changes with backend team
 
-2. **Backend API (Django REST Framework)**
+2. **Backend API (Django REST Framework) - NEW INTEGRATION STRUCTURE**
    - Base URL: `https://api.universemapmaker.online/`
    - Django REST Framework with Token authentication
-   - Routing structure:
+   - **Frontend Integration:** `src/backend/` (RTK Query + baseApi)
+
+   **NEW: Centralized Backend Module Structure:**
+   ```
+   src/backend/
+   ├── client/
+   │   └── base-api.ts          # Single baseApi with token auth
+   ├── auth/
+   │   ├── auth.api.ts          # Login, register, password reset
+   │   └── index.ts
+   ├── projects/
+   │   ├── projects.api.ts      # 25+ project endpoints
+   │   └── index.ts
+   ├── users/
+   │   ├── users.api.ts         # Profile, settings
+   │   └── index.ts
+   ├── types.ts                 # Shared TypeScript types
+   ├── index.ts                 # Central export
+   └── README.md                # Integration docs
+   ```
+
+   **Backend API Routing:**
      - `/api/projects/*` - Project CRUD, QGIS import
      - `/dashboard/*` - Dashboard data (projects list, public projects)
      - `/auth/*` - Authentication endpoints
-   - Check endpoints in `geocraft_api/*/urls.py` before implementing features
-   - **IMPORTANT:** All project endpoints need `/api/` prefix!
+
+   **IMPORTANT: Always use `@/backend` imports:**
+   ```typescript
+   // ✅ CORRECT - New unified API
+   import { useGetProjectsQuery, useCreateProjectMutation } from '@/backend/projects';
+   import { useLoginMutation } from '@/backend/auth';
+
+   // ❌ WRONG - Old scattered imports (deprecated)
+   import { useGetProjectsQuery } from '@/redux/api/projectsApi';
+   import { useLoginMutation } from '@/features/auth/api';
+   ```
+
+   **baseApi Features:**
+   - Automatic token injection (Authorization: Token {token})
+   - Centralized error handling (401 → redirect to login)
+   - Cache invalidation with tags ('Projects', 'Project', 'PublicProjects', etc.)
+   - 30s timeout for slow connections
+   - Type-safe auto-generated hooks
 
 3. **QGIS Server (WMS/WFS/OWS)**
    - Endpoint: `https://api.universemapmaker.online/ows`
@@ -612,7 +649,7 @@ createProject: builder.mutation<
 
 **CRITICAL:** Always follow these patterns when working with projects and backend integration.
 
-#### Empty Project Creation Pattern
+#### Empty Project Creation Pattern (NEW baseApi)
 
 **Backend Behavior:**
 ```python
@@ -640,28 +677,79 @@ createProject: builder.mutation<
    - { data: { db_name: "MyProject_1", host, port, login, password } }
 ```
 
-**Frontend Pattern (CORRECT):**
+**Frontend Pattern (NEW - baseApi):**
 ```typescript
-// ✅ ALWAYS use db_name from response
-const createdProject = await createProject(data).unwrap();
-const realProjectName = createdProject.data.db_name;
+// ✅ CORRECT - Use new baseApi from @/backend
+import { useCreateProjectMutation, useImportQGSMutation } from '@/backend/projects';
 
-// Use realProjectName for ALL subsequent operations:
-// - Import QGS
-// - Open in map
-// - Update settings
-// - Delete project
+const [createProject] = useCreateProjectMutation();
+const [importQGS] = useImportQGSMutation();
+
+// Step 1: Create project
+const createdProject = await createProject({
+  project: 'MyProject',
+  domain: 'my-project',
+  projectDescription: 'Description',
+  keywords: 'keyword1, keyword2',
+}).unwrap();
+
+// Step 2: Extract REAL project_name from response
+const realProjectName = createdProject.data.db_name; // "MyProject_1"
+
+// Step 3: Import QGS using REAL project_name
+await importQGS({
+  project: realProjectName,  // ✅ Uses "MyProject_1"
+  qgsFile: file
+}).unwrap();
+
+// ❌ WRONG - Old way (deprecated)
+import { useCreateProjectMutation } from '@/redux/api/projectsApi';
 
 // ❌ NEVER search by custom_project_name
 // ❌ NEVER assume project_name = custom_project_name
 ```
 
-#### Dashboard Features Implementation Status
+#### Dashboard Module - NEW STRUCTURE
+
+**Location:** `src/backend/dashboard/`
+
+**Folder Structure (Migrated):**
+```
+src/backend/dashboard/
+├── own-projects/              # Tab: Moje Projekty
+│   ├── OwnProjects.tsx       # Main component (migrated ✅)
+│   ├── ProjectCard.tsx       # Project card UI
+│   ├── CreateProjectDialog.tsx
+│   ├── DeleteProjectDialog.tsx
+│   ├── ProjectSettingsDialog.tsx
+│   └── index.ts
+├── public-projects/           # Tab: Publiczne Projekty
+│   ├── PublicProjects.tsx    # Main component (migrated ✅)
+│   ├── PublicProjectCard.tsx
+│   └── index.ts
+├── admin-panel/               # Tab: Panel Admina (TODO)
+├── profile/                   # Tab: Profil (TODO)
+├── settings/                  # Tab: Ustawienia (TODO)
+├── payments/                  # Tab: Płatności (TODO)
+├── contact/                   # Tab: Kontakt (TODO)
+├── shared/                    # Shared components
+│   ├── ProjectCardSkeleton.tsx
+│   └── index.ts
+└── index.ts                   # Central exports
+```
+
+**Migration Status:**
+- ✅ **OwnProjects** - Fully migrated to `@/backend/dashboard` with baseApi
+- ✅ **PublicProjects** - Fully migrated to `@/backend/dashboard` with baseApi
+- ✅ **DeleteProject** - Changed to hard delete (`remove_permanently: true`)
+- ⚠️ **Other tabs** - Still in old location (`src/features/dashboard/`)
+
+**Features Implementation Status:**
 
 **Moje Projekty (Own Projects):**
 - ✅ **Utwórz Pusty Projekt** - Backend creates template QGS + DB entry
 - ✅ **Utwórz i Importuj QGS** - Two-step: create empty → import QGS (uses db_name)
-- ✅ **Usuń Projekt** - Soft delete to `qgs/deleted_projects/`
+- ✅ **Usuń Projekt** - **HARD DELETE** (`remove_permanently: true`) - matches "nieodwracalna" modal text
 - ✅ **Opublikuj/Cofnij** - Publishes to GeoServer, creates WMS/WFS URLs
 - ✅ **Otwórz w Edytorze** - Owner = edit mode, others = read-only
 - ⚠️ **Ustawienia Projektu** - Dialog exists, backend integration NOT TESTED
@@ -673,6 +761,17 @@ const realProjectName = createdProject.data.db_name;
 - ✅ **Szukaj** - Client-side filtering (name + description)
 - ✅ **Filtruj po Kategorii** - 7 categories
 - ✅ **Otwórz Publiczny** - Auto read-only mode for non-owners
+
+**Import Pattern (NEW):**
+```typescript
+// ✅ CORRECT - New centralized imports
+import { OwnProjects, PublicProjects } from '@/backend/dashboard';
+import { useGetProjectsQuery, useDeleteProjectMutation } from '@/backend/projects';
+
+// ❌ WRONG - Old scattered imports (deprecated)
+import OwnProjects from '@/features/dashboard/komponenty/OwnProjects';
+import { useGetProjectsQuery } from '@/redux/api/projectsApi';
+```
 
 #### RTK Query Integration Patterns
 

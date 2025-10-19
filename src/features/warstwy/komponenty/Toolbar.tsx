@@ -122,9 +122,25 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   selectedLayer,
   isOwner = true
 }) => {
-  // For non-owners (read-only mode), hide all editing tools
+  // Always render toolbar, but show buttons only for owners
+  // This prevents React mounting issues when isOwner changes from false → true asynchronously
   if (!isOwner) {
-    return null;
+    // Show empty toolbar placeholder to maintain layout
+    return (
+      <Box sx={{
+        display: 'flex',
+        gap: TOOLBAR_CONFIG.container.gap,
+        mb: TOOLBAR_CONFIG.container.marginBottom,
+        justifyContent: 'center',
+        px: TOOLBAR_CONFIG.container.paddingHorizontal,
+        py: 1,
+        fontSize: '12px',
+        color: 'text.secondary',
+        fontStyle: 'italic'
+      }}>
+        Tryb podglądu - brak narzędzi edycyjnych
+      </Box>
+    );
   }
 
   return (

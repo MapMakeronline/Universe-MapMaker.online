@@ -3,8 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import DashboardLayout from './DashboardLayout';
-import OwnProjects from './OwnProjects';
-import PublicProjects from './PublicProjects';
+// NEW: Import from centralized backend/dashboard structure
+import { OwnProjects } from '@/backend/dashboard';
+import { PublicProjects } from '@/backend/dashboard';
+// OLD: Keep other components from old location (will migrate later)
 import UserProfile from './UserProfile';
 import UserSettings from './UserSettings';
 import Contact from './Contact';

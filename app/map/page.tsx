@@ -44,11 +44,16 @@ const QGISProjectLayersLoader = dynamic(
   { ssr: false }
 );
 
+const LayerVisibilitySync = dynamic(
+  () => import('@/src/components/qgis/LayerVisibilitySync').then(mod => ({ default: mod.LayerVisibilitySync })),
+  { ssr: false }
+);
+
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import { setCurrentProject } from '@/redux/slices/projectsSlice';
 import { loadLayers, resetLayers } from '@/redux/slices/layersSlice';
 import { setViewState, setMapStyle } from '@/redux/slices/mapSlice';
-import { useGetProjectDataQuery, useGetProjectsQuery } from '@/redux/api/projectsApi';
+import { useGetProjectsQuery, useGetProjectDataQuery } from '@/backend/projects';
 import { MAP_STYLES } from '@/mapbox/config';
 import { transformExtent, transformExtentFromWebMercator, detectCRS, isValidWGS84 } from '@/mapbox/coordinates';
 import type { QGISLayerNode } from '@/types/qgis';
@@ -124,11 +129,22 @@ export default function MapPage() {
     (p) => p.project_name === projectName
   );
 
+  // DEBUG: Log project detection
+  console.log('🔍 Project Detection:', {
+    projectName,
+    isAuthenticated,
+    totalProjects: projectsData?.list_of_projects?.length,
+    projectFound: !!project,
+    projectsList: projectsData?.list_of_projects?.map(p => p.project_name),
+  });
+
   // Determine if user is owner (edit mode) or viewer (read-only)
   // WORKAROUND: /dashboard/projects/ returns ONLY user's projects (no owner field)
   // So if project is found in user's projects list → user is owner
   const isOwner = isAuthenticated && !!project;
   const isReadOnly = !isOwner;
+
+  console.log('✏️ Edit Mode:', { isOwner, isReadOnly });
 
   // Redirect to dashboard if no project name
   useEffect(() => {
@@ -249,12 +265,15 @@ export default function MapPage() {
             {/* Load QGIS project metadata (extent, layers tree) */}
             {projectName && <QGISProjectLoader projectName={projectName} />}
             {/* Load ALL WMS layers at once (matches old project pattern) */}
+            {/* IMPORTANT: This is the ONLY place layers are added to map! */}
             {projectName && projectData && (
               <QGISProjectLayersLoader
                 projectName={projectName}
                 projectData={projectData}
               />
             )}
+            {/* Sync Redux layer visibility with Mapbox layers */}
+            {projectName && <LayerVisibilitySync projectName={projectName} />}
           </MapContainer>
         </Box>
         {/* RightToolbar removed - replaced by FAB buttons in MapContainer */}
