@@ -43,6 +43,9 @@ import ErrorIcon from '@mui/icons-material/Error';
 import DatabaseIcon from '@mui/icons-material/Storage';
 import BuildIcon from '@mui/icons-material/Build';
 import Tooltip from '@mui/material/Tooltip';
+import DataObjectIcon from '@mui/icons-material/DataObject';
+import ApiIcon from '@mui/icons-material/Api';
+import MapIcon from '@mui/icons-material/Map';
 import { useAppSelector } from '@/redux/hooks';
 import {
   useGetAdminStatsQuery,
@@ -52,6 +55,10 @@ import {
   type AdminUser,
   type AdminProject,
 } from '@/redux/api/adminApi';
+import DatabaseOverviewTab from './admin/DatabaseOverviewTab';
+import StorageTab from './admin/StorageTab';
+import DjangoAPITab from './admin/DjangoAPITab';
+import QGISServerTab from './admin/QGISServerTab';
 
 export default function AdminPanel() {
   const theme = useTheme();
@@ -268,6 +275,8 @@ export default function AdminPanel() {
         <Tabs
           value={activeTab}
           onChange={(_, newValue) => setActiveTab(newValue)}
+          variant={isMobile ? 'scrollable' : 'standard'}
+          scrollButtons={isMobile ? 'auto' : false}
           sx={{
             borderBottom: 1,
             borderColor: 'divider',
@@ -275,12 +284,18 @@ export default function AdminPanel() {
               textTransform: 'none',
               fontWeight: 500,
               fontSize: '0.95rem',
+              minWidth: { xs: 'auto', sm: 120 },
+              px: { xs: 1.5, sm: 2 },
             },
           }}
         >
-          <Tab label="Wszyscy Użytkownicy" />
-          <Tab label="Projekty" />
-          <Tab label="Użytkownicy Płatni" />
+          <Tab label="Wszyscy Użytkownicy" icon={<PersonIcon />} iconPosition="start" />
+          <Tab label="Projekty" icon={<FolderIcon />} iconPosition="start" />
+          <Tab label="Użytkownicy Płatni" icon={<CloudIcon />} iconPosition="start" />
+          <Tab label="Przegląd Bazy" icon={<DatabaseIcon />} iconPosition="start" />
+          <Tab label="Storage" icon={<StorageIcon />} iconPosition="start" />
+          <Tab label="Django API" icon={<ApiIcon />} iconPosition="start" />
+          <Tab label="QGIS Server" icon={<MapIcon />} iconPosition="start" />
         </Tabs>
       </Paper>
 
@@ -643,6 +658,18 @@ export default function AdminPanel() {
           )}
         </Paper>
       )}
+
+      {/* Tab 4: Database Overview */}
+      {activeTab === 3 && <DatabaseOverviewTab />}
+
+      {/* Tab 5: Storage */}
+      {activeTab === 4 && <StorageTab />}
+
+      {/* Tab 6: Django API */}
+      {activeTab === 5 && <DjangoAPITab />}
+
+      {/* Tab 7: QGIS Server */}
+      {activeTab === 6 && <QGISServerTab />}
 
       {/* Delete Confirmation Dialog */}
       <Dialog

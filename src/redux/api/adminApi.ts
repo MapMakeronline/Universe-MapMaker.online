@@ -67,6 +67,16 @@ export interface AdminProjectsResponse {
   timestamp: string;
 }
 
+export interface StorageFile {
+  type: 'qgs' | 'json';
+  project: string;
+  filename: string;
+  path: string;
+  url: string;
+  description: string;
+  size: string;
+}
+
 export const adminApi = createApi({
   reducerPath: 'adminApi',
   baseQuery: fetchBaseQuery({
@@ -146,6 +156,136 @@ export const adminApi = createApi({
       }),
       invalidatesTags: ['AdminStats', 'User'],
     }),
+
+    // Storage endpoints
+    getStorageFiles: builder.query<StorageFile[], void>({
+      query: () => '/dashboard/projects/',
+      transformResponse: (response: any) => {
+        const projects = response.list_of_projects || [];
+        const storageFiles: StorageFile[] = [];
+
+        projects.forEach((project: any) => {
+          const projectName = project.project_name;
+
+          // QGS file
+          storageFiles.push({
+            type: 'qgs',
+            project: projectName,
+            filename: `${projectName}.qgs`,
+            path: `/projects/${projectName}/${projectName}.qgs`,
+            url: `https://api.universemapmaker.online/media/projects/${projectName}/${projectName}.qgs`,
+            description: 'QGIS Project File',
+            size: 'Unknown',
+          });
+
+          // tree.json
+          storageFiles.push({
+            type: 'json',
+            project: projectName,
+            filename: 'tree.json',
+            path: `/projects/${projectName}/tree.json`,
+            url: `https://api.universemapmaker.online/media/projects/${projectName}/tree.json`,
+            description: 'Layer Tree Configuration',
+            size: 'Unknown',
+          });
+
+          // config.json
+          storageFiles.push({
+            type: 'json',
+            project: projectName,
+            filename: 'config.json',
+            path: `/projects/${projectName}/config.json`,
+            url: `https://api.universemapmaker.online/media/projects/${projectName}/config.json`,
+            description: 'Project Configuration',
+            size: 'Unknown',
+          });
+        });
+
+        return storageFiles;
+      },
+      providesTags: ['AdminProjects'],
+    }),
+
+    // QGIS Server endpoints testing
+    testQGISEndpoint: builder.mutation<
+      { success: boolean; response: any; status: number },
+      { project: string; service: string; request: string }
+    >({
+      queryFn: async ({ project, service, request }) => {
+        try {
+          const url = `https://api.universemapmaker.online/ows?SERVICE=${service}&VERSION=1.3.0&REQUEST=${request}&MAP=${project}`;
+          const response = await fetch(url);
+          const text = await response.text();
+
+          return {
+            data: {
+              success: response.ok || text.includes('WMS_Capabilities') || text.includes('ServiceException'),
+              response: text,
+              status: response.status,
+            },
+          };
+        } catch (error: any) {
+          return {
+            error: {
+              status: 'FETCH_ERROR',
+              error: error.message,
+            },
+          };
+        }
+      },
+    }),
+
+    // Django API endpoints testing
+    testDjangoEndpoint: builder.mutation<
+      { success: boolean; response: any; status: number; responseTime: number },
+      { path: string; method: string; requiresAuth: boolean }
+    >({
+      queryFn: async ({ path, method, requiresAuth }) => {
+        try {
+          const startTime = performance.now();
+          const headers: HeadersInit = {};
+
+          if (requiresAuth) {
+            const token = localStorage.getItem('authToken');
+            if (token) {
+              headers['Authorization'] = `Token ${token}`;
+            }
+          }
+
+          const response = await fetch(`https://api.universemapmaker.online${path}`, {
+            method,
+            headers,
+          });
+
+          const endTime = performance.now();
+          const responseTime = Math.round(endTime - startTime);
+
+          let responseData;
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            responseData = await response.json();
+          } else {
+            responseData = await response.text();
+          }
+
+          return {
+            data: {
+              success: response.ok,
+              response: responseData,
+              status: response.status,
+              responseTime,
+            },
+          };
+        } catch (error: any) {
+          return {
+            error: {
+              status: 'FETCH_ERROR',
+              error: error.message,
+            },
+          };
+        }
+      },
+    }),
   }),
 });
 
@@ -154,4 +294,7 @@ export const {
   useGetAllProjectsQuery,
   useUpdateUserLicenseMutation,
   useDeleteUserMutation,
+  useGetStorageFilesQuery,
+  useTestQGISEndpointMutation,
+  useTestDjangoEndpointMutation,
 } = adminApi;
