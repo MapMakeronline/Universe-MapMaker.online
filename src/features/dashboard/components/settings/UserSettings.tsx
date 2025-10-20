@@ -495,18 +495,6 @@ export default function UserSettings() {
               </Grid>
             </Grid>
 
-            <Divider sx={{ my: 3 }} />
-
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-              <FormControlLabel
-                control={<Switch checked={false} />}
-                label="Wyloguj ze wszystkich urządzeń"
-              />
-              <Typography variant="body2" color="text.secondary" sx={{ ml: { xs: 0, sm: 5 } }}>
-                Po zmianie hasła zostaniesz wylogowany ze wszystkich urządzeń
-              </Typography>
-            </Box>
-
             <Box sx={{ mt: 3, display: 'flex', justifyContent: { xs: 'stretch', sm: 'flex-end' } }}>
               <Button
                 variant="contained"
