@@ -156,7 +156,19 @@ export default function UserSettings() {
       console.log('✅ Redux and localStorage auto-updated by RTK Query');
 
       // RTK Query onQueryStarted already updated Redux and localStorage
-      // No need to manually dispatch updateUser here!
+      // Now update local form state to show the new values immediately
+      if (response.user) {
+        setGeneralSettings({
+          firstName: response.user.first_name || '',
+          lastName: response.user.last_name || '',
+          city: response.user.city || '',
+          zip_code: response.user.zip_code || '',
+          nip: response.user.nip || '',
+          email: response.user.email || '',
+          address: response.user.address || '',
+          company_name: response.user.company_name || '',
+        });
+      }
 
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);

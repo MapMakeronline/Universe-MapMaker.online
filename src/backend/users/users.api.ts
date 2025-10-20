@@ -9,6 +9,7 @@
  */
 
 import { baseApi } from '../client/base-api';
+import { updateUser } from '@/redux/slices/authSlice';
 import type {
   User,
   UpdateProfileData,
@@ -50,16 +51,19 @@ export const usersApi = baseApi.injectEndpoints({
           const { data } = await queryFulfilled;
           // Backend returns { message: "...", user: {...} }
           if (data.user) {
-            // Update localStorage with new user data
-            localStorage.setItem('user', JSON.stringify(data.user));
+            console.log('🔵 RTK Query onQueryStarted - updating state with:', data.user);
 
-            // CRITICAL: Update Redux authSlice to sync state across app
-            // This ensures UI updates immediately without needing to logout/login
-            const { updateUser } = await import('@/redux/slices/authSlice');
+            // 1. Update localStorage with new user data
+            localStorage.setItem('user', JSON.stringify(data.user));
+            console.log('✅ localStorage updated');
+
+            // 2. CRITICAL: Dispatch updateUser to Redux authSlice
+            // This syncs state across the entire app immediately
             dispatch(updateUser(data.user));
+            console.log('✅ Redux authSlice updated - UI should refresh now!');
           }
         } catch (err) {
-          console.error('Profile update failed:', err);
+          console.error('❌ Profile update failed:', err);
         }
       },
     }),
