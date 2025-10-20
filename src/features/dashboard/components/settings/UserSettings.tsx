@@ -8,6 +8,7 @@ import CardContent from '@mui/material/CardContent';
 import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
 import Grid from '@mui/material/Grid';
+import Stack from '@mui/material/Stack';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import Switch from '@mui/material/Switch';
@@ -25,6 +26,7 @@ import Notifications from '@mui/icons-material/Notifications';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import Save from '@mui/icons-material/Save';
+import InfoOutlined from '@mui/icons-material/InfoOutlined';
 import { useAppSelector } from '@/redux/hooks';
 import { useUpdateProfileMutation, useChangePasswordMutation } from '@/backend/users';
 import LoginRequiredGuard from '@/features/autoryzacja/LoginRequiredGuard';
@@ -439,75 +441,92 @@ export default function UserSettings() {
             <Typography variant="h6" fontWeight="600" gutterBottom sx={{ fontSize: { xs: '1.125rem', sm: '1.25rem' } }}>
               Zmiana hasła
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-              Twoje hasło musi mieć minimum 8 znaków
-            </Typography>
-            
-            <Grid container spacing={3}>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Obecne hasło"
-                  type={showCurrentPassword ? 'text' : 'password'}
-                  value={passwordSettings.old_password}
-                  onChange={handlePasswordChange('old_password')}
-                  variant="outlined"
-                  placeholder="Jakie jest twoje obecne hasło?"
-                  InputProps={{
-                    endAdornment: (
-                      <InputAdornment position="end">
-                        <IconButton
-                          onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                          edge="end"
-                        >
-                          {showCurrentPassword ? <VisibilityOff /> : <Visibility />}
-                        </IconButton>
-                      </InputAdornment>
-                    ),
-                  }}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Nowe hasło"
-                  type={showNewPassword ? 'text' : 'password'}
-                  value={passwordSettings.new_password}
-                  onChange={handlePasswordChange('new_password')}
-                  variant="outlined"
-                  placeholder="Minimum 8 znaków"
-                  helperText="Hasło musi mieć min. 8 znaków, nie może być zbyt podobne do loginu ani zbyt popularne"
-                  InputProps={{
-                    endAdornment: (
-                      <InputAdornment position="end">
-                        <IconButton
-                          onClick={() => setShowNewPassword(!showNewPassword)}
-                          edge="end"
-                        >
-                          {showNewPassword ? <VisibilityOff /> : <Visibility />}
-                        </IconButton>
-                      </InputAdornment>
-                    ),
-                  }}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Powtórz nowe hasło"
-                  type="password"
-                  value={passwordSettings.confirmPassword}
-                  onChange={handlePasswordChange('confirmPassword')}
-                  variant="outlined"
-                  placeholder="Wpisz ponownie nowe hasło"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !isChangingPassword && passwordSettings.old_password && passwordSettings.new_password && passwordSettings.new_password === passwordSettings.confirmPassword) {
-                      handlePasswordSave();
-                    }
-                  }}
-                />
-              </Grid>
-            </Grid>
+
+            {/* Info Box */}
+            <Alert
+              severity="info"
+              icon={<InfoOutlined />}
+              sx={{ mb: 3, bgcolor: 'primary.50', '& .MuiAlert-icon': { color: 'primary.main' } }}
+            >
+              <Typography variant="body2">
+                Twoje hasło musi spełniać następujące wymagania:
+              </Typography>
+              <Box component="ul" sx={{ mt: 1, mb: 0, pl: 2 }}>
+                <li>Minimum 8 znaków</li>
+                <li>Nie może być zbyt podobne do nazwy użytkownika</li>
+                <li>Nie może być zbyt popularne (np. "password123")</li>
+                <li>Nie może składać się wyłącznie z cyfr</li>
+              </Box>
+            </Alert>
+
+            <Stack spacing={3}>
+              <TextField
+                fullWidth
+                label="Obecne hasło"
+                type={showCurrentPassword ? 'text' : 'password'}
+                value={passwordSettings.old_password}
+                onChange={handlePasswordChange('old_password')}
+                variant="outlined"
+                placeholder="Wpisz obecne hasło"
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                        edge="end"
+                        aria-label="pokaż/ukryj obecne hasło"
+                      >
+                        {showCurrentPassword ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+              />
+
+              <TextField
+                fullWidth
+                label="Nowe hasło"
+                type={showNewPassword ? 'text' : 'password'}
+                value={passwordSettings.new_password}
+                onChange={handlePasswordChange('new_password')}
+                variant="outlined"
+                placeholder="Wpisz nowe hasło"
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                        edge="end"
+                        aria-label="pokaż/ukryj nowe hasło"
+                      >
+                        {showNewPassword ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+              />
+
+              <TextField
+                fullWidth
+                label="Powtórz nowe hasło"
+                type="password"
+                value={passwordSettings.confirmPassword}
+                onChange={handlePasswordChange('confirmPassword')}
+                variant="outlined"
+                placeholder="Wpisz ponownie nowe hasło"
+                error={passwordSettings.confirmPassword !== '' && passwordSettings.new_password !== passwordSettings.confirmPassword}
+                helperText={
+                  passwordSettings.confirmPassword !== '' && passwordSettings.new_password !== passwordSettings.confirmPassword
+                    ? 'Hasła nie są identyczne'
+                    : ''
+                }
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !isChangingPassword && passwordSettings.old_password && passwordSettings.new_password && passwordSettings.new_password === passwordSettings.confirmPassword) {
+                    handlePasswordSave();
+                  }
+                }}
+              />
+            </Stack>
 
             <Box sx={{ mt: 3, display: 'flex', justifyContent: { xs: 'stretch', sm: 'flex-end' } }}>
               <Button
