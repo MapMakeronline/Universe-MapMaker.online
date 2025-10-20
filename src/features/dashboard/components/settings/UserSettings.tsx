@@ -205,8 +205,11 @@ export default function UserSettings() {
         confirmPassword: '',
       });
 
+      // Scroll to top to show success alert
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+
       setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 3000);
+      setTimeout(() => setSaveSuccess(false), 5000); // Show for 5 seconds
     } catch (err: any) {
       console.error('Failed to change password:', err);
 
