@@ -1,15 +1,15 @@
 // Redux slice for managing QGIS projects from GeoCraft backend
 // REFACTORED Phase 1: Now uses unified API service
 // REFACTORED Phase 2: Now uses Entity Adapter for normalized state
-import { createSlice, createAsyncThunk, createEntityAdapter, createSelector, PayloadAction } from '@reduxjs/toolkit';
-import { unifiedProjectsApi } from '@/api/endpointy/unified-projects';
+// REFACTORED Phase 3: Migrated to @/backend pattern (RTK Query)
+import { createSlice, createEntityAdapter, createSelector, PayloadAction } from '@reduxjs/toolkit';
 import type {
   Project,
   ProjectsResponse,
   CreateProjectData,
   UpdateProjectData,
   DbInfo,
-} from '@/api/typy/types';
+} from '@/backend/types';
 import { mapLogger } from '@/tools/logger';
 import type { RootState } from '../store';
 

@@ -27,7 +27,7 @@ import Phone from '@mui/icons-material/Phone';
 import LocationOn from '@mui/icons-material/LocationOn';
 import Send from '@mui/icons-material/Send';
 import VideoCall from '@mui/icons-material/VideoCall';
-// TODO: Import from @/backend when contact endpoint is implemented (endpoint #5)
+import { useSendContactMessageMutation } from '@/backend/contact';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -63,7 +63,9 @@ export default function Contact() {
   });
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+
+  // RTK Query mutation
+  const [sendContactMessage, { isLoading }] = useSendContactMessageMutation();
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setCurrentTab(newValue);
@@ -80,14 +82,14 @@ export default function Contact() {
     event.preventDefault();
     setError(null);
     setSubmitSuccess(false);
-    setIsLoading(true);
 
     try {
-      // TODO: Implement contact API endpoint (endpoint #5)
-      // await sendContactForm({ subject: formData.subject, message: formData.message });
-
-      // Temporary mock success
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await sendContactMessage({
+        subject: formData.subject,
+        name: formData.name,
+        email: formData.email,
+        message: formData.message,
+      }).unwrap();
 
       setSubmitSuccess(true);
       setFormData({
@@ -98,9 +100,8 @@ export default function Contact() {
       });
       setTimeout(() => setSubmitSuccess(false), 5000);
     } catch (err: any) {
-      setError(err.message || 'Wystąpił błąd podczas wysyłania wiadomości');
-    } finally {
-      setIsLoading(false);
+      console.error('Failed to send contact message:', err);
+      setError(err?.data?.message || 'Wystąpił błąd podczas wysyłania wiadomości');
     }
   };
 
