@@ -409,6 +409,11 @@ export default function UserSettings() {
                   onChange={handleGeneralChange('nip')}
                   variant="outlined"
                   placeholder="000-000-00-00"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !isUpdatingProfile) {
+                      handleSave();
+                    }
+                  }}
                 />
               </Grid>
             </Grid>
@@ -495,6 +500,11 @@ export default function UserSettings() {
                   onChange={handlePasswordChange('confirmPassword')}
                   variant="outlined"
                   placeholder="Wpisz ponownie nowe hasło"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !isChangingPassword && passwordSettings.old_password && passwordSettings.new_password && passwordSettings.new_password === passwordSettings.confirmPassword) {
+                      handlePasswordSave();
+                    }
+                  }}
                 />
               </Grid>
             </Grid>
