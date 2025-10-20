@@ -328,11 +328,12 @@ export default function UserSettings() {
         {/* General Settings Tab */}
         <TabPanel value={currentTab} index={0}>
           <CardContent sx={{ px: { xs: 2, sm: 3 } }}>
-            <Typography variant="h6" fontWeight="600" gutterBottom sx={{ fontSize: { xs: '1.125rem', sm: '1.25rem' } }}>
-              Informacje osobiste
-            </Typography>
+            <Box sx={{ maxWidth: 800, mx: 'auto' }}>
+              <Typography variant="h6" fontWeight="600" gutterBottom sx={{ fontSize: { xs: '1.125rem', sm: '1.25rem' } }}>
+                Informacje osobiste
+              </Typography>
 
-            <Grid container spacing={3}>
+              <Grid container spacing={3}>
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
@@ -432,17 +433,19 @@ export default function UserSettings() {
                 {isUpdatingProfile ? 'Zapisywanie...' : 'Zaktualizuj dane'}
               </Button>
             </Box>
+            </Box>
           </CardContent>
         </TabPanel>
 
         {/* Privacy Settings Tab */}
         <TabPanel value={currentTab} index={1}>
           <CardContent sx={{ px: { xs: 2, sm: 3 } }}>
-            <Typography variant="h6" fontWeight="600" gutterBottom sx={{ fontSize: { xs: '1.125rem', sm: '1.25rem' } }}>
-              Zmiana hasła
-            </Typography>
+            <Box sx={{ maxWidth: 600, mx: 'auto' }}>
+              <Typography variant="h6" fontWeight="600" gutterBottom sx={{ fontSize: { xs: '1.125rem', sm: '1.25rem' } }}>
+                Zmiana hasła
+              </Typography>
 
-            {/* Info Box */}
+              {/* Info Box */}
             <Alert
               severity="info"
               icon={<InfoOutlined />}
@@ -540,15 +543,17 @@ export default function UserSettings() {
                 {isChangingPassword ? 'Zapisywanie...' : 'Zmień hasło'}
               </Button>
             </Box>
+            </Box>
           </CardContent>
         </TabPanel>
 
         {/* Notifications Settings Tab */}
         <TabPanel value={currentTab} index={2}>
           <CardContent sx={{ px: { xs: 2, sm: 3 } }}>
-            <Typography variant="h6" fontWeight="600" gutterBottom sx={{ fontSize: { xs: '1.125rem', sm: '1.25rem' } }}>
-              Preferencje powiadomień
-            </Typography>
+            <Box sx={{ maxWidth: 600, mx: 'auto' }}>
+              <Typography variant="h6" fontWeight="600" gutterBottom sx={{ fontSize: { xs: '1.125rem', sm: '1.25rem' } }}>
+                Preferencje powiadomień
+              </Typography>
 
             <Box sx={{ mt: 3 }}>
               <Box sx={{ mb: 3 }}>
@@ -607,6 +612,7 @@ export default function UserSettings() {
               >
                 Zapisz zmiany
               </Button>
+            </Box>
             </Box>
           </CardContent>
         </TabPanel>
