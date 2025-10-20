@@ -421,14 +421,15 @@ export default function UserSettings() {
               </Grid>
             </Grid>
 
-            <Box sx={{ mt: 3, display: 'flex', justifyContent: { xs: 'stretch', sm: 'flex-end' } }}>
+            <Divider sx={{ my: 4 }} />
+
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
               <Button
                 variant="contained"
                 startIcon={isUpdatingProfile ? <CircularProgress size={20} color="inherit" /> : <Save />}
                 onClick={handleSave}
                 disabled={isUpdatingProfile}
-                fullWidth={isMobile}
-                sx={{ textTransform: 'none', px: 3 }}
+                sx={{ textTransform: 'none', px: 4, py: 1.5 }}
               >
                 {isUpdatingProfile ? 'Zapisywanie...' : 'Zaktualizuj dane'}
               </Button>
@@ -531,13 +532,14 @@ export default function UserSettings() {
               />
             </Stack>
 
-            <Box sx={{ mt: 3, display: 'flex', justifyContent: { xs: 'stretch', sm: 'flex-end' } }}>
+            <Divider sx={{ my: 4 }} />
+
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
               <Button
                 variant="contained"
                 startIcon={isChangingPassword ? <CircularProgress size={20} color="inherit" /> : <Save />}
                 onClick={handlePasswordSave}
-                fullWidth={isMobile}
-                sx={{ textTransform: 'none', px: 3 }}
+                sx={{ textTransform: 'none', px: 4, py: 1.5 }}
                 disabled={isChangingPassword || !passwordSettings.old_password || !passwordSettings.new_password || passwordSettings.new_password !== passwordSettings.confirmPassword}
               >
                 {isChangingPassword ? 'Zapisywanie...' : 'Zmień hasło'}
@@ -602,13 +604,14 @@ export default function UserSettings() {
               </Box>
             </Box>
 
-            <Box sx={{ mt: 3, display: 'flex', justifyContent: { xs: 'stretch', sm: 'flex-end' } }}>
+            <Divider sx={{ my: 4 }} />
+
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
               <Button
                 variant="contained"
                 startIcon={<Save />}
                 onClick={handleSave}
-                fullWidth={isMobile}
-                sx={{ textTransform: 'none', px: 3 }}
+                sx={{ textTransform: 'none', px: 4, py: 1.5 }}
               >
                 Zapisz zmiany
               </Button>
