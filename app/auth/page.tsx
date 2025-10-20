@@ -24,7 +24,7 @@ import {
 } from '@mui/icons-material';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTheme } from '@mui/material/styles';
-import { authService } from '@/api/endpointy/auth';
+import { useLoginMutation, useRegisterMutation } from '@/backend/auth';
 import { useAppDispatch } from '@/redux/hooks';
 import { setAuth, setLoading } from '@/redux/slices/authSlice';
 import { AuthLayout } from '@/components/auth';
@@ -37,6 +37,10 @@ function AuthPageContent() {
   const theme = useTheme();
   const searchParams = useSearchParams();
   const dispatch = useAppDispatch();
+
+  // RTK Query mutations
+  const [login, { isLoading: isLoginLoading }] = useLoginMutation();
+  const [register, { isLoading: isRegisterLoading }] = useRegisterMutation();
 
   // Initialize tab from URL params, default to 0 (login)
   const [activeTab, setActiveTab] = useState(() => {
@@ -52,7 +56,9 @@ function AuthPageContent() {
     confirmPassword: '',
   });
   const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+
+  // Unified loading state
+  const isLoading = isLoginLoading || isRegisterLoading;
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setActiveTab(newValue);
@@ -67,16 +73,15 @@ function AuthPageContent() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setIsLoading(true);
     dispatch(setLoading(true));
 
     try {
       if (activeTab === 0) {
-        // Login
-        const response = await authService.login({
+        // Login with RTK Query
+        const response = await login({
           username: formData.email,
           password: formData.password,
-        });
+        }).unwrap();
 
         // Save auth state to Redux
         dispatch(setAuth({
@@ -90,7 +95,6 @@ function AuthPageContent() {
         // Register
         if (formData.password !== formData.confirmPassword) {
           setError('Hasła nie są identyczne');
-          setIsLoading(false);
           dispatch(setLoading(false));
           return;
         }
@@ -98,20 +102,20 @@ function AuthPageContent() {
         const [firstName, ...lastNameParts] = formData.name.trim().split(' ');
         const lastName = lastNameParts.join(' ');
 
-        await authService.register({
+        await register({
           username: formData.email.split('@')[0], // Generate username from email
           email: formData.email,
           password: formData.password,
           password_confirm: formData.confirmPassword,
           first_name: firstName,
           last_name: lastName,
-        });
+        }).unwrap();
 
         // After successful registration, log in automatically
-        const response = await authService.login({
+        const response = await login({
           username: formData.email,
           password: formData.password,
-        });
+        }).unwrap();
 
         // Save auth state to Redux
         dispatch(setAuth({
@@ -123,23 +127,25 @@ function AuthPageContent() {
       }
     } catch (err: any) {
       console.error('Auth error:', err);
-      if (err.non_field_errors) {
-        setError(Array.isArray(err.non_field_errors) ? err.non_field_errors[0] : err.non_field_errors);
-      } else if (err.email) {
-        setError(Array.isArray(err.email) ? err.email[0] : err.email);
-      } else if (err.username) {
-        setError(Array.isArray(err.username) ? err.username[0] : err.username);
-      } else if (err.password) {
-        setError(Array.isArray(err.password) ? err.password[0] : err.password);
-      } else if (err.detail) {
-        setError(err.detail);
-      } else if (err.message) {
-        setError(err.message);
+      // Handle RTK Query error format
+      const errorData = err?.data || err;
+
+      if (errorData.non_field_errors) {
+        setError(Array.isArray(errorData.non_field_errors) ? errorData.non_field_errors[0] : errorData.non_field_errors);
+      } else if (errorData.email) {
+        setError(Array.isArray(errorData.email) ? errorData.email[0] : errorData.email);
+      } else if (errorData.username) {
+        setError(Array.isArray(errorData.username) ? errorData.username[0] : errorData.username);
+      } else if (errorData.password) {
+        setError(Array.isArray(errorData.password) ? errorData.password[0] : errorData.password);
+      } else if (errorData.detail) {
+        setError(errorData.detail);
+      } else if (errorData.message) {
+        setError(errorData.message);
       } else {
         setError('Wystąpił błąd. Spróbuj ponownie.');
       }
     } finally {
-      setIsLoading(false);
       dispatch(setLoading(false));
     }
   };
