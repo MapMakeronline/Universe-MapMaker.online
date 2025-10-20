@@ -328,7 +328,7 @@ export default function UserSettings() {
         {/* General Settings Tab */}
         <TabPanel value={currentTab} index={0}>
           <CardContent sx={{ px: { xs: 2, sm: 3 } }}>
-            <Box sx={{ maxWidth: 800, mx: 'auto' }}>
+            <Box sx={{ maxWidth: 800 }}>
               <Typography variant="h6" fontWeight="600" gutterBottom sx={{ fontSize: { xs: '1.125rem', sm: '1.25rem' } }}>
                 Informacje osobiste
               </Typography>
@@ -440,7 +440,7 @@ export default function UserSettings() {
         {/* Privacy Settings Tab */}
         <TabPanel value={currentTab} index={1}>
           <CardContent sx={{ px: { xs: 2, sm: 3 } }}>
-            <Box sx={{ maxWidth: 600, mx: 'auto' }}>
+            <Box sx={{ maxWidth: 600 }}>
               <Typography variant="h6" fontWeight="600" gutterBottom sx={{ fontSize: { xs: '1.125rem', sm: '1.25rem' } }}>
                 Zmiana hasła
               </Typography>
@@ -550,7 +550,7 @@ export default function UserSettings() {
         {/* Notifications Settings Tab */}
         <TabPanel value={currentTab} index={2}>
           <CardContent sx={{ px: { xs: 2, sm: 3 } }}>
-            <Box sx={{ maxWidth: 600, mx: 'auto' }}>
+            <Box sx={{ maxWidth: 600 }}>
               <Typography variant="h6" fontWeight="600" gutterBottom sx={{ fontSize: { xs: '1.125rem', sm: '1.25rem' } }}>
                 Preferencje powiadomień
               </Typography>
