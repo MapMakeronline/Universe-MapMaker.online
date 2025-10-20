@@ -170,8 +170,10 @@ export default function UserSettings() {
         });
       }
 
+      // Scroll to top to show success alert
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+
       setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err: any) {
       console.error('❌ Failed to update profile:', err);
       setSaveError(err?.data?.message || 'Nie udało się zaktualizować profilu');
@@ -209,7 +211,6 @@ export default function UserSettings() {
       window.scrollTo({ top: 0, behavior: 'smooth' });
 
       setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 5000); // Show for 5 seconds
     } catch (err: any) {
       console.error('Failed to change password:', err);
 
@@ -266,7 +267,7 @@ export default function UserSettings() {
       </Box>
 
       {saveSuccess && (
-        <Alert severity="success" sx={{ mb: 3 }}>
+        <Alert severity="success" sx={{ mb: 3 }} onClose={() => setSaveSuccess(false)}>
           Ustawienia zostały zapisane pomyślnie!
         </Alert>
       )}
