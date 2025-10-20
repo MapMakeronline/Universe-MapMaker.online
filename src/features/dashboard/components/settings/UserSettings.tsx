@@ -210,11 +210,29 @@ export default function UserSettings() {
     } catch (err: any) {
       console.error('Failed to change password:', err);
 
-      // Backend zwraca HTML error page (500) zamiast JSON
+      // Backend zwraca HTML error page (500) zamiast JSON dla błędów walidacji
       if (err?.status === 'PARSING_ERROR' || err?.originalStatus === 500) {
-        setSaveError('Błąd serwera (500). Endpoint zmiany hasła nie działa poprawnie na backendzie. Skontaktuj się z administratorem.');
+        // Try to extract Django validation error from HTML response
+        const errorText = err?.error || '';
+
+        // Check for common Django password validation errors
+        if (errorText.includes('too similar to the username')) {
+          setSaveError('Hasło jest zbyt podobne do nazwy użytkownika. Wybierz bardziej unikalne hasło.');
+        } else if (errorText.includes('too common')) {
+          setSaveError('To hasło jest zbyt popularne. Wybierz bardziej unikalne hasło.');
+        } else if (errorText.includes('too short')) {
+          setSaveError('Hasło jest zbyt krótkie. Musi zawierać co najmniej 8 znaków.');
+        } else if (errorText.includes('entirely numeric')) {
+          setSaveError('Hasło nie może składać się wyłącznie z cyfr.');
+        } else if (errorText.includes('incorrect')) {
+          setSaveError('Obecne hasło jest nieprawidłowe.');
+        } else {
+          setSaveError('Hasło nie spełnia wymagań bezpieczeństwa. Użyj silnego hasła (min. 8 znaków, niepodobne do loginu).');
+        }
       } else if (err?.data?.message) {
         setSaveError(err.data.message);
+      } else if (err?.status === 400) {
+        setSaveError('Obecne hasło jest nieprawidłowe lub nowe hasło nie spełnia wymagań.');
       } else {
         setSaveError('Nie udało się zmienić hasła. Sprawdź czy obecne hasło jest poprawne.');
       }
@@ -443,6 +461,7 @@ export default function UserSettings() {
                   onChange={handlePasswordChange('new_password')}
                   variant="outlined"
                   placeholder="Minimum 8 znaków"
+                  helperText="Hasło musi mieć min. 8 znaków, nie może być zbyt podobne do loginu ani zbyt popularne"
                   InputProps={{
                     endAdornment: (
                       <InputAdornment position="end">
