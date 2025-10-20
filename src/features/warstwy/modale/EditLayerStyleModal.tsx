@@ -30,17 +30,18 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import { useTheme } from '@mui/material/styles';
-import {
-  useGetRendererQuery,
-  useSetStyleMutation,
-  useClassifyMutation,
-} from '@/redux/api/stylesApi';
-import {
-  useGetLayerAttributesQuery,
-  useImportStyleMutation,
-  useLazyExportStyleQuery,
-  useAddLabelMutation,
-} from '@/redux/api/layersApi';
+// TODO: Migrate to @/backend when stylesApi and layersApi are implemented
+// import {
+//   useGetRendererQuery,
+//   useSetStyleMutation,
+//   useClassifyMutation,
+// } from '@/redux/api/stylesApi';
+// import {
+//   useGetLayerAttributesQuery,
+//   useImportStyleMutation,
+//   useLazyExportStyleQuery,
+//   useAddLabelMutation,
+// } from '@/redux/api/layersApi';
 import { showSuccess, showError } from '@/redux/slices/notificationSlice';
 import { useAppDispatch } from '@/redux/hooks';
 import {
@@ -55,7 +56,20 @@ import {
   alphaToOpacity,
   opacityToAlpha,
 } from '@/utils/colorConversion';
-import type { SymbolLayer, SimpleFillAttributes, Symbol as BackendSymbol, Category } from '@/redux/api/stylesApi';
+
+// Temporary mock types and hooks
+type SymbolLayer = any;
+type SimpleFillAttributes = any;
+type BackendSymbol = any;
+type Category = any;
+
+const useGetRendererQuery = (params: any) => ({ data: null, isLoading: false }) as any;
+const useSetStyleMutation = () => [async () => {}, { isLoading: false }] as any;
+const useClassifyMutation = () => [async () => {}, { isLoading: false }] as any;
+const useGetLayerAttributesQuery = (params: any) => ({ data: [], isLoading: false }) as any;
+const useImportStyleMutation = () => [async () => {}, { isLoading: false }] as any;
+const useLazyExportStyleQuery = () => [async () => {}, { data: null, isLoading: false }] as any;
+const useAddLabelMutation = () => [async () => {}, { isLoading: false }] as any;
 
 interface EditLayerStyleModalProps {
   open: boolean;

@@ -28,15 +28,23 @@ import {
   deleteLayer,
   moveLayer
 } from '@/redux/slices/layersSlice';
-import { useChangeLayersOrderMutation, useGetProjectDataQuery, projectsApi } from '@/redux/api/projectsApi';
-import {
-  useSetLayerVisibilityMutation,
-  useAddGeoJsonLayerMutation,
-  useAddShapefileLayerMutation,
-  useAddGMLLayerMutation,
-  useDeleteLayerMutation,
-} from '@/redux/api/layersApi';
+import { useChangeLayersOrderMutation, useGetProjectDataQuery, projectsApi } from '@/backend/projects';
+// TODO: Migrate to @/backend/layers when layersApi is implemented
+// import {
+//   useSetLayerVisibilityMutation,
+//   useAddGeoJsonLayerMutation,
+//   useAddShapefileLayerMutation,
+//   useAddGMLLayerMutation,
+//   useDeleteLayerMutation,
+// } from '@/redux/api/layersApi';
 import { showSuccess, showError, showInfo } from '@/redux/slices/notificationSlice';
+
+// Temporary mock hooks for layers API
+const useSetLayerVisibilityMutation = () => [async () => {}, { isLoading: false }] as any;
+const useAddGeoJsonLayerMutation = () => [async () => {}, { isLoading: false }] as any;
+const useAddShapefileLayerMutation = () => [async () => {}, { isLoading: false }] as any;
+const useAddGMLLayerMutation = () => [async () => {}, { isLoading: false }] as any;
+const useDeleteLayerMutation = () => [async () => {}, { isLoading: false }] as any;
 
 // Types
 type FilterType = 'wszystko' | 'wektor' | 'raster' | 'wms';

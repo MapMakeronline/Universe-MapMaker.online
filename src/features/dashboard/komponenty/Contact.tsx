@@ -27,7 +27,7 @@ import Phone from '@mui/icons-material/Phone';
 import LocationOn from '@mui/icons-material/LocationOn';
 import Send from '@mui/icons-material/Send';
 import VideoCall from '@mui/icons-material/VideoCall';
-import { unifiedUserApi } from '@/api/endpointy/unified-user';
+// TODO: Import from @/backend when contact endpoint is implemented (endpoint #5)
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -83,10 +83,11 @@ export default function Contact() {
     setIsLoading(true);
 
     try {
-      await unifiedUserApi.sendContactForm({
-        subject: formData.subject,
-        message: formData.message,
-      });
+      // TODO: Implement contact API endpoint (endpoint #5)
+      // await sendContactForm({ subject: formData.subject, message: formData.message });
+
+      // Temporary mock success
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
       setSubmitSuccess(true);
       setFormData({

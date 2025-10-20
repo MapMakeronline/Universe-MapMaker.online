@@ -30,7 +30,7 @@ import CheckCircle from '@mui/icons-material/CheckCircle';
 import Schedule from '@mui/icons-material/Schedule';
 import LoginRequiredGuard from '@/features/autoryzacja/LoginRequiredGuard';
 import { useAppSelector } from '@/redux/hooks';
-import { unifiedUserApi, UserProfile as UserProfileData } from '@/api/endpointy/unified-user';
+import type { User as UserProfileData } from '@/backend/types';
 
 interface UserStats {
   totalProjects: number;
@@ -87,37 +87,13 @@ export default function UserProfile() {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const storagePercentage = (mockUserStats.storageUsed / mockUserStats.storageLimit) * 100;
 
-  // Get auth state from Redux
+  // Get auth state from Redux (user data populated from login)
   const { isAuthenticated, user } = useAppSelector(state => state.auth);
 
-  // State for user profile data
-  const [profileData, setProfileData] = useState<UserProfileData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // Fetch user profile on mount
-  useEffect(() => {
-    const fetchProfile = async () => {
-      if (!isAuthenticated) {
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        setIsLoading(true);
-        const data = await unifiedUserApi.getProfile();
-        setProfileData(data);
-        setError(null);
-      } catch (err: any) {
-        console.error('Failed to fetch profile:', err);
-        setError('Nie udało się pobrać danych profilu');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchProfile();
-  }, [isAuthenticated]);
+  // Use Redux user data directly (no API call needed)
+  const profileData = user;
+  const isLoading = false;
+  const error = null;
 
   const StatCard = ({
     title,

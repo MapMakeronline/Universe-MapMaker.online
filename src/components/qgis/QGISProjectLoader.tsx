@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useGetProjectDataQuery } from '@/redux/api/projectsApi';
+import { useGetProjectDataQuery } from '@/backend/projects';
 import { CircularProgress, Alert, Box, Typography } from '@mui/material';
 import { useMap } from 'react-map-gl';
 import type { QGISLayerNode, QGISVectorLayer, QGISRasterLayer } from '@/src/types/qgis';

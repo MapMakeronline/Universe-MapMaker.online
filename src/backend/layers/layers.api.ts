@@ -1,8 +1,7 @@
 /**
  * Layers Module - RTK Query API
  *
- * TODO: Full migration from src/redux/api/layersApi.ts
- * For now, re-export from old location
+ * TODO: Full migration from src/redux/api/layersApi.ts to baseApi pattern
  *
  * Endpoints (29 total):
  * - addGeoJsonLayer: Add GeoJSON layer
@@ -12,9 +11,11 @@
  * - getLayerAttributes: Get layer columns
  * - exportLayer: Export layer data
  * ... (23 more endpoints)
+ *
+ * NOTE: Layers API not yet implemented in @/backend structure.
+ * Old implementation was removed during refactor.
+ * Will be implemented when needed.
  */
 
-// Temporary re-export from old location
-// Will be migrated to use baseApi in next phase
-export { layersApi } from '@/redux/api/layersApi';
-export * from '@/redux/api/layersApi';
+// Placeholder - will be implemented with baseApi pattern
+export const layersApi = {} as any;

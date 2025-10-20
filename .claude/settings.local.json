@@ -109,7 +109,9 @@
       "Bash(mkdir -p \"c:\\Users\\Bartosz\\Desktop\\Universe-MapMaker.online\\src\\backend\\dashboard\\settings\")",
       "Bash(mkdir -p \"c:\\Users\\Bartosz\\Desktop\\Universe-MapMaker.online\\src\\backend\\dashboard\\payments\")",
       "Bash(mkdir -p \"c:\\Users\\Bartosz\\Desktop\\Universe-MapMaker.online\\src\\backend\\dashboard\\contact\")",
-      "Bash(git rebase --continue)"
+      "Bash(git rebase --continue)",
+      "Read(//c/Users/Bartosz/Downloads/**)",
+      "Bash(cmd /c taskkill /F /PID 8908)"
     ],
     "deny": [],
     "ask": []

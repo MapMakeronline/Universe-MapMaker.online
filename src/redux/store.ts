@@ -10,12 +10,6 @@ import notificationReducer from './slices/notificationSlice';
 // NEW: Single baseApi for all backend communication (RTK Query)
 import { baseApi } from '@/backend';
 
-// OLD: Individual APIs (kept for backwards compatibility during migration)
-import { projectsApi } from './api/projectsApi';
-import { adminApi } from './api/adminApi';
-import { layersApi } from './api/layersApi';
-import { stylesApi } from './api/stylesApi';
-
 // Create a makeStore function for Next.js App Router
 export const makeStore = () => {
   return configureStore({
@@ -30,12 +24,6 @@ export const makeStore = () => {
 
       // NEW: Single baseApi (all modules: auth, projects, layers, users)
       [baseApi.reducerPath]: baseApi.reducer,
-
-      // OLD: Individual APIs (kept for backwards compatibility)
-      [projectsApi.reducerPath]: projectsApi.reducer,
-      [adminApi.reducerPath]: adminApi.reducer,
-      [layersApi.reducerPath]: layersApi.reducer,
-      [stylesApi.reducerPath]: stylesApi.reducer,
     },
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware({
@@ -53,13 +41,7 @@ export const makeStore = () => {
         },
       })
         // NEW: Single baseApi middleware (handles all modules)
-        .concat(baseApi.middleware)
-
-        // OLD: Individual API middleware (backwards compatibility)
-        .concat(projectsApi.middleware)
-        .concat(adminApi.middleware)
-        .concat(layersApi.middleware)
-        .concat(stylesApi.middleware),
+        .concat(baseApi.middleware),
   });
 };
 

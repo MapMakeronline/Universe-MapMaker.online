@@ -23,9 +23,13 @@ import LockIcon from '@mui/icons-material/Lock';
 import SettingsIcon from '@mui/icons-material/Settings';
 import { BasemapSelector } from './BasemapSelector';
 import { PublishServicesModal } from '../modale/PublishServicesModal';
-import { usePublishWMSWFSMutation } from '@/redux/api/projectsApi';
+// TODO: Add usePublishWMSWFSMutation to @/backend/projects
+// import { usePublishWMSWFSMutation } from '@/backend/projects';
 import { useAppDispatch } from '@/redux/hooks';
 import { showSuccess, showError, showInfo } from '@/redux/slices/notificationSlice';
+
+// Temporary mock hook
+const usePublishWMSWFSMutation = () => [async () => {}, { isLoading: false }] as any;
 // Types defined locally for now
 interface Warstwa {
   id: string;

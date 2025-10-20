@@ -27,7 +27,7 @@ import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import Save from '@mui/icons-material/Save';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import { updateUser } from '@/redux/slices/authSlice';
-import { unifiedUserApi } from '@/api/endpointy/unified-user';
+import { useUpdateProfileMutation, useChangePasswordMutation } from '@/backend/users';
 import LoginRequiredGuard from '@/features/autoryzacja/LoginRequiredGuard';
 
 interface TabPanelProps {
@@ -58,13 +58,16 @@ export default function UserSettings() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
+  // RTK Query hooks (only mutations - no GET endpoint available)
+  const [updateProfile, { isLoading: isUpdatingProfile }] = useUpdateProfileMutation();
+  const [changePassword, { isLoading: isChangingPassword }] = useChangePasswordMutation();
+
   const [currentTab, setCurrentTab] = useState(0);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string>('');
-  const [isLoading, setIsLoading] = useState(false);
 
   // Form states
   const [generalSettings, setGeneralSettings] = useState({
@@ -90,7 +93,7 @@ export default function UserSettings() {
     emailUpdates: true,
   });
 
-  // Load user data on mount
+  // Load user data from Redux (populated on login)
   useEffect(() => {
     if (user) {
       setGeneralSettings({
@@ -134,12 +137,13 @@ export default function UserSettings() {
   };
 
   const handleSave = async () => {
-    setIsLoading(true);
+    console.log('🔵 handleSave called!', generalSettings);
     setSaveError('');
     setSaveSuccess(false);
 
     try {
-      const response = await unifiedUserApi.updateProfile({
+      console.log('🔵 Sending PUT request...');
+      const response = await updateProfile({
         first_name: generalSettings.firstName,
         last_name: generalSettings.lastName,
         email: generalSettings.email,
@@ -148,18 +152,26 @@ export default function UserSettings() {
         nip: generalSettings.nip,
         address: generalSettings.address,
         company_name: generalSettings.company_name,
-      });
+      }).unwrap();
+
+      console.log('🔵 PUT response:', response);
 
       // Update Redux with new user data
-      dispatch(updateUser(response.user));
+      // Backend returns: { message: '...', user: {...} }
+      if (response.user) {
+        console.log('✅ Updating Redux with:', response.user);
+        dispatch(updateUser(response.user));
+      } else if (response.data) {
+        // Fallback if wrapped in { data: { user: ... } }
+        console.log('✅ Updating Redux with:', response.data);
+        dispatch(updateUser(response.data));
+      }
 
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err: any) {
-      console.error('Failed to update profile:', err);
-      setSaveError(err.message || 'Nie udało się zaktualizować profilu');
-    } finally {
-      setIsLoading(false);
+      console.error('❌ Failed to update profile:', err);
+      setSaveError(err?.data?.message || 'Nie udało się zaktualizować profilu');
     }
   };
 
@@ -178,13 +190,11 @@ export default function UserSettings() {
       return;
     }
 
-    setIsLoading(true);
-
     try {
-      await unifiedUserApi.changePassword({
+      await changePassword({
         old_password: passwordSettings.old_password,
         new_password: passwordSettings.new_password,
-      });
+      }).unwrap();
 
       setPasswordSettings({
         old_password: '',
@@ -196,9 +206,7 @@ export default function UserSettings() {
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err: any) {
       console.error('Failed to change password:', err);
-      setSaveError(err.message || 'Nie udało się zmienić hasła');
-    } finally {
-      setIsLoading(false);
+      setSaveError(err?.data?.message || 'Nie udało się zmienić hasła');
     }
   };
 
@@ -369,13 +377,13 @@ export default function UserSettings() {
             <Box sx={{ mt: 3, display: 'flex', justifyContent: { xs: 'stretch', sm: 'flex-end' } }}>
               <Button
                 variant="contained"
-                startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : <Save />}
+                startIcon={isUpdatingProfile ? <CircularProgress size={20} color="inherit" /> : <Save />}
                 onClick={handleSave}
-                disabled={isLoading}
+                disabled={isUpdatingProfile}
                 fullWidth={isMobile}
                 sx={{ textTransform: 'none', px: 3 }}
               >
-                {isLoading ? 'Zapisywanie...' : 'Zaktualizuj dane'}
+                {isUpdatingProfile ? 'Zapisywanie...' : 'Zaktualizuj dane'}
               </Button>
             </Box>
           </CardContent>
@@ -466,13 +474,13 @@ export default function UserSettings() {
             <Box sx={{ mt: 3, display: 'flex', justifyContent: { xs: 'stretch', sm: 'flex-end' } }}>
               <Button
                 variant="contained"
-                startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : <Save />}
+                startIcon={isChangingPassword ? <CircularProgress size={20} color="inherit" /> : <Save />}
                 onClick={handlePasswordSave}
                 fullWidth={isMobile}
                 sx={{ textTransform: 'none', px: 3 }}
-                disabled={isLoading || !passwordSettings.old_password || !passwordSettings.new_password || passwordSettings.new_password !== passwordSettings.confirmPassword}
+                disabled={isChangingPassword || !passwordSettings.old_password || !passwordSettings.new_password || passwordSettings.new_password !== passwordSettings.confirmPassword}
               >
-                {isLoading ? 'Zapisywanie...' : 'Zmień hasło'}
+                {isChangingPassword ? 'Zapisywanie...' : 'Zmień hasło'}
               </Button>
             </Box>
           </CardContent>

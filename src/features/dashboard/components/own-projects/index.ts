@@ -1,8 +1,5 @@
 /**
- * Own Projects Module - Własne Projekty
- *
- * Main dashboard tab for user's own projects
- * Features: Create, delete, publish, settings
+ * Own Projects Tab Components
  */
 
 export { default as OwnProjects } from './OwnProjects';

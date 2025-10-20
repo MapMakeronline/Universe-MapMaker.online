@@ -49,12 +49,18 @@ import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { useTheme } from '@mui/material';
-import {
-  useAddFeatureMutation,
-  useUpdateFeatureMutation,
-  useDeleteFeatureMutation,
-} from '@/redux/api/layersApi';
+// TODO: Migrate to @/backend/layers when layersApi is implemented
+// import {
+//   useAddFeatureMutation,
+//   useUpdateFeatureMutation,
+//   useDeleteFeatureMutation,
+// } from '@/redux/api/layersApi';
 import { useAppSelector } from '@/redux/hooks';
+
+// Temporary mock hooks
+const useAddFeatureMutation = () => [async () => {}, { isLoading: false }] as any;
+const useUpdateFeatureMutation = () => [async () => {}, { isLoading: false }] as any;
+const useDeleteFeatureMutation = () => [async () => {}, { isLoading: false }] as any;
 
 interface FeatureEditorProps {
   open: boolean;

@@ -26,20 +26,24 @@ import Divider from '@mui/material/Divider';
 import CircularProgress from '@mui/material/CircularProgress';
 import Alert from '@mui/material/Alert';
 import Chip from '@mui/material/Chip';
+import Select from '@mui/material/Select';
+import MenuItem from '@mui/material/MenuItem';
+import FormControl from '@mui/material/FormControl';
+import InputLabel from '@mui/material/InputLabel';
 import { useTheme } from '@mui/material/styles';
 import CloseIcon from '@mui/icons-material/Close';
 import DownloadIcon from '@mui/icons-material/Download';
 import PublicIcon from '@mui/icons-material/Public';
 import LockIcon from '@mui/icons-material/Lock';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import ErrorIcon from '@mui/icons-material/Error';
-import type { Project } from '@/api/typy/types';
+import type { Project } from '@/backend';
 import {
   useTogglePublishMutation,
-  useChangeDomainMutation,
-  useCheckSubdomainAvailabilityMutation,
   useExportProjectMutation,
-} from '@/redux/api/projectsApi';
+  useUpdateProjectMutation,
+} from '@/backend';
+
+// Category options (same as CreateProjectDialog)
+const CATEGORIES = ['EMUiA', 'SIP', 'Suikzp', 'MPZP', 'EGiB', 'Inne'];
 
 interface ProjectSettingsDialogProps {
   open: boolean;
@@ -52,72 +56,35 @@ export function ProjectSettingsDialog({ open, project, onClose }: ProjectSetting
 
   // RTK Query mutations
   const [togglePublish, { isLoading: isTogglingPublish }] = useTogglePublishMutation();
-  const [changeDomain, { isLoading: isChangingDomain }] = useChangeDomainMutation();
-  const [checkSubdomainAvailability] = useCheckSubdomainAvailabilityMutation();
   const [exportProject, { isLoading: isExporting }] = useExportProjectMutation();
+  const [updateProject, { isLoading: isUpdatingProject }] = useUpdateProjectMutation();
 
   // Local state
   const [isPublished, setIsPublished] = useState(false);
-  const [newSubdomain, setNewSubdomain] = useState('');
-  const [subdomainValidation, setSubdomainValidation] = useState<{
-    checking: boolean;
-    available: boolean | null;
-    message: string;
-  }>({ checking: false, available: null, message: '' });
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
     severity: 'success' | 'error' | 'info';
   }>({ open: false, message: '', severity: 'info' });
 
+  // Project metadata editing
+  const [editedName, setEditedName] = useState('');
+  const [editedDescription, setEditedDescription] = useState('');
+  const [editedKeywords, setEditedKeywords] = useState('');
+  const [editedCategory, setEditedCategory] = useState('');
+
   // Initialize state when project changes
   useEffect(() => {
     if (project) {
       setIsPublished(project.published);
-      setNewSubdomain(project.domain_name || '');
-      setSubdomainValidation({ checking: false, available: null, message: '' });
+      // Initialize metadata fields
+      setEditedName(project.custom_project_name || project.project_name);
+      setEditedDescription(project.description || '');
+      setEditedKeywords(project.keywords || '');
+      setEditedCategory(project.categories || '');
     }
   }, [project]);
 
-  // Subdomain validation (debounced)
-  useEffect(() => {
-    if (!newSubdomain || newSubdomain === project?.domain_name) {
-      setSubdomainValidation({ checking: false, available: null, message: '' });
-      return;
-    }
-
-    const timer = setTimeout(async () => {
-      // Validate format
-      const subdomainRegex = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/;
-      if (!subdomainRegex.test(newSubdomain)) {
-        setSubdomainValidation({
-          checking: false,
-          available: false,
-          message: 'Subdomena może zawierać tylko małe litery, cyfry i myślniki (nie na początku/końcu)',
-        });
-        return;
-      }
-
-      // Check availability
-      setSubdomainValidation({ checking: true, available: null, message: 'Sprawdzanie...' });
-      try {
-        const result = await checkSubdomainAvailability({ subdomain: newSubdomain }).unwrap();
-        setSubdomainValidation({
-          checking: false,
-          available: result.data.available,
-          message: result.message,
-        });
-      } catch (error: any) {
-        setSubdomainValidation({
-          checking: false,
-          available: false,
-          message: 'Błąd podczas sprawdzania dostępności',
-        });
-      }
-    }, 800);
-
-    return () => clearTimeout(timer);
-  }, [newSubdomain, project, checkSubdomainAvailability]);
 
   const handleTogglePublish = async () => {
     if (!project) return;
@@ -155,31 +122,6 @@ export function ProjectSettingsDialog({ open, project, onClose }: ProjectSetting
     }
   };
 
-  const handleChangeDomain = async () => {
-    if (!project || !subdomainValidation.available) return;
-
-    try {
-      await changeDomain({
-        project: project.project_name,
-        subdomain: newSubdomain,
-      }).unwrap();
-
-      setSnackbar({
-        open: true,
-        message: 'Domena projektu została zmieniona!',
-        severity: 'success',
-      });
-
-      // Close dialog after success
-      setTimeout(() => onClose(), 1500);
-    } catch (error: any) {
-      setSnackbar({
-        open: true,
-        message: error?.data?.message || 'Nie udało się zmienić domeny',
-        severity: 'error',
-      });
-    }
-  };
 
   const handleExportQGS = async () => {
     if (!project) return;
@@ -225,6 +167,46 @@ export function ProjectSettingsDialog({ open, project, onClose }: ProjectSetting
         severity: 'error',
       });
     }
+  };
+
+  const handleUpdateMetadata = async () => {
+    if (!project) return;
+
+    try {
+      await updateProject({
+        project: project.project_name,
+        custom_project_name: editedName,
+        description: editedDescription,
+        keywords: editedKeywords,
+        category: editedCategory,
+      }).unwrap();
+
+      setSnackbar({
+        open: true,
+        message: 'Projekt został zaktualizowany!',
+        severity: 'success',
+      });
+
+      // Auto-close modal after success
+      setTimeout(() => onClose(), 1000);
+    } catch (error: any) {
+      setSnackbar({
+        open: true,
+        message: error?.data?.message || 'Nie udało się zaktualizować projektu',
+        severity: 'error',
+      });
+    }
+  };
+
+  // Check if metadata was changed
+  const hasMetadataChanges = () => {
+    if (!project) return false;
+    return (
+      editedName !== (project.custom_project_name || project.project_name) ||
+      editedDescription !== (project.description || '') ||
+      editedKeywords !== (project.keywords || '') ||
+      editedCategory !== (project.categories || '')
+    );
   };
 
   if (!project) return null;
@@ -291,98 +273,111 @@ export function ProjectSettingsDialog({ open, project, onClose }: ProjectSetting
             </Alert>
           )}
 
-          {/* Project Info */}
+          {/* Project Info & Publication Status */}
           <Box sx={{ mb: 3 }}>
-            <Typography variant="h6" gutterBottom fontWeight="600">
-              {project.custom_project_name || project.project_name}
-            </Typography>
-            <Typography variant="body2" color="text.secondary" gutterBottom>
-              {project.description || 'Brak opisu'}
-            </Typography>
-            <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
-              <Chip
-                icon={isPublished ? <PublicIcon /> : <LockIcon />}
-                label={isPublished ? 'Publiczny' : 'Prywatny'}
-                size="small"
-                color={isPublished ? 'success' : 'default'}
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+              <Box sx={{ flex: 1 }}>
+                <Typography variant="h6" gutterBottom fontWeight="600">
+                  {project.custom_project_name || project.project_name}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {project.description || 'Brak opisu'}
+                </Typography>
+              </Box>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={isPublished}
+                    onChange={handleTogglePublish}
+                    disabled={isTogglingPublish}
+                    color="success"
+                  />
+                }
+                label={
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    {isPublished ? <PublicIcon fontSize="small" color="success" /> : <LockIcon fontSize="small" />}
+                    <Typography variant="body2" fontWeight="600">
+                      {isPublished ? 'Publiczny' : 'Prywatny'}
+                    </Typography>
+                  </Box>
+                }
+                labelPlacement="start"
+                sx={{ ml: 2, mr: 0 }}
               />
-              {project.qgs_exists && (
-                <Chip label="Plik QGS" size="small" variant="outlined" />
-              )}
             </Box>
+            {project.qgs_exists && (
+              <Chip label="Plik QGS" size="small" variant="outlined" />
+            )}
           </Box>
 
           <Divider sx={{ my: 3 }} />
 
-          {/* Publication Status */}
+          {/* Project Metadata Editing */}
           <Box sx={{ mb: 3 }}>
             <Typography variant="subtitle1" fontWeight="600" gutterBottom>
-              Status publikacji
+              Informacje o projekcie
             </Typography>
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={isPublished}
-                  onChange={handleTogglePublish}
-                  disabled={isTogglingPublish}
-                />
-              }
-              label={isPublished ? 'Projekt jest publiczny' : 'Projekt jest prywatny'}
-            />
-            <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1, ml: 4 }}>
-              {isPublished
-                ? 'Projekt jest widoczny dla wszystkich w zakładce "Projekty publiczne"'
-                : 'Projekt jest widoczny tylko dla Ciebie'}
-            </Typography>
-          </Box>
-
-          <Divider sx={{ my: 3 }} />
-
-          {/* Domain Settings */}
-          <Box sx={{ mb: 3 }}>
-            <Typography variant="subtitle1" fontWeight="600" gutterBottom>
-              Domena projektu
-            </Typography>
-            <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 2 }}>
-              Adres URL: <strong>{newSubdomain}.localhost</strong>
-            </Typography>
-            <TextField
-              fullWidth
-              size="small"
-              label="Subdomena"
-              value={newSubdomain}
-              onChange={(e) => setNewSubdomain(e.target.value.toLowerCase())}
-              placeholder="moj-projekt"
-              helperText={subdomainValidation.message}
-              error={subdomainValidation.available === false}
-              InputProps={{
-                endAdornment: subdomainValidation.checking ? (
-                  <CircularProgress size={20} />
-                ) : subdomainValidation.available === true ? (
-                  <CheckCircleIcon color="success" />
-                ) : subdomainValidation.available === false ? (
-                  <ErrorIcon color="error" />
-                ) : null,
-              }}
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  bgcolor: 'white',
-                },
-              }}
-            />
-            <Button
-              variant="contained"
-              size="small"
-              onClick={handleChangeDomain}
-              disabled={
-                !subdomainValidation.available ||
-                newSubdomain === project.domain_name ||
-                isChangingDomain
-              }
-              sx={{ mt: 2 }}
-            >
-              {isChangingDomain ? 'Zapisywanie...' : 'Zmień domenę'}
-            </Button>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
+              <TextField
+                fullWidth
+                size="small"
+                label="Nazwa projektu"
+                value={editedName}
+                onChange={(e) => setEditedName(e.target.value)}
+                placeholder="Mój projekt"
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    bgcolor: 'white',
+                  },
+                }}
+              />
+              <TextField
+                fullWidth
+                size="small"
+                label="Opis"
+                value={editedDescription}
+                onChange={(e) => setEditedDescription(e.target.value)}
+                placeholder="Opis projektu..."
+                multiline
+                rows={3}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    bgcolor: 'white',
+                  },
+                }}
+              />
+              <TextField
+                fullWidth
+                size="small"
+                label="Słowa kluczowe"
+                value={editedKeywords}
+                onChange={(e) => setEditedKeywords(e.target.value)}
+                placeholder="słowo1, słowo2, słowo3"
+                helperText="Oddziel słowa przecinkami"
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    bgcolor: 'white',
+                  },
+                }}
+              />
+              <FormControl fullWidth size="small">
+                <InputLabel>Kategoria</InputLabel>
+                <Select
+                  value={editedCategory}
+                  onChange={(e) => setEditedCategory(e.target.value)}
+                  label="Kategoria"
+                  sx={{
+                    bgcolor: 'white',
+                  }}
+                >
+                  {CATEGORIES.map((cat) => (
+                    <MenuItem key={cat} value={cat}>
+                      {cat}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Box>
           </Box>
 
           <Divider sx={{ my: 3 }} />
@@ -429,17 +424,34 @@ export function ProjectSettingsDialog({ open, project, onClose }: ProjectSetting
             pb: 3,
             pt: 0,
             borderTop: `1px solid ${theme.palette.modal.border}`,
+            gap: 2,
+            justifyContent: 'flex-end',
           }}
         >
           <Button
             onClick={onClose}
+            variant="outlined"
+            sx={{
+              borderColor: '#d1d5db',
+              color: theme.palette.text.primary,
+              '&:hover': {
+                borderColor: theme.palette.text.primary,
+                bgcolor: 'rgba(0, 0, 0, 0.04)',
+              },
+            }}
+          >
+            Zamknij
+          </Button>
+          <Button
+            onClick={handleUpdateMetadata}
             variant="contained"
+            disabled={!hasMetadataChanges() || isUpdatingProject}
             sx={{
               bgcolor: theme.palette.primary.main,
               '&:hover': { bgcolor: theme.palette.primary.dark },
             }}
           >
-            Zamknij
+            {isUpdatingProject ? 'Zapisywanie...' : 'Zapisz zmiany'}
           </Button>
         </DialogActions>
       </Dialog>

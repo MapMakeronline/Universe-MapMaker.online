@@ -3,14 +3,12 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import DashboardLayout from './DashboardLayout';
-// NEW: Import from centralized backend/dashboard structure
-import { OwnProjects } from '@/backend/dashboard';
-import { PublicProjects } from '@/backend/dashboard';
+// NEW: Import from consolidated features/dashboard/components structure
+import { OwnProjects, PublicProjects, UserSettings } from '@/features/dashboard/components';
 // OLD: Keep other components from old location (will migrate later)
 import UserProfile from './UserProfile';
-import UserSettings from './UserSettings';
 import Contact from './Contact';
-import AdminPanel from './AdminPanel';
+// import AdminPanel from './AdminPanel'; // TODO: Migrate AdminPanel to @/backend (uses old adminApi)
 
 export default function Dashboard() {
   const searchParams = useSearchParams();
@@ -40,7 +38,8 @@ export default function Dashboard() {
       case 'contact':
         return <Contact />;
       case 'admin':
-        return <AdminPanel />;
+        // TODO: Migrate AdminPanel to @/backend
+        return <UserProfile />; // Temporary redirect to profile
       default:
         return <OwnProjects />;
     }

@@ -19,21 +19,25 @@ import type {
 export const usersApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     /**
-     * GET /api/user/profile
+     * GET /dashboard/settings/profile/
      * Get user profile
      */
     getUserProfile: builder.query<User, void>({
-      query: () => '/api/user/profile',
+      query: () => '/dashboard/settings/profile/',
+      transformResponse: (response: any) => {
+        // Backend może zwrócić { data: user } lub bezpośrednio user
+        return response.data || response;
+      },
       providesTags: ['Users'],
     }),
 
     /**
-     * PUT /api/user/profile
+     * PUT /dashboard/settings/profile/
      * Update user profile
      */
     updateProfile: builder.mutation<ApiResponse<User>, UpdateProfileData>({
       query: (data) => ({
-        url: '/api/user/profile',
+        url: '/dashboard/settings/profile/',
         method: 'PUT',
         body: data,
       }),
@@ -52,13 +56,13 @@ export const usersApi = baseApi.injectEndpoints({
     }),
 
     /**
-     * POST /api/user/change-password
+     * PUT /dashboard/settings/password/
      * Change password
      */
     changePassword: builder.mutation<ApiResponse<null>, ChangePasswordData>({
       query: (data) => ({
-        url: '/api/user/change-password',
-        method: 'POST',
+        url: '/dashboard/settings/password/',
+        method: 'PUT',
         body: data,
       }),
     }),
