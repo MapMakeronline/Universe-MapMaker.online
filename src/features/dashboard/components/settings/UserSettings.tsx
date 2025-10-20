@@ -230,7 +230,13 @@ export default function UserSettings() {
           setSaveError('Hasło nie spełnia wymagań bezpieczeństwa. Użyj silnego hasła (min. 8 znaków, niepodobne do loginu).');
         }
       } else if (err?.data?.message) {
-        setSaveError(err.data.message);
+        // Backend zwrócił JSON z message
+        const message = err.data.message;
+        if (message.includes('incorrect') || message.includes('nieprawidłowe')) {
+          setSaveError('Obecne hasło jest nieprawidłowe.');
+        } else {
+          setSaveError(message);
+        }
       } else if (err?.status === 400) {
         setSaveError('Obecne hasło jest nieprawidłowe lub nowe hasło nie spełnia wymagań.');
       } else {
