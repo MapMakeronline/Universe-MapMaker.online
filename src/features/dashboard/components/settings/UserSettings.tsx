@@ -209,7 +209,15 @@ export default function UserSettings() {
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err: any) {
       console.error('Failed to change password:', err);
-      setSaveError(err?.data?.message || 'Nie udało się zmienić hasła');
+
+      // Backend zwraca HTML error page (500) zamiast JSON
+      if (err?.status === 'PARSING_ERROR' || err?.originalStatus === 500) {
+        setSaveError('Błąd serwera (500). Endpoint zmiany hasła nie działa poprawnie na backendzie. Skontaktuj się z administratorem.');
+      } else if (err?.data?.message) {
+        setSaveError(err.data.message);
+      } else {
+        setSaveError('Nie udało się zmienić hasła. Sprawdź czy obecne hasło jest poprawne.');
+      }
     }
   };
 
