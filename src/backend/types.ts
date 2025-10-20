@@ -301,6 +301,11 @@ export interface ChangePasswordData {
   new_password: string;
 }
 
+export interface UpdateProfileResponse {
+  message: string;
+  user: User;
+}
+
 // ============================================================================
 // API Response Wrappers
 // ============================================================================

@@ -25,8 +25,7 @@ import Notifications from '@mui/icons-material/Notifications';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import Save from '@mui/icons-material/Save';
-import { useAppDispatch, useAppSelector } from '@/redux/hooks';
-import { updateUser } from '@/redux/slices/authSlice';
+import { useAppSelector } from '@/redux/hooks';
 import { useUpdateProfileMutation, useChangePasswordMutation } from '@/backend/users';
 import LoginRequiredGuard from '@/features/autoryzacja/LoginRequiredGuard';
 
@@ -53,7 +52,6 @@ function TabPanel(props: TabPanelProps) {
 }
 
 export default function UserSettings() {
-  const dispatch = useAppDispatch();
   const { user, isAuthenticated } = useAppSelector((state) => state.auth);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -154,18 +152,11 @@ export default function UserSettings() {
         company_name: generalSettings.company_name,
       }).unwrap();
 
-      console.log('🔵 PUT response:', response);
+      console.log('✅ Profile updated successfully:', response);
+      console.log('✅ Redux and localStorage auto-updated by RTK Query');
 
-      // Update Redux with new user data
-      // Backend returns: { message: '...', user: {...} }
-      if (response.user) {
-        console.log('✅ Updating Redux with:', response.user);
-        dispatch(updateUser(response.user));
-      } else if (response.data) {
-        // Fallback if wrapped in { data: { user: ... } }
-        console.log('✅ Updating Redux with:', response.data);
-        dispatch(updateUser(response.data));
-      }
+      // RTK Query onQueryStarted already updated Redux and localStorage
+      // No need to manually dispatch updateUser here!
 
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);

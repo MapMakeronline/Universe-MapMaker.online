@@ -12,6 +12,7 @@ import { baseApi } from '../client/base-api';
 import type {
   User,
   UpdateProfileData,
+  UpdateProfileResponse,
   ChangePasswordData,
   ApiResponse,
 } from '../types';
@@ -34,20 +35,28 @@ export const usersApi = baseApi.injectEndpoints({
     /**
      * PUT /dashboard/settings/profile/
      * Update user profile
+     *
+     * Backend returns: { message: "...", user: {...} }
      */
-    updateProfile: builder.mutation<ApiResponse<User>, UpdateProfileData>({
+    updateProfile: builder.mutation<UpdateProfileResponse, UpdateProfileData>({
       query: (data) => ({
         url: '/dashboard/settings/profile/',
         method: 'PUT',
         body: data,
       }),
       invalidatesTags: ['Users', 'Auth'],
-      async onQueryStarted(arg, { queryFulfilled }) {
+      async onQueryStarted(arg, { dispatch, queryFulfilled }) {
         try {
           const { data } = await queryFulfilled;
-          if (data.data) {
-            // Update localStorage user data
-            localStorage.setItem('user', JSON.stringify(data.data));
+          // Backend returns { message: "...", user: {...} }
+          if (data.user) {
+            // Update localStorage with new user data
+            localStorage.setItem('user', JSON.stringify(data.user));
+
+            // CRITICAL: Update Redux authSlice to sync state across app
+            // This ensures UI updates immediately without needing to logout/login
+            const { updateUser } = await import('@/redux/slices/authSlice');
+            dispatch(updateUser(data.user));
           }
         } catch (err) {
           console.error('Profile update failed:', err);
