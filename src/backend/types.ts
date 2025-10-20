@@ -306,6 +306,10 @@ export interface UpdateProfileResponse {
   user: User;
 }
 
+export interface ChangePasswordResponse {
+  message: string;
+}
+
 // ============================================================================
 // API Response Wrappers
 // ============================================================================

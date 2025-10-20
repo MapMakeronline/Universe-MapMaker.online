@@ -15,6 +15,7 @@ import type {
   UpdateProfileData,
   UpdateProfileResponse,
   ChangePasswordData,
+  ChangePasswordResponse,
   ApiResponse,
 } from '../types';
 
@@ -71,8 +72,10 @@ export const usersApi = baseApi.injectEndpoints({
     /**
      * PUT /dashboard/settings/password/
      * Change password
+     *
+     * Backend returns: { message: "Password updated successfully" }
      */
-    changePassword: builder.mutation<ApiResponse<null>, ChangePasswordData>({
+    changePassword: builder.mutation<ChangePasswordResponse, ChangePasswordData>({
       query: (data) => ({
         url: '/dashboard/settings/password/',
         method: 'PUT',
