@@ -6,7 +6,6 @@ import Typography from '@mui/material/Typography';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import Grid from '@mui/material/Grid';
-import Avatar from '@mui/material/Avatar';
 import Button from '@mui/material/Button';
 import LinearProgress from '@mui/material/LinearProgress';
 import Chip from '@mui/material/Chip';
@@ -31,6 +30,7 @@ import Schedule from '@mui/icons-material/Schedule';
 import LoginRequiredGuard from '@/features/autoryzacja/LoginRequiredGuard';
 import { useAppSelector } from '@/redux/hooks';
 import type { User as UserProfileData } from '@/backend/types';
+import UserAvatar from '@/common/components/UserAvatar';
 
 interface UserStats {
   totalProjects: number;
@@ -212,17 +212,16 @@ export default function UserProfile() {
               <Card sx={{ height: 'fit-content', border: '1px solid', borderColor: 'divider' }}>
                 <CardContent sx={{ p: 3 }}>
                   <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 3, textAlign: 'center' }}>
-                    <Avatar
+                    <UserAvatar
+                      user={user}
+                      isAuthenticated={isAuthenticated}
+                      size={100}
                       sx={{
-                        width: 100,
-                        height: 100,
-                        bgcolor: 'primary.main',
-                        fontSize: '2.5rem',
                         mb: 2,
+                        fontSize: '2.5rem',
                       }}
-                    >
-                      {getUserInitial()}
-                    </Avatar>
+                      showIcon={true}
+                    />
                     <Typography variant="h5" fontWeight="700" gutterBottom>
                       {getDisplayName()}
                     </Typography>

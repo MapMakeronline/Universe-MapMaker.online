@@ -7,8 +7,8 @@ import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import CardMedia from '@mui/material/CardMedia';
 import Chip from '@mui/material/Chip';
-import Avatar from '@mui/material/Avatar';
 import TextField from '@mui/material/TextField';
+import UserAvatar from '@/common/components/UserAvatar';
 import InputAdornment from '@mui/material/InputAdornment';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
@@ -152,11 +152,15 @@ function PublicProjectCard({ project }: { project: Project }) {
         )}
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 2 }}>
-          <Avatar sx={{ width: 24, height: 24, bgcolor: 'primary.main', fontSize: '0.75rem' }}>
-            {(project.owner?.username || 'U').charAt(0).toUpperCase()}
-          </Avatar>
+          <UserAvatar
+            user={project.user || null}
+            isAuthenticated={!!project.user}
+            size={24}
+            sx={{ fontSize: '0.75rem' }}
+            showIcon={true}
+          />
           <Typography variant="body2" color="text.secondary">
-            {project.owner?.username || 'Nieznany'}
+            {project.user?.username || project.owner?.username || 'Nieznany'}
           </Typography>
         </Box>
 

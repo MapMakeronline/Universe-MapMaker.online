@@ -121,7 +121,9 @@
       "Bash(cmd /c taskkill /PID 16760 /F)",
       "Bash(set PORT=3000)",
       "Bash(cmd /c taskkill /F /IM node.exe)",
-      "Bash(cmd /c \"rmdir /S /Q .next\")"
+      "Bash(cmd /c \"rmdir /S /Q .next\")",
+      "Bash(cmd /c timeout /t 12)",
+      "Bash(cmd /c timeout /t 5)"
     ],
     "deny": [],
     "ask": []

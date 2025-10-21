@@ -12,9 +12,9 @@ import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import Divider from '@mui/material/Divider';
 import Typography from '@mui/material/Typography';
-import Avatar from '@mui/material/Avatar';
 import { useTheme } from '@mui/material/styles';
 import { useMediaQuery } from '@mui/material';
+import UserAvatar from '@/common/components/UserAvatar';
 
 // Coral/Red Icons (Primary Color)
 import HomeIcon from '@mui/icons-material/Home';
@@ -298,23 +298,29 @@ const RightFABToolbar: React.FC = () => {
             top: TOP_START,
             right: RIGHT_MARGIN,
             zIndex: 1200,
-            bgcolor: isAuthenticated ? '#10b981' : '#f97316',
-            color: 'white',
+            bgcolor: 'transparent',
+            boxShadow: 2,
             width: avatarSize,
             height: avatarSize,
             minWidth: avatarSize,
             minHeight: avatarSize,
+            padding: 0,
             transition: 'all 0.3s ease',
             '&:hover': {
-              bgcolor: isAuthenticated ? '#059669' : '#ea580c',
               transform: 'scale(1.05)',
+              boxShadow: 4,
             },
             '&:active': {
               transform: 'scale(0.95)',
             },
           }}
         >
-          <AccountCircle sx={{ fontSize: isMobile ? 24 : 32 }} />
+          <UserAvatar
+            user={user}
+            isAuthenticated={isAuthenticated}
+            size={avatarSize}
+            showIcon={true}
+          />
         </Fab>
       </Tooltip>
 
@@ -453,7 +459,12 @@ const RightFABToolbar: React.FC = () => {
         {isAuthenticated && user ? [
             <Box key="header" sx={{ px: 2, py: 1.5, borderBottom: 1, borderColor: 'divider' }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                <AccountCircle sx={{ fontSize: 40, color: '#10b981' }} />
+                <UserAvatar
+                  user={user}
+                  isAuthenticated={true}
+                  size={40}
+                  showIcon={true}
+                />
                 <Box>
                   <Typography variant="subtitle2" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
                     {user.first_name && user.last_name ? `${user.first_name} ${user.last_name}` : user.username}
@@ -492,7 +503,12 @@ const RightFABToolbar: React.FC = () => {
         ] : [
             <Box key="header" sx={{ px: 2, py: 1.5, borderBottom: 1, borderColor: 'divider' }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                <AccountCircle sx={{ fontSize: 40, color: '#f97316' }} />
+                <UserAvatar
+                  user={null}
+                  isAuthenticated={false}
+                  size={40}
+                  showIcon={true}
+                />
                 <Box>
                   <Typography variant="subtitle2" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
                     Gość

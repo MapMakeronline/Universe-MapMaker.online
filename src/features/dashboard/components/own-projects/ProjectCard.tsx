@@ -14,9 +14,9 @@ import MenuItem from '@mui/material/MenuItem';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import { alpha } from '@mui/material/styles';
-import Avatar from '@mui/material/Avatar';
 import { useTheme } from '@mui/material/styles';
 import MoreVert from '@mui/icons-material/MoreVert';
+import UserAvatar from '@/common/components/UserAvatar';
 import Public from '@mui/icons-material/Public';
 import Lock from '@mui/icons-material/Lock';
 import ViewModule from '@mui/icons-material/ViewModule';
@@ -27,6 +27,7 @@ import Language from '@mui/icons-material/Language';
 import Map from '@mui/icons-material/Map';
 import type { Project } from '@/backend';
 import { getThumbnailUrl } from '@/features/dashboard/utils';
+import { useAppSelector } from '@/redux/hooks';
 
 interface ProjectCardProps {
   project: Project;
@@ -40,6 +41,9 @@ interface ProjectCardProps {
 export function ProjectCard({ project, onOpen, onDelete, onTogglePublish, onSettings, onOpenInMap }: ProjectCardProps) {
   const theme = useTheme();
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
+
+  // Get current user from Redux (for avatar display)
+  const { user, isAuthenticated } = useAppSelector((state) => state.auth);
 
   // Format timestamp: UTC → local time
   const formatLocalDateTime = (utcString: string | undefined) => {
@@ -189,9 +193,13 @@ export function ProjectCard({ project, onOpen, onDelete, onTogglePublish, onSett
           )}
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 2 }}>
-            <Avatar sx={{ width: 24, height: 24, bgcolor: 'primary.main', fontSize: '0.75rem' }}>
-              M
-            </Avatar>
+            <UserAvatar
+              user={user}
+              isAuthenticated={isAuthenticated}
+              size={24}
+              sx={{ fontSize: '0.75rem' }}
+              showIcon={true}
+            />
             <Typography variant="body2" color="text.secondary">
               Ty
             </Typography>
