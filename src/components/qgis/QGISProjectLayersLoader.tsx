@@ -66,7 +66,8 @@ export function QGISProjectLayersLoader({ projectName, projectData }: QGISProjec
     const layersAdded = addProjectLayers(map, layers, projectName);
 
     mapLogger.log(`✅ Successfully loaded ${layersAdded} WMS layers from QGIS Server`);
-  }, [mapRef, isMapLoaded, projectData, projectName]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMapLoaded, projectData, projectName]); // FIXED: Removed mapRef from dependencies (causes re-render loops)
 
   return null; // No UI rendering needed
 }

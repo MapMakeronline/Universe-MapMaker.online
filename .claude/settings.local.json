@@ -123,7 +123,9 @@
       "Bash(cmd /c taskkill /F /IM node.exe)",
       "Bash(cmd /c \"rmdir /S /Q .next\")",
       "Bash(cmd /c timeout /t 12)",
-      "Bash(cmd /c timeout /t 5)"
+      "Bash(cmd /c timeout /t 5)",
+      "Bash(cmd /c screenshot.bat http://localhost:3000/dashboard dashboard-sorting-check.png)",
+      "Bash(cmd /c \"taskkill //F //IM node.exe\")"
     ],
     "deny": [],
     "ask": []

@@ -13,7 +13,7 @@ import DrawTools from '../narzedzia/DrawTools';
 import MeasurementTools from '../narzedzia/MeasurementTools';
 import IdentifyTool from './IdentifyTool';
 import Buildings3D from './Buildings3D';
-import FeatureAttributesModal from '@/features/warstwy/modale/FeatureAttributesModal';
+import FeatureAttributesModal from '@/features/layers/modals/FeatureAttributesModal';
 import RightFABToolbar from '@/features/narzedzia/RightFABToolbar';
 
 // Import CSS dla Mapbox GL

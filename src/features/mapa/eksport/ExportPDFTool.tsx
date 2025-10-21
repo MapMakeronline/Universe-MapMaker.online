@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { useMap } from 'react-map-gl';
 import { useAppSelector } from '@/redux/hooks';
 import { exportMapToPDF } from '@/mapbox/pdfExport';
-import type { ExportConfig } from '@/features/warstwy/modale/ExportPDFModal';
+import type { ExportConfig } from '@/features/layers/modals/ExportPDFModal';
 
 interface ExportPDFToolProps {
   config: ExportConfig | null;

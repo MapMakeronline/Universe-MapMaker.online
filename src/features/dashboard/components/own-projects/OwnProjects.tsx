@@ -8,14 +8,13 @@ import React, { useState } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
-import Snackbar from '@mui/material/Snackbar';
-import Alert from '@mui/material/Alert';
 import { useMediaQuery } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import Add from '@mui/icons-material/Add';
 import LoginIcon from '@mui/icons-material/Login';
 import { useRouter } from 'next/navigation';
-import { useAppSelector } from '@/redux/hooks';
+import { useAppSelector, useAppDispatch } from '@/redux/hooks';
+import { showSuccess, showError } from '@/redux/slices/notificationSlice';
 
 // NEW: Import from centralized backend
 import {
@@ -24,6 +23,7 @@ import {
   useImportQGSMutation,
   useDeleteProjectMutation,
   useTogglePublishMutation,
+  getProjectCreatedAt,
 } from '@/backend';
 import type { Project, CreateProjectData } from '@/backend';
 
@@ -38,6 +38,7 @@ export default function OwnProjects() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const router = useRouter();
+  const dispatch = useAppDispatch();
 
   // Auth state
   const { isAuthenticated } = useAppSelector((state) => state.auth);
@@ -67,18 +68,14 @@ export default function OwnProjects() {
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const [projectForSettings, setProjectForSettings] = useState<Project | null>(null);
-  const [snackbar, setSnackbar] = useState<{
-    open: boolean;
-    message: string;
-    severity: 'success' | 'error' | 'info';
-  }>({ open: false, message: '', severity: 'info' });
 
   // Extract and sort projects array (newest first)
   const projects = projectsData?.list_of_projects
     ? [...projectsData.list_of_projects].sort((a, b) => {
-        // Sort by created_at descending (newest first)
-        const dateA = new Date(a.created_at || 0).getTime();
-        const dateB = new Date(b.created_at || 0).getTime();
+        // Sort by project_date + project_time descending (newest first)
+        // Backend returns: project_date="15-01-25", project_time="14:30"
+        const dateA = new Date(getProjectCreatedAt(a)).getTime();
+        const dateB = new Date(getProjectCreatedAt(b)).getTime();
         return dateB - dateA;
       })
     : [];
@@ -91,21 +88,15 @@ export default function OwnProjects() {
   const handleProjectCreated = async (data: CreateProjectData) => {
     try {
       await createProject(data).unwrap();
-      setSnackbar({
-        open: true,
-        message: 'Projekt został utworzony pomyślnie!',
-        severity: 'success',
-      });
+      dispatch(showSuccess('Projekt został utworzony pomyślnie!'));
       setCreateDialogOpen(false);
 
       // Manual refetch to ensure UI updates
       refetch();
     } catch (error: any) {
-      setSnackbar({
-        open: true,
-        message: error?.data?.message || 'Nie udało się utworzyć projektu',
-        severity: 'error',
-      });
+      // Use backend error message if available
+      const errorMessage = error?.data?.message || 'Nie udało się utworzyć projektu';
+      dispatch(showError(errorMessage));
     }
   };
 
@@ -142,11 +133,7 @@ export default function OwnProjects() {
       }).unwrap();
       console.log('✅ STEP 4: QGS import completed:', importResult);
 
-      setSnackbar({
-        open: true,
-        message: `Projekt "${projectName}" został utworzony i zaimportowany pomyślnie!`,
-        severity: 'success',
-      });
+      dispatch(showSuccess(`Projekt "${projectName}" został utworzony i zaimportowany pomyślnie!`));
       setCreateDialogOpen(false);
 
       // Manual refetch to ensure UI updates
@@ -168,11 +155,7 @@ export default function OwnProjects() {
     try {
       // Hard delete - permanently removes project (matches modal "nieodwracalna" text)
       await deleteProject({ project: projectToDelete.project_name, remove_permanently: true }).unwrap();
-      setSnackbar({
-        open: true,
-        message: 'Projekt został usunięty',
-        severity: 'success',
-      });
+      dispatch(showSuccess('Projekt został usunięty'));
       setDeleteDialogOpen(false);
       setProjectToDelete(null);
 
@@ -180,11 +163,8 @@ export default function OwnProjects() {
       // This is needed because we have two API instances in Redux store
       refetch();
     } catch (error: any) {
-      setSnackbar({
-        open: true,
-        message: error?.data?.message || 'Nie udało się usunąć projektu',
-        severity: 'error',
-      });
+      const errorMessage = error?.data?.message || 'Nie udało się usunąć projektu';
+      dispatch(showError(errorMessage));
     }
   };
 
@@ -194,20 +174,14 @@ export default function OwnProjects() {
         project: project.project_name,
         publish: !project.published,
       }).unwrap();
-      setSnackbar({
-        open: true,
-        message: project.published
-          ? 'Projekt został ukryty'
-          : 'Projekt został opublikowany!',
-        severity: 'success',
-      });
+      const message = project.published
+        ? 'Projekt został ukryty'
+        : 'Projekt został opublikowany!';
+      dispatch(showSuccess(message));
       // Optimistic update already applied, cache updated automatically
     } catch (error: any) {
-      setSnackbar({
-        open: true,
-        message: error?.data?.message || 'Nie udało się zmienić statusu publikacji',
-        severity: 'error',
-      });
+      const errorMessage = error?.data?.message || 'Nie udało się zmienić statusu publikacji';
+      dispatch(showError(errorMessage));
     }
   };
 
@@ -388,22 +362,6 @@ export default function OwnProjects() {
         }}
         project={projectForSettings}
       />
-
-      {/* Snackbar for notifications */}
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={6000}
-        onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert
-          onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
-          severity={snackbar.severity}
-          sx={{ width: '100%' }}
-        >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
     </Box>
   );
 }

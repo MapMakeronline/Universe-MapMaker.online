@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Box, Alert, Snackbar, Backdrop } from '@mui/material';
+import { Box } from '@mui/material';
 import { useSearchParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 
@@ -25,7 +25,7 @@ const MapContainer = dynamic(
 );
 
 const LeftPanel = dynamic(
-  () => import('@/features/warstwy/komponenty/LeftPanel'),
+  () => import('@/features/layers/components/LeftPanel'),
   { ssr: false }
 );
 
@@ -34,10 +34,11 @@ const LayersFAB = dynamic(
   { ssr: false }
 );
 
-const QGISProjectLoader = dynamic(
-  () => import('@/src/components/qgis/QGISProjectLoader').then(mod => ({ default: mod.QGISProjectLoader })),
-  { ssr: false }
-);
+// REMOVED: QGISProjectLoader (duplicated layers with different IDs)
+// const QGISProjectLoader = dynamic(
+//   () => import('@/src/components/qgis/QGISProjectLoader').then(mod => ({ default: mod.QGISProjectLoader })),
+//   { ssr: false }
+// );
 
 const QGISProjectLayersLoader = dynamic(
   () => import('@/src/components/qgis/QGISProjectLayersLoader').then(mod => ({ default: mod.QGISProjectLayersLoader })),
@@ -53,6 +54,7 @@ import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import { setCurrentProject } from '@/redux/slices/projectsSlice';
 import { loadLayers, resetLayers } from '@/redux/slices/layersSlice';
 import { setViewState, setMapStyle } from '@/redux/slices/mapSlice';
+import { showError } from '@/redux/slices/notificationSlice';
 import { useGetProjectsQuery, useGetProjectDataQuery } from '@/backend/projects';
 import { MAP_STYLES } from '@/mapbox/config';
 import { transformExtent, transformExtentFromWebMercator, detectCRS, isValidWGS84 } from '@/mapbox/coordinates';
@@ -237,6 +239,22 @@ export default function MapPage() {
     }));
   }, [projectData, isLoading, isOwner, dispatch]);
 
+  // Handle API errors with centralized notification system
+  useEffect(() => {
+    if (isError && error) {
+      // Only show notification for 404 (project not found)
+      // Skip 400 errors - these are usually empty/damaged projects with technical backend errors
+      // that don't help the user (e.g., PyQGIS threading issues, QObject threading errors)
+      if ('status' in error && error.status === 404) {
+        dispatch(showError(`Projekt "${projectName}" nie został znaleziony`));
+      } else {
+        // For other errors (400, 500, etc.), just log to console
+        // User will see empty map which is correct for empty projects
+        console.warn('⚠️ Project loading error (notification skipped):', error);
+      }
+    }
+  }, [isError, error, projectName, dispatch]);
+
   if (!projectName) {
     return null;
   }
@@ -262,8 +280,8 @@ export default function MapPage() {
             </Box>
           )}
           <MapContainer projectName={projectName || undefined}>
-            {/* Load QGIS project metadata (extent, layers tree) */}
-            {projectName && <QGISProjectLoader projectName={projectName} />}
+            {/* DISABLED: QGISProjectLoader duplicates layers (uses different layer IDs) */}
+            {/* {projectName && <QGISProjectLoader projectName={projectName} />} */}
             {/* Load ALL WMS layers at once (matches old project pattern) */}
             {/* IMPORTANT: This is the ONLY place layers are added to map! */}
             {projectName && projectData && (
@@ -285,12 +303,6 @@ export default function MapPage() {
         layersCount={layersCount}
         onToggle={handleToggleLeftPanel}
       />
-
-      <Snackbar open={isError} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }} sx={{ bottom: 24 }}>
-        <Alert severity="warning" variant="filled" sx={{ width: '100%', maxWidth: 600 }}>
-          {error && 'status' in error && error.status === 404 ? `Projekt "${projectName}" nie został znaleziony` : error && 'status' in error && error.status === 400 ? `Nie można wczytać danych projektu "${projectName}". Projekt może być pusty lub uszkodzony.` : `Błąd podczas ładowania projektu "${projectName}"`}
-        </Alert>
-      </Snackbar>
     </>
   );
 }

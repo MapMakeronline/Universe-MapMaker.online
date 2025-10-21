@@ -22,7 +22,7 @@ import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import LockIcon from '@mui/icons-material/Lock';
 import SettingsIcon from '@mui/icons-material/Settings';
 import { BasemapSelector } from './BasemapSelector';
-import { PublishServicesModal } from '../modale/PublishServicesModal';
+import { PublishServicesModal } from '../modals/PublishServicesModal';
 // TODO: Add usePublishWMSWFSMutation to @/backend/projects
 // import { usePublishWMSWFSMutation } from '@/backend/projects';
 import { useAppDispatch } from '@/redux/hooks';

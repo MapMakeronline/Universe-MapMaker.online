@@ -23,8 +23,6 @@ import IconButton from '@mui/material/IconButton';
 import Switch from '@mui/material/Switch';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Divider from '@mui/material/Divider';
-import CircularProgress from '@mui/material/CircularProgress';
-import Alert from '@mui/material/Alert';
 import Chip from '@mui/material/Chip';
 import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
@@ -35,6 +33,8 @@ import CloseIcon from '@mui/icons-material/Close';
 import DownloadIcon from '@mui/icons-material/Download';
 import PublicIcon from '@mui/icons-material/Public';
 import LockIcon from '@mui/icons-material/Lock';
+import { useAppDispatch } from '@/redux/hooks';
+import { showSuccess, showError } from '@/redux/slices/notificationSlice';
 import type { Project } from '@/backend';
 import {
   useTogglePublishMutation,
@@ -53,6 +53,7 @@ interface ProjectSettingsDialogProps {
 
 export function ProjectSettingsDialog({ open, project, onClose }: ProjectSettingsDialogProps) {
   const theme = useTheme();
+  const dispatch = useAppDispatch();
 
   // RTK Query mutations
   const [togglePublish, { isLoading: isTogglingPublish }] = useTogglePublishMutation();
@@ -61,11 +62,6 @@ export function ProjectSettingsDialog({ open, project, onClose }: ProjectSetting
 
   // Local state
   const [isPublished, setIsPublished] = useState(false);
-  const [snackbar, setSnackbar] = useState<{
-    open: boolean;
-    message: string;
-    severity: 'success' | 'error' | 'info';
-  }>({ open: false, message: '', severity: 'info' });
 
   // Project metadata editing
   const [editedName, setEditedName] = useState('');
@@ -102,21 +98,13 @@ export function ProjectSettingsDialog({ open, project, onClose }: ProjectSetting
 
       // If unwrap() succeeds, update local state
       setIsPublished(targetStatus);
-      setSnackbar({
-        open: true,
-        message: targetStatus ? 'Projekt opublikowany!' : 'Publikacja cofnięta',
-        severity: 'success',
-      });
+      dispatch(showSuccess(targetStatus ? 'Projekt opublikowany!' : 'Publikacja cofnięta'));
     } catch (error: any) {
       // Backend returns 500 error but operation might still succeed
       // Optimistically update UI and show success message
       // RTK Query will refetch and correct if needed
       setIsPublished(targetStatus);
-      setSnackbar({
-        open: true,
-        message: targetStatus ? 'Projekt opublikowany!' : 'Publikacja cofnięta',
-        severity: 'success',
-      });
+      dispatch(showSuccess(targetStatus ? 'Projekt opublikowany!' : 'Publikacja cofnięta'));
 
       console.warn('Publish API returned error but operation may have succeeded:', error);
     }
@@ -132,17 +120,10 @@ export function ProjectSettingsDialog({ open, project, onClose }: ProjectSetting
         project_type: 'qgs',
       }).unwrap();
 
-      setSnackbar({
-        open: true,
-        message: 'Plik QGS został pobrany',
-        severity: 'success',
-      });
+      dispatch(showSuccess('Plik QGS został pobrany'));
     } catch (error: any) {
-      setSnackbar({
-        open: true,
-        message: 'Nie udało się wyeksportować projektu',
-        severity: 'error',
-      });
+      const errorMessage = (error as any)?.data?.message || 'Nie udało się wyeksportować projektu';
+      dispatch(showError(errorMessage));
     }
   };
 
@@ -155,17 +136,10 @@ export function ProjectSettingsDialog({ open, project, onClose }: ProjectSetting
         project_type: 'qgz',
       }).unwrap();
 
-      setSnackbar({
-        open: true,
-        message: 'Plik QGZ został pobrany',
-        severity: 'success',
-      });
+      dispatch(showSuccess('Plik QGZ został pobrany'));
     } catch (error: any) {
-      setSnackbar({
-        open: true,
-        message: 'Nie udało się wyeksportować projektu',
-        severity: 'error',
-      });
+      const errorMessage = (error as any)?.data?.message || 'Nie udało się wyeksportować projektu';
+      dispatch(showError(errorMessage));
     }
   };
 
@@ -181,20 +155,13 @@ export function ProjectSettingsDialog({ open, project, onClose }: ProjectSetting
         category: editedCategory,
       }).unwrap();
 
-      setSnackbar({
-        open: true,
-        message: 'Projekt został zaktualizowany!',
-        severity: 'success',
-      });
+      dispatch(showSuccess('Projekt został zaktualizowany!'));
 
       // Auto-close modal after success
       setTimeout(() => onClose(), 1000);
     } catch (error: any) {
-      setSnackbar({
-        open: true,
-        message: error?.data?.message || 'Nie udało się zaktualizować projektu',
-        severity: 'error',
-      });
+      const errorMessage = error?.data?.message || 'Nie udało się zaktualizować projektu';
+      dispatch(showError(errorMessage));
     }
   };
 
@@ -263,16 +230,6 @@ export function ProjectSettingsDialog({ open, project, onClose }: ProjectSetting
             py: 3,
           }}
         >
-          {snackbar.open && (
-            <Alert
-              severity={snackbar.severity}
-              onClose={() => setSnackbar({ ...snackbar, open: false })}
-              sx={{ mb: 3 }}
-            >
-              {snackbar.message}
-            </Alert>
-          )}
-
           {/* Project Info & Publication Status */}
           <Box sx={{ mb: 3 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>

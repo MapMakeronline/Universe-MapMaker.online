@@ -7,15 +7,15 @@ import { Toolbar } from './Toolbar';
 import { SearchBar } from './SearchBar';
 import { LayerTree } from './LayerTree';
 import { PropertiesPanel } from './PropertiesPanel';
-import AddDatasetModal from '../modale/AddDatasetModal';
-import AddNationalLawModal from '../modale/AddNationalLawModal';
-import AddLayerModal from '../modale/AddLayerModal';
-import ImportLayerModal from '../modale/ImportLayerModal';
-import AddGroupModal from '../modale/AddGroupModal';
-import CreateConsultationModal from '../modale/CreateConsultationModal';
-import LayerManagerModal from '../modale/LayerManagerModal';
+import AddDatasetModal from '../modals/AddDatasetModal';
+import AddNationalLawModal from '../modals/AddNationalLawModal';
+import AddLayerModal from '../modals/AddLayerModal';
+import ImportLayerModal from '../modals/ImportLayerModal';
+import AddGroupModal from '../modals/AddGroupModal';
+import CreateConsultationModal from '../modals/CreateConsultationModal';
+import LayerManagerModal from '../modals/LayerManagerModal';
 import WypisConfigModal from '../../mapa/komponenty/WypisConfigModal';
-import EditLayerStyleModal from '../modale/EditLayerStyleModal';
+import EditLayerStyleModal from '../modals/EditLayerStyleModal';
 import { useResizable, useDragDrop } from '@/hooks/index';
 import { useAppSelector, useAppDispatch } from '@/redux/hooks';
 import { LayerNode } from '@/types-app/layers';
@@ -29,21 +29,16 @@ import {
   moveLayer
 } from '@/redux/slices/layersSlice';
 import { useChangeLayersOrderMutation, useGetProjectDataQuery, projectsApi } from '@/backend/projects';
-// TODO: Migrate to @/backend/layers when layersApi is implemented
-// import {
-//   useSetLayerVisibilityMutation,
-//   useAddGeoJsonLayerMutation,
-//   useAddShapefileLayerMutation,
-//   useAddGMLLayerMutation,
-//   useDeleteLayerMutation,
-// } from '@/redux/api/layersApi';
+import {
+  useAddGeoJsonLayerMutation,
+  useAddShpLayerMutation,
+  useAddGmlLayerMutation,
+  useAddRasterLayerMutation,
+  useSetLayerVisibilityMutation,
+} from '@/backend/layers';
 import { showSuccess, showError, showInfo } from '@/redux/slices/notificationSlice';
 
-// Temporary mock hooks for layers API
-const useSetLayerVisibilityMutation = () => [async () => {}, { isLoading: false }] as any;
-const useAddGeoJsonLayerMutation = () => [async () => {}, { isLoading: false }] as any;
-const useAddShapefileLayerMutation = () => [async () => {}, { isLoading: false }] as any;
-const useAddGMLLayerMutation = () => [async () => {}, { isLoading: false }] as any;
+// TODO: Implement delete layer operation in @/backend/layers
 const useDeleteLayerMutation = () => [async () => {}, { isLoading: false }] as any;
 
 // Types
@@ -91,8 +86,9 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
   const [changeLayersOrder] = useChangeLayersOrderMutation();
   const [setLayerVisibility] = useSetLayerVisibilityMutation();
   const [addGeoJsonLayer] = useAddGeoJsonLayerMutation();
-  const [addShapefileLayer] = useAddShapefileLayerMutation();
-  const [addGMLLayer] = useAddGMLLayerMutation();
+  const [addShpLayer] = useAddShpLayerMutation();
+  const [addGmlLayer] = useAddGmlLayerMutation();
+  const [addRasterLayer] = useAddRasterLayerMutation();
   const [deleteLayerFromBackend] = useDeleteLayerMutation();
 
   // Get current project name from URL
@@ -290,18 +286,24 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
       // 2. Sync with backend (async)
       try {
         await setLayerVisibility({
-          projectName,
-          layerName: layer.name,
-          visible: !previousVisibility,
+          project: projectName,
+          layer_id: id, // Use layer ID (not name)
+          checked: !previousVisibility, // Backend expects 'checked' (not 'visible')
         }).unwrap();
 
-        console.log('✅ Layer visibility synced to backend');
-      } catch (error) {
+        console.log('✅ Layer visibility synced to backend:', {
+          layer: layer.name,
+          id,
+          visible: !previousVisibility
+        });
+      } catch (error: any) {
         console.error('❌ Failed to sync layer visibility:', error);
 
         // 3. Rollback on error - revert Redux state
         dispatch(toggleLayerVisibility(id));
-        dispatch(showError(`Nie udało się zapisać widoczności warstwy "${layer.name}"`, 6000));
+
+        const errorMessage = error?.data?.message || error?.message || 'Nieznany błąd';
+        dispatch(showError(`Nie udało się zapisać widoczności: ${errorMessage}`, 6000));
       }
     }
   };
@@ -414,14 +416,20 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
             project: projectName,
             layerName: data.nazwaWarstwy,
             file: data.file?.name,
-            epsg: data.epsg,
           });
 
+          const parentGeoJson = data.nazwaGrupy === 'Stwórz poza grupami' ? '' : data.nazwaGrupy;
+          const formDataGeoJson = new FormData();
+          // Backend expects simple field name 'geojson' (not 'uploaded_layer.geojson')
+          formDataGeoJson.append('geojson', data.file!);
+
           await addGeoJsonLayer({
-            project_name: projectName,
-            layer_name: data.nazwaWarstwy,
-            geojson: data.file!,
-            epsg: data.epsg,
+            params: {
+              project: projectName,
+              layer_name: data.nazwaWarstwy,
+              parent: parentGeoJson,
+            },
+            files: formDataGeoJson,
           }).unwrap();
           break;
 
@@ -464,19 +472,28 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
 
           // Backend expects "project" not "project_name"
           // CRITICAL: Backend requires 'parent' field (group name or empty string)
-          const parent = data.nazwaGrupy === 'Stwórz poza grupami' ? '' : data.nazwaGrupy;
+          const parentShp = data.nazwaGrupy === 'Stwórz poza grupami' ? '' : data.nazwaGrupy;
 
-          await addShapefileLayer({
-            project: projectName,
-            layer_name: data.nazwaWarstwy,
-            parent: parent,
-            shpFile,
-            shxFile,
-            dbfFile,
-            prjFile,
-            cpgFile,
-            qpjFile,
-            epsg: data.epsg,
+          // Create FormData with all Shapefile components
+          // IMPORTANT: Backend expects field names WITHOUT prefix: shp, shx, dbf, prj, cpg
+          // (Documentation is wrong - it says uploaded_layer.shp but backend uses just 'shp')
+          const formDataShp = new FormData();
+          if (shpFile) formDataShp.append('shp', shpFile);
+          if (shxFile) formDataShp.append('shx', shxFile);
+          if (dbfFile) formDataShp.append('dbf', dbfFile);
+          if (prjFile) formDataShp.append('prj', prjFile);
+          if (cpgFile) formDataShp.append('cpg', cpgFile);
+          if (qpjFile) formDataShp.append('qpj', qpjFile);
+
+          await addShpLayer({
+            params: {
+              project: projectName,
+              layer_name: data.nazwaWarstwy,
+              parent: parentShp,
+              epsg: data.epsg ? parseInt(data.epsg) : undefined,
+              encoding: 'UTF-8',
+            },
+            files: formDataShp,
           }).unwrap();
           break;
 
@@ -487,10 +504,40 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
             file: data.file?.name,
           });
 
-          await addGMLLayer({
-            projectName,
+          const parentGml = data.nazwaGrupy === 'Stwórz poza grupami' ? '' : data.nazwaGrupy;
+          const formDataGml = new FormData();
+          // Backend expects simple field name 'gml' (not 'uploaded_layer.gml')
+          formDataGml.append('gml', data.file!);
+
+          await addGmlLayer({
+            params: {
+              project: projectName,
+              layer_name: data.nazwaWarstwy,
+              parent: parentGml,
+            },
+            files: formDataGml,
+          }).unwrap();
+          break;
+
+        case 'geoTIFF':
+          console.log('📥 Importing GeoTIFF raster layer:', {
+            project: projectName,
             layerName: data.nazwaWarstwy,
-            file: data.file!,
+            file: data.file?.name,
+          });
+
+          const parentTiff = data.nazwaGrupy === 'Stwórz poza grupami' ? '' : data.nazwaGrupy;
+          const formDataTiff = new FormData();
+          // Backend expects simple field name 'raster' (not 'uploaded_layer.tif')
+          formDataTiff.append('raster', data.file!);
+
+          await addRasterLayer({
+            params: {
+              project: projectName,
+              layer_name: data.nazwaWarstwy,
+              parent: parentTiff,
+            },
+            files: formDataTiff,
           }).unwrap();
           break;
 

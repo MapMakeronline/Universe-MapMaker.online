@@ -57,8 +57,8 @@ export interface Project {
   logoExists: boolean;
   description: string;
   keywords: string;
-  project_date: string;
-  project_time: string;
+  project_date: string; // Format: DD-MM-YY (from backend)
+  project_time: string; // Format: HH:MM (from backend)
   domain_name: string;
   domain_url: string;
   categories: string;
@@ -70,6 +70,35 @@ export interface Project {
     email: string;
   };
   thumbnail_url?: string;
+  created_at?: string; // Computed field: ISO 8601 timestamp from project_date + project_time
+}
+
+/**
+ * Helper function: Convert backend project_date + project_time to ISO timestamp
+ * Backend format: project_date="15-01-25", project_time="14:30"
+ * Output: ISO 8601 string "2025-01-15T14:30:00.000Z"
+ */
+export function getProjectCreatedAt(project: Project): string {
+  if (!project.project_date || !project.project_time) {
+    return new Date(0).toISOString(); // Fallback to epoch
+  }
+
+  try {
+    // Parse DD-MM-YY format
+    const [day, month, year] = project.project_date.split('-').map(Number);
+    const [hours, minutes] = project.project_time.split(':').map(Number);
+
+    // Assume 21st century (20YY instead of 19YY)
+    const fullYear = year < 100 ? 2000 + year : year;
+
+    // Create date object (month is 0-indexed in JavaScript)
+    const date = new Date(fullYear, month - 1, day, hours, minutes);
+
+    return date.toISOString();
+  } catch (e) {
+    console.error('Failed to parse project date:', project.project_date, project.project_time, e);
+    return new Date(0).toISOString(); // Fallback to epoch
+  }
 }
 
 export interface CreateProjectData {

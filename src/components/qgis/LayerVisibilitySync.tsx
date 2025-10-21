@@ -65,7 +65,8 @@ export function LayerVisibilitySync({ projectName }: LayerVisibilitySyncProps) {
         mapLogger.log(`⏳ Layer not found on map: ${layerId}`);
       }
     });
-  }, [mapRef, isMapLoaded, projectName, layers]); // Re-run when layers state changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMapLoaded, projectName, layers]); // FIXED: Removed mapRef from dependencies (causes re-render loops)
 
   return null; // No UI rendering
 }

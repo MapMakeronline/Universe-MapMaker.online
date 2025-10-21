@@ -177,7 +177,17 @@ export function QGISProjectLoader({ projectName, onLoad }: QGISProjectLoaderProp
   }
 
   if (error || loadError) {
-    // Enhanced error messages with backend context
+    // Only show errors for critical issues (404, 401, 500)
+    // Skip 400 errors - these are usually empty/damaged projects with technical backend errors
+    // that don't help the user (PyQGIS threading, QObject threading)
+
+    if (error && 'status' in error && error.status === 400) {
+      // Empty or damaged project - just log to console, don't show alert
+      console.warn('⚠️ Project loading error 400 (alert skipped):', projectName, error);
+      return null;
+    }
+
+    // Show alert only for serious errors
     let errorTitle = 'Błąd ładowania projektu QGIS';
     let errorMessage = 'Nieznany błąd połączenia z serwerem';
     let errorSeverity: 'error' | 'warning' = 'error';
@@ -187,13 +197,6 @@ export function QGISProjectLoader({ projectName, onLoad }: QGISProjectLoaderProp
     } else if (error && 'status' in error) {
       if (error.status === 404) {
         errorMessage = 'Projekt nie został znaleziony w bazie danych';
-      } else if (error.status === 400) {
-        errorTitle = 'Problem z odczytem projektu na serwerze';
-        errorMessage =
-          'Backend nie może odczytać projektu z powodu problemu wielowątkowości PyQGIS. ' +
-          'Jest to znany problem backendowy związany z QObject threading. ' +
-          'Spróbuj odświeżyć stronę (F5) lub poczekać chwilę.';
-        errorSeverity = 'warning';
       } else if (error.status === 401) {
         errorMessage = 'Brak autoryzacji - zaloguj się ponownie';
       } else if (error.status === 500) {

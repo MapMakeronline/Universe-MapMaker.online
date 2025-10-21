@@ -398,11 +398,13 @@ Importuje plik Shapefile do projektu.
 
 #### Pliki
 
-- `uploaded_layer.shp` - plik główny (wymagany)
-- `uploaded_layer.shx` - plik indeksu
-- `uploaded_layer.dbf` - plik atrybutów
-- `uploaded_layer.prj` - plik projekcji
-- `uploaded_layer.cpg` - plik kodowania
+**UWAGA:** Backend oczekuje prostych nazw pól (bez prefiksu `uploaded_layer.`)
+
+- `shp` - plik główny (wymagany)
+- `shx` - plik indeksu (wymagany)
+- `dbf` - plik atrybutów (wymagany)
+- `prj` - plik projekcji (opcjonalny)
+- `cpg` - plik kodowania (opcjonalny)
 
 #### Przykład żądania (form-data)
 
@@ -453,7 +455,7 @@ Importuje plik GeoJSON do projektu.
 
 #### Pliki
 
-- `uploaded_layer.geojson` - plik GeoJSON (wymagany)
+- `geojson` - plik GeoJSON (wymagany)
 
 #### Odpowiedź sukcesu (200)
 
@@ -494,7 +496,7 @@ Importuje plik GML do projektu.
 
 #### Pliki
 
-- `uploaded_layer.gml` - plik GML (wymagany)
+- `gml` - plik GML (wymagany)
 
 #### Odpowiedź sukcesu (200)
 
@@ -593,7 +595,7 @@ Importuje warstwę rastrową w formacie TIFF.
 
 #### Pliki
 
-- `uploaded_layer.tif` - plik TIFF (wymagany)
+- `raster` - plik TIFF/GeoTIFF (wymagany)
 
 #### Odpowiedź sukcesu (200)
 

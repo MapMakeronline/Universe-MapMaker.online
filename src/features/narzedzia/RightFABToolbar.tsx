@@ -42,8 +42,8 @@ import { useRouter } from "next/navigation"
 import { useAppDispatch, useAppSelector } from "@/redux/hooks"
 import { setMeasurementMode, clearAllMeasurements, setIdentifyMode } from "@/redux/slices/drawSlice"
 import SearchModal from "@/features/mapa/interakcje/SearchModal"
-import MeasurementModal from "@/features/warstwy/modale/MeasurementModal"
-import ExportPDFModal, { type ExportConfig } from "@/features/warstwy/modale/ExportPDFModal"
+import MeasurementModal from "@/features/layers/modals/MeasurementModal"
+import ExportPDFModal, { type ExportConfig } from "@/features/layers/modals/ExportPDFModal"
 
 const FAB_SIZE = 56; // Standard FAB size
 const FAB_SIZE_MOBILE = 44; // Smaller on mobile (was 48, now 44)

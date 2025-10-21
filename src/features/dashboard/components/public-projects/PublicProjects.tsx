@@ -21,9 +21,9 @@ import { useMediaQuery } from '@mui/material';
 import { useRouter } from 'next/navigation';
 import Search from '@mui/icons-material/Search';
 import Public from '@mui/icons-material/Public';
-import { useGetPublicProjectsQuery } from '@/backend';
+import { useGetPublicProjectsQuery, getProjectCreatedAt } from '@/backend';
 import type { Project } from '@/backend';
-import { getThumbnailUrl } from '@/features/dashboard/utils';
+import { getThumbnailUrl, formatProjectDateTime } from '@/features/dashboard/utils';
 import { ProjectsGridSkeleton } from '../shared/ProjectCardSkeleton';
 
 const categories = [
@@ -40,23 +40,6 @@ const categories = [
 function PublicProjectCard({ project }: { project: Project }) {
   const theme = useTheme();
   const router = useRouter();
-
-  // Format timestamp: UTC → local time (same as OwnProjects)
-  const formatLocalDateTime = (utcString: string | undefined) => {
-    if (!utcString) return 'Brak daty';
-    try {
-      const date = new Date(utcString);
-      return date.toLocaleString('pl-PL', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    } catch (e) {
-      return 'Nieprawidłowa data';
-    }
-  };
 
   // Thumbnail URL - using shared utility for consistent URL generation
   const thumbnailUrl = getThumbnailUrl(project);
@@ -169,7 +152,7 @@ function PublicProjectCard({ project }: { project: Project }) {
           color="text.secondary"
           sx={{ mt: 2, display: 'block' }}
         >
-          Utworzono: {formatLocalDateTime(project.created_at)}
+          Utworzono: {formatProjectDateTime(project)}
         </Typography>
       </CardContent>
     </Card>
@@ -192,8 +175,9 @@ export default function PublicProjects() {
   // Extract and sort projects from RTK Query response (newest first)
   const publicProjects = projectsData?.list_of_projects
     ? [...projectsData.list_of_projects].sort((a, b) => {
-        const dateA = new Date(a.created_at || 0).getTime();
-        const dateB = new Date(b.created_at || 0).getTime();
+        // Sort by project_date + project_time descending (newest first)
+        const dateA = new Date(getProjectCreatedAt(a)).getTime();
+        const dateB = new Date(getProjectCreatedAt(b)).getTime();
         return dateB - dateA;
       })
     : [];

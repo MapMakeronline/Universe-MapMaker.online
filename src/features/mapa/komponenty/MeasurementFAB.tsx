@@ -6,7 +6,7 @@ import { useTheme } from '@mui/material/styles'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import Fab from '@mui/material/Fab'
 import Straighten from '@mui/icons-material/Straighten'
-import MeasurementModal from '@/features/warstwy/modale/MeasurementModal'
+import MeasurementModal from '@/features/layers/modals/MeasurementModal'
 import { useAppSelector } from "@/redux/hooks"
 
 const MeasurementFAB: React.FC = () => {

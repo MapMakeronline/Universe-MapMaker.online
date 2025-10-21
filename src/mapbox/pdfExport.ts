@@ -1,5 +1,5 @@
 import { jsPDF } from 'jspdf';
-import type { ExportConfig } from '@/features/warstwy/modale/ExportPDFModal';
+import type { ExportConfig } from '@/features/layers/modals/ExportPDFModal';
 import { mapLogger } from '@/tools/logger';
 
 interface PageDimensions {

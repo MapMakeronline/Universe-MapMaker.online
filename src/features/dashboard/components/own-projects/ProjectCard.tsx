@@ -26,7 +26,7 @@ import Settings from '@mui/icons-material/Settings';
 import Language from '@mui/icons-material/Language';
 import Map from '@mui/icons-material/Map';
 import type { Project } from '@/backend';
-import { getThumbnailUrl } from '@/features/dashboard/utils';
+import { getThumbnailUrl, formatProjectDateTime } from '@/features/dashboard/utils';
 import { useAppSelector } from '@/redux/hooks';
 
 interface ProjectCardProps {
@@ -45,25 +45,6 @@ export function ProjectCard({ project, onOpen, onDelete, onTogglePublish, onSett
   // Get current user from Redux (for avatar display)
   const { user, isAuthenticated } = useAppSelector((state) => state.auth);
 
-  // Format timestamp: UTC → local time
-  const formatLocalDateTime = (utcString: string | undefined) => {
-    if (!utcString) return 'Brak daty';
-
-    try {
-      const date = new Date(utcString);
-      // Format: 11 paź 2025, 13:45
-      return date.toLocaleString('pl-PL', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    } catch (e) {
-      return 'Nieprawidłowa data';
-    }
-  };
-
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     event.stopPropagation();
     setMenuAnchor(event.currentTarget);
@@ -74,8 +55,10 @@ export function ProjectCard({ project, onOpen, onDelete, onTogglePublish, onSett
   };
 
   const handleMenuAction = (action: () => void) => {
-    handleMenuClose();
+    // CRITICAL: Execute action FIRST (with current project context)
+    // Then close menu to avoid losing context
     action();
+    handleMenuClose();
   };
 
   // Thumbnail URL - using shared utility for consistent URL generation
@@ -210,7 +193,7 @@ export function ProjectCard({ project, onOpen, onDelete, onTogglePublish, onSett
             color="text.secondary"
             sx={{ mt: 2, display: 'block' }}
           >
-            Utworzono: {formatLocalDateTime(project.created_at)}
+            Utworzono: {formatProjectDateTime(project)}
           </Typography>
         </CardContent>
       </Card>
