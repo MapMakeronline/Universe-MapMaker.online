@@ -542,6 +542,8 @@ function AuthPageContent() {
                   justifyContent: 'center',
                   '& > div': {
                     width: '100% !important',
+                    display: 'flex !important',
+                    justifyContent: 'center !important',
                   },
                   '& iframe': {
                     width: '100% !important',
