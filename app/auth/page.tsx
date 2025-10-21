@@ -538,14 +538,14 @@ function AuthPageContent() {
                   mt: 3,
                   mb: 2,
                   width: '100%',
+                  display: 'flex',
+                  justifyContent: 'center',
                   '& > div': {
                     width: '100% !important',
-                    display: 'flex !important',
-                    justifyContent: 'center !important',
                   },
                   '& iframe': {
                     width: '100% !important',
-                    maxWidth: '100% !important',
+                    minWidth: '100% !important',
                   }
                 }}
               >
@@ -558,7 +558,6 @@ function AuthPageContent() {
                   size="large"
                   theme="outline"
                   shape="rectangular"
-                  width="400"
                 />
               </Box>
 
