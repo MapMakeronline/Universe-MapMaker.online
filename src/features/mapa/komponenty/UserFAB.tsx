@@ -12,14 +12,13 @@ import ListItemText from '@mui/material/ListItemText'
 import Divider from '@mui/material/Divider'
 import Typography from '@mui/material/Typography'
 import Box from '@mui/material/Box'
-import Avatar from '@mui/material/Avatar'
-import AccountCircle from '@mui/icons-material/AccountCircle'
 import Home from '@mui/icons-material/Home'
 import Settings from '@mui/icons-material/Settings'
 import Logout from '@mui/icons-material/Logout'
 import Person from '@mui/icons-material/Person'
 import { useRouter } from "next/navigation"
 import { useAppSelector } from "@/redux/hooks"
+import UserAvatar from '@/common/components/UserAvatar'
 
 const UserFAB: React.FC = () => {
   const theme = useTheme()
@@ -78,9 +77,15 @@ const UserFAB: React.FC = () => {
             transform: 'scale(1.05)',
           },
           boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+          padding: 0,
+          overflow: 'hidden',
         }}
       >
-        <AccountCircle sx={{ fontSize: 28 }} />
+        <UserAvatar
+          user={user}
+          isAuthenticated={isAuthenticated}
+          size={56}
+        />
       </Fab>
 
       {/* User Menu */}
@@ -108,7 +113,12 @@ const UserFAB: React.FC = () => {
         {isAuthenticated && user ? [
             <Box key="header" sx={{ px: 2, py: 1.5, borderBottom: 1, borderColor: 'divider' }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                <AccountCircle sx={{ fontSize: 40, color: '#10b981' }} />
+                <UserAvatar
+                  user={user}
+                  isAuthenticated={true}
+                  size={40}
+                  showIcon={!user.avatar}
+                />
                 <Box>
                   <Typography variant="subtitle2" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
                     {user.first_name && user.last_name ? `${user.first_name} ${user.last_name}` : user.username}
@@ -147,7 +157,11 @@ const UserFAB: React.FC = () => {
         ] : [
             <Box key="header" sx={{ px: 2, py: 1.5, borderBottom: 1, borderColor: 'divider' }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                <AccountCircle sx={{ fontSize: 40, color: '#f97316' }} />
+                <UserAvatar
+                  user={null}
+                  isAuthenticated={false}
+                  size={40}
+                />
                 <Box>
                   <Typography variant="subtitle2" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
                     Gość

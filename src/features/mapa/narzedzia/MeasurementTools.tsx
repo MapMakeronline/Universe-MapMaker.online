@@ -25,6 +25,7 @@ const MeasurementTools: React.FC = () => {
     if (!map) return;
 
     const mapInstance = map.getMap();
+    if (!mapInstance) return;
 
     const checkMapReady = () => {
       if (mapInstance.isStyleLoaded()) {
@@ -108,6 +109,7 @@ const MeasurementTools: React.FC = () => {
     if (!map || !isMapReady) return;
 
     const mapInstance = map.getMap();
+    if (!mapInstance) return;
     const sourceId = 'measurement-source';
     const lineLayerId = 'measurement-lines';
     const pointLayerId = 'measurement-points';

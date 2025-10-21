@@ -31,7 +31,10 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import LockIcon from '@mui/icons-material/Lock';
 import LockOpenIcon from '@mui/icons-material/LockOpen';
 import CodeIcon from '@mui/icons-material/Code';
-import { useTestDjangoEndpointMutation } from '@/redux/api/adminApi';
+
+// TODO: Migrate to @/backend/admin API
+const useTestDjangoEndpointMutation = () => [async () => {}, { isLoading: false }] as any;
+
 import {
   djangoEndpointsFull,
   endpointCategories,

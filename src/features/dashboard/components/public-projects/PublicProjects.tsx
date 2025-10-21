@@ -6,7 +6,6 @@ import Typography from '@mui/material/Typography';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import CardMedia from '@mui/material/CardMedia';
-import Grid from '@mui/material/Grid';
 import Chip from '@mui/material/Chip';
 import Avatar from '@mui/material/Avatar';
 import TextField from '@mui/material/TextField';
@@ -15,40 +14,17 @@ import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
-import Pagination from '@mui/material/Pagination';
 import Alert from '@mui/material/Alert';
 import { useTheme } from '@mui/material/styles';
 import { alpha } from '@mui/material/styles';
 import { useMediaQuery } from '@mui/material';
+import { useRouter } from 'next/navigation';
 import Search from '@mui/icons-material/Search';
 import Public from '@mui/icons-material/Public';
-import ViewModule from '@mui/icons-material/ViewModule';
-import Storage from '@mui/icons-material/Storage';
-import Person from '@mui/icons-material/Person';
 import { useGetPublicProjectsQuery } from '@/backend';
 import type { Project } from '@/backend';
+import { getThumbnailUrl } from '@/features/dashboard/utils';
 import { ProjectsGridSkeleton } from '../shared/ProjectCardSkeleton';
-
-// Placeholder SVG dla projektów bez obrazka
-const placeholderImage = 'data:image/svg+xml;base64,' + btoa(`
-  <svg width="400" height="200" xmlns="http://www.w3.org/2000/svg">
-    <defs>
-      <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" style="stop-color:#f75e4c;stop-opacity:0.8" />
-        <stop offset="100%" style="stop-color:#1c679d;stop-opacity:0.8" />
-      </linearGradient>
-    </defs>
-    <rect width="400" height="200" fill="url(#grad)"/>
-    <path d="M 50 150 L 100 100 L 150 120 L 200 80 L 250 110 L 300 70 L 350 90"
-          stroke="white" stroke-width="3" fill="none" opacity="0.6"/>
-    <circle cx="100" cy="100" r="6" fill="white" opacity="0.8"/>
-    <circle cx="200" cy="80" r="6" fill="white" opacity="0.8"/>
-    <circle cx="300" cy="70" r="6" fill="white" opacity="0.8"/>
-    <text x="200" y="100" font-family="Arial" font-size="16" fill="white" text-anchor="middle" opacity="0.7">
-      MapMaker.online
-    </text>
-  </svg>
-`);
 
 const categories = [
   'Wszystkie',
@@ -60,69 +36,41 @@ const categories = [
   'Środowisko',
 ];
 
-export default function PublicProjects() {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('Wszystkie');
-  const [currentPage, setCurrentPage] = useState(1);
+// Reusable PublicProjectCard - similar style to OwnProjects ProjectCard
+function PublicProjectCard({ project }: { project: Project }) {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const projectsPerPage = 6;
+  const router = useRouter();
 
-  // RTK Query - fetch public projects from backend
-  const { data: projectsData, isLoading, error } = useGetPublicProjectsQuery(undefined, {
-    pollingInterval: 60000, // Auto-refresh every 60 seconds
-    refetchOnMountOrArgChange: true,
-    refetchOnFocus: true,
-  });
-
-  // Extract and sort projects from RTK Query response (newest first)
-  const publicProjects = projectsData?.list_of_projects
-    ? [...projectsData.list_of_projects].sort((a, b) => {
-        // Sort by created_at descending (newest first)
-        const dateA = new Date(a.created_at || 0).getTime();
-        const dateB = new Date(b.created_at || 0).getTime();
-        return dateB - dateA;
-      })
-    : [];
-
-  const filteredProjects = publicProjects.filter(project => {
-    const title = project.custom_project_name || project.project_name;
-    const matchesSearch = title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (project.description || '').toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === 'Wszystkie' ||
-                           (project.categories || '').includes(selectedCategory);
-    return matchesSearch && matchesCategory;
-  });
-
-  const totalPages = Math.ceil(filteredProjects.length / projectsPerPage);
-  const currentProjects = filteredProjects.slice(
-    (currentPage - 1) * projectsPerPage,
-    currentPage * projectsPerPage
-  );
-
-  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(event.target.value);
-    setCurrentPage(1);
+  // Format timestamp: UTC → local time (same as OwnProjects)
+  const formatLocalDateTime = (utcString: string | undefined) => {
+    if (!utcString) return 'Brak daty';
+    try {
+      const date = new Date(utcString);
+      return date.toLocaleString('pl-PL', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (e) {
+      return 'Nieprawidłowa data';
+    }
   };
 
-  const handleCategoryChange = (event: any) => {
-    setSelectedCategory(event.target.value);
-    setCurrentPage(1);
-  };
+  // Thumbnail URL - using shared utility for consistent URL generation
+  const thumbnailUrl = getThumbnailUrl(project);
 
-  const handlePageChange = (event: React.ChangeEvent<unknown>, value: number) => {
-    setCurrentPage(value);
-  };
+  // State for handling image load errors (fallback to default SVG)
+  const [imgError, setImgError] = React.useState(false);
+  const finalThumbnailUrl = imgError ? '/default-project-thumbnail.svg' : thumbnailUrl;
 
-  const ProjectCard = ({ project }: { project: Project }) => {
-    const title = project.custom_project_name || project.project_name;
-    const image = project.logoExists ? `/api/logos/${project.project_name}` : placeholderImage;
-    const category = project.categories || 'Inne';
+  const category = project.categories || 'Inne';
 
-    return (
-      <Card
+  return (
+    <Card
       sx={{
-        height: 480, // Stała wysokość dla wszystkich kart
+        height: '100%',
         display: 'flex',
         flexDirection: 'column',
         cursor: 'pointer',
@@ -134,50 +82,49 @@ export default function PublicProjects() {
         border: '1px solid',
         borderColor: 'divider',
       }}
-      onClick={() => window.location.href = `/map?project=${project.project_name}`}
+      onClick={() => router.push(`/map?project=${project.project_name}`)}
     >
+      {/* Thumbnail */}
       <Box sx={{ position: 'relative' }}>
         <CardMedia
           component="img"
           height="200"
-          image={image}
-          alt={title}
+          image={finalThumbnailUrl}
+          alt={project.custom_project_name || project.project_name}
+          onError={() => setImgError(true)}
           sx={{
             bgcolor: 'grey.100',
-            backgroundImage: 'linear-gradient(45deg, #f5f5f5 25%, transparent 25%), linear-gradient(-45deg, #f5f5f5 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #f5f5f5 75%), linear-gradient(-45deg, transparent 75%, #f5f5f5 75%)',
+            backgroundImage:
+              'linear-gradient(45deg, #f5f5f5 25%, transparent 25%), linear-gradient(-45deg, #f5f5f5 25%, transparent 25%)',
             backgroundSize: '20px 20px',
-            backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0px',
           }}
         />
+
+        {/* Status badges - same position as OwnProjects */}
         <Box
           sx={{
             position: 'absolute',
             top: 8,
             left: 8,
+            right: 8,
             display: 'flex',
-            gap: 1,
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
           }}
         >
           <Chip
-            icon={<Public />}
-            label="Publiczny"
+            label="OPUBLIKOWANY"
             size="small"
-            color="success"
             sx={{
               bgcolor: alpha(theme.palette.success.main, 0.9),
               color: 'white',
+              fontWeight: 600,
+              fontSize: '0.7rem',
               backdropFilter: 'blur(4px)',
             }}
           />
-        </Box>
-        <Box
-          sx={{
-            position: 'absolute',
-            top: 8,
-            right: 8,
-          }}
-        >
           <Chip
+            icon={<Public />}
             label={category}
             size="small"
             sx={{
@@ -188,46 +135,24 @@ export default function PublicProjects() {
         </Box>
       </Box>
 
-      <CardContent sx={{ flexGrow: 1, p: 2, display: 'flex', flexDirection: 'column' }}>
-        <Typography
-          variant="h6"
-          component="h3"
-          gutterBottom
-          fontWeight="600"
-          sx={{
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {title}
+      {/* Content - same structure as OwnProjects */}
+      <CardContent sx={{ flexGrow: 1, p: 2 }}>
+        <Typography variant="h6" component="h3" gutterBottom fontWeight="600">
+          {project.custom_project_name || project.project_name}
         </Typography>
 
-        <Typography
-          variant="body2"
-          color="text.secondary"
-          gutterBottom
-          sx={{
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            display: '-webkit-box',
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical',
-            minHeight: '40px',
-          }}
-        >
+        <Typography variant="body2" color="text.secondary" gutterBottom>
           {project.description || 'Brak opisu'}
         </Typography>
 
+        {project.keywords && (
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+            {project.keywords}
+          </Typography>
+        )}
+
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 2 }}>
-          <Avatar
-            sx={{
-              width: 24,
-              height: 24,
-              bgcolor: 'primary.main',
-              fontSize: '0.75rem'
-            }}
-          >
+          <Avatar sx={{ width: 24, height: 24, bgcolor: 'primary.main', fontSize: '0.75rem' }}>
             {(project.owner?.username || 'U').charAt(0).toUpperCase()}
           </Avatar>
           <Typography variant="body2" color="text.secondary">
@@ -235,26 +160,61 @@ export default function PublicProjects() {
           </Typography>
         </Box>
 
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
-          <Chip
-            icon={<Public />}
-            label={project.domain_name || 'Brak domeny'}
-            size="small"
-            variant="outlined"
-          />
-        </Box>
-
-        <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-          Data utworzenia: {project.project_date} {project.project_time}
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          sx={{ mt: 2, display: 'block' }}
+        >
+          Utworzono: {formatLocalDateTime(project.created_at)}
         </Typography>
       </CardContent>
-      </Card>
-    );
+    </Card>
+  );
+}
+
+export default function PublicProjects() {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('Wszystkie');
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
+  // RTK Query - fetch public projects from backend
+  const { data: projectsData, isLoading, error } = useGetPublicProjectsQuery(undefined, {
+    pollingInterval: 60000, // Auto-refresh every 60 seconds
+    refetchOnMountOrArgChange: true,
+    refetchOnFocus: true,
+  });
+
+  // Extract and sort projects from RTK Query response (newest first)
+  const publicProjects = projectsData?.list_of_projects
+    ? [...projectsData.list_of_projects].sort((a, b) => {
+        const dateA = new Date(a.created_at || 0).getTime();
+        const dateB = new Date(b.created_at || 0).getTime();
+        return dateB - dateA;
+      })
+    : [];
+
+  // Filter projects
+  const filteredProjects = publicProjects.filter(project => {
+    const title = project.custom_project_name || project.project_name;
+    const matchesSearch = title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (project.description || '').toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = selectedCategory === 'Wszystkie' ||
+                           (project.categories || '').includes(selectedCategory);
+    return matchesSearch && matchesCategory;
+  });
+
+  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(event.target.value);
+  };
+
+  const handleCategoryChange = (event: any) => {
+    setSelectedCategory(event.target.value);
   };
 
   return (
     <Box>
-      {/* Header */}
+      {/* Header - same style as OwnProjects */}
       <Box sx={{ mb: 4 }}>
         <Typography variant="h4" component="h1" fontWeight="700" gutterBottom sx={{ fontSize: { xs: '1.75rem', sm: '2.125rem' } }}>
           Projekty publiczne
@@ -301,66 +261,46 @@ export default function PublicProjects() {
 
       {/* Error State */}
       {error && !isLoading && (
-        <Alert severity="error" sx={{ mb: 4 }}>
-          <Typography variant="body1" fontWeight="600" gutterBottom>
-            Nie udało się załadować projektów publicznych
+        <Box sx={{ textAlign: 'center', py: 8 }}>
+          <Typography variant="h6" color="error" gutterBottom>
+            Błąd ładowania projektów
           </Typography>
-          <Typography variant="body2">
-            Spróbuj odświeżyć stronę lub skontaktuj się z administratorem.
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            {(error as any)?.data?.message || 'Nie udało się pobrać projektów publicznych'}
           </Typography>
-        </Alert>
-      )}
-
-      {/* Results info */}
-      {!isLoading && !error && (
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-          Znaleziono {filteredProjects.length} projektów
-        </Typography>
-      )}
-
-      {/* Projects Grid */}
-      {!isLoading && !error && (
-        <Grid container spacing={3} sx={{ mb: 4 }}>
-          {currentProjects.map((project) => (
-            <Grid item xs={12} sm={6} md={4} key={project.project_name}>
-              <ProjectCard project={project} />
-            </Grid>
-          ))}
-        </Grid>
-      )}
-
-      {/* Pagination */}
-      {!isLoading && !error && totalPages > 1 && (
-        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-          <Pagination
-            count={totalPages}
-            page={currentPage}
-            onChange={handlePageChange}
-            color="primary"
-            size="large"
-          />
         </Box>
       )}
 
       {/* Empty state */}
       {!isLoading && !error && filteredProjects.length === 0 && (
-        <Box
-          sx={{
-            textAlign: 'center',
-            py: 8,
-            color: 'text.secondary',
-          }}
-        >
-          <Public sx={{ fontSize: 64, mb: 2, opacity: 0.5 }} />
-          <Typography variant="h6" gutterBottom>
+        <Box sx={{ textAlign: 'center', py: 8 }}>
+          <Public sx={{ fontSize: 64, color: 'primary.main', mb: 3, opacity: 0.5 }} />
+          <Typography variant="h6" color="text.secondary" gutterBottom>
             Nie znaleziono projektów
           </Typography>
-          <Typography variant="body2">
+          <Typography variant="body2" color="text.secondary">
             {publicProjects.length === 0
               ? 'Brak projektów publicznych'
               : 'Spróbuj zmienić kryteria wyszukiwania'}
           </Typography>
         </Box>
+      )}
+
+      {/* Projects Grid - SAME STYLE AS OwnProjects */}
+      {!isLoading && !error && filteredProjects.length > 0 && (
+        <>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            Znaleziono {filteredProjects.length} {filteredProjects.length === 1 ? 'projekt' : 'projektów'}
+          </Typography>
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 3 }}>
+            {filteredProjects.map((project) => (
+              <PublicProjectCard
+                key={project.project_name}
+                project={project}
+              />
+            ))}
+          </Box>
+        </>
       )}
     </Box>
   );

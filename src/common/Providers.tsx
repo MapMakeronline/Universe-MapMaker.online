@@ -4,11 +4,14 @@ import React, { useRef } from 'react';
 import { Provider } from 'react-redux';
 import { ThemeProvider } from '@mui/material/styles';
 import { CssBaseline } from '@mui/material';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import { makeStore, AppStore } from '@/redux/store';
 import { themeOptimized as theme } from '@/styles/theme';
 import ErrorBoundary from '@/common/ErrorBoundary';
 import AuthProvider from '@/features/autoryzacja/AuthProvider';
 import { NotificationProvider } from '@/common/NotificationProvider';
+
+const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
 
 interface ProvidersProps {
   children: React.ReactNode;
@@ -25,15 +28,17 @@ export default function Providers({ children }: ProvidersProps) {
 
   return (
     <ErrorBoundary showDetails={isDevelopment}>
-      <Provider store={storeRef.current}>
-        <AuthProvider>
-          <ThemeProvider theme={theme}>
-            <CssBaseline />
-            {children}
-            <NotificationProvider />
-          </ThemeProvider>
-        </AuthProvider>
-      </Provider>
+      <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+        <Provider store={storeRef.current}>
+          <AuthProvider>
+            <ThemeProvider theme={theme}>
+              <CssBaseline />
+              {children}
+              <NotificationProvider />
+            </ThemeProvider>
+          </AuthProvider>
+        </Provider>
+      </GoogleOAuthProvider>
     </ErrorBoundary>
   );
 }

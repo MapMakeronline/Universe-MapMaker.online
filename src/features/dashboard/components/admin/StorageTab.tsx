@@ -26,8 +26,18 @@ import SearchIcon from '@mui/icons-material/Search';
 import DescriptionIcon from '@mui/icons-material/Description';
 import CodeIcon from '@mui/icons-material/Code';
 import FolderIcon from '@mui/icons-material/Folder';
-import { useGetStorageFilesQuery } from '@/redux/api/adminApi';
-import type { StorageFile } from '@/redux/api/adminApi';
+
+// TODO: Migrate to @/backend/admin API
+// Temporary mock hooks until backend admin endpoints are implemented
+const useGetStorageFilesQuery = () => ({ data: undefined, isLoading: false, error: null });
+type StorageFile = {
+  filename: string;
+  project: string;
+  type: 'qgs' | 'json';
+  description: string;
+  path: string;
+  url: string;
+};
 
 export default function StorageTab() {
   const { data: files, isLoading, error } = useGetStorageFilesQuery();

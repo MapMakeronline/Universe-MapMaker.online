@@ -13,7 +13,6 @@ import ListItem from '@mui/material/ListItem';
 import ListItemButton from '@mui/material/ListItemButton';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
-import Avatar from '@mui/material/Avatar';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import { useTheme } from '@mui/material/styles';
@@ -28,7 +27,6 @@ import Person from '@mui/icons-material/Person';
 import Settings from '@mui/icons-material/Settings';
 import Payments from '@mui/icons-material/Payments';
 import ContactMail from '@mui/icons-material/ContactMail';
-import AccountCircle from '@mui/icons-material/AccountCircle';
 import Logout from '@mui/icons-material/Logout';
 import ChevronLeft from '@mui/icons-material/ChevronLeft';
 import DashboardIcon from '@mui/icons-material/Dashboard';
@@ -36,6 +34,7 @@ import Login from '@mui/icons-material/Login';
 import AdminPanelSettings from '@mui/icons-material/AdminPanelSettings';
 import { useAppSelector, useAppDispatch } from '@/redux/hooks';
 import { clearAuth } from '@/redux/slices/authSlice';
+import UserAvatar from '@/common/components/UserAvatar';
 
 const drawerWidth = 280;
 
@@ -226,19 +225,16 @@ export default function DashboardLayout({ children, currentPage, onPageChange }:
               onClick={handleMenu}
               color="inherit"
             >
-              <Avatar
+              <UserAvatar
+                user={user}
+                isAuthenticated={isAuthenticated}
+                size={32}
                 sx={{
-                  width: 32,
-                  height: 32,
-                  bgcolor: isAuthenticated ? '#10b981' : '#f97316',
-                  transition: 'all 0.3s ease',
                   '&:hover': {
                     transform: 'scale(1.1)',
                   }
                 }}
-              >
-                <AccountCircle />
-              </Avatar>
+              />
             </IconButton>
             <Menu
               id="menu-appbar"
@@ -266,7 +262,12 @@ export default function DashboardLayout({ children, currentPage, onPageChange }:
               {isAuthenticated && user ? [
                   <Box key="header" sx={{ px: 2, py: 1.5, borderBottom: 1, borderColor: 'divider' }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                      <AccountCircle sx={{ fontSize: 40, color: '#10b981' }} />
+                      <UserAvatar
+                        user={user}
+                        isAuthenticated={true}
+                        size={40}
+                        showIcon={!user.avatar}
+                      />
                       <Box>
                         <Typography variant="subtitle2" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
                           {user.first_name && user.last_name ? `${user.first_name} ${user.last_name}` : user.username}
@@ -308,7 +309,11 @@ export default function DashboardLayout({ children, currentPage, onPageChange }:
               ] : [
                   <Box key="header" sx={{ px: 2, py: 1.5, borderBottom: 1, borderColor: 'divider' }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                      <AccountCircle sx={{ fontSize: 40, color: '#f97316' }} />
+                      <UserAvatar
+                        user={null}
+                        isAuthenticated={false}
+                        size={40}
+                      />
                       <Box>
                         <Typography variant="subtitle2" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
                           Gość

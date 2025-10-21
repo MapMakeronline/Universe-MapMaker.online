@@ -3,12 +3,13 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import DashboardLayout from './DashboardLayout';
-// NEW: Import from consolidated features/dashboard/components structure
-import { OwnProjects, PublicProjects, UserSettings } from '@/features/dashboard/components';
-// OLD: Keep other components from old location (will migrate later)
-import UserProfile from './UserProfile';
-import Contact from './Contact';
-// import AdminPanel from './AdminPanel'; // TODO: Migrate AdminPanel to @/backend (uses old adminApi)
+// Import tab components directly to avoid circular dependencies
+import { OwnProjects } from '../own-projects';
+import { PublicProjects } from '../public-projects';
+import { UserSettings } from '../settings';
+import { UserProfile } from '../profile';
+import { Contact } from '../contact';
+// import { AdminPanel } from '../admin'; // TODO: Enable when needed
 
 export default function Dashboard() {
   const searchParams = useSearchParams();

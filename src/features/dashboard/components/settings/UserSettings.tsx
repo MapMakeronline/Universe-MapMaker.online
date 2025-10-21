@@ -420,6 +420,7 @@ export default function UserSettings() {
                 />
               </Grid>
             </Grid>
+            </Box>
 
             <Divider sx={{ my: 4 }} />
 
@@ -433,7 +434,6 @@ export default function UserSettings() {
               >
                 {isUpdatingProfile ? 'Zapisywanie...' : 'Zaktualizuj dane'}
               </Button>
-            </Box>
             </Box>
           </CardContent>
         </TabPanel>
@@ -531,6 +531,7 @@ export default function UserSettings() {
                 }}
               />
             </Stack>
+            </Box>
 
             <Divider sx={{ my: 4 }} />
 
@@ -544,7 +545,6 @@ export default function UserSettings() {
               >
                 {isChangingPassword ? 'Zapisywanie...' : 'Zmień hasło'}
               </Button>
-            </Box>
             </Box>
           </CardContent>
         </TabPanel>
@@ -603,6 +603,7 @@ export default function UserSettings() {
                 </Typography>
               </Box>
             </Box>
+            </Box>
 
             <Divider sx={{ my: 4 }} />
 
@@ -615,7 +616,6 @@ export default function UserSettings() {
               >
                 Zapisz zmiany
               </Button>
-            </Box>
             </Box>
           </CardContent>
         </TabPanel>

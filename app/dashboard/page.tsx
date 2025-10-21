@@ -1,4 +1,4 @@
-import Dashboard from '@/features/dashboard/komponenty/Dashboard';
+import { Dashboard } from '@/features/dashboard/components';
 
 // Force dynamic rendering (Dashboard uses useSearchParams for tab routing)
 export const dynamic = 'force-dynamic';

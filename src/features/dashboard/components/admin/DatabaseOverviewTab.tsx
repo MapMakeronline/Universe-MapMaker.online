@@ -20,7 +20,11 @@ import PersonIcon from '@mui/icons-material/Person';
 import FolderIcon from '@mui/icons-material/Folder';
 import LayersIcon from '@mui/icons-material/Layers';
 import StorageIcon from '@mui/icons-material/Storage';
-import { useGetAdminStatsQuery, useGetAllProjectsQuery } from '@/redux/api/adminApi';
+
+// TODO: Migrate to @/backend/admin API
+// Temporary mock hooks until backend admin endpoints are implemented
+const useGetAdminStatsQuery = () => ({ data: undefined, isLoading: false, error: null });
+const useGetAllProjectsQuery = () => ({ data: undefined, isLoading: false, error: null });
 
 export default function DatabaseOverviewTab() {
   const { data: statsData, isLoading: statsLoading } = useGetAdminStatsQuery();

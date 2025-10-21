@@ -29,7 +29,10 @@ import MapIcon from '@mui/icons-material/Map';
 import LayersIcon from '@mui/icons-material/Layers';
 import WarningIcon from '@mui/icons-material/Warning';
 import BuildIcon from '@mui/icons-material/Build';
-import { useTestQGISEndpointMutation, useGetAllProjectsQuery } from '@/redux/api/adminApi';
+
+// TODO: Migrate to @/backend/admin API
+const useTestQGISEndpointMutation = () => [async () => {}, { isLoading: false }] as any;
+const useGetAllProjectsQuery = () => ({ data: undefined, isLoading: false, error: null });
 
 interface QGISTestResult {
   project: string;

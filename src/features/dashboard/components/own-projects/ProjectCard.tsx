@@ -26,6 +26,7 @@ import Settings from '@mui/icons-material/Settings';
 import Language from '@mui/icons-material/Language';
 import Map from '@mui/icons-material/Map';
 import type { Project } from '@/backend';
+import { getThumbnailUrl } from '@/features/dashboard/utils';
 
 interface ProjectCardProps {
   project: Project;
@@ -73,10 +74,12 @@ export function ProjectCard({ project, onOpen, onDelete, onTogglePublish, onSett
     action();
   };
 
-  // Thumbnail URL - direct backend endpoint
-  const thumbnailUrl = project.logoExists
-    ? `${process.env.NEXT_PUBLIC_API_URL || 'https://api.universemapmaker.online'}/api/projects/logo/${project.project_name}`
-    : '';
+  // Thumbnail URL - using shared utility for consistent URL generation
+  const thumbnailUrl = getThumbnailUrl(project);
+
+  // State for handling image load errors (fallback to default SVG)
+  const [imgError, setImgError] = useState(false);
+  const finalThumbnailUrl = imgError ? '/default-project-thumbnail.svg' : thumbnailUrl;
 
   return (
     <>
@@ -101,8 +104,9 @@ export function ProjectCard({ project, onOpen, onDelete, onTogglePublish, onSett
           <CardMedia
             component="img"
             height="200"
-            image={thumbnailUrl}
+            image={finalThumbnailUrl}
             alt={project.custom_project_name || project.project_name}
+            onError={() => setImgError(true)}
             sx={{
               bgcolor: 'grey.100',
               backgroundImage:

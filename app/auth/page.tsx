@@ -24,7 +24,8 @@ import {
 } from '@mui/icons-material';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTheme } from '@mui/material/styles';
-import { useLoginMutation, useRegisterMutation } from '@/backend/auth';
+import { GoogleLogin } from '@react-oauth/google';
+import { useLoginMutation, useRegisterMutation, useGoogleAuthMutation } from '@/backend/auth';
 import { useAppDispatch } from '@/redux/hooks';
 import { setAuth, setLoading } from '@/redux/slices/authSlice';
 import { AuthLayout } from '@/components/auth';
@@ -41,6 +42,7 @@ function AuthPageContent() {
   // RTK Query mutations
   const [login, { isLoading: isLoginLoading }] = useLoginMutation();
   const [register, { isLoading: isRegisterLoading }] = useRegisterMutation();
+  const [googleAuth, { isLoading: isGoogleAuthLoading }] = useGoogleAuthMutation();
 
   // Initialize tab from URL params, default to 0 (login)
   const [activeTab, setActiveTab] = useState(() => {
@@ -150,9 +152,68 @@ function AuthPageContent() {
     }
   };
 
-  const handleGoogleAuth = () => {
-    // TODO: Implement Google OAuth
-    console.log('Google OAuth');
+  const handleGoogleAuth = async (credentialResponse: any) => {
+    if (!credentialResponse?.credential) {
+      setError('Nie udało się uzyskać danych z Google');
+      return;
+    }
+
+    dispatch(setLoading(true));
+    setError('');
+
+    try {
+      // Decode Google JWT to extract profile picture
+      const base64Url = credentialResponse.credential.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(
+        atob(base64)
+          .split('')
+          .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+          .join('')
+      );
+      const googleProfile = JSON.parse(jsonPayload);
+      const googleAvatar = googleProfile.picture; // Google profile picture URL
+
+      const result = await googleAuth({
+        credential: credentialResponse.credential
+      }).unwrap();
+
+      // Merge Google avatar with user data
+      const userWithAvatar = {
+        ...result.user,
+        avatar: googleAvatar || result.user.avatar, // Use Google avatar if available
+      };
+
+      // Save user with avatar to localStorage
+      localStorage.setItem('user', JSON.stringify(userWithAvatar));
+
+      // Dispatch user data to Redux
+      dispatch(setAuth({
+        user: userWithAvatar,
+        token: result.token,
+        isAuthenticated: true
+      }));
+
+      // Show welcome message for new users
+      if (result.is_new_user) {
+        console.log('✅ Witamy! Twoje konto zostało utworzone.');
+        // TODO: Show toast notification for new users
+      } else {
+        console.log('✅ Zalogowano pomyślnie!');
+      }
+
+      // Redirect to dashboard
+      router.push('/dashboard');
+    } catch (err: any) {
+      console.error('Google auth error:', err);
+      setError(
+        err?.data?.error ||
+        err?.error ||
+        'Logowanie przez Google nie powiodło się. Spróbuj ponownie.'
+      );
+    } finally {
+      dispatch(setLoading(false));
+    }
   };
 
   return (
@@ -198,11 +259,31 @@ function AuthPageContent() {
             align="center"
             sx={{
               fontWeight: 700,
-              mb: 2,
+              mb: 1,
             }}
           >
             Universe MapMaker
           </Typography>
+
+          {/* Browse as Guest - Top Priority */}
+          <Box sx={{ textAlign: 'center', px: 4, py: 2 }}>
+            <Button
+              variant="text"
+              onClick={() => router.push('/dashboard?tab=1')}
+              sx={{
+                color: 'text.secondary',
+                textTransform: 'none',
+                fontSize: '0.95rem',
+                fontWeight: 500,
+                '&:hover': {
+                  bgcolor: 'rgba(28, 103, 157, 0.08)',
+                  color: theme.palette.secondary.main,
+                },
+              }}
+            >
+              Przeglądaj jako gość →
+            </Button>
+          </Box>
 
           {/* Tabs */}
           <Tabs
@@ -231,17 +312,51 @@ function AuthPageContent() {
               {activeTab === 1 && (
                 <TextField
                   fullWidth
+                  variant="outlined"
                   label="Imię i nazwisko"
                   value={formData.name}
                   onChange={handleInputChange('name')}
                   margin="normal"
                   required
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      bgcolor: 'rgba(255, 255, 255, 0.9)',
+                      backdropFilter: 'blur(10px)',
+                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                      '&:hover': {
+                        bgcolor: '#ffffff',
+                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+                      },
+                      '&.Mui-focused': {
+                        bgcolor: '#ffffff',
+                        boxShadow: '0 4px 12px rgba(28, 103, 157, 0.15)',
+                      },
+                    },
+                    '& .MuiOutlinedInput-input': {
+                      fontSize: '15px',
+                      padding: '14px 16px',
+                      '&:-webkit-autofill': {
+                        WebkitBoxShadow: '0 0 0 100px rgba(255, 255, 255, 0.9) inset !important',
+                        WebkitTextFillColor: '#000000 !important',
+                        borderRadius: '8px',
+                        transition: 'background-color 5000s ease-in-out 0s',
+                      },
+                    },
+                    '& fieldset': {
+                      borderColor: 'rgba(0, 0, 0, 0.12)',
+                      borderWidth: '1.5px',
+                    },
+                    '&:hover fieldset': {
+                      borderColor: theme.palette.secondary.main,
+                    },
+                  }}
                 />
               )}
 
               {/* Email Field */}
               <TextField
                 fullWidth
+                variant="outlined"
                 label={activeTab === 0 ? "Email lub nazwa użytkownika" : "Email"}
                 type={activeTab === 0 ? "text" : "email"}
                 value={formData.email}
@@ -249,11 +364,45 @@ function AuthPageContent() {
                 margin="normal"
                 required
                 disabled={isLoading}
+                autoComplete="username"
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    bgcolor: 'rgba(255, 255, 255, 0.9)',
+                    backdropFilter: 'blur(10px)',
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    '&:hover': {
+                      bgcolor: '#ffffff',
+                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+                    },
+                    '&.Mui-focused': {
+                      bgcolor: '#ffffff',
+                      boxShadow: '0 4px 12px rgba(28, 103, 157, 0.15)',
+                    },
+                  },
+                  '& .MuiOutlinedInput-input': {
+                    fontSize: '15px',
+                    padding: '14px 16px',
+                    '&:-webkit-autofill': {
+                      WebkitBoxShadow: '0 0 0 100px rgba(255, 255, 255, 0.9) inset !important',
+                      WebkitTextFillColor: '#000000 !important',
+                      borderRadius: '8px',
+                      transition: 'background-color 5000s ease-in-out 0s',
+                    },
+                  },
+                  '& fieldset': {
+                    borderColor: 'rgba(0, 0, 0, 0.12)',
+                    borderWidth: '1.5px',
+                  },
+                  '&:hover fieldset': {
+                    borderColor: theme.palette.secondary.main,
+                  },
+                }}
               />
 
               {/* Password Field */}
               <TextField
                 fullWidth
+                variant="outlined"
                 label="Hasło"
                 type={showPassword ? 'text' : 'password'}
                 value={formData.password}
@@ -261,6 +410,39 @@ function AuthPageContent() {
                 margin="normal"
                 required
                 disabled={isLoading}
+                autoComplete="current-password"
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    bgcolor: 'rgba(255, 255, 255, 0.9)',
+                    backdropFilter: 'blur(10px)',
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    '&:hover': {
+                      bgcolor: '#ffffff',
+                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+                    },
+                    '&.Mui-focused': {
+                      bgcolor: '#ffffff',
+                      boxShadow: '0 4px 12px rgba(28, 103, 157, 0.15)',
+                    },
+                  },
+                  '& .MuiOutlinedInput-input': {
+                    fontSize: '15px',
+                    padding: '14px 16px',
+                    '&:-webkit-autofill': {
+                      WebkitBoxShadow: '0 0 0 100px rgba(255, 255, 255, 0.9) inset !important',
+                      WebkitTextFillColor: '#000000 !important',
+                      borderRadius: '8px',
+                      transition: 'background-color 5000s ease-in-out 0s',
+                    },
+                  },
+                  '& fieldset': {
+                    borderColor: 'rgba(0, 0, 0, 0.12)',
+                    borderWidth: '1.5px',
+                  },
+                  '&:hover fieldset': {
+                    borderColor: theme.palette.secondary.main,
+                  },
+                }}
                 InputProps={{
                   endAdornment: (
                     <InputAdornment position="end">
@@ -268,6 +450,13 @@ function AuthPageContent() {
                         onClick={() => setShowPassword(!showPassword)}
                         edge="end"
                         disabled={isLoading}
+                        sx={{
+                          color: 'text.secondary',
+                          '&:hover': {
+                            bgcolor: 'rgba(28, 103, 157, 0.08)',
+                            color: theme.palette.secondary.main,
+                          },
+                        }}
                       >
                         {showPassword ? <VisibilityOff /> : <Visibility />}
                       </IconButton>
@@ -280,6 +469,7 @@ function AuthPageContent() {
               {activeTab === 1 && (
                 <TextField
                   fullWidth
+                  variant="outlined"
                   label="Potwierdź hasło"
                   type={showPassword ? 'text' : 'password'}
                   value={formData.confirmPassword}
@@ -287,6 +477,39 @@ function AuthPageContent() {
                   margin="normal"
                   required
                   disabled={isLoading}
+                  autoComplete="new-password"
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      bgcolor: 'rgba(255, 255, 255, 0.9)',
+                      backdropFilter: 'blur(10px)',
+                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                      '&:hover': {
+                        bgcolor: '#ffffff',
+                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+                      },
+                      '&.Mui-focused': {
+                        bgcolor: '#ffffff',
+                        boxShadow: '0 4px 12px rgba(28, 103, 157, 0.15)',
+                      },
+                    },
+                    '& .MuiOutlinedInput-input': {
+                      fontSize: '15px',
+                      padding: '14px 16px',
+                      '&:-webkit-autofill': {
+                        WebkitBoxShadow: '0 0 0 100px rgba(255, 255, 255, 0.9) inset !important',
+                        WebkitTextFillColor: '#000000 !important',
+                        borderRadius: '8px',
+                        transition: 'background-color 5000s ease-in-out 0s',
+                      },
+                    },
+                    '& fieldset': {
+                      borderColor: 'rgba(0, 0, 0, 0.12)',
+                      borderWidth: '1.5px',
+                    },
+                    '&:hover fieldset': {
+                      borderColor: theme.palette.secondary.main,
+                    },
+                  }}
                 />
               )}
 
@@ -309,6 +532,28 @@ function AuthPageContent() {
                 </Box>
               )}
 
+              {/* Google OAuth Login - Native Google Button with Custom Wrapper */}
+              <Box sx={{ mt: 3, mb: 2 }}>
+                <GoogleLogin
+                  onSuccess={handleGoogleAuth}
+                  onError={() => {
+                    setError('Logowanie przez Google nie powiodło się');
+                  }}
+                  text={activeTab === 0 ? 'signin_with' : 'signup_with'}
+                  size="large"
+                  width="100%"
+                  theme="outline"
+                  shape="rectangular"
+                />
+              </Box>
+
+              {/* Divider */}
+              <Divider sx={{ my: 2 }}>
+                <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
+                  lub użyj email
+                </Typography>
+              </Divider>
+
               {/* Submit Button */}
               <Button
                 type="submit"
@@ -317,16 +562,19 @@ function AuthPageContent() {
                 size="large"
                 disabled={isLoading}
                 sx={{
-                  mt: 3,
+                  mt: 2,
                   mb: 2,
                   py: 1.5,
                   bgcolor: theme.palette.secondary.main,
+                  boxShadow: '0 4px 12px rgba(28, 103, 157, 0.25)',
                   '&:hover': {
                     bgcolor: theme.palette.secondary.dark,
+                    boxShadow: '0 6px 16px rgba(28, 103, 157, 0.35)',
                   },
                   fontSize: '1rem',
                   fontWeight: 700,
                   textTransform: 'none',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                 }}
               >
                 {isLoading ? (
@@ -334,34 +582,6 @@ function AuthPageContent() {
                 ) : (
                   activeTab === 0 ? 'Zaloguj się' : 'Zarejestruj się'
                 )}
-              </Button>
-
-              {/* Divider */}
-              <Divider sx={{ my: 3 }}>
-                <Typography variant="body2" color="text.secondary">
-                  lub
-                </Typography>
-              </Divider>
-
-              {/* Google OAuth Button */}
-              <Button
-                variant="outlined"
-                fullWidth
-                size="large"
-                startIcon={<GoogleIcon />}
-                onClick={handleGoogleAuth}
-                sx={{
-                  py: 1.5,
-                  borderWidth: 2,
-                  '&:hover': {
-                    borderWidth: 2,
-                  },
-                  fontSize: '1rem',
-                  fontWeight: 600,
-                  textTransform: 'none',
-                }}
-              >
-                {activeTab === 0 ? 'Zaloguj przez Google' : 'Zarejestruj przez Google'}
               </Button>
             </form>
 
@@ -388,24 +608,6 @@ function AuthPageContent() {
             </Box>
           </CardContent>
       </Card>
-
-      {/* Browse as Guest */}
-      <Box sx={{ textAlign: 'center', mt: 3 }}>
-        <Button
-          variant="text"
-          onClick={() => router.push('/dashboard?tab=1')}
-          sx={{
-            color: 'white',
-            textTransform: 'none',
-            fontSize: '1rem',
-            '&:hover': {
-              bgcolor: 'rgba(255, 255, 255, 0.1)',
-            },
-          }}
-        >
-          Przeglądaj jako gość →
-        </Button>
-      </Box>
     </AuthLayout>
   );
 }

@@ -19,6 +19,7 @@ export interface User {
   theme?: string;
   dbLogin?: string;
   dbPassword?: string;
+  avatar?: string; // Google profile picture URL
 }
 
 export interface AuthResponse {

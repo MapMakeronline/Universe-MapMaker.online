@@ -47,18 +47,39 @@ import DataObjectIcon from '@mui/icons-material/DataObject';
 import ApiIcon from '@mui/icons-material/Api';
 import MapIcon from '@mui/icons-material/Map';
 import { useAppSelector } from '@/redux/hooks';
-import {
-  useGetAdminStatsQuery,
-  useGetAllProjectsQuery,
-  useUpdateUserLicenseMutation,
-  useDeleteUserMutation,
-  type AdminUser,
-  type AdminProject,
-} from '@/redux/api/adminApi';
-import DatabaseOverviewTab from './admin/DatabaseOverviewTab';
-import StorageTab from './admin/StorageTab';
-import DjangoAPITab from './admin/DjangoAPITab';
-import QGISServerTab from './admin/QGISServerTab';
+
+// TODO: Migrate AdminPanel to @/backend/admin API
+// Temporary mock hooks until backend admin endpoints are implemented
+const useGetAdminStatsQuery = () => ({ data: undefined, isLoading: false, error: null });
+const useGetAllProjectsQuery = () => ({ data: [], isLoading: false, error: null });
+const useUpdateUserLicenseMutation = () => [async () => {}, { isLoading: false }] as any;
+const useDeleteUserMutation = () => [async () => {}, { isLoading: false }] as any;
+
+type AdminUser = {
+  id: number;
+  username: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  license_type: string;
+  is_active: boolean;
+  date_joined: string;
+};
+
+type AdminProject = {
+  id: number;
+  project_name: string;
+  custom_project_name: string;
+  owner: string;
+  published: boolean;
+  created_at: string;
+};
+
+// Import admin tab components (now in same directory)
+import DatabaseOverviewTab from './DatabaseOverviewTab';
+import StorageTab from './StorageTab';
+import DjangoAPITab from './DjangoAPITab';
+import QGISServerTab from './QGISServerTab';
 
 export default function AdminPanel() {
   const theme = useTheme();
