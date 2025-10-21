@@ -29,6 +29,7 @@ import {
   moveLayer
 } from '@/redux/slices/layersSlice';
 import { useChangeLayersOrderMutation, useGetProjectDataQuery, projectsApi } from '@/backend/projects';
+import { useAddGroupMutation } from '@/backend/groups';
 // TODO: Migrate to @/backend/layers when layersApi is implemented
 // import {
 //   useSetLayerVisibilityMutation,
@@ -89,6 +90,7 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
 
   // Backend mutations
   const [changeLayersOrder] = useChangeLayersOrderMutation();
+  const [addGroup] = useAddGroupMutation();
   const [setLayerVisibility] = useSetLayerVisibilityMutation();
   const [addGeoJsonLayer] = useAddGeoJsonLayerMutation();
   const [addShapefileLayer] = useAddShapefileLayerMutation();
@@ -527,10 +529,80 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
     }
   };
 
-  const handleAddGroup = (data: { nazwaGrupy: string; grupaNadrzedna: string }) => {
+  /**
+   * Add new group to project
+   *
+   * Creates a new layer group in the QGIS project tree.
+   * Optionally can be nested under a parent group.
+   *
+   * Backend endpoint: POST /api/groups/add
+   * - Creates group in QGIS project file (.qgs)
+   * - Updates project tree.json
+   * - Returns new group data
+   *
+   * @param data.nazwaGrupy - Name for the new group
+   * @param data.grupaNadrzedna - Optional parent group name (empty string for root)
+   */
+  const handleAddGroup = async (data: { nazwaGrupy: string; grupaNadrzedna: string }) => {
+    if (!projectName) {
+      dispatch(showError('Nie można utworzyć grupy - brak nazwy projektu'));
+      return;
+    }
+
+    // Validation
+    if (!data.nazwaGrupy.trim()) {
+      dispatch(showError('Nazwa grupy nie może być pusta'));
+      return;
+    }
+
+    // Close modal immediately for better UX
     setAddGroupModalOpen(false);
-    console.log('TODO: Adding new group:', data);
-    dispatch(showInfo('Dodawanie grupy - wkrótce dostępne'));
+
+    // Show loading notification
+    dispatch(showInfo(`Tworzenie grupy "${data.nazwaGrupy}"...`, 8000));
+
+    try {
+      // Map frontend field names to backend format
+      const parent = data.grupaNadrzedna === 'Stwórz poza grupami' ? '' : data.grupaNadrzedna;
+
+      console.log('📁 Creating new group:', {
+        project: projectName,
+        group_name: data.nazwaGrupy,
+        parent,
+      });
+
+      const result = await addGroup({
+        project: projectName,
+        group_name: data.nazwaGrupy,
+        parent,
+      }).unwrap();
+
+      console.log('✅ Group created successfully:', result);
+
+      // ✅ MANUAL REFETCH - Force regenerate tree.json from backend
+      // RTK Query automatically invalidates 'Project' tag, triggering refetch
+      console.log('🔄 Triggering refetch of project data (tree.json)');
+      dispatch(
+        projectsApi.util.invalidateTags([
+          { type: 'Project', id: projectName }
+        ])
+      );
+
+      dispatch(showSuccess(`Grupa "${data.nazwaGrupy}" została utworzona!`, 5000));
+    } catch (error: any) {
+      console.error('❌ Failed to create group:', error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
+
+      // Extract error message from backend response
+      const errorMessage = error?.data?.message || error?.data?.error || error?.message || 'Nieznany błąd';
+
+      // Log full error data for debugging
+      if (error?.data) {
+        console.error('Backend error data:', error.data);
+      }
+
+      dispatch(showError(`Nie udało się utworzyć grupy: ${errorMessage}`, 8000));
+    }
   };
 
   /**

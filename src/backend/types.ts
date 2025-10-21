@@ -184,9 +184,114 @@ export interface LayerExportOptions {
 }
 
 // ============================================================================
-// Group Types (for parcels grouping)
+// Group Types (Layer Groups in QGIS Project)
 // ============================================================================
 
+/**
+ * Layer group in QGIS project tree
+ *
+ * Backend format from tree.json
+ */
+export interface GroupNode {
+  children: Array<GroupNode | LayerNode>;
+  name: string;
+  childrenVisible: boolean;
+  visible: boolean;
+  type: 'group';
+  parent: string;
+  app: boolean;
+  inspire: boolean;
+  app_confirmed: boolean;
+  extent: [number, number, number, number]; // [xmin, ymin, xmax, ymax]
+}
+
+/**
+ * Layer node in QGIS project tree
+ *
+ * Backend format from tree.json
+ */
+export interface LayerNode {
+  id: string;
+  name: string;
+  type: 'vector' | 'raster' | 'wms';
+  visible: boolean;
+  // ... other layer properties
+}
+
+/**
+ * Request: Add new group
+ *
+ * POST /api/groups/add
+ */
+export interface AddGroupRequest {
+  project: string; // Project name (e.g., "moj_projekt")
+  group_name: string; // Name for the new group
+  parent?: string; // Optional parent group name (empty string for root)
+}
+
+/**
+ * Response: Add group
+ */
+export interface AddGroupResponse {
+  children: Array<any>;
+  name: string;
+  childrenVisible: boolean;
+  visible: boolean;
+  type: 'group';
+  parent: string;
+  app: boolean;
+  inspire: boolean;
+  app_confirmed: boolean;
+  extent: [number, number, number, number];
+}
+
+/**
+ * Request: Remove groups and layers
+ *
+ * POST /api/groups/layer/remove
+ */
+export interface RemoveGroupLayersRequest {
+  project: string;
+  groups?: string[]; // Array of group names
+  layers?: string[]; // Array of layer IDs
+  remove_from_database?: boolean; // If true, also delete from PostGIS
+}
+
+/**
+ * Request: Change group name
+ *
+ * POST /api/groups/name
+ */
+export interface ChangeGroupNameRequest {
+  project: string;
+  group_name: string; // Current group name
+  new_name: string; // New group name
+}
+
+/**
+ * Response: Change group name
+ */
+export interface ChangeGroupNameResponse {
+  group_name: string; // New group name
+}
+
+/**
+ * Request: Set group visibility
+ *
+ * POST /api/groups/selection
+ */
+export interface SetGroupVisibilityRequest {
+  project: string;
+  group_name?: string; // Single group name
+  groups?: string[]; // Array of group names
+  layer_id?: string; // Single layer ID
+  layers?: string[]; // Array of layer IDs
+  checked: boolean; // Visibility state (true = visible, false = hidden)
+}
+
+/**
+ * Legacy Group Type (deprecated - for parcels grouping)
+ */
 export interface Group {
   id: string;
   name: string;
@@ -196,6 +301,9 @@ export interface Group {
   updated_at: string;
 }
 
+/**
+ * Legacy CreateGroupData (deprecated)
+ */
 export interface CreateGroupData {
   project_name: string;
   group_name: string;

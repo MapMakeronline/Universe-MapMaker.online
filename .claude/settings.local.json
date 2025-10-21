@@ -123,7 +123,8 @@
       "Bash(cmd /c taskkill /F /IM node.exe)",
       "Bash(cmd /c \"rmdir /S /Q .next\")",
       "Bash(cmd /c timeout /t 12)",
-      "Bash(cmd /c timeout /t 5)"
+      "Bash(cmd /c timeout /t 5)",
+      "Read(//c/Users/jakub/Documents/Mapmaker/universe/**)"
     ],
     "deny": [],
     "ask": []

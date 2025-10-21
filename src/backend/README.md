@@ -19,11 +19,19 @@ src/backend/
 │   ├── layers.api.ts        # 29+ endpoints (add, delete, style, export)
 │   └── index.ts
 │
+├── groups/                   # ✅ Moduł grup warstw
+│   ├── groups.api.ts        # 9 endpoints (add, remove, rename, visibility)
+│   └── index.ts
+│
 ├── users/                    # Moduł użytkowników
 │   ├── users.api.ts         # Profile, settings, account
 │   └── index.ts
 │
-├── types.ts                  # Wszystkie typy TypeScript (407 linii)
+├── contact/                  # Moduł kontaktu
+│   ├── contact.api.ts       # Contact form endpoint
+│   └── index.ts
+│
+├── types.ts                  # Wszystkie typy TypeScript (500+ linii)
 └── index.ts                  # Eksport publiczny - używaj tego!
 ```
 
@@ -37,7 +45,9 @@ import {
   useGetProjectsQuery,                 // Projects
   useCreateProjectMutation,            // Projects
   useAddGeoJsonLayerMutation,          // Layers
+  useAddGroupMutation,                 // Groups
   useGetUserProfileQuery,              // Users
+  useSendContactMessageMutation,       // Contact
 } from '@/backend';
 ```
 
@@ -70,7 +80,9 @@ Pełna dokumentacja: [docs/BACKEND_INTEGRATION_GUIDE.md](../../docs/BACKEND_INTE
 - ✅ **Auth** - Login, register, password reset (6 endpoints)
 - ✅ **Projects** - CRUD, QGS import/export, publish (25+ endpoints)
 - ✅ **Layers** - Re-export z @/redux/api (29 endpoints) - TODO: migracja do baseApi
+- ✅ **Groups** - Add, remove, rename, visibility, export, INSPIRE (9 endpoints)
 - ✅ **Users** - Profile, settings, account (4 endpoints)
+- ✅ **Contact** - Contact form (1 endpoint)
 
 ## 🔄 TODO: Phase 2
 
