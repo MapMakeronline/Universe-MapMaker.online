@@ -9,7 +9,6 @@ import { setViewState, setMapLoaded, setFullscreen } from '@/redux/slices/mapSli
 import { MAPBOX_TOKEN, MAP_CONFIG } from '@/mapbox/config';
 import { mapLogger } from '@/tools/logger';
 import { saveViewport, loadViewport, autoSaveViewport } from '@/mapbox/viewport-persistence';
-import DrawTools from '../narzedzia/DrawTools';
 import MeasurementTools from '../narzedzia/MeasurementTools';
 import IdentifyTool from './IdentifyTool';
 import Buildings3D from './Buildings3D';
@@ -234,9 +233,6 @@ const MapContainer: React.FC<MapContainerProps> = ({ children, projectName }) =>
 
         {/* Geocoder - Search (disabled, now using SearchModal from RightToolbar) */}
         {/* <Geocoder /> */}
-
-        {/* Draw Tools */}
-        <DrawTools />
 
         {/* Measurement Tools */}
         <MeasurementTools />

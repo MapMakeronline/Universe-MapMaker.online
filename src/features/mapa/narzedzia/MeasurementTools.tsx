@@ -99,8 +99,15 @@ const MeasurementTools: React.FC = () => {
     map.on('dblclick', handleDoubleClick);
 
     return () => {
-      map.off('click', handleMapClick);
-      map.off('dblclick', handleDoubleClick);
+      // IMPORTANT: Check if map still exists before cleanup
+      if (!map) return;
+
+      try {
+        map.off('click', handleMapClick);
+        map.off('dblclick', handleDoubleClick);
+      } catch (error) {
+        console.warn('⚠️ MeasurementTools: Error removing event listeners:', error);
+      }
     };
   }, [map, isMapReady, dispatch, measurement]);
 
@@ -108,7 +115,7 @@ const MeasurementTools: React.FC = () => {
   useEffect(() => {
     if (!map || !isMapReady) return;
 
-    const mapInstance = map.getMap();
+    const mapInstance = map.getMap?.();
     if (!mapInstance) return;
     const sourceId = 'measurement-source';
     const lineLayerId = 'measurement-lines';
@@ -264,11 +271,21 @@ const MeasurementTools: React.FC = () => {
     });
 
     return () => {
-      if (mapInstance.getLayer(lineLayerId)) mapInstance.removeLayer(lineLayerId);
-      if (mapInstance.getLayer(lineLayerId + '-fill')) mapInstance.removeLayer(lineLayerId + '-fill');
-      if (mapInstance.getLayer(lineLayerId + '-stroke')) mapInstance.removeLayer(lineLayerId + '-stroke');
-      if (mapInstance.getLayer(pointLayerId)) mapInstance.removeLayer(pointLayerId);
-      if (mapInstance.getSource(sourceId)) mapInstance.removeSource(sourceId);
+      // IMPORTANT: Check if map and mapInstance still exist before cleanup
+      if (!map) return;
+
+      const cleanupMapInstance = map.getMap?.();
+      if (!cleanupMapInstance) return;
+
+      try {
+        if (cleanupMapInstance.getLayer(lineLayerId)) cleanupMapInstance.removeLayer(lineLayerId);
+        if (cleanupMapInstance.getLayer(lineLayerId + '-fill')) cleanupMapInstance.removeLayer(lineLayerId + '-fill');
+        if (cleanupMapInstance.getLayer(lineLayerId + '-stroke')) cleanupMapInstance.removeLayer(lineLayerId + '-stroke');
+        if (cleanupMapInstance.getLayer(pointLayerId)) cleanupMapInstance.removeLayer(pointLayerId);
+        if (cleanupMapInstance.getSource(sourceId)) cleanupMapInstance.removeSource(sourceId);
+      } catch (error) {
+        console.warn('⚠️ MeasurementTools: Error removing layers/source during cleanup:', error);
+      }
     };
   }, [map, isMapReady, measurement.measurements, measurement.activePoints, measurement.isDistanceMode, measurement.isAreaMode]);
 

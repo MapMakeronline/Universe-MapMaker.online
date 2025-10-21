@@ -125,7 +125,15 @@
       "Bash(cmd /c timeout /t 12)",
       "Bash(cmd /c timeout /t 5)",
       "Bash(cmd /c screenshot.bat http://localhost:3000/dashboard dashboard-sorting-check.png)",
-      "Bash(cmd /c \"taskkill //F //IM node.exe\")"
+      "Bash(cmd /c \"taskkill //F //IM node.exe\")",
+      "Bash(cmd /c \"dir /O-D /B C:\\Users\\Bartosz\\Documents\\ShareX\\Screenshots\\2025-10\\*.png\")",
+      "Read(//c/Users/Bartosz/Documents/ShareX/Screenshots/2025-10/**)",
+      "Bash(cmd /c \"taskkill /F /IM node.exe\")",
+      "Bash(cmd /c taskkill /F /PID 14380)",
+      "Bash(cmd /c taskkill /F /PID 9948)",
+      "Bash(cmd /c taskkill //F //PID 9948)",
+      "Bash(cmd /c \"dir /O-D /B C:\\Users\\Bartosz\\Documents\\ShareX\\Screenshots\\2025-10\\*.png | findstr /N .\")",
+      "Bash(cmd /c screenshot.bat http://localhost:3000/map?project=test navigation-fix-test.png)"
     ],
     "deny": [],
     "ask": []

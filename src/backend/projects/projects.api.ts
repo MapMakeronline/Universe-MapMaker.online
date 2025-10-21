@@ -386,17 +386,33 @@ export const projectsApi = baseApi.injectEndpoints({
     }),
 
     /**
-     * POST /api/projects/change_layers_order
-     * Change layer order
+     * POST /api/projects/tree/order
+     * Change layer/group order in project tree
+     *
+     * IMPORTANT: This endpoint exists but has different signature than implemented!
+     * Backend expects: { project, object_type, object_id, new_parent_name, position }
+     * Current code sends: { project, layers: [] }
+     *
+     * TODO: Refactor drag & drop logic to call this endpoint for each move operation:
+     * - When user drags layer → call with { object_type: "layer", object_id, new_parent_name, position }
+     * - Parse drag & drop position (before/after/inside) to backend position (0-based index)
+     *
+     * Backend docs: docs/backend/projects_api_docs.md line 556-596
      */
     changeLayersOrder: builder.mutation<
-      { message: string },
-      { project: string; layers: string[] }
+      { data: string; success: boolean; message: string },
+      {
+        project: string;
+        object_type: 'layer' | 'group';
+        object_id: string;
+        new_parent_name: string;
+        position: number;
+      }
     >({
-      query: ({ project, layers }) => ({
-        url: '/api/projects/change_layers_order',
+      query: ({ project, object_type, object_id, new_parent_name, position }) => ({
+        url: '/api/projects/tree/order',
         method: 'POST',
-        body: { project, layers },
+        body: { project, object_type, object_id, new_parent_name, position },
       }),
       invalidatesTags: (result, error, arg) => [
         { type: 'QGIS', id: `${arg.project}-order` },

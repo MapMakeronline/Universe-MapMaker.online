@@ -85,6 +85,80 @@ npm run lint         # Run ESLint
 powershell -ExecutionPolicy Bypass -File screenshot.ps1 "http://localhost:3000/dashboard"
 ```
 
+## ShareX Screenshot Analysis Workflow
+
+**IMPORTANT:** When user makes a screenshot, automatically check ShareX folder and analyze it for backend integration issues.
+
+### Automatic Screenshot Analysis Process
+
+**ShareX Screenshot Location:**
+```
+C:\Users\Bartosz\Documents\ShareX\Screenshots\2025-10\
+```
+
+**When user says "sprawdź screenshot" or makes a screenshot:**
+
+1. **Find Latest Screenshot:**
+   ```bash
+   powershell "Get-ChildItem 'C:\Users\Bartosz\Documents\ShareX\Screenshots\2025-10\*.png' | Sort-Object LastWriteTime -Descending | Select-Object -First 1"
+   ```
+
+2. **Read and Analyze Screenshot:**
+   - Use Read tool to view the screenshot
+   - Identify what page/component is shown
+   - Look for visible errors, warnings, or UI issues
+   - Check browser console errors (if visible)
+   - Analyze network tab (if visible)
+
+3. **Propose Backend Integration Steps:**
+   Based on what's visible on the screenshot, propose:
+   - Which backend endpoint needs testing
+   - What RTK Query integration is needed
+   - Specific curl command to test the endpoint
+   - Frontend component changes required
+   - Next steps for integration
+
+4. **Example Analysis Template:**
+   ```
+   📸 Screenshot Analysis:
+
+   **What I see:**
+   - Page: /dashboard or /map or /auth
+   - Component: ComponentName
+   - Visible issues: [list any errors/warnings]
+
+   **Backend Integration Status:**
+   - Endpoint needed: GET/POST/PUT /api/endpoint/
+   - Current status: ✅ Working / 🚧 Mocked / ❌ Not implemented
+
+   **Proposed Next Steps:**
+   1. Test endpoint: curl -X GET "..." -H "Authorization: Token ..."
+   2. Add RTK Query: src/backend/module/api.ts
+   3. Update component: src/features/component.tsx
+   4. Test in browser
+   5. Commit changes
+
+   **What should we work on next?**
+   ```
+
+### Quick Commands for Screenshot Analysis
+
+```bash
+# Get latest screenshot
+powershell "Get-ChildItem 'C:\Users\Bartosz\Documents\ShareX\Screenshots\2025-10\*.png' | Sort-Object LastWriteTime -Descending | Select-Object -First 1 FullName, LastWriteTime"
+
+# Get last 3 screenshots
+powershell "Get-ChildItem 'C:\Users\Bartosz\Documents\ShareX\Screenshots\' -Recurse -Filter '*.png' | Sort-Object LastWriteTime -Descending | Select-Object -First 3 FullName, LastWriteTime"
+```
+
+**Workflow Summary:**
+1. User makes screenshot (ShareX)
+2. Claude finds latest screenshot automatically
+3. Claude analyzes what's visible
+4. Claude proposes backend integration steps
+5. User decides next action
+```
+
 ## Deployment Workflow
 
 **IMPORTANT:** Cloud Build is integrated with GitHub - deployment happens automatically on push!

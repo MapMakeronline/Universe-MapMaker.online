@@ -10,7 +10,7 @@
  * - Zarządzanie stanem przeciągania (draggedItem, dropTarget, dropPosition)
  * - Cleanup po zakończeniu operacji drag & drop
  */
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 
 export type DropPosition = 'before' | 'after' | 'inside';
 
@@ -39,6 +39,10 @@ export const useDragDrop = <T extends LayerNode>(
     dropPosition: 'before',
     showMainLevelZone: false
   });
+
+  // Throttle dragOver updates to improve performance (16ms = ~60fps)
+  const lastDragOverUpdate = useRef<number>(0);
+  const DRAG_OVER_THROTTLE_MS = 16;
 
   // Funkcja do znajdowania ścieżki elementu w hierarchii
   const findElementPath = (nodes: T[], targetId: string, currentPath: number[] = []): number[] | null => {
@@ -176,7 +180,7 @@ export const useDragDrop = <T extends LayerNode>(
   };
 
   const handleDragStart = (e: any, id: string) => {
-    console.log('🟢 Drag started:', id);
+    // console.log('🟢 Drag started:', id); // Disabled for performance
     setDragDropState(prev => ({ ...prev, draggedItem: id }));
     e.dataTransfer.effectAllowed = 'move';
   };
@@ -189,7 +193,7 @@ export const useDragDrop = <T extends LayerNode>(
     e.preventDefault();
     e.stopPropagation();
 
-    console.log('🔵 Drag enter on:', id);
+    // console.log('🔵 Drag enter on:', id); // Disabled for performance
 
     if (dragDropState.draggedItem && dragDropState.draggedItem !== id) {
       // Sprawdź czy nie próbujemy przeciągnąć elementu na samego siebie lub na swoje dziecko
@@ -207,9 +211,9 @@ export const useDragDrop = <T extends LayerNode>(
           dropTarget: id,
           dropPosition: position
         }));
-        console.log('✅ Valid target set:', id, 'position:', position);
+        // console.log('✅ Valid target set:', id, 'position:', position); // Disabled for performance
       } else {
-        console.log('❌ Invalid target (descendant):', id);
+        // console.log('❌ Invalid target (descendant):', id); // Disabled for performance
       }
     }
   };
@@ -243,6 +247,12 @@ export const useDragDrop = <T extends LayerNode>(
       e.dataTransfer.dropEffect = 'move';
     }
 
+    // PERFORMANCE: Throttle state updates to ~60fps
+    const now = Date.now();
+    if (now - lastDragOverUpdate.current < DRAG_OVER_THROTTLE_MS) {
+      return; // Skip this update if too soon
+    }
+
     // Zaawansowana detekcja typu operacji podczas przeciągania
     if (dragDropState.draggedItem && id && id !== dragDropState.draggedItem) {
       const isValidTarget = !isDescendant(dragDropState.draggedItem, id);
@@ -268,6 +278,7 @@ export const useDragDrop = <T extends LayerNode>(
 
         // Aktualizuj state tylko gdy się zmieni
         if (dragDropState.dropTarget !== id || dragDropState.dropPosition !== position) {
+          lastDragOverUpdate.current = now; // Update throttle timer
           setDragDropState(prev => ({
             ...prev,
             dropTarget: id,
@@ -318,17 +329,17 @@ export const useDragDrop = <T extends LayerNode>(
     e.preventDefault();
     e.stopPropagation();
 
-    console.log('🔴 ADVANCED DROP! Target:', targetId, 'Dragged:', dragDropState.draggedItem);
+    // console.log('🔴 ADVANCED DROP! Target:', targetId, 'Dragged:', dragDropState.draggedItem); // Disabled for performance
 
     if (!dragDropState.draggedItem || dragDropState.draggedItem === targetId) {
-      console.log('❌ Invalid drop');
+      // console.log('❌ Invalid drop'); // Disabled for performance
       setDragDropState(prev => ({ ...prev, dropTarget: null, showMainLevelZone: false }));
       return;
     }
 
     // Specjalna obsługa dla strefy głównego poziomu
     if (targetId === MAIN_LEVEL_DROP_ID) {
-      console.log('🏠 DROP TO MAIN LEVEL!');
+      // console.log('🏠 DROP TO MAIN LEVEL!'); // Disabled for performance
       onMove(dragDropState.draggedItem, targetId, 'after');
       cleanupDragState();
       return;
@@ -336,12 +347,12 @@ export const useDragDrop = <T extends LayerNode>(
 
     // Sprawdź czy nie próbujemy wrzucić grupy do jej własnego dziecka
     if (isDescendant(dragDropState.draggedItem, targetId)) {
-      console.log('❌ Cannot drop parent into its own child');
+      // console.log('❌ Cannot drop parent into its own child'); // Disabled for performance
       cleanupDragState();
       return;
     }
 
-    console.log('✅ Calling Redux moveLayer:', dragDropState.draggedItem, '→', targetId, dragDropState.dropPosition);
+    // console.log('✅ Calling Redux moveLayer:', dragDropState.draggedItem, '→', targetId, dragDropState.dropPosition); // Disabled for performance
     onMove(dragDropState.draggedItem, targetId, dragDropState.dropPosition);
     cleanupDragState();
   };
@@ -351,18 +362,18 @@ export const useDragDrop = <T extends LayerNode>(
     e.stopPropagation();
 
     if (!dragDropState.draggedItem) {
-      console.log('❌ No dragged item for end drop');
+      // console.log('❌ No dragged item for end drop'); // Disabled for performance
       return;
     }
 
     // Sprawdź czy nie próbujemy wrzucić grupy do jej własnego dziecka
     if (isDescendant(dragDropState.draggedItem, groupId)) {
-      console.log('❌ Cannot drop parent into its own child');
+      // console.log('❌ Cannot drop parent into its own child'); // Disabled for performance
       setDragDropState(prev => ({ ...prev, dropTarget: null }));
       return;
     }
 
-    console.log(`🎯 Drop at end of group: ${groupId}, item: ${dragDropState.draggedItem}`);
+    // console.log(`🎯 Drop at end of group: ${groupId}, item: ${dragDropState.draggedItem}`); // Disabled for performance
     onMove(dragDropState.draggedItem, groupId, 'inside');
     cleanupDragState();
   };

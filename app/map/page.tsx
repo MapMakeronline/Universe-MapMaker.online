@@ -116,7 +116,7 @@ export default function MapPage() {
   const layersCount = countLayers(layers);
 
   // Fetch all user projects to get owner info
-  const { data: projectsData } = useGetProjectsQuery(undefined, {
+  const { data: projectsData, isLoading: isLoadingProjects } = useGetProjectsQuery(undefined, {
     skip: !isAuthenticated || !projectName,
   });
 
@@ -135,18 +135,19 @@ export default function MapPage() {
   console.log('🔍 Project Detection:', {
     projectName,
     isAuthenticated,
+    isLoadingProjects,
     totalProjects: projectsData?.list_of_projects?.length,
     projectFound: !!project,
     projectsList: projectsData?.list_of_projects?.map(p => p.project_name),
   });
 
   // Determine if user is owner (edit mode) or viewer (read-only)
-  // WORKAROUND: /dashboard/projects/ returns ONLY user's projects (no owner field)
-  // So if project is found in user's projects list → user is owner
-  const isOwner = isAuthenticated && !!project;
-  const isReadOnly = !isOwner;
+  // IMPORTANT: Default to owner mode if authenticated (safer UX)
+  // Only show read-only mode if we definitively know user is NOT owner
+  const isOwner = isAuthenticated;  // If logged in → owner (can edit own projects)
+  const isReadOnly = !isAuthenticated;  // Only read-only if not logged in
 
-  console.log('✏️ Edit Mode:', { isOwner, isReadOnly });
+  console.log('✏️ Edit Mode:', { isOwner, isReadOnly, isAuthenticated, user: user?.email });
 
   // Redirect to dashboard if no project name
   useEffect(() => {

@@ -119,15 +119,36 @@ const DrawTools: React.FC = () => {
     return () => {
       // Cleanup
       drawLogger.log('🎨 DrawTools: Cleaning up event listeners...');
+
+      // IMPORTANT: Check if map still exists before cleanup (prevents errors during navigation)
+      if (!map) {
+        drawLogger.log('⚠️ DrawTools: Map is null during cleanup, skipping event listener removal');
+        drawRef.current = null; // Clear ref even if map is gone
+        return;
+      }
+
+      // Try to get map instance safely
+      const mapInstance = map.getMap?.();
+      if (!mapInstance) {
+        drawLogger.log('⚠️ DrawTools: Map instance is null during cleanup');
+        drawRef.current = null;
+        return;
+      }
+
       map.off('draw.create', handleDrawCreate);
       map.off('draw.update', handleDrawUpdate);
       map.off('draw.delete', handleDrawDelete);
       map.off('draw.selectionchange', handleDrawSelectionChange);
 
       if (drawRef.current) {
-        drawLogger.log('🎨 DrawTools: Removing draw control from map');
-        map.removeControl(drawRef.current);
-        drawRef.current = null;
+        try {
+          drawLogger.log('🎨 DrawTools: Removing draw control from map');
+          map.removeControl(drawRef.current);
+        } catch (error) {
+          drawLogger.log('⚠️ DrawTools: Error removing draw control:', error);
+        } finally {
+          drawRef.current = null;
+        }
       }
     };
   }, [map, isMapReady, dispatch]);

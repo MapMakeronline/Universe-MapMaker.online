@@ -53,6 +53,24 @@ export function QGISProjectLayersLoader({ projectName, projectData }: QGISProjec
       return;
     }
 
+    // CRITICAL: Wait for map style to load before adding WMS layers
+    // Use 'idle' event instead of 'style.load' because style.load may have already fired
+    if (!map.isStyleLoaded()) {
+      mapLogger.log('⏳ Waiting for map style to load (using idle event)');
+      const onMapIdle = () => {
+        if (map.isStyleLoaded()) {
+          mapLogger.log('🗺️ Style loaded (via idle), adding project layers now');
+          const layersAdded = addProjectLayers(map, layers, projectName);
+          mapLogger.log(`✅ Successfully loaded ${layersAdded} WMS layers from QGIS Server`);
+        } else {
+          mapLogger.warn('⚠️ Map idle but style not loaded yet, will retry on next idle');
+          map.once('idle', onMapIdle); // Retry
+        }
+      };
+      map.once('idle', onMapIdle);
+      return;
+    }
+
     // ✅ FIX: Check if layers already exist before adding
     const firstLayerId = `qgis-wms-layer-${projectName}-${layers[0].name}`;
     if (map.getLayer(firstLayerId)) {

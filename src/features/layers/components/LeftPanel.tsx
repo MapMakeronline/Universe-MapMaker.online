@@ -28,7 +28,7 @@ import {
   deleteLayer,
   moveLayer
 } from '@/redux/slices/layersSlice';
-import { useChangeLayersOrderMutation, useGetProjectDataQuery, projectsApi } from '@/backend/projects';
+import { useGetProjectDataQuery, projectsApi, useChangeLayersOrderMutation } from '@/backend/projects';
 import {
   useAddGeoJsonLayerMutation,
   useAddShpLayerMutation,
@@ -183,6 +183,75 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
     return order;
   };
 
+  /**
+   * Calculate position index for backend API
+   *
+   * Backend expects 0-based index in the target parent's children array.
+   * This function converts drag & drop position ('before'/'after'/'inside') to index.
+   *
+   * @param targetId - Target layer/group ID
+   * @param position - Drop position relative to target
+   * @param layers - Current layer tree
+   * @returns { parent: LayerNode | null, index: number }
+   */
+  const calculatePositionIndex = (
+    targetId: string,
+    position: 'before' | 'after' | 'inside',
+    layers: LayerNode[]
+  ): { parent: LayerNode | null; index: number } => {
+    // Special case: main level drop zone
+    if (targetId === '__main_level__') {
+      return { parent: null, index: layers.length }; // Append to end of main level
+    }
+
+    const target = findLayerById(layers, targetId);
+    if (!target) {
+      console.error('❌ Target not found:', targetId);
+      return { parent: null, index: 0 };
+    }
+
+    // Case 1: 'inside' - dropping INTO a group
+    if (position === 'inside') {
+      if (target.type === 'group') {
+        // Position 0 = first child (backend will append to end if group has children)
+        return { parent: target, index: 0 };
+      } else {
+        console.warn('⚠️ Cannot drop inside non-group layer:', target.name);
+        return { parent: null, index: 0 };
+      }
+    }
+
+    // Case 2: 'before' or 'after' - dropping as sibling
+    // Find parent of target
+    const parent = findParentGroup(layers, targetId);
+    const siblings = parent?.children || layers; // If no parent, target is at root level
+
+    // Find index of target in siblings
+    const targetIndex = siblings.findIndex((node) => node.id === targetId);
+    if (targetIndex === -1) {
+      console.error('❌ Target not found in siblings:', targetId);
+      return { parent, index: 0 };
+    }
+
+    // Calculate new index
+    const newIndex = position === 'before' ? targetIndex : targetIndex + 1;
+
+    return { parent, index: newIndex };
+  };
+
+  /**
+   * Find parent group name for backend API
+   *
+   * Backend expects parent group NAME (not ID).
+   * Returns empty string if layer is at root level.
+   *
+   * @param parent - Parent group (null for root level)
+   * @returns Parent group name or empty string
+   */
+  const getParentGroupName = (parent: LayerNode | null): string => {
+    return parent?.name || ''; // Empty string = root level
+  };
+
   // Helper: Sync layer order with backend
   const syncLayerOrderWithBackend = async () => {
     if (!projectName) {
@@ -191,6 +260,12 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
       return;
     }
 
+    // TODO: Backend endpoint /api/projects/change_layers_order does not exist (404)
+    // This endpoint should save layer order to QGS file, but it's not implemented yet.
+    // For now, layer order is stored only in Redux state (client-side).
+    // When backend implements this endpoint, uncomment the code below.
+
+    /*
     try {
       const order = extractLayerOrder(reduxLayers);
       console.log('💾 Syncing layer order to backend:', order);
@@ -206,17 +281,94 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
       console.error('❌ Failed to sync layer order:', error);
       dispatch(showError('Nie udało się zapisać kolejności warstw', 6000));
     }
+    */
+
+    // Temporary: Just log to console (Redux state is already updated by drag & drop)
+    const order = extractLayerOrder(reduxLayers);
+    console.log('💾 Layer order updated (client-side only, backend sync disabled):', order);
   };
 
-  // Drag & drop handlers with Redux integration + backend sync
+  /**
+   * Drag & Drop handler with backend sync
+   *
+   * Process:
+   * 1. Optimistic update - update Redux immediately for instant UI feedback
+   * 2. Call backend API to persist change to QGS file
+   * 3. Rollback Redux on backend error
+   *
+   * Backend endpoint: POST /api/projects/tree/order
+   * Expected params:
+   * - project: string (project name)
+   * - object_type: 'layer' | 'group'
+   * - object_id: string (layer/group ID)
+   * - new_parent_name: string (parent group name, empty string for root)
+   * - position: number (0-based index in parent's children)
+   */
   const handleDragDropMove = async (layerId: string, targetId: string, position: 'before' | 'after' | 'inside') => {
-    // 1. Update Redux state (optimistic update)
+    if (!projectName) {
+      console.warn('⚠️ No project name - skipping drag & drop');
+      dispatch(showError('Nie można przenieść warstwy - brak nazwy projektu'));
+      return;
+    }
+
+    const layer = findLayerById(layers, layerId);
+    if (!layer) {
+      console.error('❌ Layer not found:', layerId);
+      return;
+    }
+
+    // Calculate position index and parent for backend API
+    const { parent, index } = calculatePositionIndex(targetId, position, layers);
+    const newParentName = getParentGroupName(parent);
+
+    console.log('🎯 Drag & Drop:', {
+      layer: layer.name,
+      layerId,
+      targetId,
+      position,
+      newParentName: newParentName || '(root)',
+      index,
+    });
+
+    // 1. Optimistic update - update Redux immediately
+    const previousState = { ...layers }; // Save state for rollback
     dispatch(moveLayer({ layerId, targetId, position }));
 
-    // 2. Sync with backend after a short delay (debounce for multiple rapid moves)
-    setTimeout(() => {
-      syncLayerOrderWithBackend();
-    }, 500);
+    // 2. Sync with backend (async)
+    try {
+      await changeLayersOrder({
+        project: projectName,
+        object_type: layer.type === 'group' ? 'group' : 'layer',
+        object_id: layerId, // Backend expects layer ID (not name)
+        new_parent_name: newParentName,
+        position: index,
+      }).unwrap();
+
+      console.log('✅ Layer order synced to backend:', {
+        layer: layer.name,
+        parent: newParentName || '(root)',
+        position: index,
+      });
+
+      dispatch(showSuccess(`Warstwa "${layer.name}" przeniesiona`, 3000));
+    } catch (error: any) {
+      console.error('❌ Failed to sync layer order:', error);
+
+      // 3. Rollback on error - revert Redux state
+      // NOTE: We can't easily rollback to previous state, so we just show error
+      // User can undo with Ctrl+Z if needed
+      const errorMessage = error?.data?.message || error?.message || 'Nieznany błąd';
+      dispatch(showError(`Nie udało się przenieść warstwy: ${errorMessage}`, 6000));
+
+      // TODO: Implement proper rollback by dispatching previous state
+      // For now, reload project data from backend to restore correct order
+      console.log('🔄 Reloading project data from backend to restore correct order');
+      dispatch(
+        projectsApi.util.invalidateTags([
+          { type: 'Project', id: projectName }
+        ])
+      );
+    }
   };
 
   const dragDropHandlers = useDragDrop(layers, handleDragDropMove);
