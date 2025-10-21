@@ -18,6 +18,7 @@ steps:
       '--build-arg', 'NEXT_PUBLIC_MAPBOX_TOKEN=pk.eyJ1IjoibWFwbWFrZXItb25saW5lIiwiYSI6ImNtZzN3bm8wYTBwaXIybHM5dDlpc3YwOTQifQ.8Hrv97gishqnvI_h7PiqlQ',
       '--build-arg', 'NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN=pk.eyJ1IjoibWFwbWFrZXItb25saW5lIiwiYSI6ImNtZzN3bm8wYTBwaXIybHM5dDlpc3YwOTQifQ.8Hrv97gishqnvI_h7PiqlQ',
       '--build-arg', 'NEXT_PUBLIC_API_URL=https://api.universemapmaker.online',
+      '--build-arg', 'NEXT_PUBLIC_GOOGLE_CLIENT_ID=576538488457-4u4di9b6slc7605tlj4vri7jt9apm467.apps.googleusercontent.com',
       '-t', 'europe-central2-docker.pkg.dev/$PROJECT_ID/app-repo/app:latest',
       '.'
     ]
