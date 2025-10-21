@@ -25,8 +25,16 @@ import { BasemapSelector } from './BasemapSelector';
 import { PublishServicesModal } from '../modale/PublishServicesModal';
 // TODO: Add usePublishWMSWFSMutation to @/backend/projects
 // import { usePublishWMSWFSMutation } from '@/backend/projects';
+import { useRemoveGroupsAndLayersMutation, useChangeGroupNameMutation } from '@/backend/groups';
+import { projectsApi } from '@/backend/projects';
 import { useAppDispatch } from '@/redux/hooks';
 import { showSuccess, showError, showInfo } from '@/redux/slices/notificationSlice';
+import TextField from '@mui/material/TextField';
+import Button from '@mui/material/Button';
+import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
+import SaveIcon from '@mui/icons-material/Save';
+import CancelIcon from '@mui/icons-material/Cancel';
 
 // Temporary mock hook
 const usePublishWMSWFSMutation = () => [async () => {}, { isLoading: false }] as any;
@@ -139,6 +147,164 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   // WMS/WFS Publication State
   const [publishModalOpen, setPublishModalOpen] = React.useState(false);
   const [publishWMSWFS, { isLoading: isPublishing }] = usePublishWMSWFSMutation();
+
+  // Group management mutations
+  const [removeGroupsAndLayers] = useRemoveGroupsAndLayersMutation();
+  const [changeGroupName] = useChangeGroupNameMutation();
+
+  // Group name editing state
+  const [isEditingGroupName, setIsEditingGroupName] = React.useState(false);
+  const [editedGroupName, setEditedGroupName] = React.useState('');
+
+  /**
+   * Delete group from project
+   *
+   * POST /api/groups/layer/remove
+   *
+   * Removes the selected group from the QGIS project.
+   * Optionally removes child layers from PostGIS database.
+   */
+  const handleDeleteGroup = async () => {
+    if (!selectedLayer || selectedLayer.typ !== 'grupa') {
+      console.warn('⚠️ No group selected for deletion');
+      return;
+    }
+
+    if (!projectName) {
+      dispatch(showError('Nie można usunąć grupy - brak nazwy projektu'));
+      return;
+    }
+
+    // TODO: Add confirmation dialog
+    const confirmed = confirm(`Czy na pewno chcesz usunąć grupę "${selectedLayer.nazwa}"?`);
+    if (!confirmed) return;
+
+    const groupName = selectedLayer.nazwa;
+
+    try {
+      console.log('🗑️ Deleting group:', { project: projectName, group: groupName });
+
+      // Show loading notification
+      dispatch(showInfo(`Usuwanie grupy "${groupName}"...`, 8000));
+
+      // Delete from backend
+      await removeGroupsAndLayers({
+        project: projectName,
+        groups: [groupName],
+        layers: [],
+        remove_from_database: false, // Don't remove layers from PostGIS by default
+      }).unwrap();
+
+      console.log('✅ Group deleted successfully');
+
+      // Invalidate cache to refetch tree.json
+      dispatch(
+        projectsApi.util.invalidateTags([
+          { type: 'Project', id: projectName },
+          'Layers',
+        ])
+      );
+
+      // Close properties panel
+      onClosePanel();
+
+      // Show success message
+      dispatch(showSuccess(`Grupa "${groupName}" została usunięta`, 5000));
+    } catch (error: any) {
+      console.error('❌ Failed to delete group:', error);
+
+      // Extract error message from backend response
+      const errorMessage = error?.data?.message || error?.message || 'Nieznany błąd';
+      dispatch(showError(`Nie udało się usunąć grupy: ${errorMessage}`, 8000));
+    }
+  };
+
+  /**
+   * Save edited group name
+   *
+   * POST /api/groups/name
+   *
+   * Changes the name of the selected group in the QGIS project.
+   */
+  const handleSaveGroupName = async () => {
+    if (!selectedLayer || selectedLayer.typ !== 'grupa') {
+      console.warn('⚠️ No group selected for renaming');
+      return;
+    }
+
+    if (!projectName) {
+      dispatch(showError('Nie można zmienić nazwy grupy - brak nazwy projektu'));
+      return;
+    }
+
+    // Validation
+    if (!editedGroupName.trim()) {
+      dispatch(showError('Nazwa grupy nie może być pusta'));
+      return;
+    }
+
+    if (editedGroupName.trim() === selectedLayer.nazwa) {
+      setIsEditingGroupName(false);
+      return; // No changes
+    }
+
+    const oldName = selectedLayer.nazwa;
+    const newName = editedGroupName.trim();
+
+    try {
+      console.log('✏️ Renaming group:', { project: projectName, oldName, newName });
+
+      // Show loading notification
+      dispatch(showInfo(`Zmiana nazwy grupy na "${newName}"...`, 8000));
+
+      // Update backend
+      await changeGroupName({
+        project: projectName,
+        group_name: oldName,
+        new_name: newName,
+      }).unwrap();
+
+      console.log('✅ Group renamed successfully');
+
+      // Invalidate cache to refetch tree.json
+      dispatch(
+        projectsApi.util.invalidateTags([
+          { type: 'Project', id: projectName },
+          'Layers',
+        ])
+      );
+
+      // Exit edit mode
+      setIsEditingGroupName(false);
+
+      // Show success message
+      dispatch(showSuccess(`Nazwa grupy zmieniona na "${newName}"`, 5000));
+    } catch (error: any) {
+      console.error('❌ Failed to rename group:', error);
+
+      // Extract error message from backend response
+      const errorMessage = error?.data?.message || error?.message || 'Nieznany błąd';
+      dispatch(showError(`Nie udało się zmienić nazwy grupy: ${errorMessage}`, 8000));
+    }
+  };
+
+  /**
+   * Start editing group name
+   */
+  const handleStartEditGroupName = () => {
+    if (selectedLayer && selectedLayer.typ === 'grupa') {
+      setEditedGroupName(selectedLayer.nazwa);
+      setIsEditingGroupName(true);
+    }
+  };
+
+  /**
+   * Cancel editing group name
+   */
+  const handleCancelEditGroupName = () => {
+    setIsEditingGroupName(false);
+    setEditedGroupName('');
+  };
 
   // Handle WMS/WFS Publication
   const handlePublish = async (selectedLayerIds: string[]) => {
@@ -469,20 +635,93 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
               <>
                 {renderSection('grupa-informacje-ogolne', 'Informacje ogólne', (
                   <>
+                    {/* Group Name - Editable */}
                     {renderFieldBox(
                       <>
                         {renderLabel('Nazwa')}
-                        {renderValue('MIEJSCOWE PLANY ZAGOSPODAROWANIA PRZESTRZENNEGO')}
+                        {isEditingGroupName ? (
+                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mt: 0.5 }}>
+                            <TextField
+                              fullWidth
+                              size="small"
+                              value={editedGroupName}
+                              onChange={(e) => setEditedGroupName(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleSaveGroupName();
+                                if (e.key === 'Escape') handleCancelEditGroupName();
+                              }}
+                              autoFocus
+                              sx={{
+                                '& .MuiInputBase-root': {
+                                  fontSize: '11px',
+                                  bgcolor: theme.palette.background.paper,
+                                },
+                              }}
+                            />
+                            <Box sx={{ display: 'flex', gap: 1 }}>
+                              <Button
+                                size="small"
+                                variant="contained"
+                                color="primary"
+                                startIcon={<SaveIcon sx={{ fontSize: '12px' }} />}
+                                onClick={handleSaveGroupName}
+                                sx={{ fontSize: '10px', py: 0.3, px: 1.5 }}
+                              >
+                                Zapisz
+                              </Button>
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                startIcon={<CancelIcon sx={{ fontSize: '12px' }} />}
+                                onClick={handleCancelEditGroupName}
+                                sx={{ fontSize: '10px', py: 0.3, px: 1.5 }}
+                              >
+                                Anuluj
+                              </Button>
+                            </Box>
+                          </Box>
+                        ) : (
+                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+                            {renderValue(selectedLayer.nazwa)}
+                            <IconButton
+                              size="small"
+                              onClick={handleStartEditGroupName}
+                              sx={{
+                                p: 0.3,
+                                color: theme.palette.text.secondary,
+                                '&:hover': { color: theme.palette.primary.main }
+                              }}
+                              title="Edytuj nazwę grupy"
+                            >
+                              <EditIcon sx={{ fontSize: '14px' }} />
+                            </IconButton>
+                          </Box>
+                        )}
                       </>
                     )}
-                    
+
+                    {/* Parent Group */}
                     {renderFieldBox(
                       <>
-                        {renderLabel('Grupa')}
-                        {renderValue(selectedLayer?.id ? (findParentGroup(warstwy, selectedLayer.id)?.nazwa || 'Grupa główna') : 'Grupa główna')}
-                      </>,
-                      false
+                        {renderLabel('Grupa nadrzędna')}
+                        {renderValue(selectedLayer?.id ? (findParentGroup(warstwy, selectedLayer.id)?.nazwa || 'Brak') : 'Brak')}
+                      </>
                     )}
+
+                    {/* Delete Group Button */}
+                    <Box sx={{ mt: 1.5, pt: 1, borderTop: `1px solid ${theme.palette.divider}` }}>
+                      <Button
+                        fullWidth
+                        size="small"
+                        variant="outlined"
+                        color="error"
+                        startIcon={<DeleteIcon sx={{ fontSize: '12px' }} />}
+                        onClick={handleDeleteGroup}
+                        sx={{ fontSize: '10px', py: 0.5 }}
+                      >
+                        Usuń grupę
+                      </Button>
+                    </Box>
                   </>
                 ))}
 

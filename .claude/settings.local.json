@@ -124,7 +124,8 @@
       "Bash(cmd /c \"rmdir /S /Q .next\")",
       "Bash(cmd /c timeout /t 12)",
       "Bash(cmd /c timeout /t 5)",
-      "Read(//c/Users/jakub/Documents/Mapmaker/universe/**)"
+      "Read(//c/Users/jakub/Documents/Mapmaker/universe/**)",
+      "Bash(cmd /c taskkill /F /PID 16172)"
     ],
     "deny": [],
     "ask": []
