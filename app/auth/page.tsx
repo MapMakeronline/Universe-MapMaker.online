@@ -533,7 +533,22 @@ function AuthPageContent() {
               )}
 
               {/* Google OAuth Login - Native Google Button with Custom Wrapper */}
-              <Box sx={{ mt: 3, mb: 2 }}>
+              <Box
+                sx={{
+                  mt: 3,
+                  mb: 2,
+                  width: '100%',
+                  '& > div': {
+                    width: '100% !important',
+                    display: 'flex !important',
+                    justifyContent: 'center !important',
+                  },
+                  '& iframe': {
+                    width: '100% !important',
+                    maxWidth: '100% !important',
+                  }
+                }}
+              >
                 <GoogleLogin
                   onSuccess={handleGoogleAuth}
                   onError={() => {
@@ -541,9 +556,9 @@ function AuthPageContent() {
                   }}
                   text={activeTab === 0 ? 'signin_with' : 'signup_with'}
                   size="large"
-                  width="100%"
                   theme="outline"
                   shape="rectangular"
+                  width="400"
                 />
               </Box>
 
