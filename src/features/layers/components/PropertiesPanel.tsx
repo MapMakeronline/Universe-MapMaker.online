@@ -23,11 +23,6 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import { BasemapSelector } from './BasemapSelector';
 import { PublishServicesModal } from '../modals/PublishServicesModal';
 import DownloadProjectModal from '../modals/DownloadProjectModal';
-// TODO: Add usePublishWMSWFSMutation to @/backend/projects
-// import { usePublishWMSWFSMutation } from '@/backend/projects';
-import { useExportProjectMutation } from '@/backend/projects';
-import { useAppDispatch } from '@/redux/hooks';
-import { showSuccess, showError, showInfo } from '@/redux/slices/notificationSlice';
 import {
   PANEL_CONFIG,
   renderLabel,
@@ -38,9 +33,7 @@ import {
   renderSection
 } from './PropertiesPanelHelpers';
 import { usePropertyModals } from '../hooks/usePropertyModals';
-
-// Temporary mock hook
-const usePublishWMSWFSMutation = () => [async () => {}, { isLoading: false }] as any;
+import { usePropertyOperations } from '../hooks/usePropertyOperations';
 // Types defined locally for now
 interface Warstwa {
   id: string;
@@ -93,15 +86,13 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   wfsUrl = ''
 }) => {
   const theme = useTheme();
-  const dispatch = useAppDispatch();
   const [isPanelCollapsed, setIsPanelCollapsed] = React.useState(true); // Domyślnie zwinięty
 
   // Modal state management
   const { modals, openModal, closeModal } = usePropertyModals();
 
-  // Backend mutations
-  const [publishWMSWFS, { isLoading: isPublishing }] = usePublishWMSWFSMutation();
-  const [exportProject, { isLoading: isExporting }] = useExportProjectMutation();
+  // Backend operations
+  const { handleDownload, handlePublish, isExporting, isPublishing } = usePropertyOperations(projectName, warstwy);
 
   // Wrapper functions with theme pre-applied
   const label = (text: string) => renderLabel(text, theme);
@@ -111,133 +102,19 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   const section = (id: string, title: string, children: React.ReactNode, hasLock?: boolean, actionIcon?: React.ReactNode) =>
     renderSection({ sectionId: id, title, children, theme, expandedSections, onToggleSection, hasLock, actionIcon });
 
-  // Handle Project Download
-  const handleDownload = async (format: 'qgs' | 'qgz') => {
-    if (!projectName) {
-      dispatch(showError('Nie można pobrać projektu - brak nazwy projektu'));
-      setDownloadModalOpen(false);
-      return;
-    }
-
-    console.log(`📥 Downloading project "${projectName}" in format: ${format}`);
-    dispatch(showInfo(`Pobieranie projektu w formacie ${format.toUpperCase()}...`, 5000));
-
-    try {
-      // Call backend API - automatic download via exportProject
-      await exportProject({
-        project: projectName,
-        project_type: format,
-      }).unwrap();
-
-      console.log('✅ Project download started');
-      dispatch(showSuccess(`Projekt "${projectName}.${format}" został pobrany`, 5000));
-
-      // Close modal on success
-      closeModal('download');
-    } catch (error: any) {
-      console.error('❌ Failed to download project:', error);
-      const errorMessage = error?.data?.message || error?.message || 'Nieznany błąd';
-      dispatch(showError(`Nie udało się pobrać projektu: ${errorMessage}`, 8000));
-
-      // Close modal on error too
+  // Wrapper for handleDownload to close modal after operation
+  const handleDownloadWithModal = async (format: 'qgs' | 'qgz') => {
+    const success = await handleDownload(format);
+    if (success || !success) { // Close modal regardless of success
       closeModal('download');
     }
   };
 
-  // Handle WMS/WFS Publication
-  const handlePublish = async (selectedLayerIds: string[]) => {
-    if (!projectName) {
-      dispatch(showError('Nie można opublikować - brak nazwy projektu'));
-      return;
-    }
-
-    if (selectedLayerIds.length === 0) {
-      dispatch(showError('Wybierz co najmniej jedną warstwę do publikacji'));
-      return;
-    }
-
-    // Check auth token
-    const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
-    console.log('🔐 WMS/WFS Publish - Auth token:', token ? '✅ present' : '❌ missing');
-    console.log('📦 Publishing layers:', selectedLayerIds);
-    console.log('📁 Project:', projectName);
-
-    // Build children array with layer tree structure
-    // Backend expects: { project_name: string, children: [{type: 'VectorLayer', id, name, geometry}] }
-    const buildLayerTree = (layerIds: string[], allLayers: Warstwa[]): any[] => {
-      const children: any[] = [];
-
-      // Helper to find layer by ID in tree
-      const findLayer = (id: string, layers: Warstwa[]): Warstwa | null => {
-        for (const layer of layers) {
-          if (layer.id === id) return layer;
-          if (layer.dzieci) {
-            const found = findLayer(id, layer.dzieci);
-            if (found) return found;
-          }
-        }
-        return null;
-      };
-
-      for (const layerId of layerIds) {
-        const layer = findLayer(layerId, allLayers);
-        if (layer) {
-          // Map local types to QGIS types
-          let layerType = 'VectorLayer';
-          if (layer.typ === 'raster') layerType = 'RasterLayer';
-          else if (layer.typ === 'grupa') layerType = 'group';
-
-          children.push({
-            type: layerType,
-            id: layer.id,
-            name: layer.nazwa,
-            visible: layer.widoczna,
-            // Add geometry for vector layers (backend needs this)
-            geometry: layer.typ === 'wektor' ? 'MultiPolygon' : undefined
-          });
-        }
-      }
-
-      return children;
-    };
-
-    const children = buildLayerTree(selectedLayerIds, warstwy);
-    console.log('🌳 Built layer tree for publication:', children);
-    console.log('🌳 Layer tree JSON:', JSON.stringify(children, null, 2));
-
-    // Show loading notification
-    dispatch(showInfo(`Publikowanie ${selectedLayerIds.length} warstw jako WMS/WFS...`, 10000));
-
-    try {
-      const result = await publishWMSWFS({
-        project_name: projectName, // Backend expects project_name, not project!
-        children: children,        // Backend expects children array, not layers array!
-      }).unwrap();
-
-      console.log('✅ WMS/WFS Publication successful:', result);
-
-      // Extract URLs from result.data (backend wraps URLs in data object)
-      const wmsUrl = result.data?.wms_url || result.wms_url || '';
-      const wfsUrl = result.data?.wfs_url || result.wfs_url || '';
-
-      // Show success with URLs
-      const successMsg = `Opublikowano ${selectedLayerIds.length} warstw!\n` +
-        `WMS: ${wmsUrl}\n` +
-        `WFS: ${wfsUrl}`;
-      dispatch(showSuccess(successMsg, 8000));
-
+  // Wrapper for handlePublish to close modal after operation
+  const handlePublishWithModal = async (selectedLayerIds: string[]) => {
+    const success = await handlePublish(selectedLayerIds);
+    if (success) {
       closeModal('publish');
-
-      // RTK Query automatically invalidates cache and refetches project data with new URLs
-    } catch (error: any) {
-      console.error('❌ WMS/WFS Publication failed:', error);
-      console.error('❌ Error status:', error?.status);
-      console.error('❌ Error data:', error?.data);
-      console.error('❌ Full error object:', JSON.stringify(error, null, 2));
-
-      // Extract error message from backend response
-      const errorMessage = error?.data?.message || error?.data?.detail || error?.message || 'Nieznany błąd';
-      dispatch(showError(`Nie udało się opublikować usług: ${errorMessage}`, 8000));
     }
   };
 
@@ -781,7 +658,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
         projectName={projectName}
         layers={warstwy}
         onClose={() => closeModal('publish')}
-        onPublish={handlePublish}
+        onPublish={handlePublishWithModal}
         isLoading={isPublishing}
       />
 
@@ -789,7 +666,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
       <DownloadProjectModal
         open={modals.download}
         onClose={() => closeModal('download')}
-        onDownload={handleDownload}
+        onDownload={handleDownloadWithModal}
         isLoading={isExporting}
       />
     </Box>

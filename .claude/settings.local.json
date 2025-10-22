@@ -139,7 +139,9 @@
       "Bash(cmd /c timeout /t 10)",
       "Bash(cmd /c screenshot.bat http://localhost:3000/map?project=Mestwin phase1-refactor-test.png)",
       "Bash(cmd /c taskkill /F /PID 4292)",
-      "Bash(cmd /c screenshot.bat http://localhost:3000/map?project=Mestwin phase5-id-fix-test.png)"
+      "Bash(cmd /c screenshot.bat http://localhost:3000/map?project=Mestwin phase5-id-fix-test.png)",
+      "Bash(cmd /c \"taskkill /F /PID 6132\")",
+      "Bash(cmd /c timeout /t 15)"
     ],
     "deny": [],
     "ask": []
