@@ -28,7 +28,11 @@ import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import Save from '@mui/icons-material/Save';
 import InfoOutlined from '@mui/icons-material/InfoOutlined';
 import { useAppSelector } from '@/redux/hooks';
-import { useUpdateProfileMutation, useChangePasswordMutation } from '@/backend/users';
+import {
+  useGetUserProfileQuery,
+  useUpdateProfileMutation,
+  useChangePasswordMutation,
+} from '@/backend/users';
 import LoginRequiredGuard from '@/features/autoryzacja/LoginRequiredGuard';
 
 interface TabPanelProps {
@@ -54,11 +58,46 @@ function TabPanel(props: TabPanelProps) {
 }
 
 export default function UserSettings() {
-  const { user, isAuthenticated } = useAppSelector((state) => state.auth);
+  const { isAuthenticated, user: reduxUser } = useAppSelector((state) => state.auth);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
-  // RTK Query hooks (only mutations - no GET endpoint available)
+  // RTK Query hooks
+  // Fetch user profile with automatic refetch on focus/reconnect
+  const {
+    data: fetchedUser,
+    isLoading: isLoadingProfile,
+    isError,
+    error,
+    refetch: refetchProfile,
+  } = useGetUserProfileQuery(undefined, {
+    // Refetch every 30 seconds to keep data fresh across tabs/devices
+    pollingInterval: 30000,
+    // Refetch when user switches back to this tab
+    refetchOnFocus: true,
+    // Refetch when internet connection is restored
+    refetchOnReconnect: true,
+    // Skip if not authenticated
+    skip: !isAuthenticated,
+  });
+
+  // Use fetched user data if available, otherwise fall back to Redux user
+  // This ensures the component works even during initial load
+  const user = fetchedUser || reduxUser;
+
+  // Debug logging
+  useEffect(() => {
+    console.log('🔍 UserSettings Profile Query Debug:', {
+      isAuthenticated,
+      reduxUser,
+      fetchedUser,
+      user,
+      isLoadingProfile,
+      isError,
+      error,
+    });
+  }, [isAuthenticated, reduxUser, fetchedUser, user, isLoadingProfile, isError, error]);
+
   const [updateProfile, { isLoading: isUpdatingProfile }] = useUpdateProfileMutation();
   const [changePassword, { isLoading: isChangingPassword }] = useChangePasswordMutation();
 
@@ -157,20 +196,11 @@ export default function UserSettings() {
       console.log('✅ Profile updated successfully:', response);
       console.log('✅ Redux and localStorage auto-updated by RTK Query');
 
-      // RTK Query onQueryStarted already updated Redux and localStorage
-      // Now update local form state to show the new values immediately
-      if (response.user) {
-        setGeneralSettings({
-          firstName: response.user.first_name || '',
-          lastName: response.user.last_name || '',
-          city: response.user.city || '',
-          zip_code: response.user.zip_code || '',
-          nip: response.user.nip || '',
-          email: response.user.email || '',
-          address: response.user.address || '',
-          company_name: response.user.company_name || '',
-        });
-      }
+      // RTK Query automatically:
+      // 1. Updates Redux state (via onQueryStarted)
+      // 2. Updates localStorage
+      // 3. Invalidates 'Users' tag → triggers refetch of useGetUserProfileQuery
+      // 4. Form state will auto-update via useEffect when user data changes
 
       // Scroll to top to show success alert
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -250,6 +280,32 @@ export default function UserSettings() {
       }
     }
   };
+
+  // Show loading skeleton ONLY if we have no user data at all
+  // This prevents showing loading when Redux already has user data
+  if (isLoadingProfile && !user) {
+    return (
+      <LoginRequiredGuard
+        isLoggedIn={isAuthenticated}
+        title="Zaloguj się, aby zmienić ustawienia"
+        message="Ta sekcja wymaga zalogowania. Utwórz konto lub zaloguj się, aby zarządzać ustawieniami swojego konta."
+      >
+        <Box>
+          <Box sx={{ mb: 4 }}>
+            <Typography variant="h4" component="h1" fontWeight="700" gutterBottom>
+              Ustawienia
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              Ładowanie danych profilu...
+            </Typography>
+          </Box>
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>
+            <CircularProgress />
+          </Box>
+        </Box>
+      </LoginRequiredGuard>
+    );
+  }
 
   return (
     <LoginRequiredGuard
