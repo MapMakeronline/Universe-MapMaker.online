@@ -92,6 +92,29 @@ interface SetVisibilityResponse {
   message: string;
 }
 
+/**
+ * Parameters for identify/query feature coordinates
+ */
+interface IdentifyFeatureParams {
+  project: string;
+  layer_id: string;
+  point?: [number, number]; // [lon, lat]
+  bbox?: [number, number][];  // [[lon1, lat1], [lon2, lat2], ...]
+  layer_type: 'point' | 'line' | 'polygon';
+}
+
+/**
+ * Response from identify feature coordinates
+ */
+interface IdentifyFeatureResponse {
+  data: {
+    coordinates: any[];
+    features: any[];
+  };
+  success: boolean;
+  message: string;
+}
+
 export const layersApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     /**
@@ -217,6 +240,34 @@ export const layersApi = baseApi.injectEndpoints({
         'Layers',
       ],
     }),
+
+    /**
+     * Identify Feature Coordinates
+     * POST /api/layer/feature/coordinates
+     * Query features at a specific point or bbox
+     *
+     * Backend endpoint: /api/layer/feature/coordinates
+     * Documentation: docs/backend/layer_api_docs.md (lines 1575-1620)
+     *
+     * Use cases:
+     * - Click on map to identify features
+     * - Query features by point [lon, lat]
+     * - Query features by bbox [[lon1, lat1], [lon2, lat2], ...]
+     */
+    identifyFeature: builder.mutation<IdentifyFeatureResponse, IdentifyFeatureParams>({
+      query: (params) => ({
+        url: '/api/layer/feature/coordinates',
+        method: 'POST',
+        body: {
+          project: params.project,
+          layer_id: params.layer_id,
+          point: params.point,
+          bbox: params.bbox,
+          layer_type: params.layer_type,
+        },
+      }),
+      // No cache invalidation needed - this is a read-only query
+    }),
   }),
 });
 
@@ -227,4 +278,5 @@ export const {
   useAddGmlLayerMutation,
   useAddRasterLayerMutation,
   useSetLayerVisibilityMutation,
+  useIdentifyFeatureMutation,
 } = layersApi;
