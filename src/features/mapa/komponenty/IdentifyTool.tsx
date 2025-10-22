@@ -8,6 +8,7 @@ import IdentifyModal from '@/features/layers/modals/IdentifyModal';
 import { setDrawMode } from '@/redux/slices/drawSlice';
 import { useIdentifyFeatureMutation } from '@/backend/layers';
 import { useSearchParams } from 'next/navigation';
+import { getQGISFeatureInfoMultiLayer } from '@/lib/qgis/getFeatureInfo';
 
 interface FeatureProperty {
   key: string;
@@ -33,7 +34,7 @@ const IdentifyTool = () => {
   const projectName = searchParams.get('project') || 'graph'; // Get project name from URL
 
   // Backend mutation for identify feature
-  const [identifyFeature, { isLoading: isIdentifying }] = useIdentifyFeatureMutation();
+  const [identifyFeature, { isLoading: isIdentifyingBackend }] = useIdentifyFeatureMutation();
 
   const { identify } = useAppSelector((state) => state.draw);
   const layers = useAppSelector((state) => state.layers.layers); // Get layer tree
@@ -41,6 +42,7 @@ const IdentifyTool = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [identifiedFeatures, setIdentifiedFeatures] = useState<IdentifiedFeature[]>([]);
   const [clickCoordinates, setClickCoordinates] = useState<[number, number] | undefined>();
+  const [isIdentifyingQGIS, setIsIdentifyingQGIS] = useState(false);
 
   useEffect(() => {
     if (!mapRef) return;
@@ -100,31 +102,95 @@ const IdentifyTool = () => {
         point: [e.lngLat.lng, e.lngLat.lat],
       });
 
-      // Query each visible layer via backend API
+      // Query layers using BOTH Backend API + QGIS OWS
       if (projectName && visibleLayers.length > 0) {
         try {
+          // ========== QGIS OWS GetFeatureInfo (Primary source) ==========
+          setIsIdentifyingQGIS(true);
+          const canvas = map.getCanvas();
+          const qgisLayerNames = visibleLayers.map(l => l.name);
+
+          mapLogger.log('🔍 Querying QGIS Server OWS', {
+            layerCount: qgisLayerNames.length,
+            layers: qgisLayerNames,
+          });
+
+          const qgisResult = await getQGISFeatureInfoMultiLayer(
+            {
+              project: projectName,
+              clickPoint: e.lngLat,
+              bounds: map.getBounds(),
+              width: canvas.width,
+              height: canvas.height,
+              featureCount: 10,
+            },
+            qgisLayerNames
+          );
+
+          setIsIdentifyingQGIS(false);
+
+          // Transform QGIS features to IdentifiedFeature format
+          const qgisFeatures: IdentifiedFeature[] = qgisResult.features.map((feature: any) => {
+            const properties: FeatureProperty[] = Object.entries(feature.properties || {}).map(
+              ([key, value]) => ({ key, value })
+            );
+
+            // Extract layer name from feature.id (format: "layerName.featureId")
+            const layerName = feature.id?.split('.')[0] || 'Unknown';
+
+            return {
+              layer: layerName,
+              sourceLayer: 'QGIS Server',
+              properties,
+              geometry: feature.geometry,
+            };
+          });
+
+          mapLogger.log('✅ QGIS OWS results', {
+            totalFeatures: qgisFeatures.length,
+          });
+
+          // ========== Backend API (Fallback/Additional source) ==========
+          // Create bbox for better polygon/line detection (pixel tolerance)
+          const pixelTolerance = 5; // 5 pixels around click point
+          const point = map.project([e.lngLat.lng, e.lngLat.lat]);
+          const bbox = [
+            map.unproject([point.x - pixelTolerance, point.y - pixelTolerance]),
+            map.unproject([point.x + pixelTolerance, point.y + pixelTolerance]),
+          ];
+
           const allResults = await Promise.all(
             visibleLayers.map(async (layer) => {
               try {
-                const result = await identifyFeature({
-                  project: projectName,
-                  layer_id: layer.id,
-                  point: [e.lngLat.lng, e.lngLat.lat],
-                  layer_type: layer.type as 'point' | 'line' | 'polygon',
-                }).unwrap();
+                // Use bbox for polygon layers (better tolerance), point for others
+                const queryParams = layer.type === 'polygon'
+                  ? {
+                      project: projectName,
+                      layer_id: layer.id,
+                      bbox: [[bbox[0].lng, bbox[0].lat], [bbox[1].lng, bbox[1].lat]],
+                      layer_type: layer.type as 'point' | 'line' | 'polygon',
+                    }
+                  : {
+                      project: projectName,
+                      layer_id: layer.id,
+                      point: [e.lngLat.lng, e.lngLat.lat],
+                      layer_type: layer.type as 'point' | 'line' | 'polygon',
+                    };
+
+                const result = await identifyFeature(queryParams as any).unwrap();
 
                 return {
                   layerName: layer.name,
                   features: result.data.features || [],
                 };
               } catch (error) {
-                mapLogger.warn(`⚠️ Layer ${layer.name} query failed:`, error);
+                mapLogger.warn(`⚠️ Backend API for ${layer.name} failed:`, error);
                 return { layerName: layer.name, features: [] };
               }
             })
           );
 
-          // Transform to IdentifiedFeature format
+          // Transform Backend API features to IdentifiedFeature format
           const backendFeatures: IdentifiedFeature[] = [];
           allResults.forEach(({ layerName, features: layerFeatures }) => {
             layerFeatures.forEach((feature: any) => {
@@ -146,9 +212,21 @@ const IdentifyTool = () => {
             layers: allResults.map(r => ({ layer: r.layerName, count: r.features.length })),
           });
 
-          setIdentifiedFeatures(backendFeatures);
+          // ========== Combine results (QGIS OWS primary, Backend API fallback) ==========
+          // If QGIS OWS found features, use them. Otherwise use Backend API results.
+          const combinedFeatures = qgisFeatures.length > 0 ? qgisFeatures : backendFeatures;
+
+          mapLogger.log('📊 Combined results', {
+            qgisCount: qgisFeatures.length,
+            backendCount: backendFeatures.length,
+            finalCount: combinedFeatures.length,
+            source: qgisFeatures.length > 0 ? 'QGIS OWS' : 'Backend API',
+          });
+
+          setIdentifiedFeatures(combinedFeatures);
         } catch (error) {
-          mapLogger.error('❌ Backend API query failed:', error);
+          mapLogger.error('❌ Identify query failed:', error);
+          setIsIdentifyingQGIS(false);
           setIdentifiedFeatures([]);
         }
       } else {
@@ -224,7 +302,7 @@ const IdentifyTool = () => {
       onClose={handleCloseModal}
       features={identifiedFeatures}
       coordinates={clickCoordinates}
-      isLoading={isIdentifying}
+      isLoading={isIdentifyingBackend || isIdentifyingQGIS}
     />
   );
 };

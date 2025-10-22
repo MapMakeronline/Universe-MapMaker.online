@@ -133,7 +133,10 @@
       "Bash(cmd /c taskkill /F /PID 9948)",
       "Bash(cmd /c taskkill //F //PID 9948)",
       "Bash(cmd /c \"dir /O-D /B C:\\Users\\Bartosz\\Documents\\ShareX\\Screenshots\\2025-10\\*.png | findstr /N .\")",
-      "Bash(cmd /c screenshot.bat http://localhost:3000/map?project=test navigation-fix-test.png)"
+      "Bash(cmd /c screenshot.bat http://localhost:3000/map?project=test navigation-fix-test.png)",
+      "Bash(cmd /c timeout /t 8)",
+      "Bash(cmd /c \"netstat -ano | findstr :3000\")",
+      "Bash(cmd /c timeout /t 10)"
     ],
     "deny": [],
     "ask": []
