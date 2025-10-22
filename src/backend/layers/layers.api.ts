@@ -140,7 +140,8 @@ export const layersApi = baseApi.injectEndpoints({
           // RTK Query automatically sets Content-Type: multipart/form-data for FormData
         };
       },
-      invalidatesTags: ['Layers', 'Project'],
+      // Invalidate QGIS tag to trigger tree.json refetch
+      invalidatesTags: ['Layers', 'Project', 'QGIS'],
     }),
 
     /**
@@ -162,7 +163,8 @@ export const layersApi = baseApi.injectEndpoints({
           body: formData,
         };
       },
-      invalidatesTags: ['Layers', 'Project'],
+      // Invalidate QGIS tag to trigger tree.json refetch
+      invalidatesTags: ['Layers', 'Project', 'QGIS'],
     }),
 
     /**
@@ -185,7 +187,8 @@ export const layersApi = baseApi.injectEndpoints({
           body: formData,
         };
       },
-      invalidatesTags: ['Layers', 'Project'],
+      // Invalidate QGIS tag to trigger tree.json refetch
+      invalidatesTags: ['Layers', 'Project', 'QGIS'],
     }),
 
     /**
@@ -208,7 +211,8 @@ export const layersApi = baseApi.injectEndpoints({
           body: formData,
         };
       },
-      invalidatesTags: ['Layers', 'Project'],
+      // Invalidate QGIS tag to trigger tree.json refetch
+      invalidatesTags: ['Layers', 'Project', 'QGIS'],
     }),
 
     /**
@@ -235,7 +239,9 @@ export const layersApi = baseApi.injectEndpoints({
         },
       }),
       // Invalidate project data to trigger re-fetch of tree.json with updated visibility
+      // IMPORTANT: Use 'QGIS' tag - getProjectData uses 'QGIS' tag
       invalidatesTags: (result, error, arg) => [
+        { type: 'QGIS', id: arg.project },
         { type: 'Project', id: arg.project },
         'Layers',
       ],

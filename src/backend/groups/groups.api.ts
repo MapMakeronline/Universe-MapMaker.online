@@ -134,7 +134,9 @@ export const groupsApi = baseApi.injectEndpoints({
         },
       }),
       // Invalidate project data to trigger re-fetch of tree.json
+      // IMPORTANT: Use 'QGIS' tag (not 'Project') - getProjectData uses 'QGIS' tag
       invalidatesTags: (result, error, arg) => [
+        { type: 'QGIS', id: arg.project },
         { type: 'Project', id: arg.project },
         'Layers',
       ],
@@ -164,7 +166,9 @@ export const groupsApi = baseApi.injectEndpoints({
         },
       }),
       // Invalidate project data to trigger re-fetch of tree.json
+      // IMPORTANT: Use 'QGIS' tag (not 'Project') - getProjectData uses 'QGIS' tag
       invalidatesTags: (result, error, arg) => [
+        { type: 'QGIS', id: arg.project },
         { type: 'Project', id: arg.project },
         'Layers',
       ],
@@ -194,6 +198,7 @@ export const groupsApi = baseApi.injectEndpoints({
         },
       }),
       invalidatesTags: (result, error, arg) => [
+        { type: 'QGIS', id: arg.project },
         { type: 'Project', id: arg.project },
         'Layers',
       ],
@@ -217,6 +222,7 @@ export const groupsApi = baseApi.injectEndpoints({
         },
       }),
       invalidatesTags: (result, error, arg) => [
+        { type: 'QGIS', id: arg.project },
         { type: 'Project', id: arg.project },
         'Layers',
       ],
@@ -241,7 +247,9 @@ export const groupsApi = baseApi.injectEndpoints({
         },
       }),
       // Invalidate project data to trigger re-fetch of tree.json with updated visibility
+      // IMPORTANT: Use 'QGIS' tag (not 'Project') - getProjectData uses 'QGIS' tag
       invalidatesTags: (result, error, arg) => [
+        { type: 'QGIS', id: arg.project },
         { type: 'Project', id: arg.project },
         'Layers',
       ],
