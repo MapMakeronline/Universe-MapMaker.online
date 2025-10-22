@@ -48,6 +48,7 @@ import {
   calculatePositionIndex,
   getParentGroupName,
 } from '@/utils/layerTreeUtils';
+import { useModalManager } from '../hooks';
 
 // Types
 type FilterType = 'wszystko' | 'wektor' | 'raster' | 'wms';
@@ -124,16 +125,8 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
   const [selectedBasemap, setSelectedBasemap] = useState('google-maps');
   const [selectedLayer, setSelectedLayer] = useState<LayerNode | null>(null);
 
-  // Modal states
-  const [addDatasetModalOpen, setAddDatasetModalOpen] = useState(false);
-  const [addNationalLawModalOpen, setAddNationalLawModalOpen] = useState(false);
-  const [addLayerModalOpen, setAddLayerModalOpen] = useState(false);
-  const [importLayerModalOpen, setImportLayerModalOpen] = useState(false);
-  const [addGroupModalOpen, setAddGroupModalOpen] = useState(false);
-  const [createConsultationModalOpen, setCreateConsultationModalOpen] = useState(false);
-  const [layerManagerModalOpen, setLayerManagerModalOpen] = useState(false);
-  const [printConfigModalOpen, setPrintConfigModalOpen] = useState(false);
-  const [editLayerStyleModalOpen, setEditLayerStyleModalOpen] = useState(false);
+  // Modal state management (centralized)
+  const { modals, openModal, closeModal } = useModalManager();
 
   // Wypis configurations state
   const [existingWypisConfigs, setExistingWypisConfigs] = useState<any[]>([]);
@@ -398,19 +391,19 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
   // Modal handlers
   // TODO: Phase 4 - Rewrite these to use Redux + Backend API
   const handleAddDataset = (data: { nazwaPlan: string; nazwaGrupy: string; temat: string }) => {
-    setAddDatasetModalOpen(false);
+    closeModal('addDataset');
     console.log('TODO: Adding new dataset:', data);
     dispatch(showInfo('Dodawanie datasetu - wkrótce dostępne'));
   };
 
   const handleAddNationalLaw = (data: { type: 'create' | 'import'; [key: string]: any }) => {
-    setAddNationalLawModalOpen(false);
+    closeModal('addNationalLaw');
     console.log('TODO: Adding new national law:', data);
     dispatch(showInfo('Dodawanie prawa krajowego - wkrótce dostępne'));
   };
 
   const handleAddLayer = (data: { nazwaWarstwy: string; typGeometrii: string; nazwaGrupy: string; columns: any[] }) => {
-    setAddLayerModalOpen(false);
+    closeModal('addLayer');
     console.log('TODO: Adding new layer:', data);
     dispatch(showInfo('Dodawanie warstwy - wkrótce dostępne'));
   };
@@ -464,7 +457,7 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
     }
 
     // Close modal immediately for better UX
-    setImportLayerModalOpen(false);
+    closeModal('importLayer');
 
     // Show loading notification (context='layer' will auto-replace previous layer notifications)
     dispatch(showInfo(`Importowanie warstwy "${data.nazwaWarstwy}"...`, 10000, 'layer'));
@@ -662,7 +655,7 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
     }
 
     // Close modal immediately for better UX
-    setAddGroupModalOpen(false);
+    closeModal('addGroup');
 
     // Show loading notification (context='group' will auto-replace previous group notifications)
     dispatch(showInfo(`Tworzenie grupy "${data.nazwaGrupy}"...`, 8000, 'group'));
@@ -795,7 +788,7 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
     dataRozpoczecia: string;
     dataZakonczenia: string;
   }) => {
-    setCreateConsultationModalOpen(false);
+    closeModal('createConsultation');
     console.log('TODO: Creating consultation:', data);
     dispatch(showInfo('Tworzenie konsultacji - wkrótce dostępne'));
   };
@@ -804,7 +797,7 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
     deletedLayerIds: string[];
     restoredLayers: Array<{ id: string; nazwa: string; typ: 'wektor' | 'raster'; grupaNadrzedna?: string }>;
   }) => {
-    setLayerManagerModalOpen(false);
+    closeModal('layerManager');
     console.log('TODO: Layer manager:', data);
     dispatch(showInfo('Zarządzanie warstwami - wkrótce dostępne'));
   };
@@ -830,19 +823,19 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
     // TODO: Save to backend
     // await saveWypisConfigToBackend(config);
 
-    setPrintConfigModalOpen(false);
+    closeModal('printConfig');
   };
 
   const toolbarHandlers = {
-    onAddInspireDataset: () => setAddDatasetModalOpen(true),
-    onAddNationalLaw: () => setAddNationalLawModalOpen(true),
-    onAddLayer: () => setAddLayerModalOpen(true),
-    onImportLayer: () => setImportLayerModalOpen(true),
-    onAddGroup: () => setAddGroupModalOpen(true),
+    onAddInspireDataset: () => openModal('addDataset'),
+    onAddNationalLaw: () => openModal('addNationalLaw'),
+    onAddLayer: () => openModal('addLayer'),
+    onImportLayer: () => openModal('importLayer'),
+    onAddGroup: () => openModal('addGroup'),
     onRemoveLayer: handleDeleteLayer,
-    onCreateConsultation: () => setCreateConsultationModalOpen(true),
-    onLayerManager: () => setLayerManagerModalOpen(true),
-    onPrintConfig: () => setPrintConfigModalOpen(true)
+    onCreateConsultation: () => openModal('createConsultation'),
+    onLayerManager: () => openModal('layerManager'),
+    onPrintConfig: () => openModal('printConfig')
   };
 
   return (
@@ -938,7 +931,7 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
             onToggleSection={toggleSection}
             onToggleCheckbox={toggleCheckbox}
             onClosePanel={() => setSelectedLayer(null)}
-            onEditLayerStyle={() => setEditLayerStyleModalOpen(true)}
+            onEditLayerStyle={() => openModal('editLayerStyle')}
             onManageLayer={() => console.log('Manage layer')}
             onLayerLabeling={() => console.log('Layer labeling')}
             findParentGroup={findParentGroup}
@@ -985,59 +978,59 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
 
       {/* Add Dataset Modal */}
       <AddDatasetModal
-        open={addDatasetModalOpen}
-        onClose={() => setAddDatasetModalOpen(false)}
+        open={modals.addDataset}
+        onClose={() => closeModal('addDataset')}
         onSubmit={handleAddDataset}
       />
 
       {/* Add National Law Modal */}
       <AddNationalLawModal
-        open={addNationalLawModalOpen}
-        onClose={() => setAddNationalLawModalOpen(false)}
+        open={modals.addNationalLaw}
+        onClose={() => closeModal('addNationalLaw')}
         onSubmit={handleAddNationalLaw}
       />
 
       {/* Add Layer Modal */}
       <AddLayerModal
-        open={addLayerModalOpen}
-        onClose={() => setAddLayerModalOpen(false)}
+        open={modals.addLayer}
+        onClose={() => closeModal('addLayer')}
         onSubmit={handleAddLayer}
       />
 
       {/* Import Layer Modal */}
       <ImportLayerModal
-        open={importLayerModalOpen}
-        onClose={() => setImportLayerModalOpen(false)}
+        open={modals.importLayer}
+        onClose={() => closeModal('importLayer')}
         onSubmit={handleImportLayer}
       />
 
       {/* Add Group Modal */}
       <AddGroupModal
-        open={addGroupModalOpen}
-        onClose={() => setAddGroupModalOpen(false)}
+        open={modals.addGroup}
+        onClose={() => closeModal('addGroup')}
         onSubmit={handleAddGroup}
         existingGroups={layers}
       />
 
       {/* Create Consultation Modal */}
       <CreateConsultationModal
-        open={createConsultationModalOpen}
-        onClose={() => setCreateConsultationModalOpen(false)}
+        open={modals.createConsultation}
+        onClose={() => closeModal('createConsultation')}
         onSubmit={handleCreateConsultation}
       />
 
       {/* Layer Manager Modal */}
       <LayerManagerModal
-        open={layerManagerModalOpen}
-        onClose={() => setLayerManagerModalOpen(false)}
+        open={modals.layerManager}
+        onClose={() => closeModal('layerManager')}
         onSubmit={handleLayerManager}
         existingGroups={layers}
       />
 
       {/* Wypis Config Modal */}
       <WypisConfigModal
-        open={printConfigModalOpen}
-        onClose={() => setPrintConfigModalOpen(false)}
+        open={modals.printConfig}
+        onClose={() => closeModal('printConfig')}
         onSave={handleSaveWypisConfig}
         existingConfigs={existingWypisConfigs}
         projectLayers={layers.filter(l => l.type !== 'group').map(l => ({ id: l.id, name: l.name }))}
@@ -1045,8 +1038,8 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
 
       {/* Edit Layer Style Modal */}
       <EditLayerStyleModal
-        open={editLayerStyleModalOpen}
-        onClose={() => setEditLayerStyleModalOpen(false)}
+        open={modals.editLayerStyle}
+        onClose={() => closeModal('editLayerStyle')}
         layerName={selectedLayer?.name}
         layerId={selectedLayer?.id}
         projectName={projectName}
