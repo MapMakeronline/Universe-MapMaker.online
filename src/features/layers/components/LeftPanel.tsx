@@ -41,6 +41,13 @@ import {
   useRemoveGroupsAndLayersMutation,
 } from '@/backend/groups';
 import { showSuccess, showError, showInfo } from '@/redux/slices/notificationSlice';
+import {
+  findLayerById,
+  findParentGroup,
+  extractLayerOrder,
+  calculatePositionIndex,
+  getParentGroupName,
+} from '@/utils/layerTreeUtils';
 
 // Types
 type FilterType = 'wszystko' | 'wektor' | 'raster' | 'wms';
@@ -169,90 +176,6 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
   const width = externalWidth || resizable.width;
   const isResizing = resizable.isResizing;
   const handleMouseDown = resizable.handleMouseDown;
-
-  // Helper: Extract flat list of layer IDs in order (for backend)
-  const extractLayerOrder = (layers: LayerNode[]): string[] => {
-    const order: string[] = [];
-    const traverse = (nodes: LayerNode[]) => {
-      for (const node of nodes) {
-        order.push(node.id);
-        if (node.children) {
-          traverse(node.children);
-        }
-      }
-    };
-    traverse(layers);
-    return order;
-  };
-
-  /**
-   * Calculate position index for backend API
-   *
-   * Backend expects 0-based index in the target parent's children array.
-   * This function converts drag & drop position ('before'/'after'/'inside') to index.
-   *
-   * @param targetId - Target layer/group ID
-   * @param position - Drop position relative to target
-   * @param layers - Current layer tree
-   * @returns { parent: LayerNode | null, index: number }
-   */
-  const calculatePositionIndex = (
-    targetId: string,
-    position: 'before' | 'after' | 'inside',
-    layers: LayerNode[]
-  ): { parent: LayerNode | null; index: number } => {
-    // Special case: main level drop zone
-    if (targetId === '__main_level__') {
-      return { parent: null, index: layers.length }; // Append to end of main level
-    }
-
-    const target = findLayerById(layers, targetId);
-    if (!target) {
-      console.error('❌ Target not found:', targetId);
-      return { parent: null, index: 0 };
-    }
-
-    // Case 1: 'inside' - dropping INTO a group
-    if (position === 'inside') {
-      if (target.type === 'group') {
-        // Position 0 = first child (backend will append to end if group has children)
-        return { parent: target, index: 0 };
-      } else {
-        console.warn('⚠️ Cannot drop inside non-group layer:', target.name);
-        return { parent: null, index: 0 };
-      }
-    }
-
-    // Case 2: 'before' or 'after' - dropping as sibling
-    // Find parent of target
-    const parent = findParentGroup(layers, targetId);
-    const siblings = parent?.children || layers; // If no parent, target is at root level
-
-    // Find index of target in siblings
-    const targetIndex = siblings.findIndex((node) => node.id === targetId);
-    if (targetIndex === -1) {
-      console.error('❌ Target not found in siblings:', targetId);
-      return { parent, index: 0 };
-    }
-
-    // Calculate new index
-    const newIndex = position === 'before' ? targetIndex : targetIndex + 1;
-
-    return { parent, index: newIndex };
-  };
-
-  /**
-   * Find parent group name for backend API
-   *
-   * Backend expects parent group NAME (not ID).
-   * Returns empty string if layer is at root level.
-   *
-   * @param parent - Parent group (null for root level)
-   * @returns Parent group name or empty string
-   */
-  const getParentGroupName = (parent: LayerNode | null): string => {
-    return parent?.name || ''; // Empty string = root level
-  };
 
   // Helper: Sync layer order with backend
   const syncLayerOrderWithBackend = async () => {
@@ -383,29 +306,6 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
   const dragDropHandlers = useDragDrop(layers, handleDragDropMove);
 
   // Helper functions
-  const findLayerById = (layers: LayerNode[], id: string): LayerNode | null => {
-    for (const layer of layers) {
-      if (layer.id === id) return layer;
-      if (layer.children) {
-        const found = findLayerById(layer.children, id);
-        if (found) return found;
-      }
-    }
-    return null;
-  };
-
-  const findParentGroup = (layers: LayerNode[], childId: string): LayerNode | null => {
-    for (const layer of layers) {
-      if (layer.children) {
-        const directChild = layer.children.find((child: LayerNode) => child.id === childId);
-        if (directChild) return layer;
-        const found = findParentGroup(layer.children, childId);
-        if (found) return found;
-      }
-    }
-    return null;
-  };
-
   const handleLayerSelect = (id: string) => {
     const layer = findLayerById(layers, id);
     setSelectedLayer(layer);
