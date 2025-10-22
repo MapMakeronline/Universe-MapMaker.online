@@ -23,8 +23,10 @@ import LockIcon from '@mui/icons-material/Lock';
 import SettingsIcon from '@mui/icons-material/Settings';
 import { BasemapSelector } from './BasemapSelector';
 import { PublishServicesModal } from '../modals/PublishServicesModal';
+import DownloadProjectModal from '../modals/DownloadProjectModal';
 // TODO: Add usePublishWMSWFSMutation to @/backend/projects
 // import { usePublishWMSWFSMutation } from '@/backend/projects';
+import { useExportProjectMutation } from '@/backend/projects';
 import { useAppDispatch } from '@/redux/hooks';
 import { showSuccess, showError, showInfo } from '@/redux/slices/notificationSlice';
 
@@ -139,6 +141,43 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   // WMS/WFS Publication State
   const [publishModalOpen, setPublishModalOpen] = React.useState(false);
   const [publishWMSWFS, { isLoading: isPublishing }] = usePublishWMSWFSMutation();
+
+  // Download Project State
+  const [downloadModalOpen, setDownloadModalOpen] = React.useState(false);
+  const [exportProject, { isLoading: isExporting }] = useExportProjectMutation();
+
+  // Handle Project Download
+  const handleDownload = async (format: 'qgs' | 'qgz') => {
+    if (!projectName) {
+      dispatch(showError('Nie można pobrać projektu - brak nazwy projektu'));
+      setDownloadModalOpen(false);
+      return;
+    }
+
+    console.log(`📥 Downloading project "${projectName}" in format: ${format}`);
+    dispatch(showInfo(`Pobieranie projektu w formacie ${format.toUpperCase()}...`, 5000));
+
+    try {
+      // Call backend API - automatic download via exportProject
+      await exportProject({
+        project: projectName,
+        project_type: format,
+      }).unwrap();
+
+      console.log('✅ Project download started');
+      dispatch(showSuccess(`Projekt "${projectName}.${format}" został pobrany`, 5000));
+
+      // Close modal on success
+      setDownloadModalOpen(false);
+    } catch (error: any) {
+      console.error('❌ Failed to download project:', error);
+      const errorMessage = error?.data?.message || error?.message || 'Nieznany błąd';
+      dispatch(showError(`Nie udało się pobrać projektu: ${errorMessage}`, 8000));
+
+      // Close modal on error too
+      setDownloadModalOpen(false);
+    }
+  };
 
   // Handle WMS/WFS Publication
   const handlePublish = async (selectedLayerIds: string[]) => {
@@ -808,7 +847,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                       bgcolor: 'rgba(79, 195, 247, 0.3)',
                     }
                   }}
-                  onClick={() => console.log('QGS/QGZ clicked')}
+                  onClick={() => setDownloadModalOpen(true)}
                 >
                   QGS/QGZ
                 </Box>
@@ -935,6 +974,14 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
         onClose={() => setPublishModalOpen(false)}
         onPublish={handlePublish}
         isLoading={isPublishing}
+      />
+
+      {/* Download Project Modal */}
+      <DownloadProjectModal
+        open={downloadModalOpen}
+        onClose={() => setDownloadModalOpen(false)}
+        onDownload={handleDownload}
+        isLoading={isExporting}
       />
     </Box>
   );
