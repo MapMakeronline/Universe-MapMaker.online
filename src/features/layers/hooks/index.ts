@@ -8,3 +8,5 @@ export { useModalManager } from './useModalManager';
 export type { ModalType, ModalState } from './useModalManager';
 
 export { useDragDropSync } from './useDragDropSync';
+
+export { useLayerOperations } from './useLayerOperations';
