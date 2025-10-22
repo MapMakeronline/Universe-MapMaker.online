@@ -141,7 +141,10 @@
       "Bash(cmd /c taskkill /F /PID 4292)",
       "Bash(cmd /c screenshot.bat http://localhost:3000/map?project=Mestwin phase5-id-fix-test.png)",
       "Bash(cmd /c \"taskkill /F /PID 6132\")",
-      "Bash(cmd /c timeout /t 15)"
+      "Bash(cmd /c timeout /t 15)",
+      "Bash(npm create storybook@latest)",
+      "Bash(npm run storybook:*)",
+      "Bash(del \"src\\features\\layers\\components\\PropertiesPanelHelpers.stories.tsx\")"
     ],
     "deny": [],
     "ask": []

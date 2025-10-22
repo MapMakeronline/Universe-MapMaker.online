@@ -1,6 +1,6 @@
 /**
  * KOMPONENT PROPERTIES PANEL - PANEL WŁAŚCIWOŚCI WARSTWY
- * 
+ *
  * Odpowiada za:
  * - Wyświetlanie szczegółowych właściwości wybranej warstwy
  * - Edycję ustawień warstwy (przezroczystość, widoczność, style)
@@ -15,25 +15,27 @@ import React from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
+import Button from '@mui/material/Button';
+import Checkbox from '@mui/material/Checkbox';
+import Accordion from '@mui/material/Accordion';
+import AccordionSummary from '@mui/material/AccordionSummary';
+import AccordionDetails from '@mui/material/AccordionDetails';
+import FormControlLabel from '@mui/material/FormControlLabel';
 import { useTheme } from '@mui/material/styles';
+import { useDispatch } from 'react-redux';
 import CloseIcon from '@mui/icons-material/Close';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import SettingsIcon from '@mui/icons-material/Settings';
+import LockIcon from '@mui/icons-material/Lock';
 import { BasemapSelector } from './BasemapSelector';
 import { PublishServicesModal } from '../modals/PublishServicesModal';
 import DownloadProjectModal from '../modals/DownloadProjectModal';
-import {
-  PANEL_CONFIG,
-  renderLabel,
-  renderValue,
-  renderFieldBox,
-  renderCheckbox,
-  renderActionButton,
-  renderSection
-} from './PropertiesPanelHelpers';
 import { usePropertyModals } from '../hooks/usePropertyModals';
 import { usePropertyOperations } from '../hooks/usePropertyOperations';
+import { showSuccess } from '@/redux/slices/notificationSlice';
+import { PANEL_CONFIG } from './PropertiesPanelHelpers';
+
 // Types defined locally for now
 interface Warstwa {
   id: string;
@@ -86,6 +88,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   wfsUrl = ''
 }) => {
   const theme = useTheme();
+  const dispatch = useDispatch();
   const [isPanelCollapsed, setIsPanelCollapsed] = React.useState(true); // Domyślnie zwinięty
 
   // Modal state management
@@ -93,14 +96,6 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
 
   // Backend operations
   const { handleDownload, handlePublish, isExporting, isPublishing } = usePropertyOperations(projectName, warstwy);
-
-  // Wrapper functions with theme pre-applied
-  const label = (text: string) => renderLabel(text, theme);
-  const value = (text: string, italic?: boolean) => renderValue(text, theme, italic);
-  const checkbox = (name: string, checked: boolean) => renderCheckbox(name, checked, theme, onToggleCheckbox);
-  const button = (label: string, onClick: () => void, width?: string) => renderActionButton(label, onClick, theme, width);
-  const section = (id: string, title: string, children: React.ReactNode, hasLock?: boolean, actionIcon?: React.ReactNode) =>
-    renderSection({ sectionId: id, title, children, theme, expandedSections, onToggleSection, hasLock, actionIcon });
 
   // Wrapper for handleDownload to close modal after operation
   const handleDownloadWithModal = async (format: 'qgs' | 'qgz') => {
@@ -192,55 +187,158 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
           {/* WŁAŚCIWOŚCI GRUPY */}
             {selectedLayer.typ === 'grupa' ? (
               <>
-                {section('grupa-informacje-ogolne', 'Informacje ogólne', (
-                  <>
-                    {renderFieldBox(
-                      <>
-                        {label('Nazwa')}
-                        {value('MIEJSCOWE PLANY ZAGOSPODAROWANIA PRZESTRZENNEGO')}
-                      </>
-                    )}
+                <Accordion
+                  expanded={expandedSections['grupa-informacje-ogolne']}
+                  onChange={() => onToggleSection('grupa-informacje-ogolne')}
+                  disableGutters
+                  sx={{ mb: 0.8, bgcolor: 'transparent', boxShadow: 'none' }}
+                >
+                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Typography variant="body2" sx={{ fontSize: '15px', fontWeight: 500 }}>
+                      Informacje ogólne
+                    </Typography>
+                  </AccordionSummary>
+                  <AccordionDetails sx={{ ml: 2, mt: 1 }}>
+                    <Box sx={{ mb: 0.8 }}>
+                      <Typography sx={{ fontSize: '11px', color: theme.palette.text.primary, mb: 0.5 }}>
+                        Nazwa
+                      </Typography>
+                      <Typography sx={{
+                        fontSize: '11px',
+                        color: theme.palette.text.primary,
+                        fontStyle: 'italic',
+                        lineHeight: 1.3
+                      }}>
+                        MIEJSCOWE PLANY ZAGOSPODAROWANIA PRZESTRZENNEGO
+                      </Typography>
+                    </Box>
 
-                    {renderFieldBox(
-                      <>
-                        {label('Grupa')}
-                        {value(selectedLayer?.id ? (findParentGroup(warstwy, selectedLayer.id)?.nazwa || 'Grupa główna') : 'Grupa główna')}
-                      </>,
-                      false
-                    )}
-                  </>
-                ))}
+                    <Box sx={{ mb: 0 }}>
+                      <Typography sx={{ fontSize: '11px', color: theme.palette.text.primary, mb: 0.5 }}>
+                        Grupa
+                      </Typography>
+                      <Typography sx={{
+                        fontSize: '11px',
+                        color: theme.palette.text.primary,
+                        fontStyle: 'italic',
+                        lineHeight: 1.3
+                      }}>
+                        {selectedLayer?.id ? (findParentGroup(warstwy, selectedLayer.id)?.nazwa || 'Grupa główna') : 'Grupa główna'}
+                      </Typography>
+                    </Box>
+                  </AccordionDetails>
+                </Accordion>
 
-                {section('grupa-pobieranie', 'Pobieranie', (
-                  button('Grupa', () => console.log('Pobierz grupę'))
-                ), true)}
+                <Accordion
+                  expanded={expandedSections['grupa-pobieranie']}
+                  onChange={() => onToggleSection('grupa-pobieranie')}
+                  disableGutters
+                  sx={{ mb: 0.8, bgcolor: 'transparent', boxShadow: 'none' }}
+                >
+                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Typography variant="body2" sx={{ fontSize: '15px', fontWeight: 500 }}>
+                      Pobieranie
+                      <LockIcon sx={{ ml: 1, fontSize: '12px' }} />
+                    </Typography>
+                  </AccordionSummary>
+                  <AccordionDetails sx={{ ml: 2, mt: 1 }}>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={() => console.log('Pobierz grupę')}
+                      sx={{
+                        fontSize: '10px',
+                        minWidth: '60px',
+                      }}
+                    >
+                      Grupa
+                    </Button>
+                  </AccordionDetails>
+                </Accordion>
 
-                {section('grupa-widocznosc', 'Widoczność', (
-                  <>
+                <Accordion
+                  expanded={expandedSections['grupa-widocznosc']}
+                  onChange={() => onToggleSection('grupa-widocznosc')}
+                  disableGutters
+                  sx={{ mb: 0.8, bgcolor: 'transparent', boxShadow: 'none' }}
+                >
+                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Typography variant="body2" sx={{ fontSize: '15px', fontWeight: 500 }}>
+                      Widoczność
+                    </Typography>
+                  </AccordionSummary>
+                  <AccordionDetails sx={{ ml: 2, mt: 1 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.8 }}>
                       <Typography sx={{ fontSize: '11px', color: theme.palette.text.primary }}>
                         Domyślne wyświetlanie grupy
                       </Typography>
-                      {checkbox('grupaDomyslneWyswietlanie', checkboxStates.grupaDomyslneWyswietlanie)}
+                      <Checkbox
+                        checked={checkboxStates.grupaDomyslneWyswietlanie}
+                        onChange={() => onToggleCheckbox('grupaDomyslneWyswietlanie')}
+                        size="small"
+                        sx={{ p: 0 }}
+                      />
                     </Box>
-                    {button('Zapisz', () => console.log('Zapisz widoczność grupy'))}
-                  </>
-                ))}
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={() => console.log('Zapisz widoczność grupy')}
+                      sx={{
+                        fontSize: '10px',
+                        minWidth: '60px',
+                      }}
+                    >
+                      Zapisz
+                    </Button>
+                  </AccordionDetails>
+                </Accordion>
 
-                {section('grupa-informacje-szczegolowe', 'Informacje szczegółowe', (
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <Typography sx={{ fontSize: '11px', color: theme.palette.text.primary }}>
-                      Legenda
+                <Accordion
+                  expanded={expandedSections['grupa-informacje-szczegolowe']}
+                  onChange={() => onToggleSection('grupa-informacje-szczegolowe')}
+                  disableGutters
+                  sx={{ mb: 0.8, bgcolor: 'transparent', boxShadow: 'none' }}
+                >
+                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Typography variant="body2" sx={{ fontSize: '15px', fontWeight: 500 }}>
+                      Informacje szczegółowe
                     </Typography>
-                    {button('Pokaż', () => console.log('Pokaż legendę grupy'))}
-                  </Box>
-                ))}
+                  </AccordionSummary>
+                  <AccordionDetails sx={{ ml: 2, mt: 1 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <Typography sx={{ fontSize: '11px', color: theme.palette.text.primary }}>
+                        Legenda
+                      </Typography>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={() => console.log('Pokaż legendę grupy')}
+                        sx={{
+                          fontSize: '10px',
+                          minWidth: '60px',
+                        }}
+                      >
+                        Pokaż
+                      </Button>
+                    </Box>
+                  </AccordionDetails>
+                </Accordion>
               </>
             ) : (
               <>
                 {/* WŁAŚCIWOŚCI WARSTWY */}
-                {section('warstwa-informacje-ogolne', 'Informacje ogólne', (
-                  <>
+                <Accordion
+                  expanded={expandedSections['warstwa-informacje-ogolne']}
+                  onChange={() => onToggleSection('warstwa-informacje-ogolne')}
+                  disableGutters
+                  sx={{ mb: 0.8, bgcolor: 'transparent', boxShadow: 'none' }}
+                >
+                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Typography variant="body2" sx={{ fontSize: '15px', fontWeight: 500 }}>
+                      Informacje ogólne
+                    </Typography>
+                  </AccordionSummary>
+                  <AccordionDetails sx={{ ml: 2, mt: 1 }}>
                     <Box sx={{ mb: 0.8 }}>
                       <Typography sx={{ fontSize: '11px', color: theme.palette.text.primary, mb: 0.5 }}>
                         Nazwa
@@ -285,46 +383,124 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                       <Typography sx={{ fontSize: '11px', color: theme.palette.text.primary }}>
                         Tabela atrybutów
                       </Typography>
-                      {button('Pokaż', () => console.log('Pokaż tabelę atrybutów warstwy'))}
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={() => console.log('Pokaż tabelę atrybutów warstwy')}
+                        sx={{
+                          fontSize: '10px',
+                          minWidth: '60px',
+                        }}
+                      >
+                        Pokaż
+                      </Button>
                     </Box>
-                  </>
-                ))}
+                  </AccordionDetails>
+                </Accordion>
 
-                {section('warstwa-pobieranie', 'Pobieranie', (
-                  button('Warstwa', () => console.log('Pobierz warstwę'))
-                ), true)}
+                <Accordion
+                  expanded={expandedSections['warstwa-pobieranie']}
+                  onChange={() => onToggleSection('warstwa-pobieranie')}
+                  disableGutters
+                  sx={{ mb: 0.8, bgcolor: 'transparent', boxShadow: 'none' }}
+                >
+                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Typography variant="body2" sx={{ fontSize: '15px', fontWeight: 500 }}>
+                      Pobieranie
+                      <LockIcon sx={{ ml: 1, fontSize: '12px' }} />
+                    </Typography>
+                  </AccordionSummary>
+                  <AccordionDetails sx={{ ml: 2, mt: 1 }}>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={() => console.log('Pobierz warstwę')}
+                      sx={{
+                        fontSize: '10px',
+                        minWidth: '60px',
+                      }}
+                    >
+                      Warstwa
+                    </Button>
+                  </AccordionDetails>
+                </Accordion>
 
-                {section('warstwa-widocznosc', 'Widoczność', (
-                  <>
+                <Accordion
+                  expanded={expandedSections['warstwa-widocznosc']}
+                  onChange={() => onToggleSection('warstwa-widocznosc')}
+                  disableGutters
+                  sx={{ mb: 0.8, bgcolor: 'transparent', boxShadow: 'none' }}
+                >
+                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Typography variant="body2" sx={{ fontSize: '15px', fontWeight: 500 }}>
+                      Widoczność
+                    </Typography>
+                  </AccordionSummary>
+                  <AccordionDetails sx={{ ml: 2, mt: 1 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.8 }}>
                       <Typography sx={{ fontSize: '11px', color: theme.palette.text.primary }}>
                         Widoczność kolumn
                       </Typography>
-                      {button('Edytuj', () => console.log('Edytuj widoczność kolumn'), '60px')}
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={() => console.log('Edytuj widoczność kolumn')}
+                        sx={{
+                          fontSize: '10px',
+                          width: '60px',
+                        }}
+                      >
+                        Edytuj
+                      </Button>
                     </Box>
 
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.8 }}>
                       <Typography sx={{ fontSize: '11px', color: theme.palette.text.primary }}>
                         Domyślne wyświetlanie warstwy
                       </Typography>
-                      {checkbox('warstwaDomyslneWyswietlanie', checkboxStates.warstwaDomyslneWyswietlanie)}
+                      <Checkbox
+                        checked={checkboxStates.warstwaDomyslneWyswietlanie}
+                        onChange={() => onToggleCheckbox('warstwaDomyslneWyswietlanie')}
+                        size="small"
+                        sx={{ p: 0 }}
+                      />
                     </Box>
 
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.8 }}>
                       <Typography sx={{ fontSize: '11px', color: theme.palette.text.primary }}>
                         Widoczność od zadanej skali
                       </Typography>
-                      {checkbox('warstwaWidocznoscOdSkali', checkboxStates.warstwaWidocznoscOdSkali)}
+                      <Checkbox
+                        checked={checkboxStates.warstwaWidocznoscOdSkali}
+                        onChange={() => onToggleCheckbox('warstwaWidocznoscOdSkali')}
+                        size="small"
+                        sx={{ p: 0 }}
+                      />
                     </Box>
 
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.8 }}>
                       <Typography sx={{ fontSize: '11px', color: theme.palette.text.primary }}>
                         Widoczność w trybie opublikowanym
                       </Typography>
-                      {checkbox('warstwaWidocznoscTrybOpublikowany', checkboxStates.warstwaWidocznoscTrybOpublikowany)}
+                      <Checkbox
+                        checked={checkboxStates.warstwaWidocznoscTrybOpublikowany}
+                        onChange={() => onToggleCheckbox('warstwaWidocznoscTrybOpublikowany')}
+                        size="small"
+                        sx={{ p: 0 }}
+                      />
                     </Box>
 
-                    {button('Zapisz', () => console.log('Zapisz ustawienia widoczności warstwy'))}
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={() => console.log('Zapisz ustawienia widoczności warstwy')}
+                      sx={{
+                        fontSize: '10px',
+                        minWidth: '60px',
+                      }}
+                    >
+                      Zapisz
+                    </Button>
 
                     {/* Przezroczystość warstwy ze sliderem */}
                     <Box sx={{ mb: 1, mt: 1 }}>
@@ -387,264 +563,381 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                         />
                       </Box>
                     </Box>
-                  </>
-                ))}
+                  </AccordionDetails>
+                </Accordion>
 
-                {section('warstwa-informacje-szczegolowe', 'Informacje szczegółowe', (
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <Typography sx={{ fontSize: '11px', color: theme.palette.text.primary }}>
-                      Legenda
+                <Accordion
+                  expanded={expandedSections['warstwa-informacje-szczegolowe']}
+                  onChange={() => onToggleSection('warstwa-informacje-szczegolowe')}
+                  disableGutters
+                  sx={{ mb: 0.8, bgcolor: 'transparent', boxShadow: 'none' }}
+                >
+                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Typography variant="body2" sx={{ fontSize: '15px', fontWeight: 500 }}>
+                      Informacje szczegółowe
                     </Typography>
-                    {button('Pokaż', () => console.log('Pokaż legendę warstwy'))}
-                  </Box>
-                ))}
+                  </AccordionSummary>
+                  <AccordionDetails sx={{ ml: 2, mt: 1 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <Typography sx={{ fontSize: '11px', color: theme.palette.text.primary }}>
+                        Legenda
+                      </Typography>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={() => console.log('Pokaż legendę warstwy')}
+                        sx={{
+                          fontSize: '10px',
+                          minWidth: '60px',
+                        }}
+                      >
+                        Pokaż
+                      </Button>
+                    </Box>
+                  </AccordionDetails>
+                </Accordion>
 
-                {section('warstwa-styl-warstwy', 'Styl warstwy', (
-                  <Box sx={{ display: 'flex', gap: 0.5, mb: 0.8, flexWrap: 'wrap' }}>
-                    {button('Edytuj', () => {
-                      console.log('🎨 Opening Edit Layer Style Modal');
-                      onEditLayerStyle();
-                    }, '60px')}
-                    {button('Zarządzaj', onManageLayer, '70px')}
-                    {button('Etykietowanie', onLayerLabeling, '90px')}
-                  </Box>
-                ), true)}
+                <Accordion
+                  expanded={expandedSections['warstwa-styl-warstwy']}
+                  onChange={() => onToggleSection('warstwa-styl-warstwy')}
+                  disableGutters
+                  sx={{ mb: 0.8, bgcolor: 'transparent', boxShadow: 'none' }}
+                >
+                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Typography variant="body2" sx={{ fontSize: '15px', fontWeight: 500 }}>
+                      Styl warstwy
+                      <LockIcon sx={{ ml: 1, fontSize: '12px' }} />
+                    </Typography>
+                  </AccordionSummary>
+                  <AccordionDetails sx={{ ml: 2, mt: 1 }}>
+                    <Box sx={{ display: 'flex', gap: 0.5, mb: 0.8, flexWrap: 'wrap' }}>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={() => {
+                          console.log('🎨 Opening Edit Layer Style Modal');
+                          onEditLayerStyle();
+                        }}
+                        sx={{
+                          fontSize: '10px',
+                          width: '60px',
+                        }}
+                      >
+                        Edytuj
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={onManageLayer}
+                        sx={{
+                          fontSize: '10px',
+                          width: '70px',
+                        }}
+                      >
+                        Zarządzaj
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={onLayerLabeling}
+                        sx={{
+                          fontSize: '10px',
+                          width: '90px',
+                        }}
+                      >
+                        Etykietowanie
+                      </Button>
+                    </Box>
+                  </AccordionDetails>
+                </Accordion>
               </>
             )}
           </>
         ) : (
           <>
             {/* WŁAŚCIWOŚCI PROJEKTU */}
-            {section(
-              'uslugi',
-              'Usługi',
-              (
-                <>
-                  {wmsUrl || wfsUrl ? (
-                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
-                      {wmsUrl && (
-                        <Box
-                          sx={{
-                            bgcolor: 'rgba(76, 175, 80, 0.2)',
-                            border: '1px solid rgba(76, 175, 80, 0.4)',
-                            borderRadius: '4px',
-                            px: 1.5,
-                            py: 0.5,
-                            cursor: 'pointer',
-                            fontSize: '10px',
-                            color: '#66bb6a',
-                            fontWeight: 500,
-                            '&:hover': {
-                              bgcolor: 'rgba(76, 175, 80, 0.3)',
-                            }
-                          }}
-                          onClick={() => {
-                            navigator.clipboard.writeText(wmsUrl);
-                            console.log('✅ WMS URL copied:', wmsUrl);
-                            dispatch(showSuccess('Skopiowano WMS URL do schowka', 3000));
-                          }}
-                        >
-                          WMS
-                        </Box>
-                      )}
-                      {wfsUrl && (
-                        <Box
-                          sx={{
-                            bgcolor: 'rgba(33, 150, 243, 0.2)',
-                            border: '1px solid rgba(33, 150, 243, 0.4)',
-                            borderRadius: '4px',
-                            px: 1.5,
-                            py: 0.5,
-                            cursor: 'pointer',
-                            fontSize: '10px',
-                            color: '#42a5f5',
-                            fontWeight: 500,
-                            '&:hover': {
-                              bgcolor: 'rgba(33, 150, 243, 0.3)',
-                            }
-                          }}
-                          onClick={() => {
-                            navigator.clipboard.writeText(wfsUrl);
-                            console.log('✅ WFS URL copied:', wfsUrl);
-                            dispatch(showSuccess('Skopiowano WFS URL do schowka', 3000));
-                          }}
-                        >
-                          WFS
-                        </Box>
-                      )}
+            <Accordion
+              expanded={expandedSections['uslugi']}
+              onChange={() => onToggleSection('uslugi')}
+              disableGutters
+              sx={{ mb: 0.8, bgcolor: 'transparent', boxShadow: 'none' }}
+            >
+              <AccordionSummary
+                expandIcon={<ExpandMoreIcon />}
+                sx={{
+                  '& .MuiAccordionSummary-content': {
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    width: '100%'
+                  }
+                }}
+              >
+                <Typography variant="body2" sx={{ fontSize: '15px', fontWeight: 500 }}>
+                  Usługi
+                </Typography>
+                <IconButton
+                  size="small"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openModal('publish');
+                  }}
+                  sx={{
+                    color: theme.palette.text.secondary,
+                    p: 0.5,
+                    mr: 1,
+                    '&:hover': { color: theme.palette.primary.main }
+                  }}
+                >
+                  <SettingsIcon sx={{ fontSize: '14px' }} />
+                </IconButton>
+              </AccordionSummary>
+              <AccordionDetails sx={{ ml: 2, mt: 1 }}>
+                {wmsUrl || wfsUrl ? (
+                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+                    {wmsUrl && (
                       <Box
                         sx={{
-                          bgcolor: 'rgba(255, 152, 0, 0.2)',
-                          border: '1px solid rgba(255, 152, 0, 0.4)',
+                          bgcolor: 'rgba(76, 175, 80, 0.2)',
+                          border: '1px solid rgba(76, 175, 80, 0.4)',
                           borderRadius: '4px',
                           px: 1.5,
                           py: 0.5,
                           cursor: 'pointer',
                           fontSize: '10px',
-                          color: '#ffa726',
+                          color: '#66bb6a',
                           fontWeight: 500,
                           '&:hover': {
-                            bgcolor: 'rgba(255, 152, 0, 0.3)',
+                            bgcolor: 'rgba(76, 175, 80, 0.3)',
                           }
                         }}
-                        onClick={() => console.log('CSW clicked')}
+                        onClick={() => {
+                          navigator.clipboard.writeText(wmsUrl);
+                          console.log('✅ WMS URL copied:', wmsUrl);
+                          dispatch(showSuccess('Skopiowano WMS URL do schowka', 3000));
+                        }}
                       >
-                        CSW
+                        WMS
                       </Box>
+                    )}
+                    {wfsUrl && (
+                      <Box
+                        sx={{
+                          bgcolor: 'rgba(33, 150, 243, 0.2)',
+                          border: '1px solid rgba(33, 150, 243, 0.4)',
+                          borderRadius: '4px',
+                          px: 1.5,
+                          py: 0.5,
+                          cursor: 'pointer',
+                          fontSize: '10px',
+                          color: '#42a5f5',
+                          fontWeight: 500,
+                          '&:hover': {
+                            bgcolor: 'rgba(33, 150, 243, 0.3)',
+                          }
+                        }}
+                        onClick={() => {
+                          navigator.clipboard.writeText(wfsUrl);
+                          console.log('✅ WFS URL copied:', wfsUrl);
+                          dispatch(showSuccess('Skopiowano WFS URL do schowka', 3000));
+                        }}
+                      >
+                        WFS
+                      </Box>
+                    )}
+                    <Box
+                      sx={{
+                        bgcolor: 'rgba(255, 152, 0, 0.2)',
+                        border: '1px solid rgba(255, 152, 0, 0.4)',
+                        borderRadius: '4px',
+                        px: 1.5,
+                        py: 0.5,
+                        cursor: 'pointer',
+                        fontSize: '10px',
+                        color: '#ffa726',
+                        fontWeight: 500,
+                        '&:hover': {
+                          bgcolor: 'rgba(255, 152, 0, 0.3)',
+                        }
+                      }}
+                      onClick={() => console.log('CSW clicked')}
+                    >
+                      CSW
                     </Box>
-                  ) : (
-                    <Typography sx={{ fontSize: '10px', color: theme.palette.text.secondary, mb: 1, fontStyle: 'italic' }}>
-                      Brak udostępnionych usług
-                    </Typography>
-                  )}
-                </>
-              ),
-              false,
-              <IconButton
-                size="small"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  openModal('publish');
-                }}
-                sx={{
-                  color: theme.palette.text.secondary,
-                  p: 0.5,
-                  '&:hover': { color: theme.palette.primary.main }
-                }}
-              >
-                <SettingsIcon sx={{ fontSize: '14px' }} />
-              </IconButton>
-            )}
+                  </Box>
+                ) : (
+                  <Typography sx={{ fontSize: '10px', color: theme.palette.text.secondary, mb: 1, fontStyle: 'italic' }}>
+                    Brak udostępnionych usług
+                  </Typography>
+                )}
+              </AccordionDetails>
+            </Accordion>
 
-            {section('pobieranie', 'Pobieranie', (
-              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
-                <Box
-                  sx={{
-                    bgcolor: 'rgba(79, 195, 247, 0.2)',
-                    border: '1px solid rgba(79, 195, 247, 0.4)',
-                    borderRadius: '4px',
-                    px: 1.5,
-                    py: 0.5,
-                    cursor: 'pointer',
-                    fontSize: '10px',
-                    color: '#4fc3f7',
-                    fontWeight: 500,
-                    '&:hover': {
-                      bgcolor: 'rgba(79, 195, 247, 0.3)',
-                    }
-                  }}
-                  onClick={() => openModal('download')}
-                >
-                  QGS/QGZ
+            <Accordion
+              expanded={expandedSections['pobieranie']}
+              onChange={() => onToggleSection('pobieranie')}
+              disableGutters
+              sx={{ mb: 0.8, bgcolor: 'transparent', boxShadow: 'none' }}
+            >
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography variant="body2" sx={{ fontSize: '15px', fontWeight: 500 }}>
+                  Pobieranie
+                </Typography>
+              </AccordionSummary>
+              <AccordionDetails sx={{ ml: 2, mt: 1 }}>
+                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <Box
+                    sx={{
+                      bgcolor: 'rgba(79, 195, 247, 0.2)',
+                      border: '1px solid rgba(79, 195, 247, 0.4)',
+                      borderRadius: '4px',
+                      px: 1.5,
+                      py: 0.5,
+                      cursor: 'pointer',
+                      fontSize: '10px',
+                      color: '#4fc3f7',
+                      fontWeight: 500,
+                      '&:hover': {
+                        bgcolor: 'rgba(79, 195, 247, 0.3)',
+                      }
+                    }}
+                    onClick={() => openModal('download')}
+                  >
+                    QGS/QGZ
+                  </Box>
+                  <Box
+                    sx={{
+                      bgcolor: 'rgba(79, 195, 247, 0.2)',
+                      border: '1px solid rgba(79, 195, 247, 0.4)',
+                      borderRadius: '4px',
+                      px: 1.5,
+                      py: 0.5,
+                      cursor: 'pointer',
+                      fontSize: '10px',
+                      color: '#4fc3f7',
+                      fontWeight: 500,
+                      '&:hover': {
+                        bgcolor: 'rgba(79, 195, 247, 0.3)',
+                      }
+                    }}
+                    onClick={() => console.log('Zbiór APP clicked')}
+                  >
+                    Zbiór APP
+                  </Box>
+                  <Box
+                    sx={{
+                      bgcolor: 'rgba(79, 195, 247, 0.2)',
+                      border: '1px solid rgba(79, 195, 247, 0.4)',
+                      borderRadius: '4px',
+                      px: 1.5,
+                      py: 0.5,
+                      cursor: 'pointer',
+                      fontSize: '10px',
+                      color: '#4fc3f7',
+                      fontWeight: 500,
+                      '&:hover': {
+                        bgcolor: 'rgba(79, 195, 247, 0.3)',
+                      }
+                    }}
+                    onClick={() => console.log('Metadane clicked')}
+                  >
+                    Metadane
+                  </Box>
                 </Box>
-                <Box
-                  sx={{
-                    bgcolor: 'rgba(79, 195, 247, 0.2)',
-                    border: '1px solid rgba(79, 195, 247, 0.4)',
-                    borderRadius: '4px',
-                    px: 1.5,
-                    py: 0.5,
-                    cursor: 'pointer',
-                    fontSize: '10px',
-                    color: '#4fc3f7',
-                    fontWeight: 500,
-                    '&:hover': {
-                      bgcolor: 'rgba(79, 195, 247, 0.3)',
-                    }
-                  }}
-                  onClick={() => console.log('Zbiór APP clicked')}
-                >
-                  Zbiór APP
-                </Box>
-                <Box
-                  sx={{
-                    bgcolor: 'rgba(79, 195, 247, 0.2)',
-                    border: '1px solid rgba(79, 195, 247, 0.4)',
-                    borderRadius: '4px',
-                    px: 1.5,
-                    py: 0.5,
-                    cursor: 'pointer',
-                    fontSize: '10px',
-                    color: '#4fc3f7',
-                    fontWeight: 500,
-                    '&:hover': {
-                      bgcolor: 'rgba(79, 195, 247, 0.3)',
-                    }
-                  }}
-                  onClick={() => console.log('Metadane clicked')}
-                >
+              </AccordionDetails>
+            </Accordion>
+
+            <Accordion
+              expanded={expandedSections['metadane']}
+              onChange={() => onToggleSection('metadane')}
+              disableGutters
+              sx={{ mb: 0.8, bgcolor: 'transparent', boxShadow: 'none' }}
+            >
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography variant="body2" sx={{ fontSize: '15px', fontWeight: 500 }}>
                   Metadane
+                </Typography>
+              </AccordionSummary>
+              <AccordionDetails sx={{ ml: 2, mt: 1 }}>
+                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <Box
+                    sx={{
+                      bgcolor: 'rgba(156, 39, 176, 0.2)',
+                      border: '1px solid rgba(156, 39, 176, 0.4)',
+                      borderRadius: '4px',
+                      px: 1.5,
+                      py: 0.5,
+                      cursor: 'pointer',
+                      fontSize: '10px',
+                      color: '#ab47bc',
+                      fontWeight: 500,
+                      '&:hover': {
+                        bgcolor: 'rgba(156, 39, 176, 0.3)',
+                      }
+                    }}
+                    onClick={() => console.log('Wyświetl clicked')}
+                  >
+                    Wyświetl
+                  </Box>
+                  <Box
+                    sx={{
+                      bgcolor: 'rgba(63, 81, 181, 0.2)',
+                      border: '1px solid rgba(63, 81, 181, 0.4)',
+                      borderRadius: '4px',
+                      px: 1.5,
+                      py: 0.5,
+                      cursor: 'pointer',
+                      fontSize: '10px',
+                      color: '#5c6bc0',
+                      fontWeight: 500,
+                      '&:hover': {
+                        bgcolor: 'rgba(63, 81, 181, 0.3)',
+                      }
+                    }}
+                    onClick={() => console.log('Wyszukaj clicked')}
+                  >
+                    Wyszukaj
+                  </Box>
+                  <Box
+                    sx={{
+                      bgcolor: 'rgba(76, 175, 80, 0.2)',
+                      border: '1px solid rgba(76, 175, 80, 0.4)',
+                      borderRadius: '4px',
+                      px: 1.5,
+                      py: 0.5,
+                      cursor: 'pointer',
+                      fontSize: '10px',
+                      color: '#66bb6a',
+                      fontWeight: 500,
+                      '&:hover': {
+                        bgcolor: 'rgba(76, 175, 80, 0.3)',
+                      }
+                    }}
+                    onClick={() => console.log('Stwórz clicked')}
+                  >
+                    Stwórz
+                  </Box>
                 </Box>
-              </Box>
-            ))}
+              </AccordionDetails>
+            </Accordion>
 
-            {section('metadane', 'Metadane', (
-              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
-                <Box
-                  sx={{
-                    bgcolor: 'rgba(156, 39, 176, 0.2)',
-                    border: '1px solid rgba(156, 39, 176, 0.4)',
-                    borderRadius: '4px',
-                    px: 1.5,
-                    py: 0.5,
-                    cursor: 'pointer',
-                    fontSize: '10px',
-                    color: '#ab47bc',
-                    fontWeight: 500,
-                    '&:hover': {
-                      bgcolor: 'rgba(156, 39, 176, 0.3)',
-                    }
-                  }}
-                  onClick={() => console.log('Wyświetl clicked')}
-                >
-                  Wyświetl
-                </Box>
-                <Box
-                  sx={{
-                    bgcolor: 'rgba(63, 81, 181, 0.2)',
-                    border: '1px solid rgba(63, 81, 181, 0.4)',
-                    borderRadius: '4px',
-                    px: 1.5,
-                    py: 0.5,
-                    cursor: 'pointer',
-                    fontSize: '10px',
-                    color: '#5c6bc0',
-                    fontWeight: 500,
-                    '&:hover': {
-                      bgcolor: 'rgba(63, 81, 181, 0.3)',
-                    }
-                  }}
-                  onClick={() => console.log('Wyszukaj clicked')}
-                >
-                  Wyszukaj
-                </Box>
-                <Box
-                  sx={{
-                    bgcolor: 'rgba(76, 175, 80, 0.2)',
-                    border: '1px solid rgba(76, 175, 80, 0.4)',
-                    borderRadius: '4px',
-                    px: 1.5,
-                    py: 0.5,
-                    cursor: 'pointer',
-                    fontSize: '10px',
-                    color: '#66bb6a',
-                    fontWeight: 500,
-                    '&:hover': {
-                      bgcolor: 'rgba(76, 175, 80, 0.3)',
-                    }
-                  }}
-                  onClick={() => console.log('Stwórz clicked')}
-                >
-                  Stwórz
-                </Box>
-              </Box>
-            ))}
-
-            {section('inne-projekty', 'Inne projekty użytkownika', (
-              <Typography sx={{ fontSize: '10px', color: theme.palette.text.secondary, fontStyle: 'italic' }}>
-                Brak innych projektów
-              </Typography>
-            ))}
+            <Accordion
+              expanded={expandedSections['inne-projekty']}
+              onChange={() => onToggleSection('inne-projekty')}
+              disableGutters
+              sx={{ mb: 0.8, bgcolor: 'transparent', boxShadow: 'none' }}
+            >
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography variant="body2" sx={{ fontSize: '15px', fontWeight: 500 }}>
+                  Inne projekty użytkownika
+                </Typography>
+              </AccordionSummary>
+              <AccordionDetails sx={{ ml: 2, mt: 1 }}>
+                <Typography sx={{ fontSize: '10px', color: theme.palette.text.secondary, fontStyle: 'italic' }}>
+                  Brak innych projektów
+                </Typography>
+              </AccordionDetails>
+            </Accordion>
           </>
         )}
       </Box>

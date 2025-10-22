@@ -55,3 +55,6 @@ screenshot.ps1
 screenshot.sh
 screenshot.js
 screenshotshomepage-test.png
+
+*storybook.log
+storybook-static
