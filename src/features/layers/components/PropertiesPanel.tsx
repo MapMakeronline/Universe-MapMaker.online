@@ -37,6 +37,7 @@ import {
   renderActionButton,
   renderSection
 } from './PropertiesPanelHelpers';
+import { usePropertyModals } from '../hooks/usePropertyModals';
 
 // Temporary mock hook
 const usePublishWMSWFSMutation = () => [async () => {}, { isLoading: false }] as any;
@@ -95,12 +96,11 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   const dispatch = useAppDispatch();
   const [isPanelCollapsed, setIsPanelCollapsed] = React.useState(true); // Domyślnie zwinięty
 
-  // WMS/WFS Publication State
-  const [publishModalOpen, setPublishModalOpen] = React.useState(false);
-  const [publishWMSWFS, { isLoading: isPublishing }] = usePublishWMSWFSMutation();
+  // Modal state management
+  const { modals, openModal, closeModal } = usePropertyModals();
 
-  // Download Project State
-  const [downloadModalOpen, setDownloadModalOpen] = React.useState(false);
+  // Backend mutations
+  const [publishWMSWFS, { isLoading: isPublishing }] = usePublishWMSWFSMutation();
   const [exportProject, { isLoading: isExporting }] = useExportProjectMutation();
 
   // Wrapper functions with theme pre-applied
@@ -133,14 +133,14 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
       dispatch(showSuccess(`Projekt "${projectName}.${format}" został pobrany`, 5000));
 
       // Close modal on success
-      setDownloadModalOpen(false);
+      closeModal('download');
     } catch (error: any) {
       console.error('❌ Failed to download project:', error);
       const errorMessage = error?.data?.message || error?.message || 'Nieznany błąd';
       dispatch(showError(`Nie udało się pobrać projektu: ${errorMessage}`, 8000));
 
       // Close modal on error too
-      setDownloadModalOpen(false);
+      closeModal('download');
     }
   };
 
@@ -226,7 +226,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
         `WFS: ${wfsUrl}`;
       dispatch(showSuccess(successMsg, 8000));
 
-      setPublishModalOpen(false);
+      closeModal('publish');
 
       // RTK Query automatically invalidates cache and refetches project data with new URLs
     } catch (error: any) {
@@ -627,7 +627,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                 size="small"
                 onClick={(e) => {
                   e.stopPropagation();
-                  setPublishModalOpen(true);
+                  openModal('publish');
                 }}
                 sx={{
                   color: theme.palette.text.secondary,
@@ -656,7 +656,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                       bgcolor: 'rgba(79, 195, 247, 0.3)',
                     }
                   }}
-                  onClick={() => setDownloadModalOpen(true)}
+                  onClick={() => openModal('download')}
                 >
                   QGS/QGZ
                 </Box>
@@ -777,18 +777,18 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
 
       {/* WMS/WFS Publication Modal */}
       <PublishServicesModal
-        open={publishModalOpen}
+        open={modals.publish}
         projectName={projectName}
         layers={warstwy}
-        onClose={() => setPublishModalOpen(false)}
+        onClose={() => closeModal('publish')}
         onPublish={handlePublish}
         isLoading={isPublishing}
       />
 
       {/* Download Project Modal */}
       <DownloadProjectModal
-        open={downloadModalOpen}
-        onClose={() => setDownloadModalOpen(false)}
+        open={modals.download}
+        onClose={() => closeModal('download')}
         onDownload={handleDownload}
         isLoading={isExporting}
       />
