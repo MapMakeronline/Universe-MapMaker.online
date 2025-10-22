@@ -24,5 +24,6 @@ export * from './types';
 export * from './auth';
 export * from './projects';
 export * from './layers';
+export * from './groups';
 export * from './users';
 export * from './contact';

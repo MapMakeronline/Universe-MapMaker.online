@@ -209,7 +209,7 @@ const AddGroupModal: React.FC<AddGroupModalProps> = ({ open, onClose, onSubmit, 
             >
               <MenuItem value="Stwórz poza grupami">Stwórz poza grupami</MenuItem>
               {allGroups.map((group) => (
-                <MenuItem key={group.id} value={group.id}>
+                <MenuItem key={group.id} value={group.nazwa}>
                   {group.nazwa}
                 </MenuItem>
               ))}

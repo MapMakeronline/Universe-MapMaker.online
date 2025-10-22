@@ -36,10 +36,11 @@ import {
   useAddRasterLayerMutation,
   useSetLayerVisibilityMutation,
 } from '@/backend/layers';
+import {
+  useAddGroupMutation,
+  useRemoveGroupsAndLayersMutation,
+} from '@/backend/groups';
 import { showSuccess, showError, showInfo } from '@/redux/slices/notificationSlice';
-
-// TODO: Implement delete layer operation in @/backend/layers
-const useDeleteLayerMutation = () => [async () => {}, { isLoading: false }] as any;
 
 // Types
 type FilterType = 'wszystko' | 'wektor' | 'raster' | 'wms';
@@ -89,7 +90,8 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
   const [addShpLayer] = useAddShpLayerMutation();
   const [addGmlLayer] = useAddGmlLayerMutation();
   const [addRasterLayer] = useAddRasterLayerMutation();
-  const [deleteLayerFromBackend] = useDeleteLayerMutation();
+  const [addGroup] = useAddGroupMutation();
+  const [removeGroupsAndLayers] = useRemoveGroupsAndLayersMutation();
 
   // Get current project name from URL
   const projectName = typeof window !== 'undefined'
@@ -726,78 +728,148 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
     }
   };
 
-  const handleAddGroup = (data: { nazwaGrupy: string; grupaNadrzedna: string }) => {
+  /**
+   * Add Group with backend sync
+   *
+   * Process:
+   * 1. Validate input
+   * 2. Call backend API to create group in QGS file
+   * 3. Refetch project data (tree.json) to update Redux state
+   * 4. Show success notification
+   *
+   * Backend endpoint: POST /api/groups/add
+   * Documentation: docs/backend/groups_api_docs.md (lines 16-60)
+   */
+  const handleAddGroup = async (data: { nazwaGrupy: string; grupaNadrzedna: string }) => {
+    if (!projectName) {
+      dispatch(showError('Nie można dodać grupy - brak nazwy projektu'));
+      return;
+    }
+
+    // Validation
+    if (!data.nazwaGrupy.trim()) {
+      dispatch(showError('Nazwa grupy nie może być pusta'));
+      return;
+    }
+
+    // Close modal immediately for better UX
     setAddGroupModalOpen(false);
-    console.log('TODO: Adding new group:', data);
-    dispatch(showInfo('Dodawanie grupy - wkrótce dostępne'));
+
+    // Show loading notification
+    dispatch(showInfo(`Tworzenie grupy "${data.nazwaGrupy}"...`, 8000));
+
+    try {
+      // Determine parent group name
+      // "Stwórz poza grupami" → empty string (root level)
+      // Otherwise → group name (not ID!)
+      const parentGroupName = data.grupaNadrzedna === 'Stwórz poza grupami'
+        ? ''
+        : data.grupaNadrzedna;
+
+      console.log('➕ Adding group:', {
+        project: projectName,
+        groupName: data.nazwaGrupy,
+        parent: parentGroupName || '(root)',
+      });
+
+      // Call backend API
+      await addGroup({
+        project: projectName,
+        group_name: data.nazwaGrupy,
+        parent: parentGroupName,
+      }).unwrap();
+
+      console.log('✅ Group added successfully');
+
+      // RTK Query automatically invalidates 'Project' tag and refetches tree.json
+      // Redux state will update automatically via QGISProjectLoader
+
+      dispatch(showSuccess(`Grupa "${data.nazwaGrupy}" została utworzona!`, 5000));
+    } catch (error: any) {
+      console.error('❌ Failed to add group:', error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
+
+      // Extract error message from backend response
+      const errorMessage = error?.data?.message || error?.data?.error || error?.message || 'Nieznany błąd';
+
+      dispatch(showError(`Nie udało się dodać grupy: ${errorMessage}`, 8000));
+    }
   };
 
   /**
-   * Delete layer with backend sync
+   * Delete layer or group with backend sync
+   *
+   * Supports:
+   * - Individual layers (via /api/groups/layer/remove with layers=[id])
+   * - Groups (via /api/groups/layer/remove with groups=[name])
    *
    * Process:
-   * 1. Confirm deletion (user already clicked delete button)
-   * 2. Delete from backend (PostGIS + tree.json)
-   * 3. Remove from Redux state
-   * 4. Close properties panel
+   * 1. Validate selection (layer or group)
+   * 2. Call backend API to remove from QGS file
+   * 3. Optionally delete from PostgreSQL database
+   * 4. Refetch project data (tree.json) to update Redux state
+   * 5. Close properties panel
    *
-   * Backend endpoint: POST /api/layer/remove/database
-   * - Removes layer from PostGIS database
-   * - Updates project tree.json
-   * - Cleans up layer styles and metadata
+   * Backend endpoint: POST /api/groups/layer/remove
+   * Documentation: docs/backend/groups_api_docs.md (lines 63-105)
+   *
+   * IMPORTANT:
+   * - groups: array of group NAMES (not IDs!)
+   * - layers: array of layer IDs
+   * - remove_from_database: true to delete from PostgreSQL
    */
   const handleDeleteLayer = async () => {
     if (!selectedLayer) {
-      console.warn('⚠️ No layer selected for deletion');
+      console.warn('⚠️ No layer/group selected for deletion');
       return;
     }
 
     if (!projectName) {
-      dispatch(showError('Nie można usunąć warstwy - brak nazwy projektu'));
+      dispatch(showError('Nie można usunąć - brak nazwy projektu'));
       return;
     }
 
-    // Don't allow deleting groups (for now)
-    if (selectedLayer.type === 'group') {
-      dispatch(showInfo('Usuwanie grup nie jest jeszcze obsługiwane'));
-      return;
-    }
-
-    const layerName = selectedLayer.name;
-    const layerId = selectedLayer.id;
+    const isGroup = selectedLayer.type === 'group';
+    const itemName = selectedLayer.name;
+    const itemId = selectedLayer.id;
+    const itemType = isGroup ? 'grupy' : 'warstwy';
 
     try {
-      console.log('🗑️ Deleting layer:', { project: projectName, layer: layerName });
+      console.log(`🗑️ Deleting ${itemType}:`, {
+        project: projectName,
+        name: itemName,
+        id: itemId,
+        type: selectedLayer.type,
+      });
 
       // Show loading notification
-      dispatch(showInfo(`Usuwanie warstwy "${layerName}"...`, 8000));
+      dispatch(showInfo(`Usuwanie ${itemType} "${itemName}"...`, 8000));
 
-      // 1. Delete from backend first
-      await deleteLayerFromBackend({
-        projectName,
-        layerName,
+      // Call unified backend endpoint for both groups and layers
+      await removeGroupsAndLayers({
+        project: projectName,
+        groups: isGroup ? [itemName] : [], // Groups use NAMES
+        layers: isGroup ? [] : [itemId], // Layers use IDs
+        remove_from_database: true, // Delete from PostgreSQL
       }).unwrap();
 
-      console.log('✅ Layer deleted from backend');
+      console.log(`✅ ${itemType} deleted from backend`);
 
-      // 2. Remove from Redux state (optimistic update after backend success)
-      dispatch(deleteLayer(layerId));
+      // RTK Query automatically invalidates 'Project' tag and refetches tree.json
+      // Redux state will update automatically via QGISProjectLoader
 
-      // 3. Close properties panel
+      // Close properties panel
       setSelectedLayer(null);
 
-      // 4. Show success message
-      dispatch(showSuccess(`Warstwa "${layerName}" została usunięta`, 5000));
-
-      // RTK Query automatically invalidates cache and refetches project data
+      // Show success message
+      dispatch(showSuccess(`${isGroup ? 'Grupa' : 'Warstwa'} "${itemName}" została usunięta`, 5000));
     } catch (error: any) {
-      console.error('❌ Failed to delete layer:', error);
+      console.error(`❌ Failed to delete ${itemType}:`, error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
 
       // Extract error message from backend response
-      const errorMessage = error?.data?.message || error?.message || 'Nieznany błąd';
-      dispatch(showError(`Nie udało się usunąć warstwy: ${errorMessage}`, 8000));
-
-      // Don't remove from Redux if backend deletion failed
+      const errorMessage = error?.data?.message || error?.data?.error || error?.message || 'Nieznany błąd';
+      dispatch(showError(`Nie udało się usunąć ${itemType}: ${errorMessage}`, 8000));
     }
   };
 
