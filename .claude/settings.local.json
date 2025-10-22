@@ -136,7 +136,10 @@
       "Bash(cmd /c screenshot.bat http://localhost:3000/map?project=test navigation-fix-test.png)",
       "Bash(cmd /c timeout /t 8)",
       "Bash(cmd /c \"netstat -ano | findstr :3000\")",
-      "Bash(cmd /c timeout /t 10)"
+      "Bash(cmd /c timeout /t 10)",
+      "Bash(cmd /c screenshot.bat http://localhost:3000/map?project=Mestwin phase1-refactor-test.png)",
+      "Bash(cmd /c taskkill /F /PID 4292)",
+      "Bash(cmd /c screenshot.bat http://localhost:3000/map?project=Mestwin phase5-id-fix-test.png)"
     ],
     "deny": [],
     "ask": []
