@@ -65,10 +65,25 @@ import type { LayerNode } from '@/types-app/layers';
  * Convert QGIS backend structure to frontend LayerNode structure
  * Backend uses: 'VectorLayer' | 'RasterLayer' | 'group'
  * Frontend uses: 'VectorLayer' | 'RasterLayer' | 'WMSLayer' | 'group' | 'layer'
+ *
+ * IMPORTANT: ID Strategy (fixes drag & drop "object not found" bug)
+ * - Layers (VectorLayer/RasterLayer): Use QGIS UUID from backend (qgisNode.id)
+ * - Groups: Use group NAME (groups don't have UUID in QGIS, identified by name)
+ *
+ * This ensures LayerNode.id matches what backend expects:
+ * - Backend /api/projects/tree/order expects:
+ *   - object_id = layer UUID for layers
+ *   - object_id = group NAME for groups
  */
 function convertQGISToLayerNode(qgisNode: QGISLayerNode): LayerNode {
+  // CRITICAL FIX: Use group NAME as ID for groups (not random React ID)
+  // Backend identifies groups by NAME, not UUID
+  const layerId = qgisNode.type === 'group'
+    ? qgisNode.name // Groups: use NAME
+    : qgisNode.id;   // Layers: use QGIS UUID
+
   const baseNode: LayerNode = {
-    id: qgisNode.id || `layer-${Math.random().toString(36).substr(2, 9)}`,
+    id: layerId,
     name: qgisNode.name,
     visible: qgisNode.visible !== false,
     opacity: 'opacity' in qgisNode ? qgisNode.opacity / 255 : 1, // QGIS uses 0-255, we use 0-1
