@@ -316,6 +316,8 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
     const layer = findLayerById(layers, layerId);
     if (!layer) {
       console.error('❌ Layer not found:', layerId);
+      console.error('Available layers:', layers.map(l => ({ id: l.id, name: l.name })));
+      dispatch(showError(`Nie można przenieść warstwy - nie znaleziono elementu (${layerId})`));
       return;
     }
 
@@ -338,10 +340,15 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
 
     // 2. Sync with backend (async)
     try {
+      // IMPORTANT: Backend uses different identifiers for groups vs layers:
+      // - Groups: identified by NAME (no UUID in QGIS) → use layer.name
+      // - Layers: identified by ID (UUID) → use layer.id
+      const objectId = layer.type === 'group' ? layer.name : layer.id;
+
       await changeLayersOrder({
         project: projectName,
         object_type: layer.type === 'group' ? 'group' : 'layer',
-        object_id: layerId, // Backend expects layer ID (not name)
+        object_id: objectId, // Groups: name, Layers: id (UUID)
         new_parent_name: newParentName,
         position: index,
       }).unwrap();
