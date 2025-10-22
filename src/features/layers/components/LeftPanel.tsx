@@ -559,8 +559,8 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
     // Close modal immediately for better UX
     setImportLayerModalOpen(false);
 
-    // Show loading notification
-    dispatch(showInfo(`Importowanie warstwy "${data.nazwaWarstwy}"...`, 10000));
+    // Show loading notification (context='layer' will auto-replace previous layer notifications)
+    dispatch(showInfo(`Importowanie warstwy "${data.nazwaWarstwy}"...`, 10000, 'layer'));
 
     try {
       // Route to appropriate backend endpoint based on format
@@ -711,7 +711,8 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
         ])
       );
 
-      dispatch(showSuccess(`Warstwa "${data.nazwaWarstwy}" została zaimportowana!`, 5000))
+      // Success notification (replaces "Importowanie..." notification)
+      dispatch(showSuccess(`Warstwa "${data.nazwaWarstwy}" została zaimportowana!`, 5000, 'layer'))
     } catch (error: any) {
       console.error('❌ Failed to import layer:', error);
       console.error('Error details:', JSON.stringify(error, null, 2));
@@ -724,7 +725,8 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
         console.error('Backend error data:', error.data);
       }
 
-      dispatch(showError(`Nie udało się zaimportować warstwy: ${errorMessage}`, 8000));
+      // Error notification (replaces "Importowanie..." notification)
+      dispatch(showError(`Nie udało się zaimportować warstwy: ${errorMessage}`, 8000, 'layer'));
     }
   };
 
@@ -755,8 +757,8 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
     // Close modal immediately for better UX
     setAddGroupModalOpen(false);
 
-    // Show loading notification
-    dispatch(showInfo(`Tworzenie grupy "${data.nazwaGrupy}"...`, 8000));
+    // Show loading notification (context='group' will auto-replace previous group notifications)
+    dispatch(showInfo(`Tworzenie grupy "${data.nazwaGrupy}"...`, 8000, 'group'));
 
     try {
       // Determine parent group name
@@ -784,7 +786,8 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
       // RTK Query automatically invalidates 'Project' tag and refetches tree.json
       // Redux state will update automatically via QGISProjectLoader
 
-      dispatch(showSuccess(`Grupa "${data.nazwaGrupy}" została utworzona!`, 5000));
+      // Success notification (replaces "Tworzenie grupy..." notification)
+      dispatch(showSuccess(`Grupa "${data.nazwaGrupy}" została utworzona!`, 5000, 'group'));
     } catch (error: any) {
       console.error('❌ Failed to add group:', error);
       console.error('Error details:', JSON.stringify(error, null, 2));
@@ -792,7 +795,8 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
       // Extract error message from backend response
       const errorMessage = error?.data?.message || error?.data?.error || error?.message || 'Nieznany błąd';
 
-      dispatch(showError(`Nie udało się dodać grupy: ${errorMessage}`, 8000));
+      // Error notification (replaces "Tworzenie grupy..." notification)
+      dispatch(showError(`Nie udało się dodać grupy: ${errorMessage}`, 8000, 'group'));
     }
   };
 
@@ -833,6 +837,8 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
     const itemName = selectedLayer.name;
     const itemId = selectedLayer.id;
     const itemType = isGroup ? 'grupy' : 'warstwy';
+    // Use context based on item type: 'group' or 'layer'
+    const notificationContext = isGroup ? 'group' : 'layer';
 
     try {
       console.log(`🗑️ Deleting ${itemType}:`, {
@@ -843,7 +849,7 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
       });
 
       // Show loading notification
-      dispatch(showInfo(`Usuwanie ${itemType} "${itemName}"...`, 8000));
+      dispatch(showInfo(`Usuwanie ${itemType} "${itemName}"...`, 8000, notificationContext));
 
       // Call unified backend endpoint for both groups and layers
       await removeGroupsAndLayers({
@@ -861,15 +867,17 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
       // Close properties panel
       setSelectedLayer(null);
 
-      // Show success message
-      dispatch(showSuccess(`${isGroup ? 'Grupa' : 'Warstwa'} "${itemName}" została usunięta`, 5000));
+      // Show success message (replaces "Usuwanie..." notification)
+      dispatch(showSuccess(`${isGroup ? 'Grupa' : 'Warstwa'} "${itemName}" została usunięta`, 5000, notificationContext));
     } catch (error: any) {
       console.error(`❌ Failed to delete ${itemType}:`, error);
       console.error('Error details:', JSON.stringify(error, null, 2));
 
       // Extract error message from backend response
       const errorMessage = error?.data?.message || error?.data?.error || error?.message || 'Nieznany błąd';
-      dispatch(showError(`Nie udało się usunąć ${itemType}: ${errorMessage}`, 8000));
+
+      // Error notification (replaces "Usuwanie..." notification)
+      dispatch(showError(`Nie udało się usunąć ${itemType}: ${errorMessage}`, 8000, notificationContext));
     }
   };
 
