@@ -118,7 +118,8 @@ export function useLayerOperations(projectName: string, layers: LayerNode[]) {
             file: data.file?.name,
           });
 
-          const parentGeoJson = data.nazwaGrupy === 'Stwórz poza grupami' ? '' : data.nazwaGrupy;
+          // Backend docs: 'parent' is optional - send undefined for root level
+          const parentGeoJson = data.nazwaGrupy === 'Stwórz poza grupami' ? undefined : data.nazwaGrupy;
           const formDataGeoJson = new FormData();
           // Backend expects simple field name 'geojson' (not 'uploaded_layer.geojson')
           formDataGeoJson.append('geojson', data.file!);
@@ -171,8 +172,8 @@ export function useLayerOperations(projectName: string, layers: LayerNode[]) {
           });
 
           // Backend expects "project" not "project_name"
-          // CRITICAL: Backend requires 'parent' field (group name or empty string)
-          const parentShp = data.nazwaGrupy === 'Stwórz poza grupami' ? '' : data.nazwaGrupy;
+          // Backend docs: 'parent' is optional - send undefined for root level
+          const parentShp = data.nazwaGrupy === 'Stwórz poza grupami' ? undefined : data.nazwaGrupy;
 
           // Create FormData with all Shapefile components
           // IMPORTANT: Backend expects field names WITHOUT prefix: shp, shx, dbf, prj, cpg
@@ -204,7 +205,8 @@ export function useLayerOperations(projectName: string, layers: LayerNode[]) {
             file: data.file?.name,
           });
 
-          const parentGml = data.nazwaGrupy === 'Stwórz poza grupami' ? '' : data.nazwaGrupy;
+          // Backend docs: 'parent' is optional - send undefined for root level
+          const parentGml = data.nazwaGrupy === 'Stwórz poza grupami' ? undefined : data.nazwaGrupy;
           const formDataGml = new FormData();
           // Backend expects simple field name 'gml' (not 'uploaded_layer.gml')
           formDataGml.append('gml', data.file!);
@@ -226,7 +228,8 @@ export function useLayerOperations(projectName: string, layers: LayerNode[]) {
             file: data.file?.name,
           });
 
-          const parentTiff = data.nazwaGrupy === 'Stwórz poza grupami' ? '' : data.nazwaGrupy;
+          // Backend docs: 'parent' is optional - send undefined for root level
+          const parentTiff = data.nazwaGrupy === 'Stwórz poza grupami' ? undefined : data.nazwaGrupy;
           const formDataTiff = new FormData();
           // Backend expects simple field name 'raster' (not 'uploaded_layer.tif')
           formDataTiff.append('raster', data.file!);

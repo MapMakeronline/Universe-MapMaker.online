@@ -128,8 +128,10 @@ export const layersApi = baseApi.injectEndpoints({
         const formData = files;
         formData.append('project', params.project);
         formData.append('layer_name', params.layer_name);
-        // IMPORTANT: Backend requires 'parent' field (even if empty string)
-        formData.append('parent', params.parent ?? '');
+        // IMPORTANT: Backend docs say 'parent' is optional - only send if non-empty
+        if (params.parent && params.parent.trim() !== '') {
+          formData.append('parent', params.parent);
+        }
         if (params.epsg) formData.append('epsg', params.epsg.toString());
         if (params.encoding) formData.append('encoding', params.encoding);
 
@@ -154,8 +156,10 @@ export const layersApi = baseApi.injectEndpoints({
         const formData = files;
         formData.append('project', params.project);
         formData.append('layer_name', params.layer_name);
-        // IMPORTANT: Backend requires 'parent' field (even if empty string)
-        formData.append('parent', params.parent ?? '');
+        // IMPORTANT: Backend docs say 'parent' is optional - only send if non-empty
+        if (params.parent && params.parent.trim() !== '') {
+          formData.append('parent', params.parent);
+        }
 
         return {
           url: '/api/layer/add/geojson/',
@@ -177,8 +181,10 @@ export const layersApi = baseApi.injectEndpoints({
         const formData = files;
         formData.append('project', params.project);
         formData.append('layer_name', params.layer_name);
-        // IMPORTANT: Backend requires 'parent' field (even if empty string)
-        formData.append('parent', params.parent ?? '');
+        // IMPORTANT: Backend docs say 'parent' is optional - only send if non-empty
+        if (params.parent && params.parent.trim() !== '') {
+          formData.append('parent', params.parent);
+        }
         if (params.epsg) formData.append('epsg', params.epsg.toString());
 
         return {
@@ -202,8 +208,10 @@ export const layersApi = baseApi.injectEndpoints({
         const formData = files;
         formData.append('project', params.project);
         formData.append('layer_name', params.layer_name);
-        // IMPORTANT: Backend requires 'parent' field (even if empty string)
-        formData.append('parent', params.parent ?? '');
+        // IMPORTANT: Backend docs say 'parent' is optional - only send if non-empty
+        if (params.parent && params.parent.trim() !== '') {
+          formData.append('parent', params.parent);
+        }
 
         return {
           url: '/api/layer/add/raster/',
