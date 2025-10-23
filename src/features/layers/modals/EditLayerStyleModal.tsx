@@ -311,9 +311,21 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
     setIsLoading(true);
 
     try {
-      // Create FormData with style file
+      // Create FormData with all required fields
       const formData = new FormData();
-      formData.append('new_style.qml', selectedFile); // Backend expects 'new_style.qml' or 'new_style.sld'
+      formData.append('project', projectName);
+      formData.append('layer_id', layerId);
+
+      // Append file with correct field name based on extension
+      const fileName = selectedFile.name.toLowerCase();
+      if (fileName.endsWith('.qml')) {
+        formData.append('new_style.qml', selectedFile);
+      } else if (fileName.endsWith('.sld')) {
+        formData.append('new_style.sld', selectedFile);
+      } else {
+        // Fallback to .qml
+        formData.append('new_style.qml', selectedFile);
+      }
 
       await importStyle({
         project: projectName,
@@ -1084,20 +1096,20 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
             },
           }}
         >
-          {activeTab === 1 || activeTab === 3 ? 'Zamknij' : 'Anuluj'}
+          {activeTab === 1 || activeTab === 2 || activeTab === 3 ? 'Zamknij' : 'Anuluj'}
         </Button>
-        {/* Show Save/Import button only for tabs 0 and 2 */}
-        {(activeTab === 0 || activeTab === 2) && (
+        {/* Show Save button only for tab 0 (Edytuj) - other tabs have their own action buttons */}
+        {activeTab === 0 && (
           <Button
             onClick={handleSave}
             variant="contained"
-            disabled={isLoading || isSaving || (activeTab === 2 && !selectedFile)}
+            disabled={isLoading || isSaving}
             sx={{
               bgcolor: theme.palette.primary.main,
               '&:hover': { bgcolor: theme.palette.primary.dark },
             }}
           >
-            {isLoading || isSaving ? 'Zapisywanie...' : activeTab === 2 ? 'Importuj' : 'Zapisz'}
+            {isLoading || isSaving ? 'Zapisywanie...' : 'Zapisz'}
           </Button>
         )}
       </DialogActions>
