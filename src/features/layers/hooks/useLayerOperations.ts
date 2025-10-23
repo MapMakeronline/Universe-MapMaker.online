@@ -116,6 +116,7 @@ export function useLayerOperations(projectName: string, layers: LayerNode[]) {
             project: projectName,
             layerName: data.nazwaWarstwy,
             file: data.file?.name,
+            epsg: data.epsg,
           });
 
           // Backend docs: 'parent' is optional - send undefined for root level
@@ -124,11 +125,19 @@ export function useLayerOperations(projectName: string, layers: LayerNode[]) {
           // Backend expects simple field name 'geojson' (not 'uploaded_layer.geojson')
           formDataGeoJson.append('geojson', data.file!);
 
+          // Default to EPSG:3857 (Web Mercator) if not specified
+          // Backend may not auto-detect CRS from GeoJSON in some cases
+          // IMPORTANT: parseInt("") returns NaN, so we need explicit check
+          const parsedEpsgGeoJson = data.epsg && data.epsg.trim() !== '' ? parseInt(data.epsg) : undefined;
+          const epsgValueGeoJson = parsedEpsgGeoJson && !isNaN(parsedEpsgGeoJson) ? parsedEpsgGeoJson : 3857;
+
           await addGeoJsonLayer({
             params: {
               project: projectName,
               layer_name: data.nazwaWarstwy,
               parent: parentGeoJson,
+              epsg: epsgValueGeoJson,
+              encoding: 'UTF-8',
             },
             files: formDataGeoJson,
           }).unwrap();
@@ -186,12 +195,19 @@ export function useLayerOperations(projectName: string, layers: LayerNode[]) {
           if (cpgFile) formDataShp.append('cpg', cpgFile);
           if (qpjFile) formDataShp.append('qpj', qpjFile);
 
+          // Default to EPSG:3857 (Web Mercator) if not specified
+          // This handles cases where .prj file is in ESRI format (not standard WKT)
+          // and backend cannot auto-detect CRS
+          // IMPORTANT: parseInt("") returns NaN, so we need explicit check
+          const parsedEpsg = data.epsg && data.epsg.trim() !== '' ? parseInt(data.epsg) : undefined;
+          const epsgValue = parsedEpsg && !isNaN(parsedEpsg) ? parsedEpsg : 3857;
+
           await addShpLayer({
             params: {
               project: projectName,
               layer_name: data.nazwaWarstwy,
               parent: parentShp,
-              epsg: data.epsg ? parseInt(data.epsg) : undefined,
+              epsg: epsgValue,
               encoding: 'UTF-8',
             },
             files: formDataShp,
@@ -212,12 +228,16 @@ export function useLayerOperations(projectName: string, layers: LayerNode[]) {
           // Backend expects simple field name 'gml' (not 'uploaded_layer.gml')
           formDataGml.append('gml', data.file!);
 
+          // IMPORTANT: parseInt("") returns NaN, so we need explicit check
+          const parsedEpsgGml = data.epsg && data.epsg.trim() !== '' ? parseInt(data.epsg) : undefined;
+          const epsgValueGml = parsedEpsgGml && !isNaN(parsedEpsgGml) ? parsedEpsgGml : undefined;
+
           await addGmlLayer({
             params: {
               project: projectName,
               layer_name: data.nazwaWarstwy,
               parent: parentGml,
-              epsg: data.epsg ? parseInt(data.epsg) : undefined,
+              epsg: epsgValueGml,
             },
             files: formDataGml,
           }).unwrap();
