@@ -153,7 +153,17 @@
       "Bash(cmd /c timeout /t 4)",
       "Bash(cmd /c \"start http://localhost:3000\")",
       "Bash(cmd /c screenshot.bat http://localhost:3000/map?project=Mestwin shp-import-network-tab.png)",
-      "Bash(gcloud beta builds triggers create github:*)"
+      "Bash(gcloud beta builds triggers create github:*)",
+      "Bash(gcloud beta builds triggers:*)",
+      "Bash(gcloud beta builds repositories list:*)",
+      "Bash(cmd /c timeout /t 20)",
+      "Bash(cmd /c timeout /t 30)",
+      "Bash(cmd /c timeout /t 60)",
+      "Bash(cmd /c timeout /t 120)",
+      "Bash(cmd /c timeout /t 180)",
+      "Bash(cmd /c \"taskkill /F /PID 16272\")",
+      "Bash(cmd /c \"tasklist | findstr 16272\")",
+      "Bash(cmd /c timeout /t 2)"
     ],
     "deny": [],
     "ask": []

@@ -134,6 +134,16 @@ export const layersApi = baseApi.injectEndpoints({
         if (params.epsg) formData.append('epsg', params.epsg.toString());
         if (params.encoding) formData.append('encoding', params.encoding);
 
+        // DEBUG: Log all FormData entries
+        console.log('🔍 RTK Query - Sending FormData to /api/layer/add/shp/:');
+        for (const [key, value] of formData.entries()) {
+          if (value instanceof File) {
+            console.log(`  ${key}: File(${value.name}, ${value.size} bytes, ${value.type})`);
+          } else {
+            console.log(`  ${key}: ${value}`);
+          }
+        }
+
         return {
           url: '/api/layer/add/shp/',
           method: 'POST',
