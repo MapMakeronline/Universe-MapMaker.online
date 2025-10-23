@@ -477,7 +477,15 @@ export const LayerTree: React.FC<LayerTreeProps> = ({
             {getWarstwaIcon(warstwa.type, warstwa.id)}
           </Box>
           
-          <Tooltip title={warstwa.name} arrow placement="right">
+          <Tooltip
+            title={warstwa.name}
+            arrow
+            placement="right"
+            enterDelay={500} // Opóźnienie 500ms - nie przeszkadza w drag & drop
+            disableInteractive // Tooltip nie blokuje interakcji
+            disableHoverListener={!!draggedItem} // Wyłącz podczas przeciągania
+            disableTouchListener // Wyłącz na urządzeniach mobilnych (touch nie potrzebuje hover tooltips)
+          >
             <Typography
               sx={{
                 fontSize: TREE_CONFIG.typography.fontSize,
@@ -499,7 +507,14 @@ export const LayerTree: React.FC<LayerTreeProps> = ({
           {/* Ikony po prawej stronie jak na screenie */}
           <Box className="layer-item__actions" sx={{ display: 'flex', alignItems: 'center', gap: TREE_CONFIG.elements.actionButton.gap, opacity: 1 }}>
             {/* Ikona celownika/GPS */}
-            <Tooltip title="Przybliż do warstwy" arrow>
+            <Tooltip
+              title="Przybliż do warstwy"
+              arrow
+              enterDelay={300}
+              disableInteractive
+              disableHoverListener={!!draggedItem}
+              disableTouchListener
+            >
               <IconButton
                 size="small"
                 onClick={(e) => {
@@ -620,7 +635,14 @@ export const LayerTree: React.FC<LayerTreeProps> = ({
 
             {/* Ikona kalendarza - tylko dla warstw (nie katalogów) */}
             {warstwa.type !== 'group' && (
-              <Tooltip title="Pokaż tabele atrybutów" arrow>
+              <Tooltip
+                title="Pokaż tabele atrybutów"
+                arrow
+                enterDelay={300}
+                disableInteractive
+                disableHoverListener={!!draggedItem}
+                disableTouchListener
+              >
                 <IconButton
                   size="small"
                   onClick={(e) => {
