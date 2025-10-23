@@ -920,3 +920,104 @@ git push origin main
 **Refaktor Dashboard:** ✅ Zakończony 100% (-9042 linii, -24% codebase)
 **Metodologia:** ✅ Udokumentowana ([METHODOLOGY.md](./METHODOLOGY.md))
 **Status:** ✅ Produkcyjny (5/5 Dashboard endpoints working - 100%!)
+
+
+
+## 🚨 CRITICAL: Docker Path Configuration (Backend)
+
+**IMPORTANT:** Backend Django has specific path requirements for file uploads.
+
+### Problem History (2025-10-23)
+
+**Issue:** SHP/GeoJSON import returned `400: Warstwa jest nieprawidłowa` despite correct frontend implementation.
+
+**Root Cause:** Backend `MEDIA_ROOT` path mismatch with QGIS Server.
+
+```python
+# ❌ WRONG (old settings.py):
+MEDIA_ROOT = os.path.join(BASE_DIR, 'qgs')  # = /app/qgs/ in Docker
+
+# Docker container structure:
+# /app/qgs/           ← Django writes here (isolated folder)
+# /projects/          ← QGIS Server reads from here (bind mount)
+# Result: Files saved but not accessible by QGIS → validation error
+```
+
+**Solution:** Use Docker bind mount path for `MEDIA_ROOT`.
+
+```python
+# ✅ CORRECT (fixed settings.py):
+MEDIA_ROOT = '/projects' if os.path.exists('/projects') else os.path.join(BASE_DIR, 'qgs')
+
+# Docker container structure:
+# /projects/          ← Django writes here (bind mount)
+# /projects/          ← QGIS Server reads from here (bind mount)
+# Result: Same folder → files accessible by both Django and QGIS ✅
+```
+
+### File Upload Models (Backend)
+
+All Django `FileField` models use `document_storage`:
+
+```python
+# geocraft_api/models/layer.py
+document_storage = FileSystemStorage(location=settings.MEDIA_ROOT)
+
+class ShpFiles(models.Model):
+    shp = models.FileField(storage=document_storage, upload_to=content_file_name_missing_layers)
+    shx = models.FileField(storage=document_storage, upload_to=content_file_name_missing_layers)
+    dbf = models.FileField(storage=document_storage, upload_to=content_file_name_missing_layers)
+    prj = models.FileField(storage=document_storage, upload_to=content_file_name_missing_layers)
+```
+
+**Naming convention:**
+```python
+def content_file_name_missing_layers(instance, filename):
+    return '/'.join([instance.project, "uploaded_layer." + filename.split(".")[-1]])
+    # Result: testshp/uploaded_layer.shp
+    # Full path: /projects/testshp/uploaded_layer.shp
+```
+
+### ⚠️ ALWAYS CHECK BEFORE DEBUGGING FILE UPLOADS:
+
+1. **Docker mounts:**
+   ```bash
+   docker inspect <container> | grep -A 10 Mounts
+   # Verify /projects bind mount exists
+   ```
+
+2. **Backend MEDIA_ROOT:**
+   ```bash
+   docker exec <container> grep MEDIA_ROOT /app/geocraft/settings.py
+   # Should be: MEDIA_ROOT = '/projects' if os.path.exists('/projects') ...
+   ```
+
+3. **File existence:**
+   ```bash
+   docker exec <container> ls -la /projects/<project_name>/uploaded_layer.*
+   # Should list: .shp, .shx, .dbf, .prj files
+   ```
+
+4. **Backend logs:**
+   ```bash
+   docker logs <container> | grep -i "error\|failed to open"
+   # Check for GDAL "Failed to open dataset" errors
+   ```
+
+### Related Backend Repo
+
+**Backend fix commit:** `196a878` - "fix: use /projects instead of /app/qgs for MEDIA_ROOT"
+**Repository:** https://github.com/MapMakeronline/Universe-Mapmaker-Backend.git
+
+### Lessons Learned
+
+1. **Docker paths ≠ Host paths** - Always verify bind mounts
+2. **Multiple systems reading same files** - Ensure shared storage (Django + QGIS Server)
+3. **Debug file operations:** Check filesystem BEFORE assuming code error
+4. **Backend logs are critical:** "Failed to open dataset" indicated path issue, not frontend error
+
+---
+
+**Last Updated:** 2025-10-23  
+**Fix Status:** ✅ Applied to production (Docker container patched + restart)
+
