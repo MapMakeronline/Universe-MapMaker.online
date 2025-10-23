@@ -253,8 +253,9 @@ export function useLayerOperations(projectName: string, layers: LayerNode[]) {
           // Backend docs: 'parent' is optional - send undefined for root level
           const parentTiff = data.nazwaGrupy === 'Stwórz poza grupami' ? undefined : data.nazwaGrupy;
           const formDataTiff = new FormData();
-          // Backend expects simple field name 'raster' (not 'uploaded_layer.tif')
-          formDataTiff.append('raster', data.file!);
+          // IMPORTANT: Backend expects field name 'tif' (NOT 'raster')
+          // Backend forms.py: UploadRaster has fields = ('project', 'tif',)
+          formDataTiff.append('tif', data.file!);
 
           await addRasterLayer({
             params: {
