@@ -677,33 +677,10 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
             >
               <AccordionSummary
                 expandIcon={<ExpandMoreIcon />}
-                sx={{
-                  '& .MuiAccordionSummary-content': {
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    width: '100%'
-                  }
-                }}
               >
                 <Typography variant="body2" sx={{ fontSize: '15px', fontWeight: 500 }}>
                   Usługi
                 </Typography>
-                <IconButton
-                  size="small"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    openModal('publish');
-                  }}
-                  sx={{
-                    color: theme.palette.text.secondary,
-                    p: 0.5,
-                    mr: 1,
-                    '&:hover': { color: theme.palette.primary.main }
-                  }}
-                >
-                  <SettingsIcon sx={{ fontSize: '14px' }} />
-                </IconButton>
               </AccordionSummary>
               <AccordionDetails sx={{ ml: 2, mt: 1 }}>
                 {wmsUrl || wfsUrl ? (
