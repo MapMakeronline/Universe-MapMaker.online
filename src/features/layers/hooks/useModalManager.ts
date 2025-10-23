@@ -42,7 +42,8 @@ export type ModalType =
   | 'createConsultation'
   | 'layerManager'
   | 'printConfig'
-  | 'editLayerStyle';
+  | 'editLayerStyle'
+  | 'deleteLayerConfirm';
 
 /**
  * Modal state interface
@@ -58,6 +59,7 @@ export interface ModalState {
   layerManager: boolean;
   printConfig: boolean;
   editLayerStyle: boolean;
+  deleteLayerConfirm: boolean;
 }
 
 /**
@@ -82,6 +84,7 @@ export function useModalManager() {
     layerManager: false,
     printConfig: false,
     editLayerStyle: false,
+    deleteLayerConfirm: false,
   });
 
   /**
@@ -127,6 +130,7 @@ export function useModalManager() {
       layerManager: false,
       printConfig: false,
       editLayerStyle: false,
+      deleteLayerConfirm: false,
     });
   };
 

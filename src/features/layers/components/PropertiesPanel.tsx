@@ -78,6 +78,7 @@ interface PropertiesPanelProps {
   onEditLayerStyle: () => void;
   onManageLayer: () => void;
   onLayerLabeling: () => void;
+  onDeleteLayer: () => void;
   findParentGroup: (layers: Warstwa[], childId: string) => Warstwa | null;
   projectName?: string;
   wmsUrl?: string;
@@ -95,6 +96,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   onEditLayerStyle,
   onManageLayer,
   onLayerLabeling,
+  onDeleteLayer,
   findParentGroup,
   projectName = '',
   wmsUrl = '',
@@ -659,6 +661,23 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                         }}
                       >
                         Etykietowanie
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={onDeleteLayer}
+                        sx={{
+                          fontSize: '10px',
+                          width: '60px',
+                          color: theme.palette.error.main,
+                          borderColor: theme.palette.error.main,
+                          '&:hover': {
+                            borderColor: theme.palette.error.dark,
+                            bgcolor: 'rgba(211, 47, 47, 0.04)',
+                          },
+                        }}
+                      >
+                        Usuń
                       </Button>
                     </Box>
                   </AccordionDetails>

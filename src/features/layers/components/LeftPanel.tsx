@@ -16,9 +16,11 @@ import CreateConsultationModal from '../modals/CreateConsultationModal';
 import LayerManagerModal from '../modals/LayerManagerModal';
 import WypisConfigModal from '../../mapa/komponenty/WypisConfigModal';
 import EditLayerStyleModal from '../modals/EditLayerStyleModal';
+import DeleteLayerConfirmModal from '../modals/DeleteLayerConfirmModal';
 import { useResizable, useDragDrop } from '@/hooks/index';
 import { useAppSelector, useAppDispatch } from '@/redux/hooks';
 import { LayerNode } from '@/types-app/layers';
+import type { QGISLayerNode } from '@/types/qgis';
 import {
   toggleLayerVisibility,
   toggleGroupExpanded,
@@ -26,7 +28,8 @@ import {
   expandAllGroups,
   collapseAllGroups,
   deleteLayer,
-  moveLayer
+  moveLayer,
+  loadLayers
 } from '@/redux/slices/layersSlice';
 import { useGetProjectDataQuery } from '@/backend/projects';
 import { showSuccess, showError, showInfo } from '@/redux/slices/notificationSlice';
@@ -38,6 +41,34 @@ import { useModalManager, useDragDropSync, useLayerOperations } from '../hooks';
 
 // Types
 type FilterType = 'wszystko' | 'wektor' | 'raster' | 'wms';
+
+/**
+ * Convert QGIS backend structure to frontend LayerNode structure
+ */
+function convertQGISToLayerNode(qgisNode: QGISLayerNode): LayerNode {
+  const layerId = qgisNode.type === 'group'
+    ? qgisNode.name // Groups: use NAME
+    : qgisNode.id;   // Layers: use QGIS UUID
+
+  const baseNode: LayerNode = {
+    id: layerId,
+    name: qgisNode.name,
+    visible: qgisNode.visible !== false,
+    opacity: 'opacity' in qgisNode ? qgisNode.opacity / 255 : 1,
+    type: qgisNode.type,
+    extent: qgisNode.extent && qgisNode.extent.length === 4
+      ? (qgisNode.extent as [number, number, number, number])
+      : undefined,
+  };
+
+  // Handle group layers
+  if (qgisNode.type === 'group') {
+    baseNode.childrenVisible = qgisNode.childrenVisible !== false;
+    baseNode.children = qgisNode.children?.map(convertQGISToLayerNode) || [];
+  }
+
+  return baseNode;
+}
 
 const SIDEBAR_CONFIG = {
   sidebar: {
@@ -86,7 +117,7 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
     : '';
 
   // Fetch project data to get the display name
-  const { data: projectData } = useGetProjectDataQuery(
+  const { data: projectData, refetch: refetchProjectData } = useGetProjectDataQuery(
     { project: projectName, published: false },
     { skip: !projectName }
   );
@@ -209,11 +240,33 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
     dispatch(showInfo('Dodawanie warstwy - wkrótce dostępne'));
   };
 
-  // Delete layer wrapper - call hook with selectedLayer and handle success
-  const handleDeleteLayerWrapper = async () => {
+  // Delete layer - open confirmation modal
+  const handleDeleteLayerClick = () => {
+    if (!selectedLayer) {
+      dispatch(showError('Nie wybrano warstwy do usunięcia'));
+      return;
+    }
+    openModal('deleteLayerConfirm');
+  };
+
+  // Delete layer confirmed - execute deletion
+  const handleDeleteLayerConfirmed = async () => {
+    closeModal('deleteLayerConfirm');
     const success = await handleDeleteLayer(selectedLayer);
     if (success) {
       setSelectedLayer(null); // Close properties panel on success
+      // Manually refetch project data to update layer tree
+      console.log('🔄 Manually refetching project data after layer deletion');
+      const result = await refetchProjectData();
+
+      // Force Redux state update with fresh data
+      if (result.data && result.data.children) {
+        console.log('🔄 Forcing Redux update with', result.data.children.length, 'layers from refetched data');
+        const qgisLayers = result.data.children || [];
+        const convertedLayers = qgisLayers.map(convertQGISToLayerNode);
+        dispatch(loadLayers(convertedLayers));
+        console.log('✅ Redux layers state updated after layer deletion');
+      }
     }
   };
 
@@ -268,7 +321,7 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
     onAddLayer: () => openModal('addLayer'),
     onImportLayer: () => openModal('importLayer'),
     onAddGroup: () => openModal('addGroup'),
-    onRemoveLayer: handleDeleteLayerWrapper,
+    onRemoveLayer: handleDeleteLayerClick,
     onCreateConsultation: () => openModal('createConsultation'),
     onLayerManager: () => openModal('layerManager'),
     onPrintConfig: () => openModal('printConfig')
@@ -370,6 +423,7 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
             onEditLayerStyle={() => openModal('editLayerStyle')}
             onManageLayer={() => console.log('Manage layer')}
             onLayerLabeling={() => console.log('Layer labeling')}
+            onDeleteLayer={handleDeleteLayerClick}
             findParentGroup={findParentGroup}
             projectName={projectName}
             wmsUrl={projectData?.wms_url || ''}
@@ -479,6 +533,14 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
         layerName={selectedLayer?.name}
         layerId={selectedLayer?.id}
         projectName={projectName}
+      />
+
+      {/* Delete Layer Confirmation Modal */}
+      <DeleteLayerConfirmModal
+        open={modals.deleteLayerConfirm}
+        onClose={() => closeModal('deleteLayerConfirm')}
+        onConfirm={handleDeleteLayerConfirmed}
+        layerName={selectedLayer?.name || 'warstwy'}
       />
     </>
   );

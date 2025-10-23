@@ -664,14 +664,16 @@ curl -X PUT "https://api.universemapmaker.online/dashboard/settings/profile/" \
 
 **High Priority:**
 1. **Layers API** - Map layer management (`/api/layers/*`)
-   - ✅ **PARTIALLY COMPLETE** - Implemented in `src/backend/layers/layers.api.ts`
-   - ✅ Completed: Add Shapefile, GeoJSON, GML, GeoTIFF, Set Visibility, Identify Feature
-   - ⏳ TODO: Delete Layer, Get Layer Attributes, Import/Export Style, Add Label
-   - Used in: useLayerOperations.ts, ImportLayerModal.tsx
+   - ✅ **MOSTLY COMPLETE** - Implemented in `src/backend/layers/layers.api.ts`
+   - ✅ Completed: Add Shapefile, GeoJSON, GML, GeoTIFF, Set Visibility, Identify Feature, Delete Layer (with confirmation modal)
+   - ⏳ TODO: Get Layer Attributes, Import/Export Style, Add Label
+   - Used in: useLayerOperations.ts, ImportLayerModal.tsx, DeleteLayerConfirmModal.tsx
+   - **NEW (2025-10-23):** Delete layer with confirmation modal (PropertiesPanel → "Usuń" button)
 
 2. **Styles API** - Layer styling (`/api/styles/*`)
-   - ✅ **COMPLETED** - Implemented in `src/backend/styles/styles.api.ts` (2025-10-23)
+   - ✅ **COMPLETED & TESTED** - Implemented in `src/backend/styles/styles.api.ts` (2025-10-23)
    - 7 endpoints: getLayerRenderer, setLayerStyle, classifyValues, getBaseSymbol, generateSymbolImage, etc.
+   - ✅ Style import (QML/SLD) tested and working (backend path bug fixed)
    - Used in: EditLayerStyleModal.tsx, colorConversion.ts
    - Documentation: docs/backend/styles_api_docs.md
 
@@ -1056,6 +1058,161 @@ def content_file_name_missing_layers(instance, filename):
 
 **Last Updated:** 2025-10-23
 **Fix Status:** ✅ Applied to production (Docker container patched + restart)
+
+---
+
+## 🚨 CRITICAL: Duplicate Layers Database Bug (Backend)
+
+**IMPORTANT:** Backend had a critical bug where duplicate Layer records caused silent deletion failures.
+
+### Problem History (2025-10-23)
+
+**Issue:** Layer deletion returned HTTP 200 success but layer remained in tree.json and UI.
+
+**Root Cause:** PostgreSQL database had duplicate `Layer` records with same `source_table_name`, causing Django's `.get()` to raise `MultipleObjectsReturned` exception.
+
+**Example:**
+- Project `testshp` had **22 Layer records** in database
+- But `tree.json` only showed **5 unique layers**
+- Result: **16 duplicate records** (3-5 copies of each layer)
+
+**Backend Error:**
+```python
+ERROR:root:Error block_qgs_instance context manager
+Arguments: (MultipleObjectsReturned('get() returned more than one Layer -- it returned 5!'),)
+```
+
+**Impact:**
+- Layer deletion silently failed (HTTP 200 but no actual deletion)
+- Multiple layer operations failed due to `.get()` assumptions
+- Database bloat and inconsistent state
+
+### Solution Applied (2025-10-23)
+
+**Step 1: Database Cleanup**
+Created Django script to remove all duplicates, keeping only the newest record for each `source_table_name`:
+
+```python
+# /tmp/cleanup_duplicates.py
+from geocraft_api.models import Layer, ProjectItem
+from collections import defaultdict
+
+project = ProjectItem.objects.get(project_name="testshp")
+layers = Layer.objects.filter(project=project).order_by('source_table_name', 'creationDateOfLayer')
+
+# Group by source_table_name
+grouped = defaultdict(list)
+for layer in layers:
+    grouped[layer.source_table_name].append(layer)
+
+# Keep newest, delete older duplicates
+for source_table, layers_list in grouped.items():
+    if len(layers_list) > 1:
+        to_delete = layers_list[:-1]  # All except last (newest)
+        for layer in to_delete:
+            layer.delete()
+```
+
+**Result:**
+- **BEFORE:** 22 duplicate Layer records
+- **AFTER:** 6 unique Layer records
+- **DELETED:** 16 duplicate records
+
+**Step 2: Backend Code Fix**
+Modified `geocraft_api/groups/service.py` to handle duplicates gracefully:
+
+```python
+# ❌ OLD CODE (lines 86, 130):
+layer_db = Layer.objects.get(source_table_name=source_table_name)
+layer_db.delete()
+
+# ✅ NEW CODE (fixed):
+# Handle duplicates gracefully - delete all matching layers
+layers_to_delete = Layer.objects.filter(source_table_name=source_table_name)
+count = layers_to_delete.count()
+if count > 1:
+    logger.warning(f'Found {count} duplicate layers for {source_table_name}, deleting all')
+layers_to_delete.delete()
+```
+
+**Changes:**
+1. Replace `.get()` with `.filter()` to avoid `MultipleObjectsReturned`
+2. Use `.count()` to detect duplicates and log warning
+3. Delete all matching records (handles both single and duplicate cases)
+4. Applied to 2 locations in `remove_group_and_layers()` function
+
+### ⚠️ PREVENTION: How to Avoid Duplicate Layers
+
+**Root Cause of Duplicates:**
+- Multiple imports of same layer without checking existing records
+- No unique constraint on `Layer.source_table_name` field
+- No database-level duplicate prevention
+
+**Recommended Fix (Future):**
+Add unique constraint to Django model:
+
+```python
+# geocraft_api/models/layer.py
+class Layer(models.Model):
+    project = models.ForeignKey(ProjectItem, on_delete=models.CASCADE)
+    source_table_name = models.CharField(max_length=255)
+
+    class Meta:
+        unique_together = ('project', 'source_table_name')  # Prevent duplicates
+```
+
+**Migration:**
+```bash
+python manage.py makemigrations
+python manage.py migrate
+```
+
+### Verification Commands
+
+**Check for duplicates:**
+```bash
+# Via Django shell
+from geocraft_api.models import Layer, ProjectItem
+from collections import Counter
+
+project = ProjectItem.objects.get(project_name="PROJECT_NAME")
+layers = Layer.objects.filter(project=project)
+source_table_counts = Counter([layer.source_table_name for layer in layers])
+duplicates = {name: count for name, count in source_table_counts.items() if count > 1}
+print(f"Duplicates: {duplicates}")
+```
+
+**Test layer deletion:**
+1. Delete layer via frontend UI (PropertiesPanel → "Usuń" button)
+2. Check backend logs: `docker logs universe-mapmaker-backend_django_1 | tail -50`
+3. Verify tree.json updated: `docker exec <container> cat /projects/<project>/tree.json`
+4. Confirm database deletion: Check Layer count in Django shell
+
+### Related Files
+
+**Backend Fix:**
+- `geocraft_api/groups/service.py` - Modified `remove_group_and_layers()` function
+- Backup: `/app/geocraft_api/groups/service.py.backup`
+
+**Frontend Implementation:**
+- [src/features/layers/modals/DeleteLayerConfirmModal.tsx](src/features/layers/modals/DeleteLayerConfirmModal.tsx) - Confirmation modal
+- [src/features/layers/components/LeftPanel.tsx](src/features/layers/components/LeftPanel.tsx) - Deletion orchestration
+- [src/features/layers/components/PropertiesPanel.tsx](src/features/layers/components/PropertiesPanel.tsx) - Delete button UI
+- [src/backend/layers/layers.api.ts](src/backend/layers/layers.api.ts) - `useDeleteLayerMutation` RTK Query hook
+
+### Lessons Learned
+
+1. **Silent failures are dangerous** - Always propagate errors to API responses
+2. **Database integrity matters** - Add unique constraints to prevent duplicates
+3. **`.get()` assumes uniqueness** - Use `.filter().first()` when duplicates possible
+4. **Test with real data** - Duplicates only appeared with actual usage
+5. **Backend logs are critical** - Django exception logs revealed the root cause
+
+---
+
+**Last Updated:** 2025-10-23
+**Fix Status:** ✅ Applied to production (Django container restarted with fixed code)
+**Database Status:** ✅ Cleaned (16 duplicates removed from `testshp` project)
 
 ---
 

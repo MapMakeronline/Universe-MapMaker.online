@@ -190,11 +190,13 @@ export default function MapPage() {
     if (!projectData || isLoading) return;
 
     console.log('📦 Loading project data:', projectData.name);
+    console.log('🔄 projectData changed - reloading layers. Children count:', projectData.children?.length || 0);
     console.log(isOwner ? '✏️ Edit mode (owner)' : '👁️ Read-only mode (viewer)');
 
     // Convert QGIS backend structure to frontend LayerNode structure
     const qgisLayers = projectData.children || [];
     const convertedLayers = qgisLayers.map(convertQGISToLayerNode);
+    console.log('🔄 Dispatching loadLayers with', convertedLayers.length, 'layers');
     dispatch(loadLayers(convertedLayers));
 
     if (projectData.extent && projectData.extent.length === 4) {
