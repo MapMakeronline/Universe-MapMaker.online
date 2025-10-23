@@ -40,6 +40,12 @@ import {
   type StyleConfiguration,
   type CategorizationCategory,
 } from '@/backend/styles';
+// Layers API integration (RTK Query)
+import {
+  useGetLayerAttributesQuery,
+  useImportLayerStyleMutation,
+  useAddLabelMutation,
+} from '@/backend/layers';
 import { showSuccess, showError } from '@/redux/slices/notificationSlice';
 import { useAppDispatch } from '@/redux/hooks';
 import {
@@ -55,12 +61,8 @@ import {
   opacityToAlpha,
 } from '@/utils/colorConversion';
 
-// TODO: Layers API hooks (not yet implemented in @/backend/layers)
-// These will be added when layer attributes API is implemented
-const useGetLayerAttributesQuery = (params: any) => ({ data: [], isLoading: false }) as any;
-const useImportStyleMutation = () => [async () => {}, { isLoading: false }] as any;
+// TODO: Export style endpoint not yet implemented in @/backend/layers
 const useLazyExportStyleQuery = () => [async () => {}, { data: null, isLoading: false }] as any;
-const useAddLabelMutation = () => [async () => {}, { isLoading: false }] as any;
 
 // Temporary mock types (will be replaced when backend types are finalized)
 type SymbolLayer = any;
@@ -153,13 +155,13 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
   );
 
   const { data: attributesData } = useGetLayerAttributesQuery(
-    { projectName: projectName!, layerName: layerName! },
-    { skip: !open || !projectName || !layerName }
+    { project: projectName!, layer_id: layerId! },
+    { skip: !open || !projectName || !layerId }
   );
 
   const [setStyle, { isLoading: isSaving }] = useSetLayerStyleMutation();
   const [classify, { isLoading: isClassifying }] = useClassifyValuesMutation();
-  const [importStyle, { isLoading: isImporting }] = useImportStyleMutation();
+  const [importStyle, { isLoading: isImporting }] = useImportLayerStyleMutation();
   const [triggerExportStyle, { isLoading: isExporting }] = useLazyExportStyleQuery();
   const [addLabel, { isLoading: isAddingLabel }] = useAddLabelMutation();
 
@@ -309,10 +311,14 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
     setIsLoading(true);
 
     try {
+      // Create FormData with style file
+      const formData = new FormData();
+      formData.append('new_style.qml', selectedFile); // Backend expects 'new_style.qml' or 'new_style.sld'
+
       await importStyle({
         project: projectName,
         layer_id: layerId,
-        styleFile: selectedFile,
+        files: formData,
       }).unwrap();
 
       dispatch(showSuccess('Styl został pomyślnie zaimportowany'));
@@ -923,9 +929,9 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
                 sx={{ bgcolor: 'white' }}
               >
                 <MenuItem value="">Wybierz z listy</MenuItem>
-                {attributesData?.attributes.map((attr) => (
-                  <MenuItem key={attr.name} value={attr.name}>
-                    {attr.name}
+                {attributesData?.data?.feature_names.map((attrName) => (
+                  <MenuItem key={attrName} value={attrName}>
+                    {attrName}
                   </MenuItem>
                 ))}
               </TextField>

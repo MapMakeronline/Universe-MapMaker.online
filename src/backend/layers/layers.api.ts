@@ -1,16 +1,20 @@
 /**
  * Layers Module - RTK Query API
  *
- * Endpoints for layer management and import:
+ * Endpoints for layer management, import, and styling:
  * - addShpLayer: Import Shapefile (.shp + .shx + .dbf + .prj)
  * - addGeoJsonLayer: Import GeoJSON
  * - addGmlLayer: Import GML
  * - addRasterLayer: Import TIF/GeoTIFF
  * - setLayerVisibility: Toggle layer visibility (show/hide)
- * - addWmsLayer: Add WMS external layer (TODO)
- * - addWfsLayer: Add WFS external layer (TODO)
+ * - identifyFeature: Query features at point or bbox
+ * - deleteLayer: Remove layers from project (POST /api/layer/remove/database)
+ * - getLayerAttributes: Get attribute column names and record count
+ * - importLayerStyle: Import QML/SLD style file
+ * - addLabel: Add labels to layer based on column values
  *
  * All imports use multipart/form-data for file uploads.
+ * Documentation: docs/backend/layer_api_docs.md
  */
 
 import { baseApi } from '../client/base-api';
@@ -285,6 +289,150 @@ export const layersApi = baseApi.injectEndpoints({
       }),
       // No cache invalidation needed - this is a read-only query
     }),
+
+    /**
+     * Delete Layer
+     * POST /api/layer/remove/database
+     * Removes layers from project and optionally from database
+     *
+     * Backend endpoint: /api/layer/remove/database
+     * Documentation: docs/backend/layer_api_docs.md (lines 271-331)
+     */
+    deleteLayer: builder.mutation<{
+      data: { used: number; total: number };
+      success: boolean;
+      message: string;
+    }, {
+      project: string;
+      layers: Array<{ id: string | null; source_table: string }>;
+    }>({
+      query: (params) => ({
+        url: '/api/layer/remove/database',
+        method: 'POST',
+        body: params,
+      }),
+      // Invalidate cache after deletion
+      invalidatesTags: ['Layers', 'Project', 'QGIS'],
+    }),
+
+    /**
+     * Get Layer Attributes
+     * GET /api/layer/attributes/names
+     * Retrieves list of attribute column names and record count
+     *
+     * Backend endpoint: /api/layer/attributes/names
+     * Documentation: docs/backend/layer_api_docs.md (lines 1266-1304)
+     *
+     * Response:
+     * {
+     *   data: {
+     *     feature_names: ["gid", "nazwa", "powierzchnia", "geom"],
+     *     layer_id: "layer_123",
+     *     record_count: 150
+     *   },
+     *   success: boolean,
+     *   message: string
+     * }
+     */
+    getLayerAttributes: builder.query<{
+      data: {
+        feature_names: string[];
+        layer_id: string;
+        record_count: number;
+      };
+      success: boolean;
+      message: string;
+    }, {
+      project: string;
+      layer_id: string;
+    }>({
+      query: ({ project, layer_id }) => ({
+        url: '/api/layer/attributes/names',
+        params: { project, layer_id },
+      }),
+      // Cache by layer_id
+      providesTags: (result, error, { layer_id }) => [
+        { type: 'LayerAttributes', id: layer_id },
+      ],
+    }),
+
+    /**
+     * Import Layer Style (QML/SLD)
+     * POST /api/layer/style/add
+     * Imports style from QML or SLD file
+     *
+     * Backend endpoint: /api/layer/style/add
+     * Documentation: docs/backend/layer_api_docs.md (lines 820-856)
+     *
+     * Files:
+     * - new_style.qml or new_style.sld (required)
+     */
+    importLayerStyle: builder.mutation<{
+      data: { id: string; [key: string]: any };
+      success: boolean;
+      message: string;
+    }, {
+      project: string;
+      layer_id: string;
+      files: FormData; // Must contain new_style.qml or new_style.sld
+    }>({
+      query: ({ project, layer_id, files }) => {
+        const formData = files;
+        formData.append('project', project);
+        formData.append('layer_id', layer_id);
+
+        return {
+          url: '/api/layer/style/add',
+          method: 'POST',
+          body: formData,
+        };
+      },
+      // Invalidate layer style and project data
+      invalidatesTags: (result, error, { layer_id }) => [
+        { type: 'LayerStyle', id: layer_id },
+        { type: 'Project', id: 'QGIS' },
+        'Layers',
+      ],
+    }),
+
+    /**
+     * Add Label to Layer
+     * POST /api/layer/label
+     * Adds labels to layer based on column values
+     *
+     * Backend endpoint: /api/layer/label
+     * Documentation: docs/backend/layer_api_docs.md (lines 1685-1742)
+     *
+     * Features:
+     * - Automatic white buffer around text for readability
+     * - Centered labels for polygons
+     * - Scale-based visibility
+     */
+    addLabel: builder.mutation<{
+      data: string;
+      success: boolean;
+      message: string;
+    }, {
+      project: string;
+      layer_id: string;
+      textColor: [number, number, number, number]; // RGBA [0-255, 0-255, 0-255, 0-255]
+      fontSize: number;
+      minScale: number;
+      maxScale: number;
+      columnName: string;
+    }>({
+      query: (params) => ({
+        url: '/api/layer/label',
+        method: 'POST',
+        body: params,
+      }),
+      // Invalidate project data to reflect label changes
+      invalidatesTags: (result, error, { layer_id }) => [
+        { type: 'LayerStyle', id: layer_id },
+        { type: 'Project', id: 'QGIS' },
+        'Layers',
+      ],
+    }),
   }),
 });
 
@@ -296,4 +444,9 @@ export const {
   useAddRasterLayerMutation,
   useSetLayerVisibilityMutation,
   useIdentifyFeatureMutation,
+  useDeleteLayerMutation,
+  useGetLayerAttributesQuery,
+  useLazyGetLayerAttributesQuery,
+  useImportLayerStyleMutation,
+  useAddLabelMutation,
 } = layersApi;
