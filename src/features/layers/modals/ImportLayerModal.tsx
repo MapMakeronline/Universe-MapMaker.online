@@ -33,7 +33,7 @@ const ImportLayerModal: React.FC<ImportLayerModalProps> = ({ open, onClose, onSu
   const [formData, setFormData] = useState({
     nazwaWarstwy: '',
     nazwaGrupy: 'Stwórz poza grupami',
-    epsg: '3857',
+    epsg: '', // Empty by default - backend will use .prj file coordinate system
     wmsUrl: '',
     wfsUrl: '',
   });
@@ -337,7 +337,7 @@ const ImportLayerModal: React.FC<ImportLayerModalProps> = ({ open, onClose, onSu
                 mb: 1,
               }}
             >
-              EPSG:
+              EPSG (opcjonalne):
             </Typography>
             <TextField
               fullWidth
@@ -349,7 +349,7 @@ const ImportLayerModal: React.FC<ImportLayerModalProps> = ({ open, onClose, onSu
                   handleFormChange('epsg', value);
                 }
               }}
-              placeholder="3857"
+              placeholder="Pozostaw puste aby użyć .prj"
               size="small"
               type="number"
               inputProps={{
