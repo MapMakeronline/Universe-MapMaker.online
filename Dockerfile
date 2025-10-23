@@ -3,13 +3,6 @@ FROM node:20-alpine AS base
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# Dependencies stage
-FROM base AS deps
-# Copy package files first for better caching
-COPY package.json package-lock.json* ./
-# Install only production dependencies (--omit=dev replaces deprecated --only=production)
-RUN npm ci --omit=dev --silent && npm cache clean --force
-
 # Builder stage
 FROM base AS builder
 WORKDIR /app
