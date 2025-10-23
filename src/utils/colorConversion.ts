@@ -3,7 +3,7 @@
  * Convert between hex colors (#RRGGBB) and RGBA arrays [R, G, B, A]
  */
 
-import type { RGBAColor } from '@/redux/api/stylesApi';
+import type { RGBAColor } from '@/backend/styles';
 
 /**
  * Convert hex color to RGBA array

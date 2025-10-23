@@ -30,18 +30,16 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import { useTheme } from '@mui/material/styles';
-// TODO: Migrate to @/backend when stylesApi and layersApi are implemented
-// import {
-//   useGetRendererQuery,
-//   useSetStyleMutation,
-//   useClassifyMutation,
-// } from '@/redux/api/stylesApi';
-// import {
-//   useGetLayerAttributesQuery,
-//   useImportStyleMutation,
-//   useLazyExportStyleQuery,
-//   useAddLabelMutation,
-// } from '@/redux/api/layersApi';
+// Styles API integration (RTK Query)
+import {
+  useGetLayerRendererQuery,
+  useSetLayerStyleMutation,
+  useClassifyValuesMutation,
+  type RGBAColor,
+  type BaseSymbol,
+  type StyleConfiguration,
+  type CategorizationCategory,
+} from '@/backend/styles';
 import { showSuccess, showError } from '@/redux/slices/notificationSlice';
 import { useAppDispatch } from '@/redux/hooks';
 import {
@@ -57,19 +55,17 @@ import {
   opacityToAlpha,
 } from '@/utils/colorConversion';
 
-// Temporary mock types and hooks
-type SymbolLayer = any;
-type SimpleFillAttributes = any;
-type BackendSymbol = any;
-type Category = any;
-
-const useGetRendererQuery = (params: any) => ({ data: null, isLoading: false }) as any;
-const useSetStyleMutation = () => [async () => {}, { isLoading: false }] as any;
-const useClassifyMutation = () => [async () => {}, { isLoading: false }] as any;
+// TODO: Layers API hooks (not yet implemented in @/backend/layers)
+// These will be added when layer attributes API is implemented
 const useGetLayerAttributesQuery = (params: any) => ({ data: [], isLoading: false }) as any;
 const useImportStyleMutation = () => [async () => {}, { isLoading: false }] as any;
 const useLazyExportStyleQuery = () => [async () => {}, { data: null, isLoading: false }] as any;
 const useAddLabelMutation = () => [async () => {}, { isLoading: false }] as any;
+
+// Temporary mock types (will be replaced when backend types are finalized)
+type SymbolLayer = any;
+type SimpleFillAttributes = any;
+type Category = any;
 
 interface EditLayerStyleModalProps {
   open: boolean;

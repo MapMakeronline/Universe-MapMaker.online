@@ -296,8 +296,20 @@ Screenshots are saved to `screenshots/` folder (gitignored by default).
    ├── projects/
    │   ├── projects.api.ts      # 25+ project endpoints
    │   └── index.ts
+   ├── layers/
+   │   ├── layers.api.ts        # Layer import & visibility (6 endpoints)
+   │   └── index.ts
+   ├── groups/
+   │   ├── groups.api.ts        # Group management
+   │   └── index.ts
+   ├── styles/
+   │   ├── styles.api.ts        # ✅ Layer styling (7 endpoints) - NEW!
+   │   └── index.ts
    ├── users/
    │   ├── users.api.ts         # Profile, settings
+   │   └── index.ts
+   ├── contact/
+   │   ├── contact.api.ts       # Contact form
    │   └── index.ts
    ├── types.ts                 # Shared TypeScript types
    ├── index.ts                 # Central export
@@ -652,14 +664,16 @@ curl -X PUT "https://api.universemapmaker.online/dashboard/settings/profile/" \
 
 **High Priority:**
 1. **Layers API** - Map layer management (`/api/layers/*`)
-   - Currently mocked in LeftPanel.tsx, PropertiesPanel.tsx
-   - Required for: Add Layer, Delete Layer, Set Visibility, Change Order
-   - Endpoints to implement: GET, POST, PUT, DELETE `/api/layers/`
+   - ✅ **PARTIALLY COMPLETE** - Implemented in `src/backend/layers/layers.api.ts`
+   - ✅ Completed: Add Shapefile, GeoJSON, GML, GeoTIFF, Set Visibility, Identify Feature
+   - ⏳ TODO: Delete Layer, Get Layer Attributes, Import/Export Style, Add Label
+   - Used in: useLayerOperations.ts, ImportLayerModal.tsx
 
 2. **Styles API** - Layer styling (`/api/styles/*`)
-   - Currently mocked in EditLayerStyleModal.tsx
-   - Required for: Classify, Set Style, Import/Export Style, Add Label
-   - Endpoints to implement: GET, POST, PUT `/api/styles/`
+   - ✅ **COMPLETED** - Implemented in `src/backend/styles/styles.api.ts` (2025-10-23)
+   - 7 endpoints: getLayerRenderer, setLayerStyle, classifyValues, getBaseSymbol, generateSymbolImage, etc.
+   - Used in: EditLayerStyleModal.tsx, colorConversion.ts
+   - Documentation: docs/backend/styles_api_docs.md
 
 **Medium Priority:**
 3. **Admin Panel Migration** - Move to `@/backend` pattern
