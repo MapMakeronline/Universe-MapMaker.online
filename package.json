@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "build": "next build",
-    "dev": "next dev",
+    "dev": "npm run kill-port-3000 && next dev",
+    "kill-port-3000": "powershell -Command \"$port = Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique; if ($port) { Stop-Process -Id $port -Force }\"",
     "lint": "next lint",
     "start": "node server.js",
     "test:e2e": "playwright test",

@@ -77,6 +77,9 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
   const reduxLayers = useAppSelector((state) => state.layers.layers);
   const expandedGroups = useAppSelector((state) => state.layers.expandedGroups);
 
+  // Layer state - use Redux directly (MUST be declared before any hook that uses it)
+  const layers = reduxLayers;
+
   // Get current project name from URL
   const projectName = typeof window !== 'undefined'
     ? new URLSearchParams(window.location.search).get('project') || ''
@@ -141,9 +144,6 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
     warstwaWidocznoscOdSkali: false,
     warstwaWidocznoscTrybOpublikowany: true
   });
-
-  // Layer state - NO local state, use Redux directly!
-  const layers = reduxLayers; // Direct reference to Redux state
 
   // Hooks - use external width if provided
   const resizable = useResizable({
