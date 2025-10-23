@@ -6,8 +6,11 @@
  * - removeGroupsAndLayers: Delete groups and layers
  * - addInspireGroup: Create INSPIRE-compliant group
  * - renameGroup: Change group name
- * - exportGroup: Export group as GML/GPKG ZIP
  * - setGroupVisibility: Toggle group visibility
+ * - exportGroup: Export group as GML/GPKG ZIP
+ * - addAppVersion: Create version snapshot (INSPIRE spatial planning)
+ * - getAppHistory: Download all historical versions as ZIP
+ * - restoreApp: Restore application to previous version
  *
  * Documentation: docs/backend/groups_api_docs.md
  */
@@ -254,6 +257,117 @@ export const groupsApi = baseApi.injectEndpoints({
         'Layers',
       ],
     }),
+
+    /**
+     * Export Group
+     * GET /api/groups/export
+     * Exports group with layers as GML/GPKG ZIP file
+     *
+     * Documentation: docs/backend/groups_api_docs.md (lines 205-236)
+     *
+     * Returns:
+     * - Content-Type: application/zip
+     * - ZIP file containing exported layers in GML or GPKG format
+     */
+    exportGroup: builder.query<Blob, { project: string; group: string; epsg: number }>({
+      query: ({ project, group, epsg }) => ({
+        url: '/api/groups/export',
+        params: { project, group, epsg },
+        responseHandler: (response) => response.blob(),
+      }),
+      // No caching - always fetch fresh export
+    }),
+
+    /**
+     * Add Application Version
+     * POST /api/groups/krajowy/version/add
+     * Creates version snapshot of spatial planning application (INSPIRE standard)
+     *
+     * Documentation: docs/backend/groups_api_docs.md (lines 239-287)
+     *
+     * Process:
+     * 1. Exports current layers to GML format
+     * 2. Creates backup in GeoJSON format
+     * 3. Saves version with timestamp
+     * 4. Updates app_confirmed field for layers
+     */
+    addAppVersion: builder.mutation<{
+      data: {
+        poczatekWersjiObiektu: string; // Format: "DD/MM/YYYY HH:MM:SS"
+        wersjaId: string; // Format: "YYYYMMDDTHHmmss"
+      };
+      success: boolean;
+      message: string;
+    }, {
+      project: string;
+      group_name: string;
+    }>({
+      query: (params) => ({
+        url: '/api/groups/krajowy/version/add',
+        method: 'POST',
+        body: params,
+      }),
+      // Invalidate project data after version creation
+      invalidatesTags: (result, error, arg) => [
+        { type: 'QGIS', id: arg.project },
+        { type: 'Project', id: arg.project },
+        'Layers',
+      ],
+    }),
+
+    /**
+     * Get Application History
+     * GET /api/groups/krajowy/version/get
+     * Downloads all historical versions of spatial planning application as ZIP
+     *
+     * Documentation: docs/backend/groups_api_docs.md (lines 290-321)
+     *
+     * Returns:
+     * - Content-Type: application/zip
+     * - ZIP file containing all historical versions in GML format
+     */
+    getAppHistory: builder.query<Blob, { project: string; group_name: string; epsg?: number }>({
+      query: ({ project, group_name, epsg = 2180 }) => ({
+        url: '/api/groups/krajowy/version/get',
+        params: { project, group_name, epsg },
+        responseHandler: (response) => response.blob(),
+      }),
+      // No caching - always fetch fresh history
+    }),
+
+    /**
+     * Restore Application
+     * POST /api/groups/krajowy/restore
+     * Restores spatial planning application to previous version from backup
+     *
+     * Documentation: docs/backend/groups_api_docs.md (lines 324-369)
+     *
+     * Process:
+     * 1. Reads backup from backup folder
+     * 2. Restores layers to PostgreSQL using ogr2ogr
+     * 3. Removes last saved GML version
+     * 4. Clears backup folder
+     */
+    restoreApp: builder.mutation<{
+      data: string;
+      success: boolean;
+      message: string;
+    }, {
+      project: string;
+      group_name: string;
+    }>({
+      query: (params) => ({
+        url: '/api/groups/krajowy/restore',
+        method: 'POST',
+        body: params,
+      }),
+      // Invalidate project data after restore
+      invalidatesTags: (result, error, arg) => [
+        { type: 'QGIS', id: arg.project },
+        { type: 'Project', id: arg.project },
+        'Layers',
+      ],
+    }),
   }),
 });
 
@@ -264,4 +378,10 @@ export const {
   useAddInspireGroupMutation,
   useRenameGroupMutation,
   useSetGroupVisibilityMutation,
+  useExportGroupQuery,
+  useLazyExportGroupQuery,
+  useAddAppVersionMutation,
+  useGetAppHistoryQuery,
+  useLazyGetAppHistoryQuery,
+  useRestoreAppMutation,
 } = groupsApi;
