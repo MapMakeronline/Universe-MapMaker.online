@@ -34,7 +34,20 @@ import DownloadProjectModal from '../modals/DownloadProjectModal';
 import { usePropertyModals } from '../hooks/usePropertyModals';
 import { usePropertyOperations } from '../hooks/usePropertyOperations';
 import { showSuccess } from '@/redux/slices/notificationSlice';
-import { PANEL_CONFIG } from './PropertiesPanelHelpers';
+
+// Panel configuration constants
+const PANEL_CONFIG = {
+  panel: {
+    height: '260px',
+    headerHeight: '40px',
+    contentPadding: '0px',
+  },
+  typography: {
+    headerFontSize: '15px',
+    iconSize: '14px',
+    closeIconSize: '14px',
+  },
+};
 
 // Types defined locally for now
 interface Warstwa {
