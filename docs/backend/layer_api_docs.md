@@ -835,7 +835,19 @@ Importuje styl warstwy z pliku QML lub SLD.
 
 #### Pliki
 
-- `new_style.qml` lub `new_style.sld` - plik stylu (wymagany)
+- `style` - plik stylu QML lub SLD (wymagany)
+
+**UWAGA:** Backend oczekuje nazwy pola `style`, nie `new_style.qml` ani `new_style.sld`.
+
+#### Przykład żądania
+
+```bash
+curl -X POST "https://api.universemapmaker.online/api/layer/style/add" \
+  -H "Authorization: Token YOUR_TOKEN" \
+  -F "project=moj_projekt" \
+  -F "layer_id=layer_123" \
+  -F "style=@path/to/layer_style.qml"
+```
 
 #### Odpowiedź sukcesu (200)
 

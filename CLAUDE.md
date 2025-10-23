@@ -1054,6 +1054,112 @@ def content_file_name_missing_layers(instance, filename):
 
 ---
 
-**Last Updated:** 2025-10-23  
+**Last Updated:** 2025-10-23
 **Fix Status:** ✅ Applied to production (Docker container patched + restart)
+
+---
+
+## ✅ QML/SLD Style Import - No Path Issue
+
+**IMPORTANT:** Unlike SHP imports, QML/SLD style imports do NOT have Docker path issues.
+
+### Why QML/SLD Import is Different:
+
+1. **SHP Import (File-based storage):**
+   - Stores files on disk: `/projects/<project>/uploaded_layer.shp`
+   - QGIS Server reads from filesystem
+   - **Requires correct Docker path** (`/projects/`)
+
+2. **QML/SLD Import (Embedded in .qgs):**
+   - Parses XML and embeds style into `.qgs` project file
+   - Does NOT store `.qml`/`.sld` files on disk permanently
+   - QGIS Server reads styles from `.qgs` file memory
+   - **No dependency on `MEDIA_ROOT` or Docker paths**
+
+### Backend Process:
+
+```python
+# Backend Django view (simplified)
+def add_layer_style(request):
+    # 1. Read .qgs project file
+    project_instance.read('/projects/<project>/<project>.qgs')
+
+    # 2. Find layer by ID
+    layer = project_instance.mapLayer(layer_id)
+
+    # 3. Load style from uploaded file (temporary)
+    layer.loadNamedStyle('/tmp/uploaded_style.qml')
+
+    # 4. Write updated .qgs file (style embedded in XML)
+    project_instance.write('/projects/<project>/<project>.qgs')
+
+    # 5. Delete temporary file
+```
+
+### Verification:
+
+```bash
+# No .qml/.sld files on disk
+$ sudo docker exec <container> find /projects/ -name "*.qml" -o -name "*.sld"
+# Returns: (empty) ✅
+
+# Styles are embedded in .qgs XML
+$ sudo docker exec <container> grep -i "renderer-v2" /projects/Mestwin/Mestwin.qgs
+# Returns: <renderer-v2 type="singleSymbol">...</renderer-v2> ✅
+```
+
+**Conclusion:** Style import works correctly with current Docker configuration. No path fix needed.
+
+---
+
+## ✅ FIXED: Style Import Path Bug (Backend)
+
+**Status:** ✅ Fixed and pushed to GitHub (commit 5efd382) - pending deployment
+
+**Problem (RESOLVED):**
+Style import (`POST /api/layer/style/add`) returned 400 error:
+```json
+{
+  "message": "Nie znaleziono pliku QGS projektu: projects/testshp/testshp.qgs"
+}
+```
+
+**Root Cause:**
+Backend Django view constructed QGS path incorrectly:
+- ❌ OLD: `project_path = os.path.join("qgs", project_name)` → `projects/testshp/testshp.qgs`
+- ✅ FIXED: `project_path = os.path.join(settings.MEDIA_ROOT, project_name)` → `/projects/testshp/testshp.qgs`
+
+**Backend Fix Applied:**
+```python
+# File: geocraft_api/layers/service.py
+# Function: style_add()
+
+# Line 1704 - Fixed project path
+project_path = os.path.join(settings.MEDIA_ROOT, project_name)  # ✅
+
+# Line 1760 - Fixed cleanup path
+style_qml_path = os.path.join(settings.MEDIA_ROOT, project_name, "new_style.qml")  # ✅
+
+# Line 1761 - Fixed cleanup path
+style_sld_path = os.path.join(settings.MEDIA_ROOT, project_name, "new_style.sld")  # ✅
+```
+
+**Changes Summary:**
+- ✅ Fixed 3 hardcoded `"qgs"` paths to use `settings.MEDIA_ROOT`
+- ✅ Committed to backend repo: `5efd382`
+- ✅ Pushed to GitHub
+- ⏳ Pending: Docker container restart on production VM
+
+**Deployment Status:**
+- Backend code: ✅ Fixed in GitHub
+- Production deployment: ⏳ Pending container restart
+
+**Next Steps:**
+1. SSH into production VM
+2. Pull latest code: `git pull origin main`
+3. Restart Django container: `docker-compose restart django`
+4. Test style import endpoint
+
+**Date Reported:** 2025-10-24
+**Date Fixed:** 2025-10-24 (commit 5efd382)
 

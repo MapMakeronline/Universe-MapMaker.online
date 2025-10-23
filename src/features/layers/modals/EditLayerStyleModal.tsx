@@ -316,16 +316,8 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
       formData.append('project', projectName);
       formData.append('layer_id', layerId);
 
-      // Append file with correct field name based on extension
-      const fileName = selectedFile.name.toLowerCase();
-      if (fileName.endsWith('.qml')) {
-        formData.append('new_style.qml', selectedFile);
-      } else if (fileName.endsWith('.sld')) {
-        formData.append('new_style.sld', selectedFile);
-      } else {
-        // Fallback to .qml
-        formData.append('new_style.qml', selectedFile);
-      }
+      // Backend expects field name 'style' (not 'new_style.qml' or 'new_style.sld')
+      formData.append('style', selectedFile);
 
       await importStyle({
         project: projectName,

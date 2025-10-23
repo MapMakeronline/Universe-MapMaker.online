@@ -365,7 +365,8 @@ export const layersApi = baseApi.injectEndpoints({
      * Documentation: docs/backend/layer_api_docs.md (lines 820-856)
      *
      * Files:
-     * - new_style.qml or new_style.sld (required)
+     * - 'style' field (required) - QML or SLD file
+     * Note: Backend expects field name 'style', not 'new_style.qml' or 'new_style.sld'
      */
     importLayerStyle: builder.mutation<{
       data: { id: string; [key: string]: any };
@@ -374,7 +375,7 @@ export const layersApi = baseApi.injectEndpoints({
     }, {
       project: string;
       layer_id: string;
-      files: FormData; // Must contain new_style.qml or new_style.sld
+      files: FormData; // Must contain 'style' field with QML or SLD file
     }>({
       query: ({ project, layer_id, files }) => {
         const formData = files;
