@@ -33,7 +33,7 @@ const ImportLayerModal: React.FC<ImportLayerModalProps> = ({ open, onClose, onSu
   const [formData, setFormData] = useState({
     nazwaWarstwy: '',
     nazwaGrupy: 'Stwórz poza grupami',
-    epsg: '', // Empty by default - backend will use .prj file coordinate system
+    epsg: '3857', // Default: EPSG:3857 (Web Mercator) - backend may not recognize ESRI .prj format
     wmsUrl: '',
     wfsUrl: '',
   });
