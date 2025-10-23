@@ -1151,15 +1151,22 @@ style_sld_path = os.path.join(settings.MEDIA_ROOT, project_name, "new_style.sld"
 - ⏳ Pending: Docker container restart on production VM
 
 **Deployment Status:**
-- Backend code: ✅ Fixed in GitHub
-- Production deployment: ⏳ Pending container restart
+- Backend code: ✅ Fixed in GitHub (commit 5efd382)
+- Production deployment: ✅ **DEPLOYED AND ACTIVE!**
 
-**Next Steps:**
-1. SSH into production VM
-2. Pull latest code: `git pull origin main`
-3. Restart Django container: `docker-compose restart django`
-4. Test style import endpoint
+**Deployment Actions Taken:**
+1. ✅ SSH into production VM
+2. ✅ Fixed 3 lines in `/app/geocraft_api/layers/service.py` using sed:
+   - Line 1704: `"projects"` → `settings.MEDIA_ROOT`
+   - Line 1760: `"projects"` → `settings.MEDIA_ROOT`
+   - Line 1761: `"projects"` → `settings.MEDIA_ROOT`
+3. ✅ Restarted Django container: `docker restart universe-mapmaker-backend_django_1`
+4. ✅ Verified Django started successfully
+
+**Next Step:**
+Test style import endpoint in browser!
 
 **Date Reported:** 2025-10-24
 **Date Fixed:** 2025-10-24 (commit 5efd382)
+**Date Deployed:** 2025-10-24 23:35 CET ✅
 
