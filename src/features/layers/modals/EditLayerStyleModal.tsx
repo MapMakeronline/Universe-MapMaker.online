@@ -147,7 +147,7 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
   });
 
   // RTK Query hooks
-  const { data: rendererData, isLoading: isLoadingRenderer } = useGetRendererQuery(
+  const { data: rendererData, isLoading: isLoadingRenderer } = useGetLayerRendererQuery(
     { project: projectName!, layer_id: layerId! },
     { skip: !open || !projectName || !layerId }
   );
@@ -157,8 +157,8 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
     { skip: !open || !projectName || !layerName }
   );
 
-  const [setStyle, { isLoading: isSaving }] = useSetStyleMutation();
-  const [classify, { isLoading: isClassifying }] = useClassifyMutation();
+  const [setStyle, { isLoading: isSaving }] = useSetLayerStyleMutation();
+  const [classify, { isLoading: isClassifying }] = useClassifyValuesMutation();
   const [importStyle, { isLoading: isImporting }] = useImportStyleMutation();
   const [triggerExportStyle, { isLoading: isExporting }] = useLazyExportStyleQuery();
   const [addLabel, { isLoading: isAddingLabel }] = useAddLabelMutation();

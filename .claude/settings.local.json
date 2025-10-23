@@ -163,7 +163,12 @@
       "Bash(cmd /c timeout /t 180)",
       "Bash(cmd /c \"taskkill /F /PID 16272\")",
       "Bash(cmd /c \"tasklist | findstr 16272\")",
-      "Bash(cmd /c timeout /t 2)"
+      "Bash(cmd /c timeout /t 2)",
+      "Bash(cmd /c taskkill /F /PID 11428)",
+      "Bash(cmd /c timeout /t 3)",
+      "Bash(cmd /c \"taskkill /F /PID 11428\")",
+      "Bash(git tag:*)",
+      "Bash(cmd /c \"dir /s /b c:\\Users\\Bartosz\\Desktop\\Universe-MapMaker.online\\src | findstr map\")"
     ],
     "deny": [],
     "ask": []
