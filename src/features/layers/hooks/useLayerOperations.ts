@@ -203,6 +203,7 @@ export function useLayerOperations(projectName: string, layers: LayerNode[]) {
             project: projectName,
             layerName: data.nazwaWarstwy,
             file: data.file?.name,
+            epsg: data.epsg,
           });
 
           // Backend docs: 'parent' is optional - send undefined for root level
@@ -216,6 +217,7 @@ export function useLayerOperations(projectName: string, layers: LayerNode[]) {
               project: projectName,
               layer_name: data.nazwaWarstwy,
               parent: parentGml,
+              epsg: data.epsg ? parseInt(data.epsg) : undefined,
             },
             files: formDataGml,
           }).unwrap();
