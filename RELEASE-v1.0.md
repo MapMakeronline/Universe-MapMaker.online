@@ -94,6 +94,21 @@ MEDIA_ROOT = '/projects' if os.path.exists('/projects') else os.path.join(BASE_D
 // After: formDataTiff.append('tif', data.file!);
 ```
 
+### 4. Corrupted QGS File XML (Hotfix - Oct 23, 21:30 UTC)
+**Problem:** Project loading returned 400 errors after layer imports. QGIS parser failed with "unexpected character at line 274 column 68" due to malformed XML attribute: `type="QString" nam name="offset_unit"`.
+
+**Root Cause:** Layer import process corrupted the QGS file by creating duplicate attribute names during style modifications.
+
+**Solution:**
+```bash
+# Restored from backup .qgs~ file
+cp /projects/testshp/testshp.qgs~ /projects/testshp/testshp.qgs
+```
+
+**Impact:** All projects (testshp, Mestwin, MapMaker, test) now load successfully with HTTP 200.
+
+**Prevention:** Backend needs QGS file validation after layer modifications to detect XML syntax errors before save.
+
 ---
 
 ## 📊 Statistics

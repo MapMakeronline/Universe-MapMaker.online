@@ -785,6 +785,28 @@ kill -9 <PID>
 3. Check browser console for detailed error
 4. Test endpoint with curl/Postman
 
+**Error: "400 Bad Request" on project loading (Can't read project)**
+1. Check backend Django logs:
+   ```bash
+   gcloud compute ssh universe-backend --zone=europe-central2-a \
+     --command="sudo docker logs --tail=50 universe-mapmaker-backend_django_1 | grep -i 'error\|400'"
+   ```
+2. Test QGS file integrity:
+   ```bash
+   sudo docker exec universe-mapmaker-backend_django_1 \
+     python3 -c "from qgis.core import QgsProject; project = QgsProject.instance(); \
+     result = project.read('/projects/PROJECT_NAME/PROJECT_NAME.qgs'); \
+     print(f'Result: {result}'); print(f'Error: {project.error()}' if not result else 'OK')"
+   ```
+3. If XML parsing error, restore from backup:
+   ```bash
+   cp /projects/PROJECT_NAME/PROJECT_NAME.qgs~ /projects/PROJECT_NAME/PROJECT_NAME.qgs
+   ```
+4. Common causes:
+   - Corrupted QGS XML (duplicate attributes, unclosed tags)
+   - File permission issues (should be readable by Django container)
+   - Path mismatch (check MEDIA_ROOT in settings.py)
+
 ### Cache Issues
 
 **Problem: Changes not reflected after code update**
