@@ -2,6 +2,7 @@
  * Layers Module - RTK Query API
  *
  * Endpoints for layer management, import, and styling:
+ * - addLayer: Create new empty vector layer (POST /api/layer/add)
  * - addShpLayer: Import Shapefile (.shp + .shx + .dbf + .prj)
  * - addGeoJsonLayer: Import GeoJSON
  * - addGmlLayer: Import GML
@@ -78,6 +79,26 @@ interface AddGmlLayerParams {
 interface AddRasterLayerParams {
   project: string;
   layer_name: string;
+  parent?: string;
+}
+
+/**
+ * Parameters for creating new empty vector layer
+ * Backend endpoint: POST /api/layer/add
+ * Documentation: docs/backend/layer_api_docs.md (lines 77-167)
+ *
+ * IMPORTANT: Backend serializer requires 'format' field (ValidateAddLayerSerializer)
+ * even though it's not used in the actual logic. Use 'format: "vector"' for new layers.
+ */
+interface AddLayerParams {
+  project: string;
+  name: string;
+  format: string; // Required by backend serializer, use "vector" for new empty layers
+  geometry_type: 'Point' | 'LineString' | 'Polygon' | 'MultiPoint' | 'MultiLineString' | 'MultiPolygon';
+  properties?: Array<{
+    column_name: string;
+    column_type: 1 | 2 | 4 | 6 | 10 | 14 | 16; // Boolean | Integer | Integer64 | Double | String | Date | DateTime
+  }>;
   parent?: string;
 }
 
@@ -218,6 +239,37 @@ interface IdentifyFeatureResponse {
 
 export const layersApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
+    /**
+     * Create New Empty Vector Layer
+     * POST /api/layer/add
+     * Creates a new empty vector layer with specified geometry type and optional columns
+     *
+     * Backend endpoint: /api/layer/add
+     * Documentation: docs/backend/layer_api_docs.md (lines 77-167)
+     *
+     * Geometry Types:
+     * - Point, LineString, Polygon
+     * - MultiPoint, MultiLineString, MultiPolygon
+     *
+     * Column Types:
+     * - 1 = Boolean
+     * - 2 = Integer
+     * - 4 = Integer64
+     * - 6 = Double
+     * - 10 = String
+     * - 14 = Date
+     * - 16 = DateTime
+     */
+    addLayer: builder.mutation<AddLayerResponse, AddLayerParams>({
+      query: (params) => ({
+        url: '/api/layer/add',
+        method: 'POST',
+        body: params,
+      }),
+      // Invalidate QGIS tag to trigger tree.json refetch
+      invalidatesTags: ['Layers', 'Project', 'QGIS'],
+    }),
+
     /**
      * Import Shapefile
      * POST /api/layer/add/shp/
@@ -632,6 +684,7 @@ export const layersApi = baseApi.injectEndpoints({
 
 // Export auto-generated hooks
 export const {
+  useAddLayerMutation,
   useAddShpLayerMutation,
   useAddGeoJsonLayerMutation,
   useAddGmlLayerMutation,

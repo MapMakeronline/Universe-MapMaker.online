@@ -5,6 +5,7 @@
  * Extracted from LeftPanel.tsx to reduce complexity and improve testability.
  *
  * Provides operations for:
+ * - Add new empty layer (Point, Line, Polygon, Multi*)
  * - Import layer from file (GeoJSON, Shapefile, GML, GeoTIFF)
  * - Add group
  * - Delete layer/group
@@ -13,7 +14,7 @@
  * All operations use optimistic updates with backend sync and error handling.
  *
  * Usage:
- * const { handleImportLayer, handleAddGroup, handleDeleteLayer, toggleVisibility } = useLayerOperations(projectName, layers);
+ * const { handleAddLayer, handleImportLayer, handleAddGroup, handleDeleteLayer, toggleVisibility } = useLayerOperations(projectName, layers);
  */
 
 import { useAppDispatch } from '@/redux/hooks';
@@ -24,11 +25,11 @@ import {
 import { showSuccess, showError, showInfo } from '@/redux/slices/notificationSlice';
 import { projectsApi } from '@/backend/projects';
 import {
+  useAddLayerMutation,
   useAddGeoJsonLayerMutation,
   useAddShpLayerMutation,
   useAddGmlLayerMutation,
   useAddRasterLayerMutation,
-  useSetLayerVisibilityMutation,
 } from '@/backend/layers';
 import {
   useAddGroupMutation,
@@ -48,13 +49,128 @@ export function useLayerOperations(projectName: string, layers: LayerNode[]) {
   const dispatch = useAppDispatch();
 
   // Backend mutations
+  const [addLayer] = useAddLayerMutation();
   const [addGeoJsonLayer] = useAddGeoJsonLayerMutation();
   const [addShpLayer] = useAddShpLayerMutation();
   const [addGmlLayer] = useAddGmlLayerMutation();
   const [addRasterLayer] = useAddRasterLayerMutation();
   const [addGroup] = useAddGroupMutation();
   const [removeGroupsAndLayers] = useRemoveGroupsAndLayersMutation();
-  const [setLayerVisibility] = useSetLayerVisibilityMutation();
+
+  /**
+   * Add New Empty Layer
+   *
+   * Creates a new empty vector layer with specified geometry type and columns.
+   *
+   * Geometry types:
+   * - "Punkt" → Point
+   * - "Linia" → LineString
+   * - "Poligon" → Polygon
+   * - "Multi Poligon" → MultiPolygon
+   *
+   * Column types (modal → backend mapping):
+   * - "tekst" → 10 (String)
+   * - "liczba_calkowita" → 2 (Integer)
+   * - "liczba_dziesietna" → 6 (Double)
+   * - "data" → 14 (Date)
+   *
+   * Backend endpoint: POST /api/layer/add
+   * Documentation: docs/backend/layer_api_docs.md (lines 77-167)
+   */
+  const handleAddLayer = async (data: {
+    nazwaWarstwy: string;
+    typGeometrii: string;
+    nazwaGrupy: string;
+    columns: Array<{ nazwa: string; typ: string }>;
+  }) => {
+    if (!projectName) {
+      dispatch(showError('Nie można dodać warstwy - brak nazwy projektu'));
+      return;
+    }
+
+    if (!data.nazwaWarstwy.trim()) {
+      dispatch(showError('Nazwa warstwy nie może być pusta'));
+      return;
+    }
+
+    // Map modal geometry types (Polish) to backend types (English)
+    const geometryTypeMap: Record<string, 'Point' | 'LineString' | 'Polygon' | 'MultiPolygon' | 'MultiPoint' | 'MultiLineString'> = {
+      'Punkt': 'Point',
+      'Linia': 'LineString',
+      'Poligon': 'Polygon',
+      'Multi Poligon': 'MultiPolygon',
+      'Multi Punkt': 'MultiPoint',
+      'Multi Linia': 'MultiLineString',
+    };
+
+    const geometry_type = geometryTypeMap[data.typGeometrii];
+    if (!geometry_type) {
+      dispatch(showError(`Nieznany typ geometrii: ${data.typGeometrii}`));
+      return;
+    }
+
+    // Map modal column types (Polish) to backend column_type (integers)
+    const columnTypeMap: Record<string, 1 | 2 | 4 | 6 | 10 | 14 | 16> = {
+      'tekst': 10,           // String
+      'liczba_calkowita': 2, // Integer
+      'liczba_dziesietna': 6,// Double
+      'data': 14,            // Date
+      'boolean': 1,          // Boolean
+      'data_czas': 16,       // DateTime
+    };
+
+    // Convert columns to backend format
+    const properties = data.columns.map((col) => {
+      const column_type = columnTypeMap[col.typ];
+      if (!column_type) {
+        console.warn(`⚠️ Unknown column type: ${col.typ}, defaulting to String (10)`);
+      }
+      return {
+        column_name: col.nazwa,
+        column_type: column_type || 10, // Default to String
+      };
+    });
+
+    // Parent group handling
+    const parent = data.nazwaGrupy === 'Stwórz poza grupami' ? '' : data.nazwaGrupy;
+
+    // Show loading notification
+    dispatch(showInfo(`Tworzenie warstwy "${data.nazwaWarstwy}"...`, 10000, 'layer'));
+
+    try {
+      console.log('➕ Creating new empty layer:', {
+        project: projectName,
+        name: data.nazwaWarstwy,
+        format: 'vector',
+        geometry_type,
+        properties,
+        parent,
+      });
+
+      await addLayer({
+        project: projectName,
+        name: data.nazwaWarstwy,
+        format: 'vector', // Required by backend ValidateAddLayerSerializer
+        geometry_type,
+        properties,
+        parent,
+      }).unwrap();
+
+      console.log('✅ Layer created successfully');
+
+      // RTK Query automatically invalidates 'Project' and 'QGIS' tags
+      // QGISProjectLoader will refetch tree.json and update Redux state
+
+      // Show success message (replaces "Tworzenie..." notification)
+      dispatch(showSuccess(`Warstwa "${data.nazwaWarstwy}" została utworzona`, 5000, 'layer'));
+    } catch (error: any) {
+      console.error('❌ Failed to create layer:', error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
+
+      const errorMessage = error?.data?.message || error?.data?.error || error?.message || 'Nieznany błąd';
+      dispatch(showError(`Nie udało się utworzyć warstwy: ${errorMessage}`, 8000, 'layer'));
+    }
+  };
 
   /**
    * Import layer from file (GeoJSON, Shapefile, GML, GeoTIFF)
@@ -453,64 +569,39 @@ export function useLayerOperations(projectName: string, layers: LayerNode[]) {
   };
 
   /**
-   * Toggle layer visibility with backend sync
+   * Toggle layer visibility (FRONTEND ONLY - no backend sync)
    *
-   * For groups: cascades visibility to all children (Redux only - backend doesn't store group visibility)
-   * For individual layers: syncs with backend via /api/layer/selection
+   * For groups: cascades visibility to all children
+   * For individual layers: toggles visibility in Redux and Mapbox
    *
-   * Uses optimistic updates with rollback on error
+   * NOTE: Backend visibility sync is handled by LayerInfoModal switches:
+   * - "Domyślne wyświetlanie warstwy" → /api/layer/published/set
+   * - "Widoczność od zadanej skali" → /api/layer/scale
+   * - "Widoczność w trybie opublikowanym" → /api/layer/published/set
+   *
+   * Checkbox in LayerTree is ONLY for temporary UI toggle (not persisted to backend)
    */
-  const toggleVisibility = async (id: string) => {
-    if (!projectName) {
-      console.warn('⚠️ No project name - skipping visibility toggle');
-      dispatch(showError('Nie można zmienić widoczności - brak nazwy projektu'));
-      return;
-    }
-
+  const toggleVisibility = (id: string) => {
     const layer = findLayerById(layers, id);
     if (!layer) {
       console.warn('⚠️ Layer not found:', id);
       return;
     }
 
-    // 1. Optimistic update - update Redux immediately for instant UI feedback
+    // Toggle in Redux immediately (instant UI feedback)
     if (layer.type === 'group' && layer.children) {
-      // Groups: cascade to all children (Redux only)
+      // Groups: cascade to all children
       dispatch(toggleGroupVisibilityCascade(id));
-      console.log('👁️ Toggled group visibility (Redux only):', layer.name);
-      return;
+      console.log('👁️ Toggled group visibility (frontend only):', layer.name);
     } else {
-      // Individual layer: toggle in Redux first
-      const previousVisibility = layer.visible;
+      // Individual layer: toggle visibility
       dispatch(toggleLayerVisibility(id));
-      console.log('👁️ Toggling layer visibility:', layer.name, '→', !previousVisibility);
-
-      // 2. Sync with backend (async)
-      try {
-        await setLayerVisibility({
-          project: projectName,
-          layer_id: id, // Use layer ID (not name)
-          checked: !previousVisibility, // Backend expects 'checked' (not 'visible')
-        }).unwrap();
-
-        console.log('✅ Layer visibility synced to backend:', {
-          layer: layer.name,
-          id,
-          visible: !previousVisibility,
-        });
-      } catch (error: any) {
-        console.error('❌ Failed to sync layer visibility:', error);
-
-        // 3. Rollback on error - revert Redux state
-        dispatch(toggleLayerVisibility(id));
-
-        const errorMessage = error?.data?.message || error?.message || 'Nieznany błąd';
-        dispatch(showError(`Nie udało się zapisać widoczności: ${errorMessage}`, 6000));
-      }
+      console.log('👁️ Toggled layer visibility (frontend only):', layer.name, '→', !layer.visible);
     }
   };
 
   return {
+    handleAddLayer,
     handleImportLayer,
     handleAddGroup,
     handleDeleteLayer,

@@ -59,6 +59,7 @@ function convertQGISToLayerNode(qgisNode: QGISLayerNode): LayerNode {
     extent: qgisNode.extent && qgisNode.extent.length === 4
       ? (qgisNode.extent as [number, number, number, number])
       : undefined,
+    geometry: 'geometry' in qgisNode ? qgisNode.geometry : undefined, // Copy geometry type for icon display
   };
 
   // Handle group layers
@@ -142,7 +143,7 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
   const { handleDragDropMove } = useDragDropSync(layers, projectName);
 
   // Layer operations (CRUD with backend sync)
-  const { handleImportLayer, handleAddGroup, handleDeleteLayer, toggleVisibility } = useLayerOperations(
+  const { handleAddLayer: handleAddLayerBackend, handleImportLayer, handleAddGroup, handleDeleteLayer, toggleVisibility } = useLayerOperations(
     projectName,
     layers
   );
@@ -234,10 +235,10 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
     dispatch(showInfo('Dodawanie prawa krajowego - wkrótce dostępne'));
   };
 
-  const handleAddLayer = (data: { nazwaWarstwy: string; typGeometrii: string; nazwaGrupy: string; columns: any[] }) => {
+  const handleAddLayer = async (data: { nazwaWarstwy: string; typGeometrii: string; nazwaGrupy: string; columns: any[] }) => {
     closeModal('addLayer');
-    console.log('TODO: Adding new layer:', data);
-    dispatch(showInfo('Dodawanie warstwy - wkrótce dostępne'));
+    // Call backend handler from useLayerOperations hook
+    await handleAddLayerBackend(data);
   };
 
   // Delete layer - open confirmation modal
@@ -428,6 +429,7 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
             projectName={projectName}
             wmsUrl={projectData?.wms_url || ''}
             wfsUrl={projectData?.wfs_url || ''}
+            onRefetchProject={refetchProjectData}
           />
         </Box>
 
@@ -485,6 +487,7 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
         open={modals.addLayer}
         onClose={() => closeModal('addLayer')}
         onSubmit={handleAddLayer}
+        availableGroups={layers}
       />
 
       {/* Import Layer Modal */}

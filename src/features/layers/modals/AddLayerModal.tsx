@@ -22,14 +22,41 @@ interface Column {
   type: 'tekst' | 'liczba_calkowita' | 'liczba_dziesietna' | 'data';
 }
 
+interface LayerNode {
+  id: string;
+  name: string;
+  type: 'group' | 'layer';
+  children?: LayerNode[];
+}
+
 interface AddLayerModalProps {
   open: boolean;
   onClose: () => void;
   onSubmit: (data: { nazwaWarstwy: string; typGeometrii: string; nazwaGrupy: string; columns: Column[] }) => void;
+  availableGroups: LayerNode[];
 }
 
-const AddLayerModal: React.FC<AddLayerModalProps> = ({ open, onClose, onSubmit }) => {
+const AddLayerModal: React.FC<AddLayerModalProps> = ({ open, onClose, onSubmit, availableGroups }) => {
   const theme = useTheme();
+
+  // Extract group names from layer tree
+  const extractGroupNames = (nodes: LayerNode[]): string[] => {
+    const groups: string[] = [];
+    const traverse = (nodeList: LayerNode[]) => {
+      nodeList.forEach(node => {
+        if (node.type === 'group') {
+          groups.push(node.name);
+          if (node.children) {
+            traverse(node.children);
+          }
+        }
+      });
+    };
+    traverse(nodes);
+    return groups;
+  };
+
+  const groupNames = extractGroupNames(availableGroups || []);
   const [formData, setFormData] = useState({
     nazwaWarstwy: '',
     typGeometrii: 'Multi Poligon',
@@ -244,7 +271,6 @@ const AddLayerModal: React.FC<AddLayerModalProps> = ({ open, onClose, onSubmit }
                   <MenuItem value="Multi Poligon">Multi Poligon</MenuItem>
                   <MenuItem value="Punkt">Punkt</MenuItem>
                   <MenuItem value="Linia">Linia</MenuItem>
-                  <MenuItem value="Poligon">Poligon</MenuItem>
                 </TextField>
               </Box>
 
@@ -290,9 +316,11 @@ const AddLayerModal: React.FC<AddLayerModalProps> = ({ open, onClose, onSubmit }
                   }}
                 >
                   <MenuItem value="Stwórz poza grupami">Stwórz poza grupami</MenuItem>
-                  <MenuItem value="Miejscowe plany">Miejscowe plany</MenuItem>
-                  <MenuItem value="Infrastruktura">Infrastruktura</MenuItem>
-                  <MenuItem value="Środowisko">Środowisko</MenuItem>
+                  {groupNames.map((groupName) => (
+                    <MenuItem key={groupName} value={groupName}>
+                      {groupName}
+                    </MenuItem>
+                  ))}
                 </TextField>
               </Box>
 

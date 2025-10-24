@@ -91,6 +91,7 @@ function convertQGISToLayerNode(qgisNode: QGISLayerNode): LayerNode {
     extent: qgisNode.extent && qgisNode.extent.length === 4
       ? (qgisNode.extent as [number, number, number, number])
       : undefined, // Copy extent from backend (for zoom to layer functionality)
+    geometry: 'geometry' in qgisNode ? qgisNode.geometry : undefined, // Copy geometry type for icon display (Point, LineString, MultiPolygon, etc.)
   };
 
   // Handle group layers (folders)
