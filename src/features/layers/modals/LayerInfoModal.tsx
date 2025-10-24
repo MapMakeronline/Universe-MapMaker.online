@@ -147,19 +147,26 @@ export const LayerInfoModal: React.FC<LayerInfoModalProps> = ({
     }
 
     setError(null);
+    const errors: string[] = [];
 
-    try {
-      // 1. Update layer name (if changed)
-      if (name !== originalName) {
+    // 1. Update layer name (if changed)
+    if (name !== originalName) {
+      try {
         console.log('📝 Renaming layer:', { project: projectName, layer_id: layer.id, new_name: name });
         await renameLayer({
           project: projectName,
           layer_id: layer.id,
           new_name: name,
         }).unwrap();
+        console.log('✅ Layer renamed successfully');
+      } catch (err: any) {
+        console.error('❌ Error renaming layer:', err);
+        errors.push('Zmiana nazwy: ' + (err?.data?.message || 'błąd'));
       }
+    }
 
-      // 2. Update opacity (convert 0-100% to 0-255 for backend)
+    // 2. Update opacity (convert 0-100% to 0-255 for backend)
+    try {
       const opacityValue = Math.round((opacity / 100) * 255);
       console.log('🎨 Setting layer opacity:', { project: projectName, layer_id: layer.id, opacity: opacityValue });
       await updateLayerOpacity({
@@ -167,8 +174,14 @@ export const LayerInfoModal: React.FC<LayerInfoModalProps> = ({
         layer_id: layer.id,
         opacity: opacityValue,
       }).unwrap();
+      console.log('✅ Opacity set successfully');
+    } catch (err: any) {
+      console.error('❌ Error setting opacity:', err);
+      errors.push('Przezroczystość: ' + (err?.data?.message || 'błąd'));
+    }
 
-      // 3. Update scale visibility (if enabled)
+    // 3. Update scale visibility
+    try {
       if (scaleVisible) {
         console.log('📏 Setting layer scale visibility:', { project: projectName, layer_id: layer.id });
         await updateLayerScale({
@@ -179,7 +192,6 @@ export const LayerInfoModal: React.FC<LayerInfoModalProps> = ({
           turn_off: false,
         }).unwrap();
       } else {
-        // Turn off scale visibility
         console.log('📏 Turning off layer scale visibility:', { project: projectName, layer_id: layer.id });
         await updateLayerScale({
           project: projectName,
@@ -189,28 +201,46 @@ export const LayerInfoModal: React.FC<LayerInfoModalProps> = ({
           turn_off: true,
         }).unwrap();
       }
+      console.log('✅ Scale visibility set successfully');
+    } catch (err: any) {
+      console.error('❌ Error setting scale visibility:', err);
+      errors.push('Skala widoczności: ' + (err?.data?.message || 'błąd backendu (500)'));
+    }
 
-      // 4. Update published visibility
+    // 4. Update published visibility
+    try {
       console.log('🌐 Setting layer published status:', { project: projectName, layer_id: layer.id, published: publishedVisible });
       await updateLayerPublished({
         project: projectName,
         layer_id: layer.id,
         published: publishedVisible,
       }).unwrap();
+      console.log('✅ Published status set successfully');
+    } catch (err: any) {
+      console.error('❌ Error setting published status:', err);
+      errors.push('Status publikacji: ' + (err?.data?.message || 'błąd'));
+    }
 
-      // 5. Update default visibility
+    // 5. Update default visibility
+    try {
       console.log('👁️ Setting layer default visibility:', { project: projectName, layer_id: layer.id, checked: defaultVisible });
       await updateLayerVisibility({
         project: projectName,
         layer_id: layer.id,
         checked: defaultVisible,
       }).unwrap();
+      console.log('✅ Default visibility set successfully');
+    } catch (err: any) {
+      console.error('❌ Error setting default visibility:', err);
+      errors.push('Domyślna widoczność: ' + (err?.data?.message || 'błąd'));
+    }
 
+    // Show errors if any, otherwise close modal
+    if (errors.length > 0) {
+      setError(`Niektóre zmiany nie zostały zapisane:\n${errors.join('\n')}`);
+    } else {
       console.log('✅ All layer properties saved successfully');
       onClose();
-    } catch (err: any) {
-      console.error('❌ Error saving layer properties:', err);
-      setError(err?.data?.message || 'Błąd podczas zapisywania właściwości warstwy');
     }
   };
 
