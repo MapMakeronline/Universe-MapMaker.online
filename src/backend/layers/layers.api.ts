@@ -8,10 +8,14 @@
  * - addRasterLayer: Import TIF/GeoTIFF
  * - setLayerVisibility: Toggle layer visibility (show/hide)
  * - identifyFeature: Query features at point or bbox
- * - deleteLayer: Remove layers from project (POST /api/layer/remove/database)
+ * - deleteLayer: Remove layers from project
  * - getLayerAttributes: Get attribute column names and record count
  * - importLayerStyle: Import QML/SLD style file
  * - addLabel: Add labels to layer based on column values
+ * - renameLayer: Change layer name (POST /api/layer/name)
+ * - setLayerOpacity: Set layer transparency 0-255 (POST /api/layer/opacity/set)
+ * - setLayerScale: Set scale visibility range (POST /api/layer/scale)
+ * - setLayerPublished: Set layer publish status (POST /api/layer/published/set)
  *
  * All imports use multipart/form-data for file uploads.
  * Documentation: docs/backend/layer_api_docs.md
@@ -92,6 +96,99 @@ interface SetLayerVisibilityParams {
  */
 interface SetVisibilityResponse {
   data: string;
+  success: boolean;
+  message: string;
+}
+
+/**
+ * Parameters for renaming layer
+ * Backend endpoint: POST /api/layer/name
+ * Documentation: docs/backend/layer_api_docs.md (lines 334-375)
+ */
+interface RenameLayerParams {
+  project: string;
+  layer_id: string;
+  new_name: string;
+}
+
+/**
+ * Response from rename layer
+ */
+interface RenameLayerResponse {
+  data: {
+    layer_name: string;
+  };
+  success: boolean;
+  message: string;
+}
+
+/**
+ * Parameters for setting layer opacity
+ * Backend endpoint: POST /api/layer/opacity/set
+ * Documentation: docs/backend/layer_api_docs.md (lines 906-947)
+ */
+interface SetLayerOpacityParams {
+  project: string;
+  layer_id: string;
+  opacity: number; // 0-255 (0 = transparent, 255 = opaque)
+}
+
+/**
+ * Response from set opacity
+ */
+interface SetLayerOpacityResponse {
+  data: {
+    opacity: number;
+  };
+  success: boolean;
+  message: string;
+}
+
+/**
+ * Parameters for setting layer visibility scale
+ * Backend endpoint: POST /api/layer/scale
+ * Documentation: docs/backend/layer_api_docs.md (lines 2388-2440)
+ */
+interface SetLayerScaleParams {
+  project: string;
+  layer_id: string;
+  max_scale: number; // Maximum scale (e.g., 100)
+  min_scale: number; // Minimum scale (e.g., 10000)
+  turn_off?: boolean; // Turn off scale restriction
+}
+
+/**
+ * Response from set scale
+ */
+interface SetLayerScaleResponse {
+  data: {
+    scale_visibility: boolean;
+    max_scale: number;
+    min_scale: number;
+  };
+  success: boolean;
+  message: string;
+}
+
+/**
+ * Parameters for setting layer publish status
+ * Backend endpoint: POST /api/layer/published/set
+ * Documentation: docs/backend/layer_api_docs.md (lines 2689-2732)
+ */
+interface SetLayerPublishedParams {
+  project: string;
+  layer_id: string;
+  published: boolean;
+}
+
+/**
+ * Response from set published
+ */
+interface SetLayerPublishedResponse {
+  data: {
+    layer_id: string;
+    published: boolean;
+  };
   success: boolean;
   message: string;
 }
@@ -434,6 +531,102 @@ export const layersApi = baseApi.injectEndpoints({
         'Layers',
       ],
     }),
+
+    /**
+     * Rename Layer
+     * POST /api/layer/name
+     * Changes layer name in project
+     *
+     * Backend endpoint: /api/layer/name
+     * Documentation: docs/backend/layer_api_docs.md (lines 334-375)
+     */
+    renameLayer: builder.mutation<RenameLayerResponse, RenameLayerParams>({
+      query: (params) => ({
+        url: '/api/layer/name',
+        method: 'POST',
+        body: params,
+      }),
+      // Invalidate cache after rename
+      invalidatesTags: (result, error, { layer_id }) => [
+        { type: 'Layer', id: layer_id },
+        { type: 'Project', id: 'QGIS' },
+        'Layers',
+      ],
+    }),
+
+    /**
+     * Set Layer Opacity
+     * POST /api/layer/opacity/set
+     * Changes layer transparency (0-255)
+     *
+     * Backend endpoint: /api/layer/opacity/set
+     * Documentation: docs/backend/layer_api_docs.md (lines 906-947)
+     *
+     * Note: Opacity range is 0-255 (not 0-100%)
+     * - 0 = fully transparent
+     * - 255 = fully opaque
+     */
+    setLayerOpacity: builder.mutation<SetLayerOpacityResponse, SetLayerOpacityParams>({
+      query: (params) => ({
+        url: '/api/layer/opacity/set',
+        method: 'POST',
+        body: params,
+      }),
+      // Invalidate cache after opacity change
+      invalidatesTags: (result, error, { layer_id }) => [
+        { type: 'LayerStyle', id: layer_id },
+        { type: 'Project', id: 'QGIS' },
+        'Layers',
+      ],
+    }),
+
+    /**
+     * Set Layer Scale Visibility
+     * POST /api/layer/scale
+     * Sets scale range for layer visibility
+     *
+     * Backend endpoint: /api/layer/scale
+     * Documentation: docs/backend/layer_api_docs.md (lines 2388-2440)
+     *
+     * Conditions:
+     * - max_scale must be less than min_scale
+     * - For layers with >10k features, min_scale cannot exceed 10000
+     */
+    setLayerScale: builder.mutation<SetLayerScaleResponse, SetLayerScaleParams>({
+      query: (params) => ({
+        url: '/api/layer/scale',
+        method: 'POST',
+        body: params,
+      }),
+      // Invalidate cache after scale change
+      invalidatesTags: (result, error, { layer_id }) => [
+        { type: 'Layer', id: layer_id },
+        { type: 'Project', id: 'QGIS' },
+        'Layers',
+      ],
+    }),
+
+    /**
+     * Set Layer Published Status
+     * POST /api/layer/published/set
+     * Sets whether layer is published
+     *
+     * Backend endpoint: /api/layer/published/set
+     * Documentation: docs/backend/layer_api_docs.md (lines 2689-2732)
+     */
+    setLayerPublished: builder.mutation<SetLayerPublishedResponse, SetLayerPublishedParams>({
+      query: (params) => ({
+        url: '/api/layer/published/set',
+        method: 'POST',
+        body: params,
+      }),
+      // Invalidate cache after publish status change
+      invalidatesTags: (result, error, { layer_id }) => [
+        { type: 'Layer', id: layer_id },
+        { type: 'Project', id: 'QGIS' },
+        'Layers',
+      ],
+    }),
   }),
 });
 
@@ -450,4 +643,8 @@ export const {
   useLazyGetLayerAttributesQuery,
   useImportLayerStyleMutation,
   useAddLabelMutation,
+  useRenameLayerMutation,
+  useSetLayerOpacityMutation,
+  useSetLayerScaleMutation,
+  useSetLayerPublishedMutation,
 } = layersApi;

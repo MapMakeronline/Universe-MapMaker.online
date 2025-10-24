@@ -367,7 +367,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
       <LayerInfoModal
         open={layerInfoModalOpen}
         onClose={() => setLayerInfoModalOpen(false)}
-        layerName={selectedLayer?.nazwa}
+        layer={selectedLayer}
       />
 
       {/* Basemap Selector Modal */}

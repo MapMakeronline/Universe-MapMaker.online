@@ -83,7 +83,8 @@ export const baseApi = createApi({
     'Project',        // Single project (detail)
     'Projects',       // List of projects
     'PublicProjects', // Published projects list
-    'Layers',
+    'Layer',          // Single layer (detail)
+    'Layers',         // List of layers
     'LayerAttributes', // Layer attribute column names
     'LayerStyle',     // Layer styling (QML/SLD)
     'QGIS',
