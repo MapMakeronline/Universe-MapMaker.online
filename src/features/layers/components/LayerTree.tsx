@@ -19,8 +19,13 @@ import Tooltip from '@mui/material/Tooltip';
 import { useTheme } from '@mui/material/styles';
 import FolderIcon from '@mui/icons-material/Folder';
 import LayersIcon from '@mui/icons-material/Layers';
-import PrzyblizDoWarstwyIcon from '@mui/icons-material/MyLocation';
+import MyLocationIcon from '@mui/icons-material/MyLocation';
 import CalendarTodayIcon from '@mui/icons-material/TableView';
+// Geometry type icons
+import PlaceIcon from '@mui/icons-material/Place'; // Point
+import TimelineIcon from '@mui/icons-material/Timeline'; // LineString
+import PolylineIcon from '@mui/icons-material/Polyline'; // Polygon
+import ImageIcon from '@mui/icons-material/Image'; // Raster
 // Redux
 import { useAppDispatch } from '@/redux/hooks';
 import { setViewState } from '@/redux/slices/mapSlice';
@@ -224,15 +229,42 @@ export const LayerTree: React.FC<LayerTreeProps> = ({
   const dispatch = useAppDispatch();
   const { draggedItem, dropTarget, dropPosition, showMainLevelZone } = dragDropState;
 
-  const getWarstwaIcon = (type: LayerNode['type'], id?: string) => {
+  // Get icon based on layer type and geometry
+  const getWarstwaIcon = (warstwa: LayerNode) => {
     const iconSize = TREE_CONFIG.icon.size.small;
-    switch (type) {
-      case 'group': return <FolderIcon sx={{ color: layerIconColors.grupa, fontSize: iconSize }} />;
-      case 'VectorLayer': return <LayersIcon sx={{ color: layerIconColors.wektor, fontSize: iconSize }} />;
-      case 'RasterLayer': return <LayersIcon sx={{ color: layerIconColors.raster, fontSize: iconSize }} />;
-      case 'WMSLayer': return <LayersIcon sx={{ color: layerIconColors.raster, fontSize: iconSize }} />;
-      default: return <LayersIcon sx={{ color: layerIconColors.default, fontSize: iconSize }} />;
+
+    // Group/Folder
+    if (warstwa.type === 'group') {
+      return <FolderIcon sx={{ color: layerIconColors.grupa, fontSize: iconSize }} />;
     }
+
+    // Raster layers
+    if (warstwa.type === 'RasterLayer') {
+      return <ImageIcon sx={{ color: layerIconColors.raster, fontSize: iconSize }} />;
+    }
+
+    // Vector layers - check geometry type
+    if (warstwa.type === 'VectorLayer' && warstwa.geometry) {
+      const geom = warstwa.geometry.toLowerCase();
+
+      // Point geometries
+      if (geom.includes('point')) {
+        return <PlaceIcon sx={{ color: layerIconColors.wektor, fontSize: iconSize }} />;
+      }
+
+      // LineString geometries
+      if (geom.includes('line')) {
+        return <TimelineIcon sx={{ color: layerIconColors.wektor, fontSize: iconSize }} />;
+      }
+
+      // Polygon geometries
+      if (geom.includes('polygon')) {
+        return <PolylineIcon sx={{ color: layerIconColors.wektor, fontSize: iconSize }} />;
+      }
+    }
+
+    // Default fallback
+    return <LayersIcon sx={{ color: layerIconColors.default, fontSize: iconSize }} />;
   };
 
   const filterWarstwy = (warstwy: LayerNode[], filter: string): LayerNode[] => {
@@ -474,7 +506,7 @@ export const LayerTree: React.FC<LayerTreeProps> = ({
             minWidth: TREE_CONFIG.elements.iconContainer.minWidth,
             justifyContent: 'center'
           }}>
-            {getWarstwaIcon(warstwa.type, warstwa.id)}
+            {getWarstwaIcon(warstwa)}
           </Box>
           
           <Tooltip
@@ -504,134 +536,90 @@ export const LayerTree: React.FC<LayerTreeProps> = ({
             </Typography>
           </Tooltip>
           
-          {/* Ikony po prawej stronie jak na screenie */}
+          {/* Ikony po prawej stronie */}
           <Box className="layer-item__actions" sx={{ display: 'flex', alignItems: 'center', gap: TREE_CONFIG.elements.actionButton.gap, opacity: 1 }}>
-            {/* Ikona celownika/GPS */}
-            <Tooltip
-              title="Przybliż do warstwy"
-              arrow
-              enterDelay={300}
-              disableInteractive
-              disableHoverListener={!!draggedItem}
-              disableTouchListener
-            >
-              <IconButton
-                size="small"
-                onClick={(e) => {
-                  e.stopPropagation();
+            {/* GPS Button - Przybliż do warstwy (tylko dla warstw z extent) */}
+            {warstwa.type !== 'group' && warstwa.extent && (
+              <Tooltip
+                title="Przybliż do warstwy"
+                arrow
+                enterDelay={300}
+                disableInteractive
+                disableHoverListener={!!draggedItem}
+                disableTouchListener
+              >
+                <IconButton
+                  size="small"
+                  onClick={(e) => {
+                    e.stopPropagation();
 
-                  try {
-                    // Sprawdź czy warstwa ma extent
                     if (!warstwa.extent || warstwa.extent.length !== 4) {
-                      console.warn('⚠️ Warstwa nie ma extent:', warstwa.name);
-                      alert('Ta warstwa nie ma zdefiniowanego zasięgu (extent)');
+                      console.warn('⚠️ Layer extent not available:', warstwa.name);
                       return;
                     }
 
                     const [minX, minY, maxX, maxY] = warstwa.extent;
 
-                    // Walidacja wartości extent
-                    if (
-                      isNaN(minX) || isNaN(minY) || isNaN(maxX) || isNaN(maxY) ||
-                      !isFinite(minX) || !isFinite(minY) || !isFinite(maxX) || !isFinite(maxY) ||
-                      minX === 0 && minY === 0 && maxX === 0 && maxY === 0
-                    ) {
-                      console.error('❌ Invalid extent values:', warstwa.extent);
-                      alert('Zasięg warstwy zawiera nieprawidłowe wartości');
-                      return;
-                    }
-
-                    // Auto-detekcja CRS i transformacja do WGS84 (silent to reduce console spam)
-                    let minLng, minLat, maxLng, maxLat;
+                    // Detect CRS based on bottom-left corner coordinates
                     const detectedCRS = detectCRS(minX, minY);
+                    console.log('🌍 Detected CRS for layer:', warstwa.name, '→', detectedCRS);
+
+                    let wgs84Extent: [number, number, number, number];
 
                     if (detectedCRS === 'EPSG:4326') {
-                      // Już w WGS84
-                      [minLng, minLat, maxLng, maxLat] = warstwa.extent;
+                      wgs84Extent = [minX, minY, maxX, maxY];
                     } else if (detectedCRS === 'EPSG:3857') {
-                      // Transform z Web Mercator do WGS84
-                      [minLng, minLat, maxLng, maxLat] = transformExtentFromWebMercator(warstwa.extent);
+                      wgs84Extent = transformExtentFromWebMercator([minX, minY, maxX, maxY]);
                     } else if (detectedCRS === 'EPSG:2180') {
-                      // Transform z Polish Grid do WGS84
-                      [minLng, minLat, maxLng, maxLat] = transformExtent(warstwa.extent);
+                      wgs84Extent = transformExtent([minX, minY, maxX, maxY]);
                     } else {
-                      console.warn('⚠️ Unknown CRS, cannot transform coordinates');
-                      alert('Nie można określić układu współrzędnych warstwy. Skontaktuj się z administratorem.');
+                      console.error('❌ Unsupported CRS:', detectedCRS);
                       return;
                     }
 
-                    // Walidacja przekształconych współrzędnych
-                    if (
-                      isNaN(minLng) || isNaN(minLat) || isNaN(maxLng) || isNaN(maxLat) ||
-                      !isFinite(minLng) || !isFinite(minLat) || !isFinite(maxLng) || !isFinite(maxLat)
-                    ) {
-                      console.error('❌ Transformation resulted in invalid coordinates:', {
-                        transformed: [minLng, minLat, maxLng, maxLat],
-                        original: warstwa.extent
-                      });
-                      alert('Błąd transformacji współrzędnych. Sprawdź ustawienia warstwy.');
-                      return;
-                    }
+                    const [wgs84MinX, wgs84MinY, wgs84MaxX, wgs84MaxY] = wgs84Extent;
 
-                    // Sprawdź czy współrzędne są w prawidłowym zakresie WGS84
-                    if (
-                      minLng < -180 || minLng > 180 || maxLng < -180 || maxLng > 180 ||
-                      minLat < -90 || minLat > 90 || maxLat < -90 || maxLat > 90
-                    ) {
-                      console.error('❌ Coordinates out of WGS84 bounds:', {
-                        minLng, minLat, maxLng, maxLat
-                      });
-                      alert('Współrzędne warstwy są poza dopuszczalnym zakresem');
-                      return;
-                    }
+                    // Calculate center
+                    const centerLng = (wgs84MinX + wgs84MaxX) / 2;
+                    const centerLat = (wgs84MinY + wgs84MaxY) / 2;
 
-                    // Oblicz centrum
-                    const centerLng = (minLng + maxLng) / 2;
-                    const centerLat = (minLat + maxLat) / 2;
+                    // Calculate appropriate zoom based on extent size
+                    const extentWidth = wgs84MaxX - wgs84MinX;
+                    const extentHeight = wgs84MaxY - wgs84MinY;
+                    const maxDimension = Math.max(extentWidth, extentHeight);
 
-                    // Walidacja centrum
-                    if (isNaN(centerLng) || isNaN(centerLat)) {
-                      console.error('❌ Invalid center coordinates:', { centerLng, centerLat });
-                      alert('Błąd obliczania centrum warstwy');
-                      return;
-                    }
+                    let zoom = 12; // Default zoom
+                    if (maxDimension > 10) zoom = 6;       // Very large extent (country-level)
+                    else if (maxDimension > 1) zoom = 8;   // Large extent (region-level)
+                    else if (maxDimension > 0.1) zoom = 11; // Medium extent (city-level)
+                    else if (maxDimension > 0.01) zoom = 14; // Small extent (neighborhood-level)
+                    else zoom = 16;                        // Very small extent (street-level)
 
-                    // Oblicz odpowiedni zoom level na podstawie wielkości extent
-                    const latDiff = Math.abs(maxLat - minLat);
-                    const lngDiff = Math.abs(maxLng - minLng);
-                    const maxDiff = Math.max(latDiff, lngDiff);
+                    console.log('🎯 Flying to layer:', warstwa.name, {
+                      center: [centerLng, centerLat],
+                      zoom,
+                      extent: wgs84Extent,
+                      detectedCRS
+                    });
 
-                    // Heurystyka zoom level (im mniejszy extent, tym większy zoom)
-                    let zoom = 10;
-                    if (maxDiff < 0.001) zoom = 18; // Bardzo mała warstwa (budynki)
-                    else if (maxDiff < 0.01) zoom = 16;
-                    else if (maxDiff < 0.1) zoom = 14;
-                    else if (maxDiff < 1) zoom = 12;
-                    else if (maxDiff < 10) zoom = 10;
-                    else zoom = 8;
-
-                    // Zoom to layer (silent to reduce console spam)
                     dispatch(setViewState({
                       longitude: centerLng,
                       latitude: centerLat,
                       zoom,
                       bearing: 0,
-                      pitch: 0,
+                      pitch: 0
                     }));
-                  } catch (error) {
-                    console.error('❌ Error in zoom to layer:', error);
-                    alert(`Błąd podczas przybliżania do warstwy: ${error instanceof Error ? error.message : 'Nieznany błąd'}`);
-                  }
-                }}
-                sx={{
-                  color: theme.palette.text.secondary,
-                  p: TREE_CONFIG.elements.actionButton.padding,
-                  '&:hover': { color: theme.palette.primary.main }
-                }}
-              >
-                <PrzyblizDoWarstwyIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
+                  }}
+                  sx={{
+                    color: theme.palette.text.secondary,
+                    p: TREE_CONFIG.elements.actionButton.padding,
+                    '&:hover': { color: theme.palette.primary.main }
+                  }}
+                >
+                  <MyLocationIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
 
             {/* Ikona kalendarza - tylko dla warstw (nie katalogów) */}
             {warstwa.type !== 'group' && (
@@ -649,7 +637,7 @@ export const LayerTree: React.FC<LayerTreeProps> = ({
                     e.stopPropagation();
                     console.log('Calendar for:', warstwa.name);
                   }}
-                  sx={{ 
+                  sx={{
                     color: theme.palette.text.secondary,
                     p: TREE_CONFIG.elements.actionButton.padding,
                     '&:hover': { color: theme.palette.primary.main }

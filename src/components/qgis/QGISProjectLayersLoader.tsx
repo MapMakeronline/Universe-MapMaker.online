@@ -71,19 +71,59 @@ export function QGISProjectLayersLoader({ projectName, projectData }: QGISProjec
       return;
     }
 
-    // ✅ FIX: Check if layers already exist before adding
-    const firstLayerId = `qgis-wms-layer-${projectName}-${layers[0].name}`;
-    if (map.getLayer(firstLayerId)) {
-      mapLogger.log(`⏭️ Layers already loaded for project: ${projectName} - skipping`);
-      return;
+    // Smart sync: Only remove layers that no longer exist in projectData
+    // This prevents unnecessary re-loading of unchanged layers
+    const layerIdPattern = `qgis-wms-layer-${projectName}-`;
+    const mapLayers = map.getStyle().layers;
+    const existingLayerIds = mapLayers?.filter(l => l.id.startsWith(layerIdPattern)).map(l => l.id) || [];
+
+    // Collect all layer names from projectData (recursively, including groups)
+    const collectLayerNames = (items: any[]): string[] => {
+      const names: string[] = [];
+      items.forEach(item => {
+        if (item.type === 'VectorLayer' || item.type === 'RasterLayer') {
+          names.push(item.name);
+        }
+        if (item.type === 'group' && item.children) {
+          names.push(...collectLayerNames(item.children));
+        }
+      });
+      return names;
+    };
+
+    const currentLayerNames = collectLayerNames(layers);
+    const expectedLayerIds = currentLayerNames.map(name => `qgis-wms-layer-${projectName}-${name}`);
+
+    // Remove only layers that are NO LONGER in projectData
+    const layersToRemove = existingLayerIds.filter(id => !expectedLayerIds.includes(id));
+
+    if (layersToRemove.length > 0) {
+      mapLogger.log(`🧹 Removing ${layersToRemove.length} obsolete layers (no longer in project)`);
+      layersToRemove.forEach((layerId) => {
+        try {
+          if (map.getLayer(layerId)) {
+            map.removeLayer(layerId);
+            mapLogger.log(`  🗑️ Removed obsolete layer: ${layerId}`);
+          }
+          const sourceId = layerId.replace('qgis-wms-layer-', 'qgis-wms-');
+          if (map.getSource(sourceId)) {
+            map.removeSource(sourceId);
+          }
+        } catch (err) {
+          mapLogger.warn(`  ⚠️ Failed to remove layer ${layerId}:`, err);
+        }
+      });
     }
 
-    mapLogger.log(`🚀 Loading ${layers.length} layers from QGIS Server for project: ${projectName}`);
-
-    // Add all layers at once (matches old project pattern)
+    // Add all project layers (addWMSLayer will skip if already exists)
+    mapLogger.log(`🔄 Syncing ${layers.length} layers with QGIS Server`);
     const layersAdded = addProjectLayers(map, layers, projectName);
 
-    mapLogger.log(`✅ Successfully loaded ${layersAdded} WMS layers from QGIS Server`);
+    if (layersAdded > 0) {
+      mapLogger.log(`✅ Successfully added ${layersAdded} new WMS layers`);
+    } else {
+      mapLogger.log(`⏭️ All layers already loaded - no changes needed`);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isMapLoaded, projectData, projectName]); // FIXED: Removed mapRef from dependencies (causes re-render loops)
 

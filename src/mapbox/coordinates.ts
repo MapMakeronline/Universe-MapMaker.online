@@ -57,28 +57,36 @@ proj4.defs(
 
 /**
  * Transform extent from EPSG:2180 to EPSG:4326 (WGS84)
+ * Or transform between any two CRS when fromCRS and toCRS are specified
  *
- * @param extent - [minX, minY, maxX, maxY] in EPSG:2180 (meters)
- * @returns [minLng, minLat, maxLng, maxLat] in EPSG:4326 (degrees)
+ * @param extent - [minX, minY, maxX, maxY] in source CRS
+ * @param fromCRS - Source coordinate system (default: 'EPSG:2180')
+ * @param toCRS - Target coordinate system (default: 'EPSG:4326')
+ * @returns [minLng, minLat, maxLng, maxLat] in target CRS
  *
  * @example
- * // Polish coordinates (EPSG:2180)
+ * // Polish coordinates (EPSG:2180) to WGS84
  * const extent = [1575340.24, 6278773.80, 2689465.69, 7367152.64];
- *
- * // Transform to WGS84 for Mapbox
  * const [minLng, minLat, maxLng, maxLat] = transformExtent(extent);
  * // Result: [14.12, 49.00, 24.15, 54.83] (approximately Poland bounds)
+ *
+ * @example
+ * // Web Mercator (EPSG:3857) to WGS84
+ * const extent = [2055612, 7221689, 2055964, 7222181];
+ * const [minLng, minLat, maxLng, maxLat] = transformExtent(extent, 'EPSG:3857', 'EPSG:4326');
  */
 export function transformExtent(
-  extent: [number, number, number, number]
+  extent: [number, number, number, number],
+  fromCRS: string = 'EPSG:2180',
+  toCRS: string = 'EPSG:4326'
 ): [number, number, number, number] {
   const [minX, minY, maxX, maxY] = extent;
 
   // Transform bottom-left corner
-  const [minLng, minLat] = proj4('EPSG:2180', 'EPSG:4326', [minX, minY]);
+  const [minLng, minLat] = proj4(fromCRS, toCRS, [minX, minY]);
 
   // Transform top-right corner
-  const [maxLng, maxLat] = proj4('EPSG:2180', 'EPSG:4326', [maxX, maxY]);
+  const [maxLng, maxLat] = proj4(fromCRS, toCRS, [maxX, maxY]);
 
   return [minLng, minLat, maxLng, maxLat];
 }
