@@ -17,6 +17,9 @@ const LayersFAB: React.FC<LayersFABProps> = ({ isOpen, layersCount, onToggle }) 
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
 
+  // Szerokość LeftPanel (drzewa warstw)
+  const LEFT_PANEL_WIDTH = 320
+
   // Haptic feedback for mobile
   const handleClick = () => {
     if ('vibrate' in navigator) {
@@ -31,7 +34,8 @@ const LayersFAB: React.FC<LayersFABProps> = ({ isOpen, layersCount, onToggle }) 
       sx={{
         position: 'fixed',
         bottom: 16,
-        left: 16,
+        // FAB przesuwa się razem z drzewem warstw
+        left: isOpen ? LEFT_PANEL_WIDTH + 16 : 16,
         zIndex: 1400,
         width: 56,
         height: 56,
