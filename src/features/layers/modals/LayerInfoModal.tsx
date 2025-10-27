@@ -1,13 +1,13 @@
 /**
  * LAYER INFO MODAL - Modal z informacjami szczegółowymi o warstwie
  *
- * Backend integration: ✅ COMPLETE
- * - Nazwa warstwy: POST /api/layer/name (renameLayer)
- * - Przezroczystość: POST /api/layer/opacity/set (setLayerOpacity)
- * - Widoczność od skali: POST /api/layer/scale (setLayerScale)
- * - Widoczność w trybie opublikowanym: POST /api/layer/published/set (setLayerPublished)
- * - Domyślne wyświetlanie: POST /api/layer/selection (setLayerVisibility)
- * - Eksport warstwy: GET /api/layer/export (exportLayer)
+ * Backend integration status:
+ * - ✅ Nazwa warstwy: POST /api/layer/name (renameLayer)
+ * - ✅ Przezroczystość: POST /api/layer/opacity/set (setLayerOpacity)
+ * - ⏭️ Widoczność od skali: POST /api/layer/scale (SKIPPED - backend bug: missing import)
+ * - ✅ Widoczność w trybie opublikowanym: POST /api/layer/published/set (setLayerPublished)
+ * - ⏭️ Domyślne wyświetlanie: POST /api/layer/selection (SKIPPED - side effect: unchecks all other layers)
+ * - 🚧 Eksport warstwy: GET /api/layer/export (TODO - not implemented yet)
  *
  * Layout: Tabs (podobnie jak EditLayerStyleModal)
  * - Zakładka 1: Informacje ogólne (Nazwa, Grupa, Typ geometrii, Tabela atrybutów)
@@ -47,7 +47,7 @@ import {
   useSetLayerOpacityMutation,
   useSetLayerScaleMutation,
   useSetLayerPublishedMutation,
-  useSetLayerVisibilityMutation,
+  // useSetLayerVisibilityMutation - removed (causes side effect)
 } from '@/backend/layers';
 import { LayerNode } from '@/types-app/layers';
 
@@ -55,6 +55,7 @@ interface LayerInfoModalProps {
   open: boolean;
   onClose: () => void;
   layer: LayerNode | null;
+  onSave?: () => void; // Callback after successful save to refetch data
 }
 
 interface TabPanelProps {
@@ -83,6 +84,7 @@ export const LayerInfoModal: React.FC<LayerInfoModalProps> = ({
   open,
   onClose,
   layer,
+  onSave,
 }) => {
   const theme = useTheme();
 
@@ -110,10 +112,10 @@ export const LayerInfoModal: React.FC<LayerInfoModalProps> = ({
   const [updateLayerOpacity, { isLoading: isSettingOpacity }] = useSetLayerOpacityMutation();
   const [updateLayerScale, { isLoading: isSettingScale }] = useSetLayerScaleMutation();
   const [updateLayerPublished, { isLoading: isSettingPublished }] = useSetLayerPublishedMutation();
-  const [updateLayerVisibility, { isLoading: isSettingVisibility }] = useSetLayerVisibilityMutation();
+  // const [updateLayerVisibility, { isLoading: isSettingVisibility }] = useSetLayerVisibilityMutation(); // Removed - causes side effect
 
   // Combined loading state
-  const isSaving = isRenamingLayer || isSettingOpacity || isSettingScale || isSettingPublished || isSettingVisibility;
+  const isSaving = isRenamingLayer || isSettingOpacity || isSettingScale || isSettingPublished;
 
   // Error state
   const [error, setError] = useState<string | null>(null);
@@ -226,7 +228,12 @@ export const LayerInfoModal: React.FC<LayerInfoModalProps> = ({
       errors.push('Status publikacji: ' + (err?.data?.message || 'błąd'));
     }
 
-    // 5. Update default visibility
+    // 5. Update default visibility - COMMENTED OUT
+    // REASON: /api/layer/selection endpoint has side effect - it unchecks ALL OTHER layers
+    // This endpoint is meant for toggling visibility from layer tree UI, not for LayerInfoModal
+    // See CLAUDE.md - "CRITICAL: Layer visibility side effect" section
+    console.log('⏭️ Skipping default visibility endpoint (side effect - unchecks all other layers)');
+    /*
     try {
       console.log('👁️ Setting layer default visibility:', { project: projectName, layer_id: layer.id, checked: defaultVisible });
       await updateLayerVisibility({
@@ -239,13 +246,24 @@ export const LayerInfoModal: React.FC<LayerInfoModalProps> = ({
       console.error('❌ Error setting default visibility:', err);
       errors.push('Domyślna widoczność: ' + (err?.data?.message || 'błąd'));
     }
+    */
 
     // Show errors if any, otherwise close modal
     if (errors.length > 0) {
       setError(`Niektóre zmiany nie zostały zapisane:\n${errors.join('\n')}`);
     } else {
       console.log('✅ All layer properties saved successfully');
+
+      // IMPORTANT: Close modal FIRST, then refetch
+      // This ensures modal doesn't hold stale layer data reference
       onClose();
+
+      // Call onSave callback to refetch project data (updates layer tree)
+      // Must be AFTER onClose() to avoid stale data in modal
+      if (onSave) {
+        console.log('🔄 Calling onSave to refetch project data...');
+        onSave();
+      }
     }
   };
 

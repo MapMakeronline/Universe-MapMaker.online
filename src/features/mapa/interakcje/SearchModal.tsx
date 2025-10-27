@@ -12,27 +12,44 @@ import ListItem from '@mui/material/ListItem';
 import ListItemButton from '@mui/material/ListItemButton';
 import ListItemText from '@mui/material/ListItemText';
 import CircularProgress from '@mui/material/CircularProgress';
+import Tabs from '@mui/material/Tabs';
+import Tab from '@mui/material/Tab';
 import CloseIcon from '@mui/icons-material/Close';
 import LocationIcon from '@mui/icons-material/LocationOn';
 import SearchIcon from '@mui/icons-material/Search';
-import { useMap } from 'react-map-gl';
-import { useAppDispatch } from '@/redux/hooks';
+import PublicIcon from '@mui/icons-material/Public';
+import MapIcon from '@mui/icons-material/Map';
+import FilterListIcon from '@mui/icons-material/FilterList';
+import LabelIcon from '@mui/icons-material/Label';
+import { MapRef } from 'react-map-gl';
+import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import { flyToLocation } from '@/redux/slices/mapSlice';
 import { searchPlaces, type SearchResult as MapboxSearchResult } from '@/mapbox/search';
 import { useTheme } from '@mui/material/styles';
+import ParcelSearchTab from './ParcelSearchTab';
 
 interface SearchModalProps {
   open: boolean;
   onClose: () => void;
+  mapRef: React.RefObject<MapRef>;
 }
 
 // Using SearchResult from lib/mapbox/search
 type SearchResult = MapboxSearchResult;
 
-const SearchModal: React.FC<SearchModalProps> = ({ open, onClose }) => {
+type TabValue = 'global' | 'parcels' | 'advanced' | 'keywords';
+
+const SearchModal: React.FC<SearchModalProps> = ({ open, onClose, mapRef }) => {
   const theme = useTheme();
-  const { current: map } = useMap();
+  // ✅ Use mapRef.current instead of useMap() hook (SearchModal is rendered outside <Map> component)
+  const map = mapRef.current?.getMap();
   const dispatch = useAppDispatch();
+  const { currentProject } = useAppSelector((state) => state.projects);
+
+  // Tab state
+  const [activeTab, setActiveTab] = useState<TabValue>('global');
+
+  // Mapbox search state (global tab)
   const [searchQuery, setSearchQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -133,7 +150,7 @@ const SearchModal: React.FC<SearchModalProps> = ({ open, onClose }) => {
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <SearchIcon sx={{ fontSize: '20px' }} />
-          Wyszukiwanie miejsca
+          Wyszukiwanie
         </Box>
         <IconButton
           onClick={handleClose}
@@ -147,6 +164,49 @@ const SearchModal: React.FC<SearchModalProps> = ({ open, onClose }) => {
         </IconButton>
       </DialogTitle>
 
+      {/* Tabs */}
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', bgcolor: 'white' }}>
+        <Tabs
+          value={activeTab}
+          onChange={(_, newValue) => setActiveTab(newValue as TabValue)}
+          variant="fullWidth"
+          sx={{
+            minHeight: 48,
+            '& .MuiTab-root': {
+              minHeight: 48,
+              fontSize: '13px',
+              textTransform: 'none',
+              fontWeight: 500,
+            },
+          }}
+        >
+          <Tab
+            value="global"
+            label="Wyszukiwanie globalne"
+            icon={<PublicIcon sx={{ fontSize: 18 }} />}
+            iconPosition="start"
+          />
+          <Tab
+            value="parcels"
+            label="Działki"
+            icon={<MapIcon sx={{ fontSize: 18 }} />}
+            iconPosition="start"
+          />
+          <Tab
+            value="advanced"
+            label="Szczegółowe"
+            icon={<FilterListIcon sx={{ fontSize: 18 }} />}
+            iconPosition="start"
+          />
+          <Tab
+            value="keywords"
+            label="Słowa kluczowe"
+            icon={<LabelIcon sx={{ fontSize: 18 }} />}
+            iconPosition="start"
+          />
+        </Tabs>
+      </Box>
+
       {/* Content */}
       <DialogContent
         sx={{
@@ -156,107 +216,143 @@ const SearchModal: React.FC<SearchModalProps> = ({ open, onClose }) => {
           minHeight: '300px',
         }}
       >
-        {/* Search Input */}
-        <Box
-          sx={{
-            p: 3,
-            borderBottom: `1px solid ${theme.palette.divider}`,
-            bgcolor: 'white',
-          }}
-        >
-          <Box
-            component="input"
-            type="text"
-            placeholder="Wpisz nazwę miejsca, ulicę, adres..."
-            value={searchQuery}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
-            autoFocus
-            sx={{
-              width: '100%',
-              p: '12px 16px',
-              borderRadius: '4px',
-              border: `1px solid #d1d5db`,
-              bgcolor: 'white',
-              fontSize: '14px',
-              color: theme.palette.text.primary,
-              fontFamily: 'inherit',
-              '&::placeholder': {
-                color: theme.palette.text.disabled,
-              },
-              '&:focus': {
-                outline: 'none',
-                borderColor: theme.palette.primary.main,
-                boxShadow: `0 0 0 3px ${theme.palette.primary.main}22`,
-              },
-            }}
-          />
-        </Box>
-
-        {/* Results */}
-        <Box sx={{ minHeight: '200px', position: 'relative' }}>
-          {loading && (
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 4 }}>
-              <CircularProgress size={32} />
+        {/* Tab 1: Wyszukiwanie globalne (Mapbox Geocoding) */}
+        {activeTab === 'global' && (
+          <>
+            {/* Search Input */}
+            <Box
+              sx={{
+                p: 3,
+                borderBottom: `1px solid ${theme.palette.divider}`,
+                bgcolor: 'white',
+              }}
+            >
+              <Box
+                component="input"
+                type="text"
+                placeholder="Wpisz nazwę miejsca, ulicę, adres..."
+                value={searchQuery}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
+                autoFocus
+                sx={{
+                  width: '100%',
+                  p: '12px 16px',
+                  borderRadius: '4px',
+                  border: `1px solid #d1d5db`,
+                  bgcolor: 'white',
+                  fontSize: '14px',
+                  color: theme.palette.text.primary,
+                  fontFamily: 'inherit',
+                  '&::placeholder': {
+                    color: theme.palette.text.disabled,
+                  },
+                  '&:focus': {
+                    outline: 'none',
+                    borderColor: theme.palette.primary.main,
+                    boxShadow: `0 0 0 3px ${theme.palette.primary.main}22`,
+                  },
+                }}
+              />
             </Box>
-          )}
 
-          {!loading && searchQuery && results.length === 0 && (
-            <Box sx={{ textAlign: 'center', py: 4, px: 3 }}>
-              <LocationIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 2 }} />
-              <Typography variant="body2" color="text.secondary">
-                Nie znaleziono wyników dla &quot;{searchQuery}&quot;
-              </Typography>
+            {/* Results */}
+            <Box sx={{ minHeight: '200px', position: 'relative' }}>
+              {loading && (
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 4 }}>
+                  <CircularProgress size={32} />
+                </Box>
+              )}
+
+              {!loading && searchQuery && results.length === 0 && (
+                <Box sx={{ textAlign: 'center', py: 4, px: 3 }}>
+                  <LocationIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 2 }} />
+                  <Typography variant="body2" color="text.secondary">
+                    Nie znaleziono wyników dla &quot;{searchQuery}&quot;
+                  </Typography>
+                </Box>
+              )}
+
+              {!loading && results.length > 0 && (
+                <List sx={{ py: 0 }}>
+                  {results.map((result) => (
+                    <ListItem key={result.id} disablePadding>
+                      <ListItemButton
+                        onClick={() => handleResultClick(result)}
+                        sx={{
+                          px: 3,
+                          py: 1.5,
+                          '&:hover': {
+                            bgcolor: 'rgba(0, 0, 0, 0.04)',
+                          },
+                        }}
+                      >
+                        <LocationIcon
+                          sx={{
+                            fontSize: '20px',
+                            color: theme.palette.primary.main,
+                            mr: 2
+                          }}
+                        />
+                        <ListItemText
+                          primary={result.text}
+                          secondary={result.place_name}
+                          primaryTypographyProps={{
+                            fontSize: '14px',
+                            fontWeight: 500,
+                          }}
+                          secondaryTypographyProps={{
+                            fontSize: '12px',
+                            color: 'text.secondary',
+                          }}
+                        />
+                      </ListItemButton>
+                    </ListItem>
+                  ))}
+                </List>
+              )}
+
+              {!loading && !searchQuery && (
+                <Box sx={{ textAlign: 'center', py: 4, px: 3 }}>
+                  <SearchIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 2 }} />
+                  <Typography variant="body2" color="text.secondary">
+                    Zacznij wpisywać, aby wyszukać miejsce
+                  </Typography>
+                </Box>
+              )}
             </Box>
-          )}
+          </>
+        )}
 
-          {!loading && results.length > 0 && (
-            <List sx={{ py: 0 }}>
-              {results.map((result) => (
-                <ListItem key={result.id} disablePadding>
-                  <ListItemButton
-                    onClick={() => handleResultClick(result)}
-                    sx={{
-                      px: 3,
-                      py: 1.5,
-                      '&:hover': {
-                        bgcolor: 'rgba(0, 0, 0, 0.04)',
-                      },
-                    }}
-                  >
-                    <LocationIcon
-                      sx={{
-                        fontSize: '20px',
-                        color: theme.palette.primary.main,
-                        mr: 2
-                      }}
-                    />
-                    <ListItemText
-                      primary={result.text}
-                      secondary={result.place_name}
-                      primaryTypographyProps={{
-                        fontSize: '14px',
-                        fontWeight: 500,
-                      }}
-                      secondaryTypographyProps={{
-                        fontSize: '12px',
-                        color: 'text.secondary',
-                      }}
-                    />
-                  </ListItemButton>
-                </ListItem>
-              ))}
-            </List>
-          )}
+        {/* Tab 2: Działki (Backend Layer Search) */}
+        {activeTab === 'parcels' && (
+          <ParcelSearchTab projectName={currentProject?.project_name || null} mapRef={mapRef} />
+        )}
 
-          {!loading && !searchQuery && (
-            <Box sx={{ textAlign: 'center', py: 4, px: 3 }}>
-              <SearchIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 2 }} />
-              <Typography variant="body2" color="text.secondary">
-                Zacznij wpisywać, aby wyszukać miejsce
-              </Typography>
-            </Box>
-          )}
-        </Box>
+        {/* Tab 3: Szczegółowe (TODO) */}
+        {activeTab === 'advanced' && (
+          <Box sx={{ textAlign: 'center', py: 8, px: 3 }}>
+            <FilterListIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
+            <Typography variant="h6" color="text.secondary" gutterBottom>
+              Wyszukiwanie szczegółowe
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Funkcja w budowie - zaawansowane filtrowanie według atrybutów
+            </Typography>
+          </Box>
+        )}
+
+        {/* Tab 4: Słowa kluczowe (TODO) */}
+        {activeTab === 'keywords' && (
+          <Box sx={{ textAlign: 'center', py: 8, px: 3 }}>
+            <LabelIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
+            <Typography variant="h6" color="text.secondary" gutterBottom>
+              Wyszukiwanie słów kluczowych
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Funkcja w budowie - wyszukiwanie według tagów i kategorii
+            </Typography>
+          </Box>
+        )}
       </DialogContent>
     </Dialog>
   );

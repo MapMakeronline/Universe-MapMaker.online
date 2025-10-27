@@ -87,6 +87,7 @@ export const baseApi = createApi({
     'Layers',         // List of layers
     'LayerAttributes', // Layer attribute column names
     'LayerStyle',     // Layer styling (QML/SLD)
+    'Search',         // Parcel search results
     'QGIS',
     'Users',
     'Admin',

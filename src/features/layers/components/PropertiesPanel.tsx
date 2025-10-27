@@ -88,6 +88,7 @@ interface PropertiesPanelProps {
   projectName?: string;
   wmsUrl?: string;
   wfsUrl?: string;
+  onRefetchProject?: () => void; // Callback to refetch project data after layer changes
 }
 
 export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
@@ -105,7 +106,8 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   findParentGroup,
   projectName = '',
   wmsUrl = '',
-  wfsUrl = ''
+  wfsUrl = '',
+  onRefetchProject
 }) => {
   const theme = useTheme();
   const dispatch = useDispatch();
@@ -368,6 +370,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
         open={layerInfoModalOpen}
         onClose={() => setLayerInfoModalOpen(false)}
         layer={selectedLayer}
+        onSave={onRefetchProject}
       />
 
       {/* Basemap Selector Modal */}

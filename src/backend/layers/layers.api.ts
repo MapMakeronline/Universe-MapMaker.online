@@ -506,6 +506,65 @@ export const layersApi = baseApi.injectEndpoints({
     }),
 
     /**
+     * Get Layer Attributes With Types
+     * GET /api/layer/attributes
+     * Retrieves all layer attributes with column names and types
+     *
+     * Backend endpoint: /api/layer/attributes
+     * Documentation: docs/backend/layer_api_docs.md (lines 1363-1408)
+     *
+     * Response:
+     * {
+     *   data: {
+     *     Types: {
+     *       "gid": "Integer",
+     *       "nazwa": "String",
+     *       "powierzchnia": "Real"
+     *     },
+     *     Attributes: {
+     *       "gid": [1, 2, 3, ...],
+     *       "nazwa": ["Działka A", "Działka B", ...],
+     *       "powierzchnia": [100.5, 250.3, ...]
+     *     }
+     *   },
+     *   success: boolean,
+     *   message: string
+     * }
+     */
+    getLayerAttributesWithTypes: builder.query<{
+      data: {
+        Types: Record<string, string>;
+        Attributes: Record<string, (string | number)[]>;
+      };
+      success: boolean;
+      message: string;
+    }, {
+      project: string;
+      layer_id: string;
+    }>({
+      query: ({ project, layer_id }) => ({
+        url: '/api/layer/attributes',
+        params: { project, layer_id },
+      }),
+      // Transform response if backend returns JSON as string
+      transformResponse: (response: any) => {
+        if (typeof response === 'string') {
+          try {
+            return JSON.parse(response);
+          } catch (error) {
+            console.error('Failed to parse layer attributes response:', error);
+            return response;
+          }
+        }
+        return response;
+      },
+      // Cache by layer_id
+      providesTags: (result, error, { layer_id }) => [
+        { type: 'LayerAttributes', id: layer_id },
+      ],
+    }),
+
+    /**
      * Import Layer Style (QML/SLD)
      * POST /api/layer/style/add
      * Imports style from QML or SLD file
@@ -659,6 +718,40 @@ export const layersApi = baseApi.injectEndpoints({
     }),
 
     /**
+     * Get Column Values
+     * GET /api/layer/column/values
+     * Get all unique values from a column
+     *
+     * Backend endpoint: /api/layer/column/values
+     * Documentation: docs/backend/layer_api_docs.md (lines 1452-1487)
+     *
+     * @example
+     * const { data } = useGetColumnValuesQuery({
+     *   project: 'moj_projekt',
+     *   layer_id: 'dzialki_layer',
+     *   column_name: 'obreb'
+     * });
+     * // data: ["0001", "0002", "0003"]
+     */
+    getColumnValues: builder.query<{
+      data: (string | number)[];
+      success: boolean;
+      message: string;
+    }, {
+      project: string;
+      layer_id: string;
+      column_name: string;
+    }>({
+      query: ({ project, layer_id, column_name }) => ({
+        url: '/api/layer/column/values',
+        params: { project, layer_id, column_name },
+      }),
+      providesTags: (result, error, { layer_id, column_name }) => [
+        { type: 'Layer', id: `${layer_id}-${column_name}` },
+      ],
+    }),
+
+    /**
      * Set Layer Published Status
      * POST /api/layer/published/set
      * Sets whether layer is published
@@ -694,6 +787,10 @@ export const {
   useDeleteLayerMutation,
   useGetLayerAttributesQuery,
   useLazyGetLayerAttributesQuery,
+  useGetLayerAttributesWithTypesQuery,
+  useLazyGetLayerAttributesWithTypesQuery,
+  useGetColumnValuesQuery,
+  useLazyGetColumnValuesQuery,
   useImportLayerStyleMutation,
   useAddLabelMutation,
   useRenameLayerMutation,

@@ -99,11 +99,13 @@ const MapContainer: React.FC<MapContainerProps> = ({ children, projectName }) =>
     };
   }, [projectName]); // REMOVED viewState dependency!
 
-  // Throttle onMove to reduce Redux updates (120 FPS = ~8ms between updates)
+  // Throttle onMove to reduce Redux updates (60 FPS = ~16ms between updates)
+  // OPTIMIZED: Reduced from 8ms (120 FPS) to 16ms (60 FPS) for better performance
+  // 60 FPS is still very smooth and reduces Redux/React re-renders by 50%
   const lastUpdateTime = useRef<number>(0);
   const onMove = useCallback((evt: any) => {
     const now = Date.now();
-    if (now - lastUpdateTime.current > 8) { // Throttle: 120 FPS for ultra-smooth movement
+    if (now - lastUpdateTime.current > 16) { // Throttle: 60 FPS for smooth movement with less overhead
       lastUpdateTime.current = now;
       dispatch(setViewState(evt.viewState));
     }
@@ -256,7 +258,7 @@ const MapContainer: React.FC<MapContainerProps> = ({ children, projectName }) =>
 
       {/* ===== RIGHT FAB TOOLBAR - Unified Material Icons FABs ===== */}
       {/* All tools in one vertical column with consistent styling */}
-      <RightFABToolbar />
+      <RightFABToolbar mapRef={mapRef} />
     </Box>
   );
 };

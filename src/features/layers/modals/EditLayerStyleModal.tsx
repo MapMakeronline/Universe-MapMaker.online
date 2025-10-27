@@ -311,13 +311,16 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
     setIsLoading(true);
 
     try {
-      // Create FormData with all required fields
+      // Create FormData with ONLY the file
+      // RTK Query endpoint will append project and layer_id
       const formData = new FormData();
-      formData.append('project', projectName);
-      formData.append('layer_id', layerId);
-
-      // Backend expects field name 'style' (not 'new_style.qml' or 'new_style.sld')
       formData.append('style', selectedFile);
+
+      console.log('📤 Sending style import request:', {
+        project: projectName,
+        layer_id: layerId,
+        fileName: selectedFile.name,
+      });
 
       await importStyle({
         project: projectName,

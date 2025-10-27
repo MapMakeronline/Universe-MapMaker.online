@@ -48,6 +48,14 @@ const nextConfig = {
   // Bundle size reduction: ~10-15% for typical apps
   experimental: {
     optimizePackageImports: ['@mui/material', '@mui/icons-material'],
+
+    // 🌐 DEV TUNNEL SUPPORT - Allow dev server access via SSH tunnel
+    // This prevents cross-origin warnings when accessing localhost:3000 through dev subdomain
+    // SSH tunnel: localhost:3000 -> VM:3000 -> Nginx -> dev.universemapmaker.online
+    allowedDevOrigins: [
+      'dev.universemapmaker.online',  // GCP VM SSH tunnel (permanent subdomain)
+      // 'your-subdomain.ngrok-free.dev',  // Ngrok (temporary, changes on restart)
+    ],
   },
 
   webpack: (config) => {

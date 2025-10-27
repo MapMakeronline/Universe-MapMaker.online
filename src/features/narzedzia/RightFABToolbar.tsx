@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useState } from "react"
-import { useMap } from 'react-map-gl'
+import { MapRef } from 'react-map-gl'
 import Fab from '@mui/material/Fab';
 import Tooltip from '@mui/material/Tooltip';
 import Box from '@mui/material/Box';
@@ -65,11 +65,16 @@ interface FABTool {
   authRequired?: boolean;
 }
 
-const RightFABToolbar: React.FC = () => {
+interface RightFABToolbarProps {
+  mapRef: React.RefObject<MapRef>;
+}
+
+const RightFABToolbar: React.FC<RightFABToolbarProps> = ({ mapRef }) => {
   const theme = useTheme();
   const router = useRouter()
   const dispatch = useAppDispatch()
-  const { current: map } = useMap()
+  // ✅ Use mapRef.current instead of useMap() hook (RightFABToolbar is rendered outside <Map> component)
+  const map = mapRef.current?.getMap();
   const { measurement, identify } = useAppSelector((state) => state.draw)
   const { user, isAuthenticated } = useAppSelector((state) => state.auth)
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -548,6 +553,7 @@ const RightFABToolbar: React.FC = () => {
       <SearchModal
         open={searchModalOpen}
         onClose={() => setSearchModalOpen(false)}
+        mapRef={mapRef}
       />
 
       {/* Measurement Modal */}

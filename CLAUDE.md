@@ -83,7 +83,139 @@ npm run lint         # Run ESLint
 .\screenshot.bat http://localhost:3000/dashboard    # Screenshot specific page
 .\screenshot.ps1 http://localhost:3000              # PowerShell version
 powershell -ExecutionPolicy Bypass -File screenshot.ps1 "http://localhost:3000/dashboard"
+
+# Dev Tunnel (External Access) - GCP SSH Tunnel
+gcloud compute ssh universe-backend --zone=europe-central2-a -- -R 3000:localhost:3000 -N
+# Public URL: http://dev.universemapmaker.online
+# See DEV-TUNNEL-SETUP.md for full documentation
 ```
+
+## Dev Tunnel Configuration (GCP SSH Tunnel) ✅ RECOMMENDED
+
+**Current Setup:** Permanent subdomain `dev.universemapmaker.online` via SSH tunnel through GCP VM
+
+**Public URL:** http://dev.universemapmaker.online
+**Localhost:** http://localhost:3000
+**Method:** SSH Reverse Tunnel → VM → Nginx → Public DNS
+
+**Full Documentation:** See [DEV-TUNNEL-SETUP.md](./DEV-TUNNEL-SETUP.md)
+
+### Quick Start
+
+**Terminal 1: Dev Server**
+```bash
+npm run dev
+```
+
+**Terminal 2: SSH Tunnel**
+```bash
+gcloud compute ssh universe-backend --zone=europe-central2-a -- -R 3000:localhost:3000 -N
+# Keep this terminal open - tunnel runs in background
+# Press Ctrl+C to stop tunnel
+```
+
+**Access:**
+- Public: http://dev.universemapmaker.online
+- Local: http://localhost:3000
+
+### Why This Instead of Ngrok?
+
+| Feature | GCP SSH Tunnel | Ngrok Free |
+|---------|----------------|------------|
+| Permanent subdomain | ✅ `dev.universemapmaker.online` | ❌ Random on restart |
+| Cost | ✅ Free (uses existing VM) | ❌ $8/month for permanent |
+| Own domain | ✅ Yes | ❌ Only paid plan |
+| Setup | ✅ One command | ❌ Browser auth each time |
+| CORS | ✅ Add once | ❌ Update every restart |
+
+---
+
+## Ngrok Configuration (Legacy - Not Recommended)
+
+**NOTE:** We now use GCP SSH Tunnel (above) for a permanent subdomain. Ngrok info kept for reference only.
+
+<details>
+<summary>Click to expand ngrok legacy documentation</summary>
+
+**Previous ngrok setup** (for reference if tunnel unavailable):
+
+### Setup (One-time)
+
+1. **Install ngrok:** Download from https://ngrok.com/download
+2. **Add authtoken:**
+   ```bash
+   ngrok config add-authtoken YOUR_AUTHTOKEN
+   ```
+3. **Start tunnel:**
+   ```bash
+   ngrok http 3000
+   ```
+
+### Usage
+
+**Start ngrok tunnel:**
+```bash
+# Terminal 1: Start dev server
+npm run dev
+
+# Terminal 2: Start ngrok tunnel
+ngrok http 3000
+```
+
+**Check tunnel status:**
+- Web interface: http://localhost:4040
+- API: `curl http://localhost:4040/api/tunnels`
+
+**Your public URL will be displayed:**
+```
+Session Status    online
+Forwarding        https://[subdomain].ngrok-free.dev -> http://localhost:3000
+```
+
+### Next.js Configuration
+
+To prevent cross-origin warnings when using ngrok, add your tunnel domain to `next.config.mjs`:
+
+```javascript
+experimental: {
+  allowedDevOrigins: [
+    'your-subdomain.ngrok-free.dev'  // Add your actual ngrok subdomain
+  ],
+}
+```
+
+**Example:**
+If your ngrok URL is `https://wailful-symmetric-tamera.ngrok-free.dev`, add:
+```javascript
+allowedDevOrigins: ['wailful-symmetric-tamera.ngrok-free.dev']
+```
+
+### Common Use Cases
+
+1. **Mobile Testing:** Share ngrok URL with mobile devices to test responsive design
+2. **External API Webhooks:** Receive webhooks from external services (Stripe, GitHub, etc.)
+3. **Client Preview:** Share work-in-progress with clients without deploying
+4. **Remote Debugging:** Debug issues on external devices
+
+### Troubleshooting
+
+**"Cross origin request detected" warning:**
+- Add ngrok domain to `allowedDevOrigins` in `next.config.mjs`
+- Restart dev server: `npm run dev`
+
+**"ERR_NGROK_108" (session limit):**
+- Free plan: 1 session at a time
+- Kill existing session: `pkill ngrok`
+- Restart tunnel: `ngrok http 3000`
+
+**Blank screen on ngrok URL:**
+- Free accounts show "Visit Site" button first
+- Click "Visit Site" to access your app
+- OR use `ngrok http 3000 --log=stdout` for detailed logs
+
+</details>
+
+---
 
 ## ShareX Screenshot Analysis Workflow
 

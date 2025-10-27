@@ -1,0 +1,45 @@
+# Ngrok Configuration Example
+# Copy this file to your actual ngrok session notes
+
+## Current Ngrok Session (Example)
+
+**Tunnel URL:** https://wailful-symmetric-tamera.ngrok-free.dev
+**Started:** 2025-10-26 00:32:33
+**Local:** http://localhost:3000
+
+## How to Use
+
+1. Start dev server:
+   npm run dev
+
+2. Start ngrok tunnel:
+   ngrok http 3000
+
+3. Get your public URL from ngrok output or:
+   curl http://localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url'
+
+4. Add domain to next.config.mjs:
+   allowedDevOrigins: ['your-actual-subdomain.ngrok-free.dev']
+
+5. Restart dev server to apply changes
+
+## Web Interface
+
+Open in browser: http://localhost:4040
+
+Features:
+- Live request logs
+- Replay requests
+- Request inspector
+- Tunnel status
+
+## Stopping
+
+Press Ctrl+C in ngrok terminal or:
+pkill ngrok
+
+## Notes
+
+- Free plan: 1 tunnel at a time
+- URL changes each restart (unless using paid plan)
+- Remember to update allowedDevOrigins when URL changes
