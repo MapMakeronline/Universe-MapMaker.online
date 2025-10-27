@@ -37,9 +37,17 @@ import ListItemText from '@mui/material/ListItemText';
 import { useTheme } from '@mui/material/styles';
 import { MapRef } from 'react-map-gl';
 import mapboxgl from 'mapbox-gl';
+import proj4 from 'proj4';
 import { useLazyGetColumnValuesQuery, useLazyGetLayerAttributesWithTypesQuery } from '@/backend/layers';
 import { useLazySearchInProjectQuery } from '@/backend/search';
 import { useAppSelector } from '@/redux/hooks';
+
+// Coordinate system definitions for transformation
+const EPSG_3857 = 'EPSG:3857'; // Web Mercator (meters)
+const EPSG_4326 = 'EPSG:4326'; // WGS84 (degrees long/lat)
+
+proj4.defs(EPSG_3857, '+proj=merc +a=6378137 +b=6378137 +lat_ts=0 +lon_0=0 +x_0=0 +y_0=0 +k=1 +units=m +nadgrids=@null +wktext +no_defs +type=crs');
+proj4.defs(EPSG_4326, '+proj=longlat +datum=WGS84 +no_defs +type=crs');
 
 interface ParcelSearchTabProps {
   projectName: string | null;
@@ -253,6 +261,39 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef }
   };
 
   /**
+   * Transform coordinates from EPSG:3857 (Web Mercator) to EPSG:4326 (WGS84)
+   * @param coords [x, y] in EPSG:3857 (meters)
+   * @returns [lng, lat] in EPSG:4326 (degrees)
+   */
+  const transformCoordinates = (coords: [number, number]): [number, number] => {
+    return proj4(EPSG_3857, EPSG_4326, coords) as [number, number];
+  };
+
+  /**
+   * Transform entire GeoJSON geometry from EPSG:3857 to EPSG:4326
+   * @param geometry GeoJSON geometry in EPSG:3857
+   * @returns GeoJSON geometry in EPSG:4326
+   */
+  const transformGeometry = (geometry: any): any => {
+    if (!geometry || !geometry.coordinates) return geometry;
+
+    const transformCoordArray = (coords: any): any => {
+      if (typeof coords[0] === 'number') {
+        // Single point [x, y] → transform
+        return transformCoordinates(coords as [number, number]);
+      } else {
+        // Array of points → recurse
+        return coords.map((coord: any) => transformCoordArray(coord));
+      }
+    };
+
+    return {
+      ...geometry,
+      coordinates: transformCoordArray(geometry.coordinates)
+    };
+  };
+
+  /**
    * Calculate bounding box for GeoJSON geometry
    * @returns [minLng, minLat, maxLng, maxLat]
    */
@@ -331,17 +372,24 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef }
     }
 
     try {
-      // ✅ Krok 2: Oblicz bounds (bbox) z geometrii
+      // ✅ Krok 2: Oblicz bounds (bbox) z geometrii (EPSG:3857)
       const bbox = getGeometryBounds(featureGeometry);
-      const [minLng, minLat, maxLng, maxLat] = bbox;
+      const [minX, minY, maxX, maxY] = bbox;
 
+      // ✅ Krok 2.5: Transformuj współrzędne z EPSG:3857 → EPSG:4326
+      const [minLng, minLat] = transformCoordinates([minX, minY]);
+      const [maxLng, maxLat] = transformCoordinates([maxX, maxY]);
 
+      console.log('🗺️ Transformed coordinates:', {
+        original: { minX, minY, maxX, maxY },
+        wgs84: { minLng, minLat, maxLng, maxLat }
+      });
 
-      // ✅ Krok 3: Przybliż mapę do działki
+      // ✅ Krok 3: Przybliż mapę do działki (używając WGS84 coordinates)
       map.fitBounds(
         [
-          [minLng, minLat], // southwest
-          [maxLng, maxLat]  // northeast
+          [minLng, minLat], // southwest (WGS84)
+          [maxLng, maxLat]  // northeast (WGS84)
         ],
         {
           padding: 100,        // 100px padding wokół działki
@@ -365,11 +413,14 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef }
       }
 
       // Dodaj nowe podświetlenie (pomarańczowy outline)
+      // ✅ Przetransformuj geometrię do WGS84 przed dodaniem do mapy
+      const transformedGeometry = transformGeometry(featureGeometry);
+
       map.addSource(highlightSourceId, {
         type: 'geojson',
         data: {
           type: 'Feature',
-          geometry: featureGeometry,
+          geometry: transformedGeometry, // ✅ Używamy przetransformowanej geometrii (WGS84)
           properties: featureProperties,
         },
       });
