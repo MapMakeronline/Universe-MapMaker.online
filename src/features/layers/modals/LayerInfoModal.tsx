@@ -7,7 +7,7 @@
  * - ⏭️ Widoczność od skali: POST /api/layer/scale (SKIPPED - backend bug: missing import)
  * - ✅ Widoczność w trybie opublikowanym: POST /api/layer/published/set (setLayerPublished)
  * - ⏭️ Domyślne wyświetlanie: POST /api/layer/selection (SKIPPED - side effect: unchecks all other layers)
- * - 🚧 Eksport warstwy: GET /api/layer/export (TODO - not implemented yet)
+ * - ✅ Eksport warstwy: GET /api/layer/export (useLazyExportLayerQuery - RTK Query)
  *
  * Layout: Tabs (podobnie jak EditLayerStyleModal)
  * - Zakładka 1: Informacje ogólne (Nazwa, Grupa, Typ geometrii, Tabela atrybutów)
@@ -47,6 +47,7 @@ import {
   useSetLayerOpacityMutation,
   useSetLayerScaleMutation,
   useSetLayerPublishedMutation,
+  useLazyExportLayerQuery,
   // useSetLayerVisibilityMutation - removed (causes side effect)
 } from '@/backend/layers';
 import { LayerNode } from '@/types-app/layers';
@@ -112,6 +113,7 @@ export const LayerInfoModal: React.FC<LayerInfoModalProps> = ({
   const [updateLayerOpacity, { isLoading: isSettingOpacity }] = useSetLayerOpacityMutation();
   const [updateLayerScale, { isLoading: isSettingScale }] = useSetLayerScaleMutation();
   const [updateLayerPublished, { isLoading: isSettingPublished }] = useSetLayerPublishedMutation();
+  const [triggerExport] = useLazyExportLayerQuery();
   // const [updateLayerVisibility, { isLoading: isSettingVisibility }] = useSetLayerVisibilityMutation(); // Removed - causes side effect
 
   // Combined loading state
@@ -277,42 +279,33 @@ export const LayerInfoModal: React.FC<LayerInfoModalProps> = ({
     setError(null);
 
     try {
-      // Build export URL
-      const exportUrl = new URL('/api/layer/export', 'https://api.universemapmaker.online');
-      exportUrl.searchParams.set('project', projectName);
-      exportUrl.searchParams.set('layer_id', layer.id);
-      exportUrl.searchParams.set('epsg', exportEpsg.toString());
-      exportUrl.searchParams.set('layer_format', exportFormat);
-
-      // Get auth token
-      const token = localStorage.getItem('authToken');
-      if (!token) {
-        throw new Error('Brak tokenu autoryzacji');
-      }
-
-      console.log('📥 Exporting layer:', {
+      console.log('📥 Exporting layer via RTK Query:', {
         project: projectName,
         layer_id: layer.id,
         format: exportFormat,
         epsg: exportEpsg,
-        url: exportUrl.toString(),
       });
 
-      // Fetch the file
-      const response = await fetch(exportUrl.toString(), {
-        method: 'GET',
-        headers: {
-          Authorization: token,
-        },
+      // Use RTK Query to fetch the blob (auth token added automatically by baseApi)
+      const result = await triggerExport({
+        project: projectName,
+        layer_id: layer.id,
+        epsg: exportEpsg,
+        layer_format: exportFormat,
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'Błąd podczas eksportowania warstwy' }));
-        throw new Error(errorData.message || `HTTP ${response.status}`);
+      if (result.error) {
+        throw new Error((result.error as any)?.data?.message || 'Błąd podczas eksportowania warstwy');
       }
 
-      // Get the blob
-      const blob = await response.blob();
+      if (!result.data) {
+        throw new Error('Brak danych do pobrania');
+      }
+
+      // Ensure data is a Blob (RTK Query might return ArrayBuffer or other format)
+      const blob = result.data instanceof Blob
+        ? result.data
+        : new Blob([result.data], { type: 'application/octet-stream' });
 
       // Create download link
       const downloadUrl = window.URL.createObjectURL(blob);

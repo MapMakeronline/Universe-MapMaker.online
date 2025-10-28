@@ -772,6 +772,61 @@ export const layersApi = baseApi.injectEndpoints({
         'Layers',
       ],
     }),
+
+    /**
+     * Export Layer
+     * GET /api/layer/export
+     * Downloads layer in specified format (Shapefile, GeoJSON, GML, KML)
+     *
+     * Backend endpoint: /api/layer/export
+     * Documentation: docs/backend/layer_api_docs.md
+     *
+     * Returns: Binary file (blob)
+     * - ESRI SHAPEFILE: .zip containing .shp, .shx, .dbf, .prj, .cpg
+     * - GEOJSON: .geojson file
+     * - GML: .gml file (OGC standard)
+     * - KML: .kml file (Google Earth)
+     *
+     * IMPORTANT: This is a download endpoint (returns blob, not JSON).
+     * RTK Query doesn't handle blob responses well, so we use queryFn.
+     */
+    exportLayer: builder.query<Blob, {
+      project: string;
+      layer_id: string;
+      epsg: number;
+      layer_format: 'ESRI SHAPEFILE' | 'GML' | 'KML' | 'GEOJSON';
+    }>({
+      queryFn: async ({ project, layer_id, epsg, layer_format }, _queryApi, _extraOptions, fetchWithBQ) => {
+        try {
+          // Build URL with query params
+          const url = `/api/layer/export?project=${encodeURIComponent(project)}&layer_id=${encodeURIComponent(layer_id)}&epsg=${epsg}&layer_format=${encodeURIComponent(layer_format)}`;
+
+          // Use RTK Query's fetchWithBQ (includes auth token automatically)
+          const result = await fetchWithBQ({
+            url,
+            method: 'GET',
+            responseHandler: 'content-type', // Let RTK Query detect content type
+          });
+
+          if (result.error) {
+            return { error: result.error };
+          }
+
+          // Convert response to blob
+          const blob = result.data as Blob;
+          return { data: blob };
+        } catch (error: any) {
+          return {
+            error: {
+              status: 'CUSTOM_ERROR',
+              error: error.message || 'Failed to export layer',
+            },
+          };
+        }
+      },
+      // No caching needed for exports (always fresh download)
+      keepUnusedDataFor: 0,
+    }),
   }),
 });
 
@@ -797,4 +852,5 @@ export const {
   useSetLayerOpacityMutation,
   useSetLayerScaleMutation,
   useSetLayerPublishedMutation,
+  useLazyExportLayerQuery,
 } = layersApi;
