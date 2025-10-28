@@ -118,7 +118,12 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
     : '';
 
   // Fetch project data to get the display name
-  const { data: projectData, refetch: refetchProjectData } = useGetProjectDataQuery(
+  const {
+    data: projectData,
+    refetch: refetchProjectData,
+    isLoading: isProjectDataLoading,
+    error: projectDataError,
+  } = useGetProjectDataQuery(
     { project: projectName, published: false },
     { skip: !projectName }
   );
@@ -316,11 +321,40 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
     closeModal('printConfig');
   };
 
+  // Validate project has .qgs file before allowing layer import
+  const handleImportLayerClick = () => {
+    // Check if project data is loading or has error
+    if (isProjectDataLoading) {
+      dispatch(showInfo('Ładowanie projektu...'));
+      return;
+    }
+
+    if (projectDataError) {
+      const errorData = projectDataError as any;
+      const errorMessage = errorData?.data?.message || 'Nie można załadować projektu';
+
+      console.error('❌ Project validation failed:', {
+        error: errorData,
+        message: errorMessage,
+      });
+
+      dispatch(showError(
+        `${errorMessage}. ` +
+        'Aby dodać warstwy, musisz najpierw utworzyć projekt przez "Dashboard → Nowy Projekt" ' +
+        'lub zaimportować plik .qgs/.qgz.'
+      ));
+      return;
+    }
+
+    // Project is valid, open import modal
+    openModal('importLayer');
+  };
+
   const toolbarHandlers = {
     onAddInspireDataset: () => openModal('addDataset'),
     onAddNationalLaw: () => openModal('addNationalLaw'),
     onAddLayer: () => openModal('addLayer'),
-    onImportLayer: () => openModal('importLayer'),
+    onImportLayer: handleImportLayerClick, // Use validation function
     onAddGroup: () => openModal('addGroup'),
     onRemoveLayer: handleDeleteLayerClick,
     onCreateConsultation: () => openModal('createConsultation'),
