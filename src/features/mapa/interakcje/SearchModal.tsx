@@ -212,7 +212,7 @@ const SearchModal: React.FC<SearchModalProps> = ({ open, onClose, mapRef }) => {
       >
         {/* Tab 1: Działki (Backend Layer Search) */}
         {activeTab === 'parcels' && (
-          <ParcelSearchTab projectName={projectName} mapRef={mapRef} />
+          <ParcelSearchTab projectName={projectName} mapRef={mapRef} onClose={handleClose} />
         )}
 
         {/* Tab 2: Wyszukiwanie globalne (Mapbox Geocoding) */}

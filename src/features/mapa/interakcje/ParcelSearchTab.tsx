@@ -144,9 +144,10 @@ const sortPlotNumbers = (a: string, b: string): number => {
 interface ParcelSearchTabProps {
   projectName: string | null;
   mapRef: React.RefObject<MapRef>;
+  onClose?: () => void; // Optional callback to close search modal
 }
 
-const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef }) => {
+const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, onClose }) => {
   const theme = useTheme();
 
   // Get layers from Redux (tree.json loaded layers)
@@ -398,9 +399,59 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef }
               }
             );
 
+            // ✅ Add yellow highlight to map (like old search)
+            const map = mapRef.current?.getMap();
+            if (map) {
+              const highlightSourceId = 'parcel-highlight';
+              const highlightLayerId = 'parcel-highlight-layer';
+
+              // Remove existing highlight if any
+              if (map.getLayer(highlightLayerId)) {
+                map.removeLayer(highlightLayerId);
+              }
+              if (map.getSource(highlightSourceId)) {
+                map.removeSource(highlightSourceId);
+              }
+
+              // Add new yellow highlight
+              map.addSource(highlightSourceId, {
+                type: 'geojson',
+                data: {
+                  type: 'Feature',
+                  geometry: transformedGeometry,
+                  properties: firstFeature.properties,
+                },
+              });
+
+              map.addLayer({
+                id: highlightLayerId,
+                type: 'line',
+                source: highlightSourceId,
+                paint: {
+                  'line-color': '#FFFF00',    // Yellow (żółty obrys)
+                  'line-width': 4,
+                  'line-opacity': 1,
+                },
+              });
+            }
+
+            // Format features for IdentifyModal
+            const formattedFeatures = matchedFeatures.map(feature => ({
+              layer: parcelLayerId || 'Działki',
+              sourceLayer: 'WFS',
+              properties: Object.entries(feature.properties || {}).map(([key, value]) => ({
+                key,
+                value,
+              })),
+              geometry: transformGeometry(feature.geometry),
+            }));
+
             // Show all matched features in identify modal
-            setIdentifiedFeatures(matchedFeatures);
+            setIdentifiedFeatures(formattedFeatures);
             setIdentifyModalOpen(true);
+
+            // ✅ Close search modal
+            onClose?.();
           }
         } else {
           alert('Nie znaleziono działki spełniającej kryteria');
@@ -712,7 +763,7 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef }
         type: 'line',
         source: highlightSourceId,
         paint: {
-          'line-color': '#ff9800',    // Pomarańczowy (zgodnie z backendem)
+          'line-color': '#FFFF00',    // Yellow (żółty obrys)
           'line-width': 4,
           'line-opacity': 1,
         },
@@ -739,6 +790,9 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef }
 
       setIdentifiedFeatures(formattedFeatures);
       setIdentifyModalOpen(true);
+
+      // ✅ Close search modal
+      onClose?.();
 
 
 
