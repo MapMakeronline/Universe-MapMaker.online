@@ -40,7 +40,8 @@ import mapboxgl from 'mapbox-gl';
 import proj4 from 'proj4';
 import { useLazyGetColumnValuesQuery, useLazyGetLayerAttributesWithTypesQuery } from '@/backend/layers';
 import { useLazySearchInProjectQuery } from '@/backend/search';
-import { useAppSelector } from '@/redux/hooks';
+import { useAppSelector, useAppDispatch } from '@/redux/hooks';
+import { addLoadingTask, removeLoadingTask } from '@/redux/slices/loadingSlice';
 import IdentifyModal from '@/features/layers/modals/IdentifyModal';
 import { getQGISFeatureInfoMultiLayer } from '@/lib/qgis/getFeatureInfo';
 
@@ -62,7 +63,8 @@ proj4.defs(EPSG_4326, '+proj=longlat +datum=WGS84 +no_defs +type=crs');
  */
 const fetchWFSFeatures = async (
   projectName: string,
-  layerName: string
+  layerName: string,
+  dispatch?: any
 ): Promise<any> => {
   try {
     // Check localStorage cache first (10 minute TTL)
@@ -95,6 +97,13 @@ const fetchWFSFeatures = async (
     const url = `https://api.universemapmaker.online/ows?SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature&TYPENAME=${encodedLayerName}&OUTPUTFORMAT=application/json&MAP=/projects/${projectName}/${projectName}.qgs`;
 
     console.log(`🌐 Fetching WFS features for ${layerName} (first load may take 20-30s for large datasets)`);
+
+    // Add loading task to global loader
+    const taskId = `wfs-fetch-${projectName}-${layerName}`;
+    if (dispatch) {
+      dispatch({ type: 'loading/addLoadingTask', payload: { id: taskId, message: `Ładowanie obrębów działek...` } });
+    }
+
     const startTime = performance.now();
 
     const response = await fetch(url);
@@ -127,9 +136,21 @@ const fetchWFSFeatures = async (
       console.warn('⚠️ Failed to cache WFS data (localStorage full?)');
     }
 
+    // Remove loading task
+    if (dispatch) {
+      dispatch({ type: 'loading/removeLoadingTask', payload: taskId });
+    }
+
     return geojson;
   } catch (error) {
     console.error('❌ Error fetching WFS data:', error);
+
+    // Remove loading task on error
+    const taskId = `wfs-fetch-${projectName}-${layerName}`;
+    if (dispatch) {
+      dispatch({ type: 'loading/removeLoadingTask', payload: taskId });
+    }
+
     return { type: 'FeatureCollection', features: [] };
   }
 };
@@ -189,6 +210,7 @@ interface ParcelSearchTabProps {
 
 const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, onClose }) => {
   const theme = useTheme();
+  const dispatch = useAppDispatch();
 
   // Get layers from Redux (tree.json loaded layers)
   const { layers } = useAppSelector((state) => state.layers);
@@ -314,7 +336,7 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
     const layer = allLayers.find((l: any) => l.id === parcelLayerId);
 
     if (layer) {
-      fetchWFSFeatures(projectName, layer.name)
+      fetchWFSFeatures(projectName, layer.name, dispatch)
         .then((geojson) => {
           setWfsFeatures(geojson);
           setWfsLoading(false);
@@ -326,7 +348,7 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
     } else {
       setWfsLoading(false);
     }
-  }, [projectName, parcelLayerId, isAuthenticated, layers]);
+  }, [projectName, parcelLayerId, isAuthenticated, layers, dispatch]);
 
   // Fetch precincts for authenticated users (Django API)
   useEffect(() => {

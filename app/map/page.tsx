@@ -34,6 +34,11 @@ const LayersFAB = dynamic(
   { ssr: false }
 );
 
+const MapLoadingIndicator = dynamic(
+  () => import('@/features/mapa/komponenty/MapLoadingIndicator'),
+  { ssr: false }
+);
+
 // REMOVED: QGISProjectLoader (duplicated layers with different IDs)
 // const QGISProjectLoader = dynamic(
 //   () => import('@/src/components/qgis/QGISProjectLoader').then(mod => ({ default: mod.QGISProjectLoader })),
@@ -323,6 +328,9 @@ export default function MapPage() {
         layersCount={layersCount}
         onToggle={handleToggleLeftPanel}
       />
+
+      {/* MapLoadingIndicator - Global loading indicator (bottom right corner, above LayersFAB) */}
+      <MapLoadingIndicator isLeftPanelOpen={!leftPanelCollapsed} />
     </>
   );
 }
