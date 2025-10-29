@@ -926,8 +926,8 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
 
       setIdentifyCoordinates([centerLng, centerLat]);
 
-      // Format feature properties for IdentifyModal
-      const formattedFeatures = [{
+      // Format parcel feature for IdentifyModal
+      const parcelFeature = {
         layer: 'Działki',
         sourceLayer: 'QGIS Server',
         properties: Object.entries(featureProperties).map(([key, value]) => ({
@@ -935,14 +935,73 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
           value,
         })),
         geometry: transformedGeometry,
-      }];
+      };
+
+      // ✅ Query ALL visible layers at parcel center (like IdentifyTool does)
+      let allLayerFeatures = [parcelFeature]; // Start with parcel feature
+
+      try {
+        // Get visible layers from Redux state
+        const getVisibleLayers = () => {
+          const visible: string[] = [];
+          const traverse = (items: any[]) => {
+            items.forEach((item) => {
+              if (item.type === 'group' && item.children) {
+                traverse(item.children);
+              } else if (item.visible && item.name) {
+                visible.push(item.name);
+              }
+            });
+          };
+          traverse(layers);
+          return visible;
+        };
+
+        const visibleLayers = getVisibleLayers();
+        console.log(`🔍 Querying ${visibleLayers.length} visible layers at parcel center`);
+
+        // Query QGIS Server for all visible layers at parcel center
+        const qgisResult = await getQGISFeatureInfoMultiLayer(
+          {
+            project: projectName,
+            clickPoint: { lng: centerLng, lat: centerLat },
+            bounds: map.getBounds(),
+            width: map.getCanvas().width,
+            height: map.getCanvas().height,
+            featureCount: 10,
+          },
+          visibleLayers
+        );
+
+        // Format QGIS features for IdentifyModal
+        const qgisFeatures = qgisResult.features.map((feature: any) => {
+          const layerName = feature.id?.split('.')[0] || 'Unknown';
+          return {
+            layer: layerName,
+            sourceLayer: 'QGIS Server',
+            properties: Object.entries(feature.properties || {}).map(([key, value]) => ({
+              key,
+              value,
+            })),
+            geometry: feature.geometry,
+          };
+        });
+
+        console.log(`✅ Found ${qgisFeatures.length} features from other layers`);
+
+        // Combine parcel feature + other layer features
+        allLayerFeatures = [parcelFeature, ...qgisFeatures];
+      } catch (error) {
+        console.error('❌ Error querying other layers:', error);
+        // Continue with just parcel feature if QGIS query fails
+      }
 
       // ✅ Close search modal FIRST
       onClose?.();
 
-      // Show identify modal (delayed to let search modal close)
+      // Show all features in identify modal (delayed to let search modal close)
       setTimeout(() => {
-        setIdentifiedFeatures(formattedFeatures);
+        setIdentifiedFeatures(allLayerFeatures);
         setIdentifyModalOpen(true);
       }, 100);
 
