@@ -557,6 +557,11 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
                 // Query QGIS Server for all visible layers
                 // Use synthetic bounds centered on parcel centroid instead of current map viewport
                 console.log('🌐 GUEST USER: Calling getQGISFeatureInfoMultiLayer...');
+
+                // Add loading task
+                const identifyTaskId = `identify-parcel-${Date.now()}`;
+                dispatch(addLoadingTask({ id: identifyTaskId, message: 'Identyfikacja obiektów...' }));
+
                 const qgisResult = await getQGISFeatureInfoMultiLayer(
                   {
                     project: projectName,
@@ -568,6 +573,9 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
                   },
                   visibleLayers
                 );
+
+                // Remove loading task
+                dispatch(removeLoadingTask(identifyTaskId));
 
                 console.log('✅ GUEST USER: QGIS query returned:', qgisResult);
 
@@ -593,6 +601,9 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
               }
             } catch (error) {
               console.error('❌ GUEST USER: Error querying other layers:', error);
+              // Remove loading task on error
+              const identifyTaskId = `identify-parcel-${Date.now()}`;
+              dispatch(removeLoadingTask(identifyTaskId));
               // If QGIS query fails, modal will show no features (user can retry search)
             }
 
@@ -1012,6 +1023,10 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
         const visibleLayers = getVisibleLayers();
         console.log(`🔍 Querying ${visibleLayers.length} visible layers at parcel center`);
 
+        // Add loading task
+        const identifyTaskId = `identify-parcel-auth-${Date.now()}`;
+        dispatch(addLoadingTask({ id: identifyTaskId, message: 'Identyfikacja obiektów...' }));
+
         // Query QGIS Server for all visible layers at parcel center
         // Use synthetic bounds instead of current viewport (ensures valid pixel coords)
         const qgisResult = await getQGISFeatureInfoMultiLayer(
@@ -1025,6 +1040,9 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
           },
           visibleLayers
         );
+
+        // Remove loading task
+        dispatch(removeLoadingTask(identifyTaskId));
 
         // Format QGIS features for IdentifyModal
         const qgisFeatures = qgisResult.features.map((feature: any) => {
@@ -1046,6 +1064,9 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
         allLayerFeatures = qgisFeatures;
       } catch (error) {
         console.error('❌ Error querying other layers:', error);
+        // Remove loading task on error
+        const identifyTaskId = `identify-parcel-auth-${Date.now()}`;
+        dispatch(removeLoadingTask(identifyTaskId));
         // If QGIS query fails, modal will show no features (user can retry search)
       }
 
