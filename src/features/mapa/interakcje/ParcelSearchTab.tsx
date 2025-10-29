@@ -502,17 +502,19 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef }
     let fromCRS = sourceCRS;
     if (!fromCRS) {
       const [x, y] = coords;
-      // EPSG:2180 (Polish Grid): x ~200000-900000, y ~-5800000 to -5000000
-      if (x > 100000 && x < 1000000 && y < -4000000 && y > -6000000) {
+
+      // PRIORITY 1: Already EPSG:4326 (WGS84): x ~-180 to 180, y ~-90 to 90
+      if (Math.abs(x) <= 180 && Math.abs(y) <= 90) {
+        console.log('✅ Coordinates already in EPSG:4326 (WGS84):', coords);
+        return coords; // Already in WGS84
+      }
+      // PRIORITY 2: EPSG:2180 (Polish Grid): x ~200000-900000, y ~-5800000 to -5000000
+      else if (x > 100000 && x < 1000000 && y < -4000000 && y > -6000000) {
         fromCRS = EPSG_2180;
       }
-      // EPSG:3857 (Web Mercator): x ~-20000000 to 20000000, y ~-20000000 to 20000000
+      // PRIORITY 3: EPSG:3857 (Web Mercator): x ~-20000000 to 20000000, y ~-20000000 to 20000000
       else if (Math.abs(x) < 40000000 && Math.abs(y) < 40000000) {
         fromCRS = EPSG_3857;
-      }
-      // Already EPSG:4326: x ~-180 to 180, y ~-90 to 90
-      else if (Math.abs(x) <= 180 && Math.abs(y) <= 90) {
-        return coords; // Already in WGS84
       }
       else {
         console.warn('⚠️ Could not auto-detect CRS for coordinates:', coords);
@@ -543,10 +545,19 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef }
         // Auto-detect CRS from first coordinate if not already detected
         if (!detectedCRS) {
           const [x, y] = coords;
-          if (x > 100000 && x < 1000000 && y < -4000000 && y > -6000000) {
+
+          // PRIORITY 1: Already EPSG:4326 (WGS84)
+          if (Math.abs(x) <= 180 && Math.abs(y) <= 90) {
+            detectedCRS = EPSG_4326;
+            console.log('🔍 Auto-detected CRS: EPSG:4326 (WGS84) - no transformation needed');
+          }
+          // PRIORITY 2: EPSG:2180 (Polish Grid)
+          else if (x > 100000 && x < 1000000 && y < -4000000 && y > -6000000) {
             detectedCRS = EPSG_2180;
             console.log('🔍 Auto-detected CRS: EPSG:2180 (Polish Grid)');
-          } else {
+          }
+          // PRIORITY 3: EPSG:3857 (Web Mercator)
+          else {
             detectedCRS = EPSG_3857;
             console.log('🔍 Auto-detected CRS: EPSG:3857 (Web Mercator)');
           }
