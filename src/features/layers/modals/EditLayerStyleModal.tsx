@@ -22,6 +22,12 @@ import {
   TableCell,
   Collapse,
   CircularProgress,
+  FormControlLabel,
+  Switch,
+  FormControl,
+  InputLabel,
+  Select,
+  FormHelperText,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import AddIcon from '@mui/icons-material/Add';
@@ -61,6 +67,10 @@ import {
   alphaToOpacity,
   opacityToAlpha,
 } from '@/utils/colorConversion';
+// Layer scale visibility hook
+import {
+  useSetLayerScaleMutation,
+} from '@/backend/layers';
 
 // TODO: Export style endpoint not yet implemented in @/backend/layers
 const useLazyExportStyleQuery = () => [async () => {}, { data: null, isLoading: false }] as any;
@@ -121,6 +131,7 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
 
   // RTK Query mutations
   const [setLayerOpacity] = useSetLayerOpacityMutation();
+  const [setLayerScale] = useSetLayerScaleMutation();
 
   // Tab 1: Pojedynczy symbol - ARRAY of fill layers
   const [fillLayers, setFillLayers] = useState<FillLayer[]>([
@@ -154,6 +165,13 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
     size: 8,
     minScale: 1,
     maxScale: 1000000,
+  });
+
+  // Tab 5: Widoczność wg skali - state
+  const [layerScaleConfig, setLayerScaleConfig] = useState({
+    enabled: false,
+    minScale: 1,
+    maxScale: 10000,
   });
 
   // RTK Query hooks
@@ -464,6 +482,51 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
     }
   };
 
+  // Handle set layer scale visibility (Tab 4: Widoczność wg skali)
+  const handleSetLayerScale = async () => {
+    if (!projectName || !layerId) {
+      dispatch(showError('Brak informacji o projekcie lub warstwie'));
+      return;
+    }
+
+    try {
+      if (!layerScaleConfig.enabled) {
+        // Turn off scale-based visibility
+        await setLayerScale({
+          project: projectName,
+          layer_id: layerId,
+          max_scale: 0,
+          min_scale: 0,
+          turn_off: true,
+        }).unwrap();
+
+        dispatch(showSuccess('Widoczność zależna od skali została wyłączona'));
+      } else {
+        // Validate: max_scale < min_scale (backend requirement)
+        if (layerScaleConfig.minScale >= layerScaleConfig.maxScale) {
+          dispatch(showError('Minimalna skala musi być mniejsza od maksymalnej'));
+          return;
+        }
+
+        // Enable scale-based visibility
+        await setLayerScale({
+          project: projectName,
+          layer_id: layerId,
+          max_scale: layerScaleConfig.minScale, // Backend: max_scale = zbliżenie (mniejsza wartość)
+          min_scale: layerScaleConfig.maxScale, // Backend: min_scale = oddalenie (większa wartość)
+          turn_off: false,
+        }).unwrap();
+
+        dispatch(showSuccess('Ustawienia skali zostały zapisane'));
+      }
+
+      onClose();
+    } catch (error: any) {
+      console.error('❌ Set layer scale error:', error);
+      dispatch(showError(error?.data?.message || 'Nie udało się zapisać ustawień skali'));
+    }
+  };
+
   const handleSave = async () => {
     console.log('🔵 handleSave called', { projectName, layerId, activeTab });
 
@@ -645,6 +708,7 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
         <Tab label="Pobierz" />
         <Tab label="Importuj" />
         <Tab label="Etykietowanie" />
+        <Tab label="Widoczność wg skali" />
       </Tabs>
 
       {/* Content */}
@@ -1186,6 +1250,145 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
             </Button>
           </Box>
         )}
+
+        {/* Tab 5: Widoczność wg skali */}
+        {activeTab === 4 && (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+            <Typography variant="h6" gutterBottom sx={{ fontSize: '16px', fontWeight: 600 }}>
+              Ustawienia widoczności zależnej od skali
+            </Typography>
+
+            <Typography sx={{ fontSize: '14px', color: theme.palette.text.secondary }}>
+              Ogranicz widoczność warstwy do określonego zakresu skal. Przydatne dla dużych warstw (optymalizacja wydajności).
+            </Typography>
+
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={layerScaleConfig.enabled}
+                  onChange={(e) => setLayerScaleConfig({
+                    ...layerScaleConfig,
+                    enabled: e.target.checked
+                  })}
+                  color="primary"
+                />
+              }
+              label="Włącz widoczność zależną od skali"
+              sx={{ mb: 1 }}
+            />
+
+            {layerScaleConfig.enabled && (
+              <>
+                {/* Minimalna skala (zbliżenie) */}
+                <FormControl fullWidth sx={{ bgcolor: 'white' }}>
+                  <InputLabel>Minimalna skala (zbliżenie)</InputLabel>
+                  <Select
+                    value={layerScaleConfig.minScale}
+                    onChange={(e) => setLayerScaleConfig({
+                      ...layerScaleConfig,
+                      minScale: Number(e.target.value)
+                    })}
+                    label="Minimalna skala (zbliżenie)"
+                  >
+                    <MenuItem value={1}>1:1</MenuItem>
+                    <MenuItem value={100}>1:100</MenuItem>
+                    <MenuItem value={500}>1:500</MenuItem>
+                    <MenuItem value={1000}>1:1,000</MenuItem>
+                    <MenuItem value={2500}>1:2,500</MenuItem>
+                    <MenuItem value={5000}>1:5,000</MenuItem>
+                    <MenuItem value={10000}>1:10,000</MenuItem>
+                    <MenuItem value={25000}>1:25,000</MenuItem>
+                    <MenuItem value={50000}>1:50,000</MenuItem>
+                  </Select>
+                  <FormHelperText>
+                    Warstwa będzie widoczna przy zbliżeniu większym niż ta skala
+                  </FormHelperText>
+                </FormControl>
+
+                {/* Maksymalna skala (oddalenie) */}
+                <FormControl fullWidth sx={{ bgcolor: 'white' }}>
+                  <InputLabel>Maksymalna skala (oddalenie)</InputLabel>
+                  <Select
+                    value={layerScaleConfig.maxScale}
+                    onChange={(e) => setLayerScaleConfig({
+                      ...layerScaleConfig,
+                      maxScale: Number(e.target.value)
+                    })}
+                    label="Maksymalna skala (oddalenie)"
+                  >
+                    <MenuItem value={10000}>1:10,000</MenuItem>
+                    <MenuItem value={25000}>1:25,000</MenuItem>
+                    <MenuItem value={50000}>1:50,000</MenuItem>
+                    <MenuItem value={100000}>1:100,000</MenuItem>
+                    <MenuItem value={250000}>1:250,000</MenuItem>
+                    <MenuItem value={500000}>1:500,000</MenuItem>
+                    <MenuItem value={1000000}>1:1,000,000</MenuItem>
+                    <MenuItem value={2500000}>1:2,500,000</MenuItem>
+                    <MenuItem value={10000000}>1:10,000,000</MenuItem>
+                  </Select>
+                  <FormHelperText>
+                    Warstwa będzie widoczna przy oddaleniu mniejszym niż ta skala
+                  </FormHelperText>
+                </FormControl>
+
+                {/* Info box */}
+                <Box
+                  sx={{
+                    bgcolor: '#e3f2fd',
+                    border: '1px solid #90caf9',
+                    borderRadius: '4px',
+                    p: 2,
+                    mt: 1,
+                  }}
+                >
+                  <Typography sx={{ fontSize: '12px', color: '#1976d2' }}>
+                    <strong>Jak to działa:</strong><br />
+                    • Warstwa będzie widoczna tylko gdy skala mapy mieści się w zakresie {layerScaleConfig.minScale} - {layerScaleConfig.maxScale}<br />
+                    • Przy zbliżeniu poniżej 1:{layerScaleConfig.minScale} - warstwa ukryta<br />
+                    • Przy oddaleniu powyżej 1:{layerScaleConfig.maxScale} - warstwa ukryta<br />
+                    • Przydatne dla dużych warstw (np. działki, budynki) - oszczędza pamięć i przyspiesza renderowanie
+                  </Typography>
+                </Box>
+
+                {/* Save button */}
+                <Button
+                  variant="contained"
+                  fullWidth
+                  onClick={handleSetLayerScale}
+                  sx={{
+                    bgcolor: theme.palette.primary.main,
+                    '&:hover': { bgcolor: theme.palette.primary.dark },
+                    py: 1.5,
+                    mt: 2,
+                  }}
+                >
+                  Zapisz ustawienia skali
+                </Button>
+              </>
+            )}
+
+            {/* Turn off scale visibility button (when enabled=false but previously set) */}
+            {!layerScaleConfig.enabled && (
+              <Button
+                variant="outlined"
+                fullWidth
+                onClick={handleSetLayerScale}
+                sx={{
+                  borderColor: theme.palette.primary.main,
+                  color: theme.palette.primary.main,
+                  '&:hover': {
+                    borderColor: theme.palette.primary.dark,
+                    bgcolor: 'rgba(25, 118, 210, 0.04)',
+                  },
+                  py: 1.5,
+                  mt: 2,
+                }}
+              >
+                Wyłącz widoczność zależną od skali
+              </Button>
+            )}
+          </Box>
+        )}
       </DialogContent>
 
       {/* Footer */}
@@ -1211,7 +1414,7 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
             },
           }}
         >
-          {activeTab === 1 || activeTab === 2 || activeTab === 3 ? 'Zamknij' : 'Anuluj'}
+          {activeTab === 1 || activeTab === 2 || activeTab === 3 || activeTab === 4 ? 'Zamknij' : 'Anuluj'}
         </Button>
         {/* Show Save button only for tab 0 (Edytuj) - other tabs have their own action buttons */}
         {activeTab === 0 && (
