@@ -51,14 +51,14 @@ proj4.defs(EPSG_3857, '+proj=merc +a=6378137 +b=6378137 +lat_ts=0 +lon_0=0 +x_0=
 proj4.defs(EPSG_4326, '+proj=longlat +datum=WGS84 +no_defs +type=crs');
 
 /**
- * Fetch unique values from WFS for guest users (no authentication required)
+ * Fetch full GeoJSON from WFS for guest users (no authentication required)
  * Uses QGIS OWS GetFeature endpoint which works without auth for public projects
+ * Returns full GeoJSON FeatureCollection for client-side filtering
  */
-const fetchUniqueValuesFromWFS = async (
+const fetchWFSFeatures = async (
   projectName: string,
-  layerName: string,
-  columnName: string
-): Promise<string[]> => {
+  layerName: string
+): Promise<any> => {
   try {
     // URL encode layer name (replace spaces with underscores)
     const encodedLayerName = encodeURIComponent(layerName.replace(/ /g, '_'));
@@ -66,7 +66,7 @@ const fetchUniqueValuesFromWFS = async (
     // Build WFS GetFeature request
     const url = `https://api.universemapmaker.online/ows?SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature&TYPENAME=${encodedLayerName}&OUTPUTFORMAT=application/json&MAP=/projects/${projectName}/${projectName}.qgs`;
 
-    console.log(`🌐 Fetching WFS data for ${layerName}, column: ${columnName}`);
+    console.log(`🌐 Fetching WFS features for ${layerName}`);
 
     const response = await fetch(url);
     if (!response.ok) {
@@ -74,26 +74,29 @@ const fetchUniqueValuesFromWFS = async (
     }
 
     const geojson = await response.json();
+    console.log(`✅ Fetched ${geojson.features?.length || 0} features from WFS`);
 
-    // Extract unique values from properties
-    const values = new Set<string>();
-    if (geojson.features && Array.isArray(geojson.features)) {
-      geojson.features.forEach((feature: any) => {
-        const value = feature.properties?.[columnName];
-        if (value != null && value !== '') {
-          values.add(String(value));
-        }
-      });
-    }
-
-    const uniqueValues = Array.from(values).sort();
-    console.log(`✅ Found ${uniqueValues.length} unique values for ${columnName}:`, uniqueValues.slice(0, 5));
-
-    return uniqueValues;
+    return geojson;
   } catch (error) {
     console.error('❌ Error fetching WFS data:', error);
-    return [];
+    return { type: 'FeatureCollection', features: [] };
   }
+};
+
+/**
+ * Extract unique values from GeoJSON FeatureCollection
+ */
+const extractUniqueValues = (geojson: any, columnName: string): string[] => {
+  const values = new Set<string>();
+  if (geojson.features && Array.isArray(geojson.features)) {
+    geojson.features.forEach((feature: any) => {
+      const value = feature.properties?.[columnName];
+      if (value != null && value !== '') {
+        values.add(String(value));
+      }
+    });
+  }
+  return Array.from(values).sort();
 };
 
 interface ParcelSearchTabProps {
@@ -140,8 +143,7 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef }
   const [identifyCoordinates, setIdentifyCoordinates] = useState<[number, number] | undefined>();
 
   // WFS state for guest users (unauthenticated)
-  const [wfsPrecincts, setWfsPrecincts] = useState<string[]>([]);
-  const [wfsPlotNumbers, setWfsPlotNumbers] = useState<string[]>([]);
+  const [wfsFeatures, setWfsFeatures] = useState<any>(null); // Full GeoJSON FeatureCollection
   const [wfsLoading, setWfsLoading] = useState(false);
 
   // RTK Query
@@ -219,83 +221,64 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef }
     }
   }, [projectName, parcelLayerId, layers]);
 
-  // Fetch precincts when project/layer changes
+  // Fetch WFS data for guest users (one-time fetch of full GeoJSON)
+  useEffect(() => {
+    if (!projectName || !parcelLayerId) return;
+    if (isAuthenticated) return; // Only for guests
+
+    setWfsLoading(true);
+    const allLayers = flattenLayers(layers);
+    const layer = allLayers.find((l: any) => l.id === parcelLayerId);
+
+    if (layer) {
+      fetchWFSFeatures(projectName, layer.name)
+        .then((geojson) => {
+          setWfsFeatures(geojson);
+          setWfsLoading(false);
+        })
+        .catch((error) => {
+          console.error('Error fetching WFS features:', error);
+          setWfsLoading(false);
+        });
+    } else {
+      setWfsLoading(false);
+    }
+  }, [projectName, parcelLayerId, isAuthenticated, layers]);
+
+  // Fetch precincts for authenticated users (Django API)
   useEffect(() => {
     if (!projectName || !parcelLayerId || !precinctColumn) return;
+    if (!isAuthenticated) return; // Only for authenticated users
 
-    // For authenticated users: use Django API
-    if (isAuthenticated) {
-      fetchPrecincts({
-        project: projectName,
-        layer_id: parcelLayerId,
-        column_name: precinctColumn,
-      });
-    }
-    // For guest users: use QGIS WFS (no auth required)
-    else {
-      setWfsLoading(true);
-      // Find layer name from layers array
-      const allLayers = flattenLayers(layers);
-      const layer = allLayers.find((l: any) => l.id === parcelLayerId);
-      if (layer) {
-        fetchUniqueValuesFromWFS(projectName, layer.name, precinctColumn)
-          .then((values) => {
-            setWfsPrecincts(values);
-            setWfsLoading(false);
-          })
-          .catch((error) => {
-            console.error('Error fetching precincts from WFS:', error);
-            setWfsLoading(false);
-          });
-      } else {
-        setWfsLoading(false);
-      }
-    }
-  }, [projectName, parcelLayerId, precinctColumn, isAuthenticated, layers, fetchPrecincts]);
+    fetchPrecincts({
+      project: projectName,
+      layer_id: parcelLayerId,
+      column_name: precinctColumn,
+    });
+  }, [projectName, parcelLayerId, precinctColumn, isAuthenticated, fetchPrecincts]);
 
-  // Fetch plot numbers when precinct selected OR when precinct changes
+  // Fetch plot numbers for authenticated users (Django API)
   useEffect(() => {
     if (!projectName || !parcelLayerId || !plotNumberColumn) return;
+    if (!isAuthenticated) return; // Only for authenticated users
 
-    // For authenticated users: use Django API (with search for precinct filtering)
-    if (isAuthenticated) {
-      if (selectedPrecinct && precinctColumn) {
-        // Wyszukaj działki w wybranym obrębie (backend zwraca GeoJSON z properties)
-        triggerSearch({
-          project: projectName,
-          searched_phrase: selectedPrecinct,
-          exactly: false,
-          ignore_capitalization: true,
-        });
-      } else {
-        // Jeśli nie wybrano obrębu, pobierz wszystkie numery działek
-        fetchPlotNumbers({
-          project: projectName,
-          layer_id: parcelLayerId,
-          column_name: plotNumberColumn,
-        });
-      }
+    if (selectedPrecinct && precinctColumn) {
+      // Search by precinct to get filtered plot numbers
+      triggerSearch({
+        project: projectName,
+        searched_phrase: selectedPrecinct,
+        exactly: false,
+        ignore_capitalization: true,
+      });
+    } else {
+      // Get all plot numbers
+      fetchPlotNumbers({
+        project: projectName,
+        layer_id: parcelLayerId,
+        column_name: plotNumberColumn,
+      });
     }
-    // For guest users: always fetch all plot numbers from WFS
-    else {
-      setWfsLoading(true);
-      const allLayers = flattenLayers(layers);
-      const layer = allLayers.find((l: any) => l.id === parcelLayerId);
-      if (layer) {
-        fetchUniqueValuesFromWFS(projectName, layer.name, plotNumberColumn)
-          .then((values) => {
-            setWfsPlotNumbers(values);
-            setWfsLoading(false);
-          })
-          .catch((error) => {
-            console.error('Error fetching plot numbers from WFS:', error);
-            setWfsLoading(false);
-          });
-      } else {
-        setWfsLoading(false);
-      }
-    }
-  }, [projectName, parcelLayerId, plotNumberColumn, selectedPrecinct, precinctColumn, isAuthenticated, layers, fetchPlotNumbers, triggerSearch]);
+  }, [projectName, parcelLayerId, plotNumberColumn, selectedPrecinct, precinctColumn, isAuthenticated, fetchPlotNumbers, triggerSearch]);
 
   // Fetch layer attributes when temp layer is selected in config modal
   useEffect(() => {
@@ -322,12 +305,72 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef }
     }
 
     try {
-      // STRATEGY CHANGE: If both criteria selected, make TWO API calls and intersect results
-      // This fixes the issue where backend only returns columns containing the search phrase
+      // FOR GUEST USERS: Client-side filtering of WFS features
+      if (!isAuthenticated && wfsFeatures) {
+        console.log('🔍 Guest search:', { selectedPrecinct, selectedPlotNumber });
+
+        const matchedFeatures: any[] = [];
+
+        if (wfsFeatures.features && Array.isArray(wfsFeatures.features)) {
+          for (const feature of wfsFeatures.features) {
+            const precinctValue = feature.properties?.[precinctColumn];
+            const plotNumberValue = feature.properties?.[plotNumberColumn];
+
+            const precinctStr = precinctValue ? String(precinctValue).trim().toLowerCase() : '';
+            const plotNumberStr = plotNumberValue ? String(plotNumberValue).trim().toLowerCase() : '';
+
+            const selectedPrecinctStr = selectedPrecinct ? selectedPrecinct.trim().toLowerCase() : '';
+            const selectedPlotNumberStr = selectedPlotNumber ? selectedPlotNumber.trim().toLowerCase() : '';
+
+            // Check if feature matches both criteria (if both provided) or single criterion
+            const precinctMatches = selectedPrecinct ? precinctStr === selectedPrecinctStr : true;
+            const plotNumberMatches = selectedPlotNumber ? plotNumberStr === selectedPlotNumberStr : true;
+
+            if (precinctMatches && plotNumberMatches) {
+              matchedFeatures.push(feature);
+            }
+          }
+        }
+
+        console.log(`✅ Found ${matchedFeatures.length} matching parcels in WFS data`);
+
+        // Display matched features (show first match geometry, list all in identify modal)
+        if (matchedFeatures.length > 0) {
+          const firstFeature = matchedFeatures[0];
+
+          // Show geometry on map
+          if (firstFeature.geometry) {
+            // Transform geometry from EPSG:3857 to EPSG:4326 for Mapbox
+            const transformedGeometry = transformGeometry(firstFeature.geometry);
+
+            // Calculate bounds and zoom to feature
+            const bounds = getGeometryBounds(transformedGeometry);
+            mapRef.current?.fitBounds(
+              [
+                [bounds[0], bounds[1]], // Southwest
+                [bounds[2], bounds[3]]  // Northeast
+              ],
+              {
+                padding: 100,
+                duration: 1000,
+              }
+            );
+
+            // Show all matched features in identify modal
+            setIdentifiedFeatures(matchedFeatures);
+            setIdentifyModalOpen(true);
+          }
+        } else {
+          alert('Nie znaleziono działki spełniającej kryteria');
+        }
+
+        return; // Exit early for guests
+      }
+
+      // FOR AUTHENTICATED USERS: Use Django API
+      // STRATEGY: If both criteria selected, make TWO API calls and intersect results
       if (selectedPrecinct && selectedPlotNumber) {
-
-
-        // Call 1: Search for precinct (fuzzy match - can be partial)
+        // Call 1: Search for precinct (fuzzy match)
         const precinctResult = await triggerSearch({
           project: projectName,
           searched_phrase: selectedPrecinct,
@@ -335,16 +378,13 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef }
           ignore_capitalization: true,
         });
 
-        // Call 2: Search for plot number (EXACT match - must be exactly "1", not "10", "308/13", etc.)
+        // Call 2: Search for plot number (EXACT match)
         const plotNumberResult = await triggerSecondSearch({
           project: projectName,
           searched_phrase: selectedPlotNumber,
-          exactly: true, // ✅ ZMIENIONO: dokładne dopasowanie numeru działki
+          exactly: true,
           ignore_capitalization: true,
         });
-
-
-
       } else {
         // Single criterion: search for precinct OR plot number
         const searchPhrase = selectedPrecinct || selectedPlotNumber || '';
@@ -355,8 +395,6 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef }
           exactly: false,
           ignore_capitalization: true,
         });
-
-
       }
     } catch (error) {
       console.error('❌ ParcelSearchTab - Search failed:', error);
@@ -620,7 +658,9 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef }
 
   // Extract precincts and plot numbers arrays
   // Use WFS data for guests, Django API data for authenticated users
-  const precincts = isAuthenticated ? (precinctsData?.data || []) : wfsPrecincts;
+  const precincts = isAuthenticated
+    ? (precinctsData?.data || [])
+    : (wfsFeatures && precinctColumn ? extractUniqueValues(wfsFeatures, precinctColumn) : []);
 
   // Plot numbers: If precinct selected, extract from search results (filtered)
   // Otherwise, use all plot numbers from API or WFS
@@ -658,17 +698,44 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef }
       });
     }
 
-    // For guests: filter WFS plot numbers by selected precinct (client-side filtering)
-    if (!isAuthenticated && selectedPrecinct && wfsPlotNumbers.length > 0) {
-      // For guests, we already have all plot numbers from WFS
-      // We can't filter server-side, so return all and let them choose
-      // TODO: Future improvement - fetch full WFS data once and filter client-side
-      return wfsPlotNumbers;
+    // For guests: filter WFS features by selected precinct (client-side filtering)
+    if (!isAuthenticated && wfsFeatures) {
+      const numbers = new Set<string>();
+
+      if (wfsFeatures.features && Array.isArray(wfsFeatures.features)) {
+        for (const feature of wfsFeatures.features) {
+          const precinctValue = feature.properties?.[precinctColumn];
+          const plotNumberValue = feature.properties?.[plotNumberColumn];
+
+          // If precinct selected, filter by it
+          if (selectedPrecinct && precinctValue && plotNumberValue) {
+            const precinctStr = String(precinctValue).trim().toLowerCase();
+            const selectedPrecinctStr = selectedPrecinct.trim().toLowerCase();
+
+            if (precinctStr === selectedPrecinctStr) {
+              numbers.add(String(plotNumberValue));
+            }
+          }
+          // If no precinct selected, return all plot numbers
+          else if (!selectedPrecinct && plotNumberValue) {
+            numbers.add(String(plotNumberValue));
+          }
+        }
+      }
+
+      return Array.from(numbers).sort((a, b) => {
+        const numA = parseFloat(a);
+        const numB = parseFloat(b);
+        if (!isNaN(numA) && !isNaN(numB)) {
+          return numA - numB;
+        }
+        return a.localeCompare(b);
+      });
     }
 
-    // No precinct selected or no filtering: return all plot numbers
-    return isAuthenticated ? (plotNumbersData?.data || []) : wfsPlotNumbers;
-  }, [isAuthenticated, selectedPrecinct, searchData, plotNumbersData, wfsPlotNumbers, precinctColumn, plotNumberColumn]);
+    // No precinct selected or no filtering: return all plot numbers (authenticated users only)
+    return isAuthenticated ? (plotNumbersData?.data || []) : [];
+  }, [isAuthenticated, selectedPrecinct, searchData, plotNumbersData, wfsFeatures, precinctColumn, plotNumberColumn]);
 
   // Filter search results based on selected criteria
   // If both precinct AND plot number are selected, intersect results from TWO API calls
@@ -932,12 +999,21 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef }
 
         {/* Numer działki autocomplete */}
         <Autocomplete
+          freeSolo
           fullWidth
           disabled={!projectName || !parcelLayerId}
           options={plotNumbers.map(String)}
-          value={selectedPlotNumber || null}
+          value={selectedPlotNumber || ''}
           onChange={(event, newValue) => setSelectedPlotNumber(newValue || '')}
+          onInputChange={(event, newInputValue) => setSelectedPlotNumber(newInputValue || '')}
           loading={plotNumbersLoading || wfsLoading}
+          filterOptions={(options, state) => {
+            // Filter options based on what user typed
+            const inputValue = state.inputValue.toLowerCase();
+            return options.filter(option =>
+              String(option).toLowerCase().includes(inputValue)
+            );
+          }}
           renderInput={(params) => (
             <TextField
               {...params}
