@@ -328,41 +328,24 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
 
   // Fetch WFS data for guest users (one-time fetch of full GeoJSON)
   useEffect(() => {
-    if (!projectName || !parcelLayerId) {
-      console.log('⏸️ WFS fetch skipped:', { projectName, parcelLayerId });
-      return;
-    }
-    if (isAuthenticated) {
-      console.log('⏸️ WFS fetch skipped: user is authenticated');
-      return; // Only for guests
-    }
+    if (!projectName || !parcelLayerId) return;
+    if (isAuthenticated) return; // Only for guests
 
-    console.log('🌐 Starting WFS fetch for guest user:', { projectName, parcelLayerId });
     setWfsLoading(true);
     const allLayers = flattenLayers(layers);
     const layer = allLayers.find((l: any) => l.id === parcelLayerId);
 
-    console.log('🔍 Looking for layer:', {
-      parcelLayerId,
-      foundLayer: layer ? layer.name : 'NOT FOUND',
-      allLayerNames: allLayers.map((l: any) => l.name),
-    });
-
     if (layer) {
       fetchWFSFeatures(projectName, layer.name, dispatch)
         .then((geojson) => {
-          console.log('✅ WFS fetch successful:', {
-            featureCount: geojson?.features?.length || 0,
-          });
           setWfsFeatures(geojson);
           setWfsLoading(false);
         })
         .catch((error) => {
-          console.error('❌ Error fetching WFS features:', error);
+          console.error('Error fetching WFS features:', error);
           setWfsLoading(false);
         });
     } else {
-      console.error('❌ Layer not found in tree for parcelLayerId:', parcelLayerId);
       setWfsLoading(false);
     }
   }, [projectName, parcelLayerId, isAuthenticated, layers, dispatch]);
@@ -520,18 +503,11 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
             // ✅ Query ALL visible layers at parcel centroid (like IdentifyTool does)
             let allLayerFeatures: any[] = []; // Will be populated by QGIS Server query
 
-            console.log('🔍 GUEST USER: Starting multi-layer query at parcel centroid');
-
             try {
               const map = mapRef.current?.getMap();
-              if (!map) {
-                console.warn('⚠️ GUEST USER: Map reference not available');
-              } else {
-                console.log('✅ GUEST USER: Map reference obtained');
-
+              if (map) {
                 // Calculate centroid of first matched parcel
                 const centroid = getGeometryCentroid(transformedGeometry);
-                console.log('📍 GUEST USER: Parcel centroid:', centroid);
 
                 // Create a small bounds around the centroid for GetFeatureInfo query
                 // This ensures valid pixel coordinates even if parcel is outside current viewport
@@ -542,12 +518,6 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
                   getSouth: () => centroid[1] - OFFSET,
                   getNorth: () => centroid[1] + OFFSET,
                 };
-                console.log('🗺️ GUEST USER: Query bounds:', {
-                  west: queryBounds.getWest(),
-                  east: queryBounds.getEast(),
-                  south: queryBounds.getSouth(),
-                  north: queryBounds.getNorth(),
-                });
 
                 // Get visible layers from Redux state (exclude temporary/garbage layers)
                 const getVisibleLayers = () => {
@@ -569,11 +539,6 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
                 };
 
                 const visibleLayers = getVisibleLayers();
-                console.log(`🔍 GUEST USER: Found ${visibleLayers.length} visible layers:`, visibleLayers);
-
-                // Query QGIS Server for all visible layers
-                // Use synthetic bounds centered on parcel centroid instead of current map viewport
-                console.log('🌐 GUEST USER: Calling getQGISFeatureInfoMultiLayer...');
 
                 // Add loading task
                 const identifyTaskId = `identify-parcel-${Date.now()}`;
@@ -594,8 +559,6 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
                 // Remove loading task
                 dispatch(removeLoadingTask(identifyTaskId));
 
-                console.log('✅ GUEST USER: QGIS query returned:', qgisResult);
-
                 // Format QGIS features for IdentifyModal
                 const qgisFeatures = qgisResult.features.map((feature: any) => {
                   const layerName = feature.id?.split('.')[0] || 'Unknown';
@@ -610,28 +573,22 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
                   };
                 });
 
-                console.log(`✅ GUEST USER: Formatted ${qgisFeatures.length} QGIS features`);
-
                 // Use only QGIS Server features (no duplicate parcel data from WFS)
                 allLayerFeatures = qgisFeatures;
-                console.log(`📦 GUEST USER: Total features to display: ${allLayerFeatures.length}`);
               }
             } catch (error) {
-              console.error('❌ GUEST USER: Error querying other layers:', error);
+              console.error('❌ Error querying layers:', error);
               // Remove loading task on error
               const identifyTaskId = `identify-parcel-${Date.now()}`;
               dispatch(removeLoadingTask(identifyTaskId));
               // If QGIS query fails, modal will show no features (user can retry search)
             }
 
-            console.log(`🎯 GUEST USER: Final feature count before modal: ${allLayerFeatures.length}`);
-
             // ✅ Close search modal FIRST
             onClose?.();
 
             // Show all features in identify modal (delayed to let search modal close)
             setTimeout(() => {
-              console.log(`🔓 GUEST USER: Opening identify modal with ${allLayerFeatures.length} features`);
               setIdentifiedFeatures(allLayerFeatures);
               setIdentifyModalOpen(true);
             }, 100);
@@ -1110,18 +1067,6 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
   const precincts = isAuthenticated
     ? (precinctsData?.data || [])
     : (wfsFeatures && precinctColumn ? extractUniqueValues(wfsFeatures, precinctColumn) : []);
-
-  // 🔍 DEBUG: Log precincts loading status
-  React.useEffect(() => {
-    console.log('🔍 Precincts loading status:', {
-      isAuthenticated,
-      precinctsCount: precincts.length,
-      precinctColumn,
-      wfsFeatures: wfsFeatures ? 'loaded' : 'null',
-      wfsFeaturesCount: wfsFeatures?.features?.length || 0,
-      precinctsDataCount: precinctsData?.data?.length || 0,
-    });
-  }, [isAuthenticated, precincts.length, precinctColumn, wfsFeatures, precinctsData]);
 
   // Plot numbers: If precinct selected, extract from search results (filtered)
   // Otherwise, use all plot numbers from API or WFS
