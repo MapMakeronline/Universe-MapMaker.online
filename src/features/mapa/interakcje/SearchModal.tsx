@@ -130,6 +130,7 @@ const SearchModal: React.FC<SearchModalProps> = ({ open, onClose, mapRef }) => {
       onClose={handleClose}
       maxWidth="sm"
       fullWidth
+      keepMounted  // Keep children mounted when closed (important for ParcelSearchTab IdentifyModal)
       PaperProps={{
         sx: {
           borderRadius: '8px',
