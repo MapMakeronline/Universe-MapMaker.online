@@ -67,7 +67,7 @@ const IdentifyTool = () => {
       });
 
       // ==================== QUERY BACKEND API (POST /api/layer/feature/coordinates) ====================
-      // Get visible QGIS layers from layer tree
+      // Get visible QGIS layers from layer tree (exclude temporary/garbage layers)
       const getVisibleLayers = () => {
         const visible: Array<{ id: string; name: string; type: string }> = [];
 
@@ -76,16 +76,19 @@ const IdentifyTool = () => {
             if (item.type === 'group' && item.children) {
               traverse(item.children);
             } else if (item.visible && item.id && item.name) {
-              // Determine layer type from geometry
-              const layerType = item.geometry?.toLowerCase() === 'point' ? 'point'
-                : item.geometry?.toLowerCase()?.includes('line') ? 'line'
-                : 'polygon'; // Default to polygon
+              // ✅ Filter out temporary layers (tmp_name_*) created during import testing
+              if (!item.name.startsWith('tmp_name_')) {
+                // Determine layer type from geometry
+                const layerType = item.geometry?.toLowerCase() === 'point' ? 'point'
+                  : item.geometry?.toLowerCase()?.includes('line') ? 'line'
+                  : 'polygon'; // Default to polygon
 
-              visible.push({
-                id: item.id,
-                name: item.name,
-                type: layerType,
-              });
+                visible.push({
+                  id: item.id,
+                  name: item.name,
+                  type: layerType,
+                });
+              }
             }
           });
         };

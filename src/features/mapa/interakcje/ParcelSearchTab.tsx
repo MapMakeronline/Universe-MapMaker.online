@@ -502,7 +502,23 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
                 const centroid = getGeometryCentroid(transformedGeometry);
                 console.log('📍 GUEST USER: Parcel centroid:', centroid);
 
-                // Get visible layers from Redux state
+                // Create a small bounds around the centroid for GetFeatureInfo query
+                // This ensures valid pixel coordinates even if parcel is outside current viewport
+                const OFFSET = 0.001; // ~100m at equator
+                const queryBounds = {
+                  getWest: () => centroid[0] - OFFSET,
+                  getEast: () => centroid[0] + OFFSET,
+                  getSouth: () => centroid[1] - OFFSET,
+                  getNorth: () => centroid[1] + OFFSET,
+                };
+                console.log('🗺️ GUEST USER: Query bounds:', {
+                  west: queryBounds.getWest(),
+                  east: queryBounds.getEast(),
+                  south: queryBounds.getSouth(),
+                  north: queryBounds.getNorth(),
+                });
+
+                // Get visible layers from Redux state (exclude temporary/garbage layers)
                 const getVisibleLayers = () => {
                   const visible: string[] = [];
                   const traverse = (items: any[]) => {
@@ -510,7 +526,10 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
                       if (item.type === 'group' && item.children) {
                         traverse(item.children);
                       } else if (item.visible && item.name) {
-                        visible.push(item.name);
+                        // ✅ Filter out temporary layers (tmp_name_*) created during import testing
+                        if (!item.name.startsWith('tmp_name_')) {
+                          visible.push(item.name);
+                        }
                       }
                     });
                   };
@@ -522,14 +541,15 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
                 console.log(`🔍 GUEST USER: Found ${visibleLayers.length} visible layers:`, visibleLayers);
 
                 // Query QGIS Server for all visible layers
+                // Use synthetic bounds centered on parcel centroid instead of current map viewport
                 console.log('🌐 GUEST USER: Calling getQGISFeatureInfoMultiLayer...');
                 const qgisResult = await getQGISFeatureInfoMultiLayer(
                   {
                     project: projectName,
                     clickPoint: { lng: centroid[0], lat: centroid[1] },
-                    bounds: map.getBounds(),
-                    width: map.getCanvas().width,
-                    height: map.getCanvas().height,
+                    bounds: queryBounds as any, // Synthetic bounds around centroid
+                    width: 512, // Fixed size for synthetic viewport
+                    height: 512,
                     featureCount: 10,
                   },
                   visibleLayers
@@ -956,7 +976,7 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
       let allLayerFeatures = [parcelFeature]; // Start with parcel feature
 
       try {
-        // Get visible layers from Redux state
+        // Get visible layers from Redux state (exclude temporary/garbage layers)
         const getVisibleLayers = () => {
           const visible: string[] = [];
           const traverse = (items: any[]) => {
@@ -964,7 +984,10 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
               if (item.type === 'group' && item.children) {
                 traverse(item.children);
               } else if (item.visible && item.name) {
-                visible.push(item.name);
+                // ✅ Filter out temporary layers (tmp_name_*) created during import testing
+                if (!item.name.startsWith('tmp_name_')) {
+                  visible.push(item.name);
+                }
               }
             });
           };
