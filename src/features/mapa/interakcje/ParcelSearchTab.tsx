@@ -328,24 +328,41 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
 
   // Fetch WFS data for guest users (one-time fetch of full GeoJSON)
   useEffect(() => {
-    if (!projectName || !parcelLayerId) return;
-    if (isAuthenticated) return; // Only for guests
+    if (!projectName || !parcelLayerId) {
+      console.log('⏸️ WFS fetch skipped:', { projectName, parcelLayerId });
+      return;
+    }
+    if (isAuthenticated) {
+      console.log('⏸️ WFS fetch skipped: user is authenticated');
+      return; // Only for guests
+    }
 
+    console.log('🌐 Starting WFS fetch for guest user:', { projectName, parcelLayerId });
     setWfsLoading(true);
     const allLayers = flattenLayers(layers);
     const layer = allLayers.find((l: any) => l.id === parcelLayerId);
 
+    console.log('🔍 Looking for layer:', {
+      parcelLayerId,
+      foundLayer: layer ? layer.name : 'NOT FOUND',
+      allLayerNames: allLayers.map((l: any) => l.name),
+    });
+
     if (layer) {
       fetchWFSFeatures(projectName, layer.name, dispatch)
         .then((geojson) => {
+          console.log('✅ WFS fetch successful:', {
+            featureCount: geojson?.features?.length || 0,
+          });
           setWfsFeatures(geojson);
           setWfsLoading(false);
         })
         .catch((error) => {
-          console.error('Error fetching WFS features:', error);
+          console.error('❌ Error fetching WFS features:', error);
           setWfsLoading(false);
         });
     } else {
+      console.error('❌ Layer not found in tree for parcelLayerId:', parcelLayerId);
       setWfsLoading(false);
     }
   }, [projectName, parcelLayerId, isAuthenticated, layers, dispatch]);
@@ -1093,6 +1110,18 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
   const precincts = isAuthenticated
     ? (precinctsData?.data || [])
     : (wfsFeatures && precinctColumn ? extractUniqueValues(wfsFeatures, precinctColumn) : []);
+
+  // 🔍 DEBUG: Log precincts loading status
+  React.useEffect(() => {
+    console.log('🔍 Precincts loading status:', {
+      isAuthenticated,
+      precinctsCount: precincts.length,
+      precinctColumn,
+      wfsFeatures: wfsFeatures ? 'loaded' : 'null',
+      wfsFeaturesCount: wfsFeatures?.features?.length || 0,
+      precinctsDataCount: precinctsData?.data?.length || 0,
+    });
+  }, [isAuthenticated, precincts.length, precinctColumn, wfsFeatures, precinctsData]);
 
   // Plot numbers: If precinct selected, extract from search results (filtered)
   // Otherwise, use all plot numbers from API or WFS
