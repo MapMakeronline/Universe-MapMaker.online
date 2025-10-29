@@ -51,11 +51,21 @@ const baseQueryWithErrorHandling = async (args: any, api: any, extraOptions: any
       data: result.error.data,
     });
 
-    // Handle 401 Unauthorized - redirect to login
+    // Handle 401 Unauthorized - redirect to login ONLY if user had a token
     if (result.error.status === 401) {
       if (typeof window !== 'undefined') {
+        const hadToken = getAuthToken();
         localStorage.removeItem('authToken');
-        window.location.href = '/auth';
+
+        // Only redirect if user was previously authenticated
+        // Guests (no token) should stay on the page and see error message
+        if (hadToken) {
+          console.warn('⚠️ Session expired, redirecting to login...');
+          window.location.href = '/auth';
+        } else {
+          console.warn('⚠️ Guest user tried to access authenticated endpoint');
+          // Don't redirect - let component handle the error
+        }
       }
     }
   }

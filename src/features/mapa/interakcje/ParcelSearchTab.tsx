@@ -890,9 +890,21 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef }
 
         {searchError && (
           <Box sx={{ textAlign: 'center', py: 4 }}>
-            <Typography variant="body2" color="error">
-              Błąd wyszukiwania: {(searchError as any)?.data?.message || 'Nieznany błąd'}
+            <Typography variant="body2" color="error" gutterBottom>
+              {(searchError as any)?.status === 401 && !isAuthenticated
+                ? 'Wyszukiwanie działek wymaga uwierzytelnienia. Funkcja wyszukiwania jest dostępna tylko dla zalogowanych użytkowników.'
+                : `Błąd wyszukiwania: ${(searchError as any)?.data?.message || (searchError as any)?.data?.detail || 'Nieznany błąd'}`}
             </Typography>
+            {(searchError as any)?.status === 401 && !isAuthenticated && (
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={() => window.location.href = '/auth'}
+                sx={{ mt: 2 }}
+              >
+                Zaloguj się
+              </Button>
+            )}
           </Box>
         )}
 
