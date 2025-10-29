@@ -24,19 +24,33 @@ export function hexToRgba(hex: string, alpha: number = 255): RGBAColor {
 }
 
 /**
- * Convert RGBA array to hex color
- * @param rgba - RGBA color array [R, G, B, A]
+ * Convert RGBA array OR object to hex color
+ * @param rgba - RGBA as [R, G, B, A] array OR {r, g, b, a} object
  * @returns Hex color string (e.g., "#ea8989")
  */
-export function rgbaToHex(rgba: RGBAColor): string {
-  const [r, g, b] = rgba;
+export function rgbaToHex(rgba: RGBAColor | { r: number; g: number; b: number; a?: number } | null | undefined): string {
+  if (!rgba) {
+    return '#000000'; // Default black
+  }
 
   const toHex = (value: number) => {
     const hex = Math.max(0, Math.min(255, Math.round(value))).toString(16);
     return hex.length === 1 ? '0' + hex : hex;
   };
 
-  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+  // Handle object format: {r, g, b, a}
+  if (typeof rgba === 'object' && !Array.isArray(rgba) && 'r' in rgba) {
+    const { r, g, b } = rgba;
+    return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+  }
+
+  // Handle array format: [r, g, b, a]
+  if (Array.isArray(rgba)) {
+    const [r, g, b] = rgba;
+    return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+  }
+
+  return '#000000'; // Fallback
 }
 
 /**

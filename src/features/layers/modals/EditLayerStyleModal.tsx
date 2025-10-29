@@ -492,13 +492,17 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
     try {
       if (!layerScaleConfig.enabled) {
         // Turn off scale-based visibility
-        await setLayerScale({
+        const params = {
           project: projectName,
           layer_id: layerId,
           max_scale: 0,
-          min_scale: 0,
+          min_scale: 100000000, // Backend default max value
           turn_off: true,
-        }).unwrap();
+        };
+
+        console.log('🔧 Setting layer scale (DISABLE):', params);
+
+        await setLayerScale(params).unwrap();
 
         dispatch(showSuccess('Widoczność zależna od skali została wyłączona'));
       } else {
@@ -509,13 +513,17 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
         }
 
         // Enable scale-based visibility
-        await setLayerScale({
+        const params = {
           project: projectName,
           layer_id: layerId,
           max_scale: layerScaleConfig.minScale, // Backend: max_scale = zbliżenie (mniejsza wartość)
           min_scale: layerScaleConfig.maxScale, // Backend: min_scale = oddalenie (większa wartość)
           turn_off: false,
-        }).unwrap();
+        };
+
+        console.log('🔧 Setting layer scale (ENABLE):', params);
+
+        await setLayerScale(params).unwrap();
 
         dispatch(showSuccess('Ustawienia skali zostały zapisane'));
       }
@@ -523,10 +531,13 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
       onClose();
     } catch (error: any) {
       console.error('❌ Set layer scale error:', error);
+      console.error('❌ Error details:', JSON.stringify(error, null, 2));
 
       // Better error handling
       if (error?.status === 401) {
         dispatch(showError('Musisz być zalogowany jako właściciel projektu, aby zmienić ustawienia warstwy'));
+      } else if (error?.status === 500) {
+        dispatch(showError('Błąd serwera - sprawdź logi backendu'));
       } else if (error?.data?.message) {
         dispatch(showError(error.data.message));
       } else {
