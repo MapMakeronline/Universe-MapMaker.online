@@ -17,6 +17,7 @@ import LayerManagerModal from '../modals/LayerManagerModal';
 import PrintConfigModal from '../../mapa/komponenty/PrintConfigModal';
 import EditLayerStyleModal from '../modals/EditLayerStyleModal';
 import DeleteLayerConfirmModal from '../modals/DeleteLayerConfirmModal';
+import { AuthRequiredModal } from '@/features/auth/components';
 import { useResizable, useDragDrop } from '@/hooks/index';
 import { useAppSelector, useAppDispatch } from '@/redux/hooks';
 import { LayerNode } from '@/types-app/layers';
@@ -109,6 +110,9 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
   const reduxLayers = useAppSelector((state) => state.layers.layers);
   const expandedGroups = useAppSelector((state) => state.layers.expandedGroups);
 
+  // Check if user is authenticated
+  const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
+
   // Layer state - use Redux directly (MUST be declared before any hook that uses it)
   const layers = reduxLayers;
 
@@ -143,6 +147,10 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
 
   // Modal state management (centralized)
   const { modals, openModal, closeModal } = useModalManager();
+
+  // Auth required modal state
+  const [authRequiredModalOpen, setAuthRequiredModalOpen] = useState(false);
+  const [authRequiredAction, setAuthRequiredAction] = useState('');
 
   // Drag & drop with backend sync
   const { handleDragDropMove } = useDragDropSync(layers, projectName);
@@ -243,10 +251,45 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
     await handleAddLayerBackend(data);
   };
 
-  // Delete layer - open confirmation modal
+  // Auth-protected wrapper for editing layer style
+  const handleEditLayerStyleClick = () => {
+    if (!isAuthenticated) {
+      setAuthRequiredAction('edytować styl warstwy');
+      setAuthRequiredModalOpen(true);
+      return;
+    }
+    openModal('editLayerStyle');
+  };
+
+  // Auth-protected wrapper for managing layer
+  const handleManageLayerClick = () => {
+    if (!isAuthenticated) {
+      setAuthRequiredAction('zarządzać warstwą');
+      setAuthRequiredModalOpen(true);
+      return;
+    }
+    console.log('Manage layer');
+  };
+
+  // Auth-protected wrapper for layer labeling
+  const handleLayerLabelingClick = () => {
+    if (!isAuthenticated) {
+      setAuthRequiredAction('edytować etykiety warstwy');
+      setAuthRequiredModalOpen(true);
+      return;
+    }
+    console.log('Layer labeling');
+  };
+
+  // Auth-protected wrapper for deleting layer
   const handleDeleteLayerClick = () => {
     if (!selectedLayer) {
       dispatch(showError('Nie wybrano warstwy do usunięcia'));
+      return;
+    }
+    if (!isAuthenticated) {
+      setAuthRequiredAction('usunąć warstwę');
+      setAuthRequiredModalOpen(true);
       return;
     }
     openModal('deleteLayerConfirm');
@@ -294,8 +337,44 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
     dispatch(showInfo('Zarządzanie warstwami - wkrótce dostępne'));
   };
 
-  // Validate project has .qgs file before allowing layer import
+  // Auth-protected wrapper for adding INSPIRE dataset
+  const handleAddInspireDatasetClick = () => {
+    if (!isAuthenticated) {
+      setAuthRequiredAction('dodać zbiór danych INSPIRE');
+      setAuthRequiredModalOpen(true);
+      return;
+    }
+    openModal('addDataset');
+  };
+
+  // Auth-protected wrapper for adding national law
+  const handleAddNationalLawClick = () => {
+    if (!isAuthenticated) {
+      setAuthRequiredAction('dodać prawo krajowe');
+      setAuthRequiredModalOpen(true);
+      return;
+    }
+    openModal('addNationalLaw');
+  };
+
+  // Auth-protected wrapper for adding layer
+  const handleAddLayerClick = () => {
+    if (!isAuthenticated) {
+      setAuthRequiredAction('dodać nową warstwę');
+      setAuthRequiredModalOpen(true);
+      return;
+    }
+    openModal('addLayer');
+  };
+
+  // Auth-protected wrapper for importing layer with project validation
   const handleImportLayerClick = () => {
+    if (!isAuthenticated) {
+      setAuthRequiredAction('importować warstwę');
+      setAuthRequiredModalOpen(true);
+      return;
+    }
+
     // Check if project data is loading or has error
     if (isProjectDataLoading) {
       dispatch(showInfo('Ładowanie projektu...'));
@@ -323,16 +402,46 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
     openModal('importLayer');
   };
 
+  // Auth-protected wrapper for adding group
+  const handleAddGroupClick = () => {
+    if (!isAuthenticated) {
+      setAuthRequiredAction('dodać nową grupę');
+      setAuthRequiredModalOpen(true);
+      return;
+    }
+    openModal('addGroup');
+  };
+
+  // Auth-protected wrapper for creating consultation
+  const handleCreateConsultationClick = () => {
+    if (!isAuthenticated) {
+      setAuthRequiredAction('utworzyć konsultację');
+      setAuthRequiredModalOpen(true);
+      return;
+    }
+    openModal('createConsultation');
+  };
+
+  // Auth-protected wrapper for layer manager
+  const handleLayerManagerClick = () => {
+    if (!isAuthenticated) {
+      setAuthRequiredAction('zarządzać warstwami');
+      setAuthRequiredModalOpen(true);
+      return;
+    }
+    openModal('layerManager');
+  };
+
   const toolbarHandlers = {
-    onAddInspireDataset: () => openModal('addDataset'),
-    onAddNationalLaw: () => openModal('addNationalLaw'),
-    onAddLayer: () => openModal('addLayer'),
-    onImportLayer: handleImportLayerClick, // Use validation function
-    onAddGroup: () => openModal('addGroup'),
+    onAddInspireDataset: handleAddInspireDatasetClick,
+    onAddNationalLaw: handleAddNationalLawClick,
+    onAddLayer: handleAddLayerClick,
+    onImportLayer: handleImportLayerClick,
+    onAddGroup: handleAddGroupClick,
     onRemoveLayer: handleDeleteLayerClick,
-    onCreateConsultation: () => openModal('createConsultation'),
-    onLayerManager: () => openModal('layerManager'),
-    onPrintConfig: () => openModal('printConfig')
+    onCreateConsultation: handleCreateConsultationClick,
+    onLayerManager: handleLayerManagerClick,
+    onPrintConfig: () => openModal('printConfig') // Print is read-only, no auth needed
   };
 
   return (
@@ -428,9 +537,9 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
             onToggleSection={toggleSection}
             onToggleCheckbox={toggleCheckbox}
             onClosePanel={() => setSelectedLayer(null)}
-            onEditLayerStyle={() => openModal('editLayerStyle')}
-            onManageLayer={() => console.log('Manage layer')}
-            onLayerLabeling={() => console.log('Layer labeling')}
+            onEditLayerStyle={handleEditLayerStyleClick}
+            onManageLayer={handleManageLayerClick}
+            onLayerLabeling={handleLayerLabelingClick}
             onDeleteLayer={handleDeleteLayerClick}
             findParentGroup={findParentGroup}
             projectName={projectName}
@@ -554,6 +663,13 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
         onClose={() => closeModal('deleteLayerConfirm')}
         onConfirm={handleDeleteLayerConfirmed}
         layerName={selectedLayer?.name || 'warstwy'}
+      />
+
+      {/* Auth Required Modal */}
+      <AuthRequiredModal
+        open={authRequiredModalOpen}
+        onClose={() => setAuthRequiredModalOpen(false)}
+        action={authRequiredAction}
       />
     </>
   );
