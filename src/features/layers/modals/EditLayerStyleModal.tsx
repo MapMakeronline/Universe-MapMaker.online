@@ -200,21 +200,35 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
     try {
       if (rendererData.data.renderer === 'Single Symbol') {
         const backendSymbol = rendererData.data.symbols;
-        const convertedFillLayers: FillLayer[] = backendSymbol.fills.map((fill, index) => ({
-          id: fill.id || `layer-${index}`,
-          fillType: fill.symbol_type,
-          fillColor: rgbaToHex(fill.attributes.fill_color),
-          fillOpacity: alphaToOpacity(fill.attributes.fill_color[3]),
-          strokeColor: rgbaToHex(fill.attributes.stroke_color),
-          strokeWidth: fill.attributes.stroke_width.width_value,
-          strokeStyle: getStrokeStyleName(fill.attributes.stroke_style),
-          strokeOpacity: alphaToOpacity(fill.attributes.stroke_color[3]),
-          joinStyle: getJoinStyleName(fill.attributes.join_style),
-          offsetX: fill.attributes.offset.x,
-          offsetY: fill.attributes.offset.y,
-          unit: getUnitName(fill.attributes.offset.unit),
-          expanded: index === 0,
-        }));
+        const convertedFillLayers: FillLayer[] = backendSymbol.fills.map((fill, index) => {
+          // Handle both array [r,g,b,a] and object {r,g,b,a} formats
+          const fillColor = fill.attributes.fill_color;
+          const strokeColor = fill.attributes.stroke_color;
+
+          const fillAlpha = Array.isArray(fillColor)
+            ? fillColor[3]
+            : (fillColor?.a !== undefined ? fillColor.a : 255);
+
+          const strokeAlpha = Array.isArray(strokeColor)
+            ? strokeColor[3]
+            : (strokeColor?.a !== undefined ? strokeColor.a : 255);
+
+          return {
+            id: fill.id || `layer-${index}`,
+            fillType: fill.symbol_type,
+            fillColor: rgbaToHex(fillColor),
+            fillOpacity: alphaToOpacity(fillAlpha),
+            strokeColor: rgbaToHex(strokeColor),
+            strokeWidth: fill.attributes.stroke_width.width_value,
+            strokeStyle: getStrokeStyleName(fill.attributes.stroke_style),
+            strokeOpacity: alphaToOpacity(strokeAlpha),
+            joinStyle: getJoinStyleName(fill.attributes.join_style),
+            offsetX: fill.attributes.offset.x,
+            offsetY: fill.attributes.offset.y,
+            unit: getUnitName(fill.attributes.offset.unit),
+            expanded: index === 0,
+          };
+        });
         setFillLayers(convertedFillLayers);
         setActiveTab(0);
       } else if (rendererData.data.renderer === 'Categorized') {
