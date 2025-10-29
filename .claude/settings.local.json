@@ -32,7 +32,8 @@
       "Bash(cmd /c \"screenshot.bat http://localhost:3000/map?project=Wyszki wypis-guest-fixed.png\")",
       "Bash(node -e:*)",
       "Bash(timeout /t 10 /nobreak)",
-      "Bash(cmd /c \"screenshot.bat http://localhost:3000/map?project=Wyszki scale-visibility-modal.png\")"
+      "Bash(cmd /c \"screenshot.bat http://localhost:3000/map?project=Wyszki scale-visibility-modal.png\")",
+      "Bash(cmd /c \"screenshot.bat http://localhost:3000/map?project=Wyszki guest-parcel-identify-test.png\")"
     ],
     "deny": [],
     "ask": []

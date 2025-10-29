@@ -489,11 +489,18 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
             // ✅ Query ALL visible layers at parcel centroid (like IdentifyTool does)
             let allLayerFeatures = [...parcelFeatures]; // Start with parcel features
 
+            console.log('🔍 GUEST USER: Starting multi-layer query at parcel centroid');
+
             try {
               const map = mapRef.current?.getMap();
-              if (map) {
+              if (!map) {
+                console.warn('⚠️ GUEST USER: Map reference not available');
+              } else {
+                console.log('✅ GUEST USER: Map reference obtained');
+
                 // Calculate centroid of first matched parcel
                 const centroid = getGeometryCentroid(transformedGeometry);
+                console.log('📍 GUEST USER: Parcel centroid:', centroid);
 
                 // Get visible layers from Redux state
                 const getVisibleLayers = () => {
@@ -512,9 +519,10 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
                 };
 
                 const visibleLayers = getVisibleLayers();
-                console.log(`🔍 Querying ${visibleLayers.length} visible layers at parcel location`);
+                console.log(`🔍 GUEST USER: Found ${visibleLayers.length} visible layers:`, visibleLayers);
 
                 // Query QGIS Server for all visible layers
+                console.log('🌐 GUEST USER: Calling getQGISFeatureInfoMultiLayer...');
                 const qgisResult = await getQGISFeatureInfoMultiLayer(
                   {
                     project: projectName,
@@ -526,6 +534,8 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
                   },
                   visibleLayers
                 );
+
+                console.log('✅ GUEST USER: QGIS query returned:', qgisResult);
 
                 // Format QGIS features for IdentifyModal
                 const qgisFeatures = qgisResult.features.map((feature: any) => {
@@ -541,21 +551,26 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
                   };
                 });
 
-                console.log(`✅ Found ${qgisFeatures.length} features from other layers`);
+                console.log(`✅ GUEST USER: Formatted ${qgisFeatures.length} QGIS features`);
+                console.log('📋 GUEST USER: Parcel features count:', parcelFeatures.length);
 
                 // Combine parcel features + other layer features
                 allLayerFeatures = [...parcelFeatures, ...qgisFeatures];
+                console.log(`📦 GUEST USER: Total features to display: ${allLayerFeatures.length}`);
               }
             } catch (error) {
-              console.error('❌ Error querying other layers:', error);
+              console.error('❌ GUEST USER: Error querying other layers:', error);
               // Continue with just parcel features if QGIS query fails
             }
+
+            console.log(`🎯 GUEST USER: Final feature count before modal: ${allLayerFeatures.length}`);
 
             // ✅ Close search modal FIRST
             onClose?.();
 
             // Show all features in identify modal (delayed to let search modal close)
             setTimeout(() => {
+              console.log(`🔓 GUEST USER: Opening identify modal with ${allLayerFeatures.length} features`);
               setIdentifiedFeatures(allLayerFeatures);
               setIdentifyModalOpen(true);
             }, 100);
