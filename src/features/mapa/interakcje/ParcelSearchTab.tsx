@@ -798,8 +798,37 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef }
           </Box>
         )}
 
+        {/* Guest user notice - parcel search requires authentication */}
+        {!isAuthenticated && parcelLayerId && (
+          <Box
+            sx={{
+              mb: 2,
+              p: 2,
+              bgcolor: theme.palette.warning.light,
+              borderRadius: 1,
+              border: `1px solid ${theme.palette.warning.main}`,
+            }}
+          >
+            <Typography variant="body2" color="text.primary" gutterBottom>
+              <strong>⚠️ Funkcja wymaga logowania</strong>
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+              Wyszukiwanie działek jest dostępne tylko dla zalogowanych użytkowników.
+              Aby skorzystać z tej funkcji, zaloguj się na swoje konto.
+            </Typography>
+            <Button
+              variant="contained"
+              size="small"
+              onClick={() => window.location.href = '/auth'}
+              sx={{ mt: 1 }}
+            >
+              Przejdź do logowania
+            </Button>
+          </Box>
+        )}
+
         {/* Obręb działki dropdown */}
-        <FormControl fullWidth sx={{ mb: 2 }} disabled={!projectName || !parcelLayerId}>
+        <FormControl fullWidth sx={{ mb: 2 }} disabled={!projectName || !parcelLayerId || !isAuthenticated}>
           <InputLabel id="precinct-label">Obręb działki</InputLabel>
           <Select
             labelId="precinct-label"
@@ -831,7 +860,7 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef }
         {/* Numer działki autocomplete */}
         <Autocomplete
           fullWidth
-          disabled={!projectName || !parcelLayerId}
+          disabled={!projectName || !parcelLayerId || !isAuthenticated}
           options={plotNumbers.map(String)}
           value={selectedPlotNumber || null}
           onChange={(event, newValue) => setSelectedPlotNumber(newValue || '')}
@@ -862,7 +891,7 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef }
             variant="contained"
             startIcon={<SearchIcon />}
             onClick={handleSearch}
-            disabled={!projectName || !parcelLayerId || isSearching || (!selectedPrecinct && !selectedPlotNumber)}
+            disabled={!projectName || !parcelLayerId || !isAuthenticated || isSearching || (!selectedPrecinct && !selectedPlotNumber)}
           >
             {isSearching ? 'Wyszukiwanie...' : 'Wyszukaj'}
           </Button>

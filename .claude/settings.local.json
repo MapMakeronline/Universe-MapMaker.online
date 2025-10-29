@@ -25,7 +25,8 @@
       "Bash(cmd /c \"screenshot.bat http://localhost:3000/map?project=Wyszki wypis-search-modal.png\")",
       "Bash(cmd /c \"screenshot.bat http://dev.universemapmaker.online/map?project=Wyszki wypis-search-modal.png\")",
       "Bash(cmd /c \"screenshot.bat http://dev.universemapmaker.online/map?project=Wyszki\")",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(cmd /c \"screenshot.bat http://dev.universemapmaker.online/map?project=Wyszki wypis-guest-warning.png\")"
     ],
     "deny": [],
     "ask": []
