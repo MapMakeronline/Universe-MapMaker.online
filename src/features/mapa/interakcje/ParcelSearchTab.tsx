@@ -475,19 +475,11 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
               });
             }
 
-            // Format parcel features for IdentifyModal
-            const parcelFeatures = matchedFeatures.map(feature => ({
-              layer: parcelLayerId || 'Działki',
-              sourceLayer: 'WFS',
-              properties: Object.entries(feature.properties || {}).map(([key, value]) => ({
-                key,
-                value,
-              })),
-              geometry: transformGeometry(feature.geometry),
-            }));
+            // ✅ Don't create parcelFeatures - QGIS Server will return the same data
+            // with the correct layer name (e.g., "Działki 29_10_25" instead of "tmp_name_*")
 
             // ✅ Query ALL visible layers at parcel centroid (like IdentifyTool does)
-            let allLayerFeatures = [...parcelFeatures]; // Start with parcel features
+            let allLayerFeatures: any[] = []; // Will be populated by QGIS Server query
 
             console.log('🔍 GUEST USER: Starting multi-layer query at parcel centroid');
 
@@ -572,15 +564,14 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
                 });
 
                 console.log(`✅ GUEST USER: Formatted ${qgisFeatures.length} QGIS features`);
-                console.log('📋 GUEST USER: Parcel features count:', parcelFeatures.length);
 
-                // Combine parcel features + other layer features
-                allLayerFeatures = [...parcelFeatures, ...qgisFeatures];
+                // Use only QGIS Server features (no duplicate parcel data from WFS)
+                allLayerFeatures = qgisFeatures;
                 console.log(`📦 GUEST USER: Total features to display: ${allLayerFeatures.length}`);
               }
             } catch (error) {
               console.error('❌ GUEST USER: Error querying other layers:', error);
-              // Continue with just parcel features if QGIS query fails
+              // If QGIS query fails, modal will show no features (user can retry search)
             }
 
             console.log(`🎯 GUEST USER: Final feature count before modal: ${allLayerFeatures.length}`);
@@ -961,21 +952,22 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
 
       setIdentifyCoordinates([centerLng, centerLat]);
 
-      // Format parcel feature for IdentifyModal
-      const parcelFeature = {
-        layer: 'Działki',
-        sourceLayer: 'QGIS Server',
-        properties: Object.entries(featureProperties).map(([key, value]) => ({
-          key,
-          value,
-        })),
-        geometry: transformedGeometry,
-      };
+      // ✅ Don't create parcelFeature - QGIS Server will return the same data
+      // with the correct layer name (avoids duplicate from tmp_name_* layers)
 
       // ✅ Query ALL visible layers at parcel center (like IdentifyTool does)
-      let allLayerFeatures = [parcelFeature]; // Start with parcel feature
+      let allLayerFeatures: any[] = []; // Will be populated by QGIS Server query
 
       try {
+        // Create synthetic bounds around parcel center for GetFeatureInfo query
+        const OFFSET = 0.001; // ~100m at equator
+        const queryBounds = {
+          getWest: () => centerLng - OFFSET,
+          getEast: () => centerLng + OFFSET,
+          getSouth: () => centerLat - OFFSET,
+          getNorth: () => centerLat + OFFSET,
+        };
+
         // Get visible layers from Redux state (exclude temporary/garbage layers)
         const getVisibleLayers = () => {
           const visible: string[] = [];
@@ -999,13 +991,14 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
         console.log(`🔍 Querying ${visibleLayers.length} visible layers at parcel center`);
 
         // Query QGIS Server for all visible layers at parcel center
+        // Use synthetic bounds instead of current viewport (ensures valid pixel coords)
         const qgisResult = await getQGISFeatureInfoMultiLayer(
           {
             project: projectName,
             clickPoint: { lng: centerLng, lat: centerLat },
-            bounds: map.getBounds(),
-            width: map.getCanvas().width,
-            height: map.getCanvas().height,
+            bounds: queryBounds as any, // Synthetic bounds around centroid
+            width: 512, // Fixed size for synthetic viewport
+            height: 512,
             featureCount: 10,
           },
           visibleLayers
@@ -1025,13 +1018,13 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
           };
         });
 
-        console.log(`✅ Found ${qgisFeatures.length} features from other layers`);
+        console.log(`✅ Found ${qgisFeatures.length} features from QGIS Server`);
 
-        // Combine parcel feature + other layer features
-        allLayerFeatures = [parcelFeature, ...qgisFeatures];
+        // Use only QGIS Server features (no duplicate parcel data)
+        allLayerFeatures = qgisFeatures;
       } catch (error) {
         console.error('❌ Error querying other layers:', error);
-        // Continue with just parcel feature if QGIS query fails
+        // If QGIS query fails, modal will show no features (user can retry search)
       }
 
       // ✅ Close search modal FIRST
