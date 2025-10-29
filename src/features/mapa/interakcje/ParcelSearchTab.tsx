@@ -42,6 +42,7 @@ import { useLazyGetColumnValuesQuery, useLazyGetLayerAttributesWithTypesQuery } 
 import { useLazySearchInProjectQuery } from '@/backend/search';
 import { useAppSelector } from '@/redux/hooks';
 import IdentifyModal from '@/features/layers/modals/IdentifyModal';
+import { getQGISFeatureInfoMultiLayer } from '@/lib/qgis/getFeatureInfo';
 
 // Coordinate system definitions for transformation
 const EPSG_2180 = 'EPSG:2180'; // ETRS89 / Poland CS92 (Polish National Grid)
@@ -474,8 +475,8 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
               });
             }
 
-            // Format features for IdentifyModal
-            const formattedFeatures = matchedFeatures.map(feature => ({
+            // Format parcel features for IdentifyModal
+            const parcelFeatures = matchedFeatures.map(feature => ({
               layer: parcelLayerId || 'Działki',
               sourceLayer: 'WFS',
               properties: Object.entries(feature.properties || {}).map(([key, value]) => ({
@@ -485,12 +486,77 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
               geometry: transformGeometry(feature.geometry),
             }));
 
+            // ✅ Query ALL visible layers at parcel centroid (like IdentifyTool does)
+            let allLayerFeatures = [...parcelFeatures]; // Start with parcel features
+
+            try {
+              const map = mapRef.current?.getMap();
+              if (map) {
+                // Calculate centroid of first matched parcel
+                const centroid = getGeometryCentroid(transformedGeometry);
+
+                // Get visible layers from Redux state
+                const getVisibleLayers = () => {
+                  const visible: string[] = [];
+                  const traverse = (items: any[]) => {
+                    items.forEach((item) => {
+                      if (item.type === 'group' && item.children) {
+                        traverse(item.children);
+                      } else if (item.visible && item.name) {
+                        visible.push(item.name);
+                      }
+                    });
+                  };
+                  traverse(layers);
+                  return visible;
+                };
+
+                const visibleLayers = getVisibleLayers();
+                console.log(`🔍 Querying ${visibleLayers.length} visible layers at parcel location`);
+
+                // Query QGIS Server for all visible layers
+                const qgisResult = await getQGISFeatureInfoMultiLayer(
+                  {
+                    project: projectName,
+                    clickPoint: { lng: centroid[0], lat: centroid[1] },
+                    bounds: map.getBounds(),
+                    width: map.getCanvas().width,
+                    height: map.getCanvas().height,
+                    featureCount: 10,
+                  },
+                  visibleLayers
+                );
+
+                // Format QGIS features for IdentifyModal
+                const qgisFeatures = qgisResult.features.map((feature: any) => {
+                  const layerName = feature.id?.split('.')[0] || 'Unknown';
+                  return {
+                    layer: layerName,
+                    sourceLayer: 'QGIS Server',
+                    properties: Object.entries(feature.properties || {}).map(([key, value]) => ({
+                      key,
+                      value,
+                    })),
+                    geometry: feature.geometry,
+                  };
+                });
+
+                console.log(`✅ Found ${qgisFeatures.length} features from other layers`);
+
+                // Combine parcel features + other layer features
+                allLayerFeatures = [...parcelFeatures, ...qgisFeatures];
+              }
+            } catch (error) {
+              console.error('❌ Error querying other layers:', error);
+              // Continue with just parcel features if QGIS query fails
+            }
+
             // ✅ Close search modal FIRST
             onClose?.();
 
-            // Show all matched features in identify modal (delayed to let search modal close)
+            // Show all features in identify modal (delayed to let search modal close)
             setTimeout(() => {
-              setIdentifiedFeatures(formattedFeatures);
+              setIdentifiedFeatures(allLayerFeatures);
               setIdentifyModalOpen(true);
             }, 100);
           }
@@ -698,6 +764,48 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
     processCoords(geometry.coordinates);
 
     return [minLng, minLat, maxLng, maxLat];
+  };
+
+  /**
+   * Calculate centroid (center point) for GeoJSON geometry
+   * Works with Point, LineString, Polygon, MultiPolygon
+   * @param geometry GeoJSON geometry in EPSG:4326
+   * @returns [lng, lat] centroid in EPSG:4326
+   */
+  const getGeometryCentroid = (geometry: any): [number, number] => {
+    if (!geometry || !geometry.coordinates) {
+      throw new Error('Invalid geometry');
+    }
+
+    // Handle Point geometry - return point directly
+    if (geometry.type === 'Point') {
+      return geometry.coordinates as [number, number];
+    }
+
+    // For all other geometries - calculate average of all coordinates
+    let sumLng = 0;
+    let sumLat = 0;
+    let count = 0;
+
+    function processCoords(coords: any) {
+      if (typeof coords[0] === 'number') {
+        // Single point [lng, lat]
+        sumLng += coords[0];
+        sumLat += coords[1];
+        count++;
+      } else {
+        // Array of points or multidimensional
+        coords.forEach((coord: any) => processCoords(coord));
+      }
+    }
+
+    processCoords(geometry.coordinates);
+
+    if (count === 0) {
+      throw new Error('No coordinates found in geometry');
+    }
+
+    return [sumLng / count, sumLat / count];
   };
 
   /**

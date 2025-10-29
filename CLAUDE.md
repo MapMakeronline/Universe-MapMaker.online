@@ -806,8 +806,15 @@ curl -X PUT "https://api.universemapmaker.online/dashboard/settings/profile/" \
    - ✅ **COMPLETED & TESTED** - Implemented in `src/backend/styles/styles.api.ts` (2025-10-23)
    - 7 endpoints: getLayerRenderer, setLayerStyle, classifyValues, getBaseSymbol, generateSymbolImage, etc.
    - ✅ Style import (QML/SLD) tested and working (backend path bug fixed)
+   - ✅ **Scale-based visibility** tested and working (2025-10-29) - Set min/max zoom scales for layer visibility
    - Used in: EditLayerStyleModal.tsx, colorConversion.ts
    - Documentation: docs/backend/styles_api_docs.md
+
+   **Scale Visibility Feature (NEW 2025-10-29):**
+   - UI: EditLayerStyleModal.tsx → "Widoczność wg skali" tab
+   - Endpoint: POST `/api/layer/scale` (useSetLayerScaleMutation)
+   - Parameters: project, layer_id, max_scale, min_scale, turn_off
+   - Allows setting zoom level ranges where layers are visible (QGIS-style scale visibility)
 
 **Medium Priority:**
 3. **Admin Panel Migration** - Move to `@/backend` pattern

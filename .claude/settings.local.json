@@ -29,7 +29,10 @@
       "Bash(cmd /c \"screenshot.bat http://dev.universemapmaker.online/map?project=Wyszki wypis-guest-warning.png\")",
       "Bash(python -m json.tool:*)",
       "Bash(cmd /c \"screenshot.bat http://localhost:3000/map?project=Wyszki wypis-guest-search.png\")",
-      "Bash(cmd /c \"screenshot.bat http://localhost:3000/map?project=Wyszki wypis-guest-fixed.png\")"
+      "Bash(cmd /c \"screenshot.bat http://localhost:3000/map?project=Wyszki wypis-guest-fixed.png\")",
+      "Bash(node -e:*)",
+      "Bash(timeout /t 10 /nobreak)",
+      "Bash(cmd /c \"screenshot.bat http://localhost:3000/map?project=Wyszki scale-visibility-modal.png\")"
     ],
     "deny": [],
     "ask": []
