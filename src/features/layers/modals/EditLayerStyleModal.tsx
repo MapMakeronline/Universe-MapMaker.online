@@ -523,7 +523,15 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
       onClose();
     } catch (error: any) {
       console.error('❌ Set layer scale error:', error);
-      dispatch(showError(error?.data?.message || 'Nie udało się zapisać ustawień skali'));
+
+      // Better error handling
+      if (error?.status === 401) {
+        dispatch(showError('Musisz być zalogowany jako właściciel projektu, aby zmienić ustawienia warstwy'));
+      } else if (error?.data?.message) {
+        dispatch(showError(error.data.message));
+      } else {
+        dispatch(showError('Nie udało się zapisać ustawień skali'));
+      }
     }
   };
 
