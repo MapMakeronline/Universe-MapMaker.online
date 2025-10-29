@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -45,6 +45,7 @@ import {
   useGetLayerAttributesQuery,
   useImportLayerStyleMutation,
   useAddLabelMutation,
+  useSetLayerOpacityMutation,
 } from '@/backend/layers';
 import { showSuccess, showError } from '@/redux/slices/notificationSlice';
 import { useAppDispatch } from '@/redux/hooks';
@@ -113,6 +114,13 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [replaceExistingStyle, setReplaceExistingStyle] = useState(true);
+
+  // Layer opacity (global for entire QGIS layer, 0-100%)
+  const [layerOpacityPercent, setLayerOpacityPercent] = useState(100);
+  const [isUpdatingOpacity, setIsUpdatingOpacity] = useState(false);
+
+  // RTK Query mutations
+  const [setLayerOpacity] = useSetLayerOpacityMutation();
 
   // Tab 1: Pojedynczy symbol - ARRAY of fill layers
   const [fillLayers, setFillLayers] = useState<FillLayer[]>([
@@ -250,6 +258,51 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
     setFillLayers(fillLayers.map(layer =>
       layer.id === id ? { ...layer, ...updates } : layer
     ));
+  };
+
+  // Debounced handler for layer opacity changes
+  const updateLayerOpacityDebounced = useCallback(
+    async (opacityPercent: number) => {
+      if (!projectName || !layerId) return;
+
+      setIsUpdatingOpacity(true);
+      try {
+        // Convert percent (0-100) to backend format (0-255)
+        const opacityValue = Math.round((opacityPercent / 100) * 255);
+
+        await setLayerOpacity({
+          project: projectName,
+          layer_id: layerId,
+          opacity: opacityValue,
+        }).unwrap();
+
+        dispatch(showSuccess('Przezroczystość warstwy została zmieniona'));
+      } catch (error: any) {
+        console.error('Error updating layer opacity:', error);
+        dispatch(showError(error?.data?.message || 'Błąd podczas zmiany przezroczystości'));
+      } finally {
+        setIsUpdatingOpacity(false);
+      }
+    },
+    [projectName, layerId, setLayerOpacity, dispatch]
+  );
+
+  // Debounce wrapper (300ms delay)
+  const debouncedOpacityUpdate = useRef<NodeJS.Timeout | null>(null);
+  const handleLayerOpacityChange = (value: number) => {
+    // Clamp value 0-100
+    const clampedValue = Math.max(0, Math.min(100, value));
+    setLayerOpacityPercent(clampedValue);
+
+    // Clear previous timeout
+    if (debouncedOpacityUpdate.current) {
+      clearTimeout(debouncedOpacityUpdate.current);
+    }
+
+    // Set new timeout
+    debouncedOpacityUpdate.current = setTimeout(() => {
+      updateLayerOpacityDebounced(clampedValue);
+    }, 300);
   };
 
   // Handle Classify button click (Tab 2)
@@ -606,6 +659,73 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
         {/* Tab 1: Edytuj (Same as Pojedynczy symbol in original) */}
         {activeTab === 0 && (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {/* LAYER OPACITY (Global for entire QGIS layer) */}
+            <Box
+              sx={{
+                border: `1px solid ${theme.palette.divider}`,
+                borderRadius: '4px',
+                p: 2,
+                bgcolor: 'white',
+              }}
+            >
+              <Typography sx={{ fontSize: '14px', fontWeight: 500, mb: 2 }}>
+                Krycie warstwy (Layer Opacity)
+              </Typography>
+
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                {/* Slider */}
+                <Slider
+                  value={layerOpacityPercent}
+                  onChange={(e, value) => handleLayerOpacityChange(value as number)}
+                  min={0}
+                  max={100}
+                  disabled={isUpdatingOpacity || !projectName || !layerId}
+                  sx={{
+                    flex: 1,
+                    color: '#ef4444', // Red color (like in screenshot)
+                    '& .MuiSlider-thumb': {
+                      width: 16,
+                      height: 16,
+                    },
+                    '& .MuiSlider-track': {
+                      backgroundColor: '#ef4444',
+                    },
+                    '& .MuiSlider-rail': {
+                      backgroundColor: '#e5e7eb',
+                    },
+                  }}
+                />
+
+                {/* Input with % */}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <TextField
+                    size="small"
+                    type="number"
+                    value={layerOpacityPercent}
+                    onChange={(e) => handleLayerOpacityChange(parseInt(e.target.value) || 0)}
+                    disabled={isUpdatingOpacity || !projectName || !layerId}
+                    sx={{ width: '70px' }}
+                    inputProps={{ min: 0, max: 100 }}
+                  />
+                  <Typography sx={{ fontSize: '14px', color: 'text.secondary' }}>
+                    %
+                  </Typography>
+                </Box>
+              </Box>
+
+              {/* Loading indicator */}
+              {isUpdatingOpacity && (
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                  Aktualizowanie...
+                </Typography>
+              )}
+
+              {/* Info text */}
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                Przezroczystość całej warstwy (0% = przezroczysta, 100% = nieprzezroczysta)
+              </Typography>
+            </Box>
+
             {/* Wypełnienie + button */}
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
               <Typography sx={{ fontSize: '14px', fontWeight: 500 }}>

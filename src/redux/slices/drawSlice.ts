@@ -21,7 +21,7 @@ interface IdentifyState {
 }
 
 const initialIdentifyState: IdentifyState = {
-  isActive: false,
+  isActive: true, // Identyfikacja domyślnie włączona dla wszystkich użytkowników
 };
 
 interface DrawAndMeasureState {

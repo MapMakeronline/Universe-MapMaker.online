@@ -41,6 +41,7 @@ import proj4 from 'proj4';
 import { useLazyGetColumnValuesQuery, useLazyGetLayerAttributesWithTypesQuery } from '@/backend/layers';
 import { useLazySearchInProjectQuery } from '@/backend/search';
 import { useAppSelector } from '@/redux/hooks';
+import IdentifyModal from '@/features/layers/modals/IdentifyModal';
 
 // Coordinate system definitions for transformation
 const EPSG_3857 = 'EPSG:3857'; // Web Mercator (meters)
@@ -59,6 +60,9 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef }
 
   // Get layers from Redux (tree.json loaded layers)
   const { layers } = useAppSelector((state) => state.layers);
+
+  // Check if user is authenticated (to show/hide settings button)
+  const { isAuthenticated } = useAppSelector((state) => state.auth);
 
   // Map reference for zoom/highlight
   // ✅ Use mapRef.current instead of useMap() hook (ParcelSearchTab is rendered outside <Map> component)
@@ -84,6 +88,11 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef }
   // Highlighted feature state (for map interaction)
   const [highlightedFeatureGeoJSON, setHighlightedFeatureGeoJSON] = useState<any>(null);
 
+  // Identify modal state
+  const [identifyModalOpen, setIdentifyModalOpen] = useState(false);
+  const [identifiedFeatures, setIdentifiedFeatures] = useState<any[]>([]);
+  const [identifyCoordinates, setIdentifyCoordinates] = useState<[number, number] | undefined>();
+
   // RTK Query
   const [fetchPrecincts, { data: precinctsData, isLoading: precinctsLoading }] =
     useLazyGetColumnValuesQuery();
@@ -105,7 +114,7 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef }
   // Combined loading state for both searches
   const isSearching = searchLoading || secondSearchLoading;
 
-  // Load configuration from localStorage on mount
+  // Load configuration from localStorage on mount OR auto-detect for guests
   useEffect(() => {
     if (!projectName) return;
 
@@ -118,11 +127,46 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef }
         if (config.parcelLayerId) setParcelLayerId(config.parcelLayerId);
         if (config.precinctColumn) setPrecinctColumn(config.precinctColumn);
         if (config.plotNumberColumn) setPlotNumberColumn(config.plotNumberColumn);
+        console.log('✅ Loaded parcel search config from localStorage:', config);
       } catch (error) {
         console.error('Error loading parcel search config:', error);
       }
+    } else {
+      // No saved config - try auto-detect "Działki" layer
+      console.log('⚠️ No saved config found, will auto-detect "Działki" layer');
     }
   }, [projectName]);
+
+  // Auto-detect "Działki" layer for guests when layers are loaded
+  useEffect(() => {
+    if (!projectName || parcelLayerId || !layers || layers.length === 0) return;
+
+    // Flatten layers to handle groups
+    const allLayers = flattenLayers(layers);
+    const vectorLayers = allLayers.filter((layer: any) =>
+      layer.type === 'vector' ||
+      layer.geometry ||
+      layer.geometryType ||
+      (layer.type !== 'raster' && layer.type !== 'group' && layer.type !== 'wms')
+    );
+
+    // Try to find "Działki" layer by name
+    const dzialki = vectorLayers.find((layer: any) =>
+      layer.name === 'Działki' ||
+      layer.name.toLowerCase().includes('działki') ||
+      layer.name.toLowerCase().includes('dzialki')
+    );
+
+    if (dzialki) {
+      console.log('✅ Auto-detected "Działki" layer:', dzialki);
+      setParcelLayerId(dzialki.id);
+      // Use default column names (most common in Polish cadastral data)
+      setPrecinctColumn('NAZWA_OBRE');
+      setPlotNumberColumn('NUMER_DZIA');
+    } else {
+      console.log('⚠️ Could not auto-detect "Działki" layer. Available layers:', vectorLayers.map((l: any) => l.name));
+    }
+  }, [projectName, parcelLayerId, layers]);
 
   // Fetch precincts when project/layer changes
   useEffect(() => {
@@ -135,16 +179,29 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef }
     }
   }, [projectName, parcelLayerId, precinctColumn, fetchPrecincts]);
 
-  // Fetch plot numbers when precinct selected
+  // Fetch plot numbers when precinct selected OR when precinct changes
   useEffect(() => {
     if (projectName && parcelLayerId && plotNumberColumn) {
-      fetchPlotNumbers({
-        project: projectName,
-        layer_id: parcelLayerId,
-        column_name: plotNumberColumn,
-      });
+      // Jeśli wybrano obręb, wyszukaj działki dla tego obrębu
+      // Wtedy dropdown będzie pokazywał tylko numery działek z tego obrębu
+      if (selectedPrecinct && precinctColumn) {
+        // Wyszukaj działki w wybranym obrębie (backend zwraca GeoJSON z properties)
+        triggerSearch({
+          project: projectName,
+          searched_phrase: selectedPrecinct,
+          exactly: false,
+          ignore_capitalization: true,
+        });
+      } else {
+        // Jeśli nie wybrano obrębu, pobierz wszystkie numery działek
+        fetchPlotNumbers({
+          project: projectName,
+          layer_id: parcelLayerId,
+          column_name: plotNumberColumn,
+        });
+      }
     }
-  }, [projectName, parcelLayerId, plotNumberColumn, fetchPlotNumbers]);
+  }, [projectName, parcelLayerId, plotNumberColumn, selectedPrecinct, precinctColumn, fetchPlotNumbers, triggerSearch]);
 
   // Fetch layer attributes when temp layer is selected in config modal
   useEffect(() => {
@@ -438,34 +495,25 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef }
 
 
 
-      // ✅ Krok 5: Pokaż popup z informacjami o działce
-      const parcelNumber = featureProperties?.NUMER_DZIA || featureProperties?.numer || 'N/A';
-      const precinctName = featureProperties?.NAZWA_OBRE || featureProperties?.nazwa || 'N/A';
-      const gmina = featureProperties?.NAZWA_GMIN || 'N/A';
-      const idDzialki = featureProperties?.ID_DZIALKI || featureProperties?.ogc_fid || gid;
+      // ✅ Krok 5: Otwórz modal identyfikacji z danymi działki
+      const centerLng = (minLng + maxLng) / 2;
+      const centerLat = (minLat + maxLat) / 2;
 
-      const popup = new mapboxgl.Popup({
-        closeButton: true,
-        closeOnClick: false,
-        maxWidth: '300px',
-      })
-        .setLngLat([
-          (minLng + maxLng) / 2,  // Środek bounds
-          (minLat + maxLat) / 2,
-        ])
-        .setHTML(`
-          <div style="padding: 12px; font-family: Arial, sans-serif;">
-            <h3 style="margin: 0 0 10px 0; color: #333; font-size: 16px; font-weight: 600;">
-              Działka ${parcelNumber}
-            </h3>
-            <div style="font-size: 14px; color: #666;">
-              ${precinctName !== 'N/A' ? `<p style="margin: 5px 0;"><strong>Obręb:</strong> ${precinctName}</p>` : ''}
-              ${gmina !== 'N/A' ? `<p style="margin: 5px 0;"><strong>Gmina:</strong> ${gmina}</p>` : ''}
-              <p style="margin: 5px 0;"><strong>ID:</strong> ${idDzialki}</p>
-            </div>
-          </div>
-        `)
-        .addTo(map);
+      setIdentifyCoordinates([centerLng, centerLat]);
+
+      // Format feature properties for IdentifyModal
+      const formattedFeatures = [{
+        layer: 'Działki',
+        sourceLayer: 'QGIS Server',
+        properties: Object.entries(featureProperties).map(([key, value]) => ({
+          key,
+          value,
+        })),
+        geometry: transformedGeometry,
+      }];
+
+      setIdentifiedFeatures(formattedFeatures);
+      setIdentifyModalOpen(true);
 
 
 
@@ -478,7 +526,47 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef }
 
   // Extract precincts and plot numbers arrays
   const precincts = precinctsData?.data || [];
-  const plotNumbers = plotNumbersData?.data || [];
+
+  // Plot numbers: If precinct selected, extract from search results (filtered)
+  // Otherwise, use all plot numbers from API
+  const plotNumbers = React.useMemo(() => {
+    if (selectedPrecinct && searchData?.data) {
+      // Extract plot numbers from search results (only for selected precinct)
+      const numbers = new Set<string>();
+
+      for (const [layerId, layerData] of Object.entries(searchData.data)) {
+        if (layerData && typeof layerData === 'object' && layerData.type === 'FeatureCollection' && Array.isArray(layerData.features)) {
+          for (const feature of layerData.features) {
+            const precinctValue = feature.properties?.[precinctColumn];
+            const plotNumberValue = feature.properties?.[plotNumberColumn];
+
+            // Only include if precinct matches (exact match, case-insensitive)
+            if (precinctValue && plotNumberValue) {
+              const precinctStr = String(precinctValue).trim().toLowerCase();
+              const selectedPrecinctStr = selectedPrecinct.trim().toLowerCase();
+
+              if (precinctStr === selectedPrecinctStr) {
+                numbers.add(String(plotNumberValue));
+              }
+            }
+          }
+        }
+      }
+
+      return Array.from(numbers).sort((a, b) => {
+        // Sort numerically if possible, otherwise alphabetically
+        const numA = parseFloat(a);
+        const numB = parseFloat(b);
+        if (!isNaN(numA) && !isNaN(numB)) {
+          return numA - numB;
+        }
+        return a.localeCompare(b);
+      });
+    }
+
+    // No precinct selected - return all plot numbers
+    return plotNumbersData?.data || [];
+  }, [selectedPrecinct, searchData, plotNumbersData, precinctColumn, plotNumberColumn]);
 
   // Filter search results based on selected criteria
   // If both precinct AND plot number are selected, intersect results from TWO API calls
@@ -701,7 +789,10 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef }
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <SettingsIcon sx={{ color: theme.palette.info.dark }} />
               <Typography variant="body2" color="text.secondary">
-                <strong>Konfiguracja wymagana:</strong> Kliknij ikonę zębatki, aby wybrać warstwę działek.
+                <strong>Konfiguracja wymagana:</strong>{' '}
+                {isAuthenticated
+                  ? 'Kliknij ikonę zębatki, aby wybrać warstwę działek.'
+                  : 'Administrator projektu musi skonfigurować wyszukiwarkę działek.'}
               </Typography>
             </Box>
           </Box>
@@ -714,7 +805,11 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef }
             labelId="precinct-label"
             value={selectedPrecinct}
             label="Obręb działki"
-            onChange={(e) => setSelectedPrecinct(e.target.value)}
+            onChange={(e) => {
+              setSelectedPrecinct(e.target.value);
+              // Reset plot number when precinct changes (different precinct = different plot numbers)
+              setSelectedPlotNumber('');
+            }}
           >
             <MenuItem value="">
               <em>Wybierz listę</em>
@@ -760,7 +855,7 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef }
           sx={{ mb: 2 }}
         />
 
-        {/* Search Button with Settings Icon */}
+        {/* Search Button with Settings Icon (only for authenticated users) */}
         <Box sx={{ display: 'flex', gap: 1 }}>
           <Button
             fullWidth
@@ -771,15 +866,17 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef }
           >
             {isSearching ? 'Wyszukiwanie...' : 'Wyszukaj'}
           </Button>
-          <IconButton
-            onClick={handleConfigOpen}
-            sx={{
-              bgcolor: theme.palette.grey[200],
-              '&:hover': { bgcolor: theme.palette.grey[300] },
-            }}
-          >
-            <SettingsIcon />
-          </IconButton>
+          {isAuthenticated && (
+            <IconButton
+              onClick={handleConfigOpen}
+              sx={{
+                bgcolor: theme.palette.grey[200],
+                '&:hover': { bgcolor: theme.palette.grey[300] },
+              }}
+            >
+              <SettingsIcon />
+            </IconButton>
+          )}
         </Box>
       </Box>
 
@@ -1009,6 +1106,15 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef }
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Identify Modal */}
+      <IdentifyModal
+        open={identifyModalOpen}
+        onClose={() => setIdentifyModalOpen(false)}
+        features={identifiedFeatures}
+        coordinates={identifyCoordinates}
+        isLoading={false}
+      />
     </Box>
   );
 };

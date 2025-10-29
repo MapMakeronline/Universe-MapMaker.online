@@ -561,8 +561,28 @@ export const LayerTree: React.FC<LayerTreeProps> = ({
                     const [minX, minY, maxX, maxY] = warstwa.extent;
 
                     // Detect CRS based on bottom-left corner coordinates
-                    const detectedCRS = detectCRS(minX, minY);
+                    let detectedCRS = detectCRS(minX, minY);
                     console.log('🌍 Detected CRS for layer:', warstwa.name, '→', detectedCRS);
+
+                    // FALLBACK dla unknown CRS - spróbuj wykryć z extent values
+                    if (detectedCRS === 'unknown') {
+                      console.warn(`⚠️ Unknown CRS for layer: ${warstwa.name}, attempting auto-detection from extent`);
+
+                      // Heurystyka: jeśli współrzędne > 180, to projected CRS
+                      if (Math.abs(minX) > 180 || Math.abs(minY) > 180) {
+                        // Duże wartości sugerują Web Mercator lub Polish Grid
+                        if (minX > 100000 && minX < 1000000) {
+                          detectedCRS = 'EPSG:2180'; // Polski układ PL-1992
+                          console.log('📍 Auto-detected Polish coordinates (EPSG:2180)');
+                        } else {
+                          detectedCRS = 'EPSG:3857'; // Web Mercator (fallback)
+                          console.log('🌐 Auto-detected Web Mercator (EPSG:3857)');
+                        }
+                      } else {
+                        detectedCRS = 'EPSG:4326'; // WGS84 (geographic)
+                        console.log('🌍 Auto-detected geographic coordinates (EPSG:4326)');
+                      }
+                    }
 
                     let wgs84Extent: [number, number, number, number];
 
@@ -573,8 +593,10 @@ export const LayerTree: React.FC<LayerTreeProps> = ({
                     } else if (detectedCRS === 'EPSG:2180') {
                       wgs84Extent = transformExtent([minX, minY, maxX, maxY]);
                     } else {
-                      console.error('❌ Unsupported CRS:', detectedCRS);
-                      return;
+                      // Ostateczny fallback - użyj Web Mercator transformation
+                      console.warn(`⚠️ Unsupported CRS: ${detectedCRS}, using Web Mercator transformation as fallback`);
+                      dispatch(showInfo(`Warstwa "${warstwa.name}": Nieznany układ współrzędnych, używam Web Mercator`));
+                      wgs84Extent = transformExtentFromWebMercator([minX, minY, maxX, maxY]);
                     }
 
                     const [wgs84MinX, wgs84MinY, wgs84MaxX, wgs84MaxY] = wgs84Extent;

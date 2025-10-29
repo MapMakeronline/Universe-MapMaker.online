@@ -14,7 +14,7 @@ import ImportLayerModal from '../modals/ImportLayerModal';
 import AddGroupModal from '../modals/AddGroupModal';
 import CreateConsultationModal from '../modals/CreateConsultationModal';
 import LayerManagerModal from '../modals/LayerManagerModal';
-import WypisConfigModal from '../../mapa/komponenty/WypisConfigModal';
+import PrintConfigModal from '../../mapa/komponenty/PrintConfigModal';
 import EditLayerStyleModal from '../modals/EditLayerStyleModal';
 import DeleteLayerConfirmModal from '../modals/DeleteLayerConfirmModal';
 import { useResizable, useDragDrop } from '@/hooks/index';
@@ -152,9 +152,6 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
     projectName,
     layers
   );
-
-  // Wypis configurations state
-  const [existingWypisConfigs, setExistingWypisConfigs] = useState<any[]>([]);
 
   const [expandedSections, setExpandedSections] = useState<{[key: string]: boolean}>({
     'informacje-ogolne': false,
@@ -295,30 +292,6 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
     closeModal('layerManager');
     console.log('TODO: Layer manager:', data);
     dispatch(showInfo('Zarządzanie warstwami - wkrótce dostępne'));
-  };
-
-  const handleSaveWypisConfig = (config: any) => {
-    console.log('💾 Saving wypis config:', config);
-
-    // Check if updating existing or adding new
-    const existingIndex = existingWypisConfigs.findIndex(c => c.id === config.id);
-
-    if (existingIndex >= 0) {
-      // Update existing
-      const updatedConfigs = [...existingWypisConfigs];
-      updatedConfigs[existingIndex] = config;
-      setExistingWypisConfigs(updatedConfigs);
-      dispatch(showSuccess(`Konfiguracja "${config.nazwa}" została zaktualizowana`, 3000));
-    } else {
-      // Add new
-      setExistingWypisConfigs([...existingWypisConfigs, config]);
-      dispatch(showSuccess(`Konfiguracja "${config.nazwa}" została utworzona`, 3000));
-    }
-
-    // TODO: Save to backend
-    // await saveWypisConfigToBackend(config);
-
-    closeModal('printConfig');
   };
 
   // Validate project has .qgs file before allowing layer import
@@ -555,12 +528,15 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
       />
 
       {/* Wypis Config Modal */}
-      <WypisConfigModal
+      <PrintConfigModal
         open={modals.printConfig}
         onClose={() => closeModal('printConfig')}
-        onSave={handleSaveWypisConfig}
-        existingConfigs={existingWypisConfigs}
-        projectLayers={layers.filter(l => l.type !== 'group').map(l => ({ id: l.id, name: l.name }))}
+        projectName={projectName}
+        availableLayers={layers.filter(l => l.type !== 'group').map(l => ({
+          id: l.id,
+          name: l.name,
+          columns: [] // TODO: Fetch from layer attributes API
+        }))}
       />
 
       {/* Edit Layer Style Modal */}

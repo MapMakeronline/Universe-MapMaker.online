@@ -188,7 +188,7 @@ const RightFABToolbar: React.FC<RightFABToolbarProps> = ({ mapRef }) => {
       tooltip: "Wyszukiwanie działek",
       onClick: () => console.log("Parcel search"),
       color: 'primary',
-      authRequired: true,
+      authRequired: true, // Hidden for guests
     },
     {
       id: "edit",
@@ -196,7 +196,7 @@ const RightFABToolbar: React.FC<RightFABToolbarProps> = ({ mapRef }) => {
       tooltip: "Edycja",
       onClick: () => console.log("Edit"),
       color: 'primary',
-      authRequired: true,
+      authRequired: true, // Hidden for guests
     },
     {
       id: "geometry-tools",
@@ -204,7 +204,7 @@ const RightFABToolbar: React.FC<RightFABToolbarProps> = ({ mapRef }) => {
       tooltip: "Narzędzia geometrii",
       onClick: () => console.log("Geometry tools"),
       color: 'primary',
-      authRequired: true,
+      authRequired: true, // Hidden for guests
     },
     {
       id: "measure",
@@ -213,6 +213,7 @@ const RightFABToolbar: React.FC<RightFABToolbarProps> = ({ mapRef }) => {
       onClick: () => setMeasurementModalOpen(true),
       active: measurement.isDistanceMode || measurement.isAreaMode,
       color: 'primary',
+      authRequired: true, // Hidden for guests
     },
     {
       id: "search",
@@ -220,6 +221,7 @@ const RightFABToolbar: React.FC<RightFABToolbarProps> = ({ mapRef }) => {
       tooltip: "Wyszukiwanie",
       onClick: () => setSearchModalOpen(true),
       color: 'primary',
+      // authRequired: false - Visible for guests
     },
 
     // WHITE ICONS (Default Color)
@@ -230,6 +232,7 @@ const RightFABToolbar: React.FC<RightFABToolbarProps> = ({ mapRef }) => {
       onClick: handleIdentify,
       active: identify.isActive,
       color: 'default',
+      // authRequired: false - Visible for guests
     },
     {
       id: "print",
@@ -237,6 +240,7 @@ const RightFABToolbar: React.FC<RightFABToolbarProps> = ({ mapRef }) => {
       tooltip: "Drukuj / Eksportuj PDF",
       onClick: handlePDFExport,
       color: 'default',
+      authRequired: true, // Hidden for guests
     },
     {
       id: "map-layers",
@@ -244,6 +248,7 @@ const RightFABToolbar: React.FC<RightFABToolbarProps> = ({ mapRef }) => {
       tooltip: "Warstwy mapy",
       onClick: () => console.log("Map layers"),
       color: 'default',
+      authRequired: true, // Hidden for guests
     },
     {
       id: "crop-mask",
@@ -252,7 +257,7 @@ const RightFABToolbar: React.FC<RightFABToolbarProps> = ({ mapRef }) => {
       onClick: handleAreaMeasure,
       active: measurement.isAreaMode,
       color: 'default',
-      authRequired: true,
+      authRequired: true, // Hidden for guests
     },
     {
       id: "keyboard",
@@ -260,6 +265,7 @@ const RightFABToolbar: React.FC<RightFABToolbarProps> = ({ mapRef }) => {
       tooltip: "Skróty klawiszowe",
       onClick: () => console.log("Keyboard shortcuts"),
       color: 'default',
+      authRequired: true, // Hidden for guests
     },
     {
       id: "contact",
@@ -267,6 +273,7 @@ const RightFABToolbar: React.FC<RightFABToolbarProps> = ({ mapRef }) => {
       tooltip: "Kontakt",
       onClick: () => console.log("Contact"),
       color: 'default',
+      authRequired: true, // Hidden for guests
     },
 
     // RED/CORAL ICON (Settings at the end)
@@ -276,6 +283,7 @@ const RightFABToolbar: React.FC<RightFABToolbarProps> = ({ mapRef }) => {
       tooltip: "Ustawienia",
       onClick: () => console.log("Settings"),
       color: 'primary',
+      authRequired: true, // Hidden for guests
     },
   ];
 

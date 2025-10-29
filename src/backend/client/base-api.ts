@@ -55,7 +55,7 @@ const baseQueryWithErrorHandling = async (args: any, api: any, extraOptions: any
     if (result.error.status === 401) {
       if (typeof window !== 'undefined') {
         localStorage.removeItem('authToken');
-        window.location.href = '/login';
+        window.location.href = '/auth';
       }
     }
   }
@@ -88,6 +88,7 @@ export const baseApi = createApi({
     'LayerAttributes', // Layer attribute column names
     'LayerStyle',     // Layer styling (QML/SLD)
     'Search',         // Parcel search results
+    'WypisConfiguration', // Wypis/Wyrys configurations
     'QGIS',
     'Users',
     'Admin',

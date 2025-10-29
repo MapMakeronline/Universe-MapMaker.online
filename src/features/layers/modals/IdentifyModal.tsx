@@ -15,6 +15,7 @@ import TableRow from '@mui/material/TableRow';
 import TableCell from '@mui/material/TableCell';
 import Chip from '@mui/material/Chip';
 import CircularProgress from '@mui/material/CircularProgress';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
 import Divider from '@mui/material/Divider';
 import CloseIcon from '@mui/icons-material/Close';
@@ -46,6 +47,7 @@ interface IdentifyModalProps {
 
 const IdentifyModal: React.FC<IdentifyModalProps> = ({ open, onClose, features, coordinates, isLoading = false }) => {
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm')); // Mobile: < 600px
 
   const formatValue = (value: any): string => {
     if (value === null || value === undefined) {
@@ -67,13 +69,14 @@ const IdentifyModal: React.FC<IdentifyModalProps> = ({ open, onClose, features, 
       onClose={onClose}
       maxWidth="md"
       fullWidth
+      fullScreen={isMobile} // Fullscreen on mobile for better UX
       PaperProps={{
         sx: {
-          borderRadius: '8px',
+          borderRadius: isMobile ? 0 : '8px', // No border radius on fullscreen
           boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
-          maxWidth: '700px',
-          width: '90%',
-          maxHeight: '80vh',
+          maxWidth: isMobile ? '100%' : '700px',
+          width: isMobile ? '100%' : '90%',
+          maxHeight: isMobile ? '100vh' : '80vh',
         }
       }}
     >
@@ -250,23 +253,27 @@ const IdentifyModal: React.FC<IdentifyModalProps> = ({ open, onClose, features, 
                         >
                           <TableCell
                             sx={{
-                              width: '40%',
-                              fontSize: '13px',
+                              width: isMobile ? '35%' : '40%', // Narrower on mobile
+                              fontSize: isMobile ? '12px' : '13px',
                               fontWeight: 500,
                               color: theme.palette.text.primary,
-                              py: 1.5,
-                              px: 2,
+                              py: isMobile ? 1 : 1.5,
+                              px: isMobile ? 1.5 : 2,
+                              wordBreak: 'break-word', // Allow breaking long keys
+                              verticalAlign: 'top', // Align to top for long values
                             }}
                           >
                             {prop.key}
                           </TableCell>
                           <TableCell
                             sx={{
-                              fontSize: '13px',
+                              fontSize: isMobile ? '12px' : '13px',
                               color: theme.palette.text.secondary,
-                              py: 1.5,
-                              px: 2,
-                              wordBreak: 'break-word',
+                              py: isMobile ? 1 : 1.5,
+                              px: isMobile ? 1.5 : 2,
+                              wordBreak: 'break-word', // Allow breaking long values
+                              overflowWrap: 'anywhere', // Break URLs and long strings
+                              verticalAlign: 'top', // Align to top
                             }}
                           >
                             {formatValue(prop.value)}

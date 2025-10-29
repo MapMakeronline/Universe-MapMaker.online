@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useTheme } from '@mui/material/styles'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import Dialog from '@mui/material/Dialog'
@@ -21,32 +21,32 @@ import List from '@mui/material/List'
 import ListItem from '@mui/material/ListItem'
 import ListItemText from '@mui/material/ListItemText'
 import Divider from '@mui/material/Divider'
+import Checkbox from '@mui/material/Checkbox'
+import FormControlLabel from '@mui/material/FormControlLabel'
+import Alert from '@mui/material/Alert'
+import CircularProgress from '@mui/material/CircularProgress'
 import CloseIcon from '@mui/icons-material/Close'
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
 import AddIcon from '@mui/icons-material/Add'
+import {
+  useAddWypisConfigurationMutation,
+  useGetWypisConfigurationQuery,
+  useRemoveWypisConfigurationMutation,
+} from '@/backend/wypis'
+import type { WypisConfigFormState, WypisPurpose, WypisArrangement } from '@/backend/types'
 
-export interface WypisConfig {
+interface QGISLayer {
   id: string
-  nazwa: string
-  warstwaId: string
-  kolumnaObreb: string
-  kolumnaNumer: string
-  przeznaczenia: PrzeznaczenieItem[]
-}
-
-export interface PrzeznaczenieItem {
-  id: string
-  uchwalaNr: string
-  uchwalaNazwa: string
+  name: string
+  columns?: string[]
 }
 
 interface WypisConfigModalProps {
   open: boolean
   onClose: () => void
-  onSave: (config: WypisConfig) => void
-  existingConfigs: WypisConfig[]
-  projectLayers: Array<{ id: string; name: string }>
+  projectName: string
+  configId?: string // If editing existing configuration
 }
 
 /**

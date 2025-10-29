@@ -150,9 +150,14 @@ const IdentifyTool = () => {
             totalFeatures: qgisFeatures.length,
           });
 
-          // ========== Backend API (Fallback/Additional source) ==========
-          // Create bbox for better polygon/line detection (pixel tolerance)
-          const pixelTolerance = 5; // 5 pixels around click point
+          // ========== Backend API (DISABLED - zwraca 400 dla wszystkich warstw) ==========
+          // QGIS OWS GetFeatureInfo dostarcza kompletne dane o feature'ach.
+          // Backend enrichment został wyłączony ponieważ endpoint /api/layer/feature/coordinates
+          // zwraca błędy 400 Bad Request dla nowo zaimportowanych warstw.
+          //
+          // Jeśli w przyszłości backend API zostanie naprawiony, odkomentuj poniższy kod:
+          /*
+          const pixelTolerance = 5;
           const point = map.project([e.lngLat.lng, e.lngLat.lat]);
           const bbox = [
             map.unproject([point.x - pixelTolerance, point.y - pixelTolerance]),
@@ -162,7 +167,6 @@ const IdentifyTool = () => {
           const allResults = await Promise.all(
             visibleLayers.map(async (layer) => {
               try {
-                // Use bbox for polygon layers (better tolerance), point for others
                 const queryParams = layer.type === 'polygon'
                   ? {
                       project: projectName,
@@ -178,7 +182,6 @@ const IdentifyTool = () => {
                     };
 
                 const result = await identifyFeature(queryParams as any).unwrap();
-
                 return {
                   layerName: layer.name,
                   features: result.data.features || [],
@@ -190,7 +193,6 @@ const IdentifyTool = () => {
             })
           );
 
-          // Transform Backend API features to IdentifiedFeature format
           const backendFeatures: IdentifiedFeature[] = [];
           allResults.forEach(({ layerName, features: layerFeatures }) => {
             layerFeatures.forEach((feature: any) => {
@@ -212,8 +214,6 @@ const IdentifyTool = () => {
             layers: allResults.map(r => ({ layer: r.layerName, count: r.features.length })),
           });
 
-          // ========== Combine results (QGIS OWS primary, Backend API fallback) ==========
-          // If QGIS OWS found features, use them. Otherwise use Backend API results.
           const combinedFeatures = qgisFeatures.length > 0 ? qgisFeatures : backendFeatures;
 
           mapLogger.log('📊 Combined results', {
@@ -222,8 +222,15 @@ const IdentifyTool = () => {
             finalCount: combinedFeatures.length,
             source: qgisFeatures.length > 0 ? 'QGIS OWS' : 'Backend API',
           });
+          */
 
-          setIdentifiedFeatures(combinedFeatures);
+          // Use QGIS OWS results only (backend enrichment disabled)
+          mapLogger.log('📊 Using QGIS OWS data only (backend enrichment disabled)', {
+            totalFeatures: qgisFeatures.length,
+            source: 'QGIS OWS GetFeatureInfo',
+          });
+
+          setIdentifiedFeatures(qgisFeatures);
         } catch (error) {
           mapLogger.error('❌ Identify query failed:', error);
           setIsIdentifyingQGIS(false);
@@ -243,20 +250,33 @@ const IdentifyTool = () => {
 
     // 2) Mobile fallback: touchstart/touchend pattern (tap vs drag detection)
     const handleTouchStart = (e: any) => {
-      if (e.points?.length === 1) {
+      // Mapbox GL touchstart event structure:
+      // - originalEvent.touches[0] for raw touch data
+      // - point for pixel coordinates
+      const touch = e.originalEvent?.touches?.[0];
+      if (touch || e.point) {
         touchStartPt = { x: e.point.x, y: e.point.y };
       }
     };
 
     const handleTouchEnd = (e: any) => {
-      if (e.points?.length !== 1 || !touchStartPt) {
+      // FIX: touchend doesn't have e.point anymore - use changedTouches
+      const touch = e.originalEvent?.changedTouches?.[0];
+
+      if (!touch || !touchStartPt) {
         touchStartPt = null;
         return;
       }
 
+      // Get pixel coordinates from touch event
+      const canvas = map.getCanvas();
+      const rect = canvas.getBoundingClientRect();
+      const touchX = touch.clientX - rect.left;
+      const touchY = touch.clientY - rect.top;
+
       // Check if user moved finger (drag vs tap)
-      const dx = Math.abs(e.point.x - touchStartPt.x);
-      const dy = Math.abs(e.point.y - touchStartPt.y);
+      const dx = Math.abs(touchX - touchStartPt.x);
+      const dy = Math.abs(touchY - touchStartPt.y);
       const moved = Math.max(dx, dy) > 8; // 8px tolerance
 
       touchStartPt = null;
@@ -266,9 +286,23 @@ const IdentifyTool = () => {
         return; // Was a drag, not a tap
       }
 
-      // Clean tap detected - trigger identify
-      mapLogger.log('🔍 Clean tap detected (touchend fallback)');
-      handleMapClick(e);
+      // Clean tap detected - convert pixel to lngLat
+      mapLogger.log('🔍 Clean tap detected (touchend fallback)', { touchX, touchY });
+
+      // FIX: Convert pixel coordinates to geographic coordinates
+      const lngLat = map.unproject([touchX, touchY]);
+
+      // Create event object with lngLat (mimicking click event structure)
+      const syntheticEvent = {
+        lngLat: {
+          lng: lngLat.lng,
+          lat: lngLat.lat,
+        },
+        point: { x: touchX, y: touchY },
+        originalEvent: e.originalEvent,
+      };
+
+      handleMapClick(syntheticEvent);
     };
 
     map.on('touchstart', handleTouchStart);

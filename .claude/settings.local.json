@@ -9,7 +9,22 @@
       "Bash(npx next dev)",
       "Bash(cmd /c \"screenshot.bat http://localhost:3000/map?project=testshp\")",
       "Bash(git add:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(gcloud builds list:*)",
+      "Bash(gcloud run services describe:*)",
+      "Bash(powershell -ExecutionPolicy Bypass -File screenshot.ps1 \"http://localhost:3000/dashboard\" \"dashboard-test.png\")",
+      "Bash(curl:*)",
+      "Bash(gcloud compute ssh:*)",
+      "Bash(cmd /c \"screenshot.bat http://localhost:3000/map?project=testshp wypis-test-map.png\")",
+      "Bash(powershell:*)",
+      "Read(//c/Users/Bartosz/**)",
+      "Bash(npm install:*)",
+      "Bash(cmd /c \"screenshot.bat http://localhost:3000/map?project=testshp wypis-modal-complete.png\")",
+      "Bash(cmd /c \"screenshot.bat http://localhost:3000/map?project=testshp layer-opacity-modal.png\")",
+      "Bash(dir:*)",
+      "Bash(cmd /c \"screenshot.bat http://localhost:3000/map?project=Wyszki wypis-search-modal.png\")",
+      "Bash(cmd /c \"screenshot.bat http://dev.universemapmaker.online/map?project=Wyszki wypis-search-modal.png\")",
+      "Bash(cmd /c \"screenshot.bat http://dev.universemapmaker.online/map?project=Wyszki\")"
     ],
     "deny": [],
     "ask": []

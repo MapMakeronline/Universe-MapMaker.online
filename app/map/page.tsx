@@ -113,7 +113,8 @@ export default function MapPage() {
   const projectName = searchParams.get('project');
 
   // State for LeftPanel collapse (controlled by LayersFAB)
-  const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
+  // DEFAULT: Collapsed (true) - drzewo warstw zwinięte domyślnie dla wszystkich użytkowników
+  const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(true);
 
   // Toggle handler for LayersFAB
   const handleToggleLeftPanel = () => {

@@ -155,15 +155,14 @@ export function detectCRS(x: number, y: number): 'EPSG:4326' | 'EPSG:2180' | 'EP
     return 'EPSG:4326';
   }
 
-  // EPSG:3857 (Web Mercator) bounds for world
+  // EPSG:3857 (Web Mercator) - rozszerzony zakres dla całego świata
   // X: ~-20037508 to ~20037508 (meters)
   // Y: ~-20048966 to ~20048966 (meters)
-  // But for Poland: X: ~1,800,000 to ~2,700,000, Y: ~6,400,000 to ~7,400,000
+  // Dla Polski: X: ~1,800,000 to ~2,700,000, Y: ~6,400,000 to ~7,400,000
+  // ROZSZERZONO: aby obsługiwać również nietypowe zakresy (np. 2537183 - 8441295)
   if (
-    x >= 1000000 &&
-    x <= 3000000 &&
-    y >= 6000000 &&
-    y <= 8000000
+    Math.abs(x) >= 1000000 && Math.abs(x) <= 20037508 &&
+    Math.abs(y) >= 5000000 && Math.abs(y) <= 20048966
   ) {
     return 'EPSG:3857';
   }
@@ -178,6 +177,13 @@ export function detectCRS(x: number, y: number): 'EPSG:4326' | 'EPSG:2180' | 'EP
     y <= 8000000
   ) {
     return 'EPSG:2180';
+  }
+
+  // FALLBACK: Jeśli współrzędne są duże (> 180), prawdopodobnie to projected CRS
+  // Domyślnie zakładamy EPSG:3857 (Web Mercator) jako najbardziej uniwersalny
+  if (Math.abs(x) > 180 || Math.abs(y) > 180) {
+    console.warn(`⚠️ Unrecognized CRS for coords [${x}, ${y}], assuming EPSG:3857 (Web Mercator)`);
+    return 'EPSG:3857';
   }
 
   return 'unknown';

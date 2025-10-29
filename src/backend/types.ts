@@ -443,3 +443,160 @@ export interface LayerFilter {
   visible?: boolean;
   search?: string;
 }
+
+// ============================================================================
+// Wypis/Wyrys Types (Print Configuration)
+// ============================================================================
+
+/**
+ * Purpose (przeznaczenie) definition for a plan layer
+ * Links a symbol/name to a PDF file with detailed description
+ */
+export interface WypisPurpose {
+  name: string;        // Display name (e.g., "MN - Mieszkaniowe")
+  fileName: string;    // PDF filename (e.g., "MN.pdf")
+}
+
+/**
+ * Arrangement (ustalenie) definition for general documents
+ * Links general regulations/rules to PDF files
+ */
+export interface WypisArrangement {
+  name: string;        // Display name (e.g., "Rozdział 1. Ustalenia ogólne")
+  fileName: string;    // PDF filename (e.g., "rozdzial_1.pdf")
+}
+
+/**
+ * Plan layer configuration for wypis
+ * Each layer represents a spatial planning document (MPZP, SUiKZP, etc.)
+ */
+export interface WypisPlanLayer {
+  id: string;                       // QGIS layer ID (also used as folder name)
+  name: string;                     // Display name
+  purposeColumn: string;            // Column name containing purpose symbol
+  purposes: WypisPurpose[];         // List of possible purposes
+  arrangements: WypisArrangement[]; // List of general documents
+}
+
+/**
+ * Complete wypis configuration structure
+ * Stored as JSON file in backend: /projects/{project}/wypis_configs/{config_id}.json
+ */
+export interface WypisConfiguration {
+  configuration_name: string;       // Configuration name (e.g., "MPZP")
+  plotsLayer: string;               // QGIS layer ID for cadastral parcels
+  plotsLayerName: string;           // Display name for parcels layer
+  precinctColumn: string;           // Column name for precinct (obręb)
+  plotNumberColumn: string;         // Column name for plot number
+  planLayers: WypisPlanLayer[];     // Array of plan layers (order matters!)
+}
+
+/**
+ * Request payload for adding/updating wypis configuration
+ */
+export interface AddWypisConfigurationRequest {
+  project: string;                  // Project name (regex: ^[a-zA-Z0-9ąćęłńóśźżĄĘŁŃÓŚŹŻ_]*$)
+  config_id?: string;               // Optional config ID (auto-generated if not provided)
+  configuration: WypisConfiguration; // Full configuration object
+}
+
+/**
+ * Response from add/update wypis configuration
+ */
+export interface WypisConfigurationResponse {
+  success: boolean;
+  config_complete: boolean;         // True if all required fields are present
+  config_id: string;                // Configuration ID
+  message?: string;
+}
+
+/**
+ * Request payload for getting wypis configuration(s)
+ */
+export interface GetWypisConfigurationRequest {
+  project: string;                  // Required: project name
+  config_id?: string;               // Optional: specific config ID (if omitted, returns all)
+}
+
+/**
+ * Response for single configuration
+ */
+export interface GetWypisConfigurationSingleResponse {
+  success: boolean;
+  data: WypisConfiguration;
+}
+
+/**
+ * Response for all configurations
+ */
+export interface GetWypisConfigurationAllResponse {
+  success: boolean;
+  configurations: Array<{
+    config_id: string;
+    configuration_name: string;
+    data: WypisConfiguration;
+  }>;
+}
+
+/**
+ * Request payload for removing wypis configuration
+ */
+export interface RemoveWypisConfigurationRequest {
+  project: string;                  // Project name
+  config_id: string;                // Configuration ID to remove
+}
+
+/**
+ * Plot (parcel) identifier for wypis generation
+ */
+export interface WypisPlot {
+  precinct: string;                 // Precinct name (obręb)
+  number: string;                   // Plot number
+}
+
+/**
+ * Request payload for creating wypis PDF
+ */
+export interface CreateWypisRequest {
+  project: string;                  // Project name
+  config_id: string;                // Configuration ID to use
+  plot: WypisPlot[];                // Array of plots to include in wypis
+}
+
+/**
+ * Purpose with optional File object for upload
+ */
+export interface WypisPurposeWithFile extends WypisPurpose {
+  file?: File;  // UI-only: File object for upload
+}
+
+/**
+ * Arrangement with optional File object for upload
+ */
+export interface WypisArrangementWithFile extends WypisArrangement {
+  file?: File;  // UI-only: File object for upload
+}
+
+/**
+ * Frontend form state for wypis configuration modal
+ * Includes UI-specific fields not sent to backend
+ */
+export interface WypisConfigFormState {
+  configurationName: string;
+  plotsLayer: {
+    layerId: string;
+    layerName: string;
+    precinctColumn: string;
+    plotNumberColumn: string;
+  };
+  planLayers: Array<{
+    id: string;
+    name: string;
+    purposeColumn: string;
+    purposes: WypisPurposeWithFile[];
+    arrangements: WypisArrangementWithFile[];
+    enabled: boolean;               // UI-only: checkbox state
+    position: number | null;        // UI-only: ordering position (1, 2, 3...)
+  }>;
+  transparencySettings?: string;    // UI-only: NOT supported by backend!
+}

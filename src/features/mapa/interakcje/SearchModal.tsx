@@ -19,13 +19,12 @@ import LocationIcon from '@mui/icons-material/LocationOn';
 import SearchIcon from '@mui/icons-material/Search';
 import PublicIcon from '@mui/icons-material/Public';
 import MapIcon from '@mui/icons-material/Map';
-import FilterListIcon from '@mui/icons-material/FilterList';
-import LabelIcon from '@mui/icons-material/Label';
 import { MapRef } from 'react-map-gl';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import { flyToLocation } from '@/redux/slices/mapSlice';
 import { searchPlaces, type SearchResult as MapboxSearchResult } from '@/mapbox/search';
 import { useTheme } from '@mui/material/styles';
+import { useSearchParams } from 'next/navigation';
 import ParcelSearchTab from './ParcelSearchTab';
 
 interface SearchModalProps {
@@ -37,17 +36,24 @@ interface SearchModalProps {
 // Using SearchResult from lib/mapbox/search
 type SearchResult = MapboxSearchResult;
 
-type TabValue = 'global' | 'parcels' | 'advanced' | 'keywords';
+type TabValue = 'global' | 'parcels';
 
 const SearchModal: React.FC<SearchModalProps> = ({ open, onClose, mapRef }) => {
   const theme = useTheme();
   // ✅ Use mapRef.current instead of useMap() hook (SearchModal is rendered outside <Map> component)
   const map = mapRef.current?.getMap();
   const dispatch = useAppDispatch();
-  const { currentProject } = useAppSelector((state) => state.projects);
+  const searchParams = useSearchParams();
 
-  // Tab state
-  const [activeTab, setActiveTab] = useState<TabValue>('global');
+  // Get project name from URL (works for both authenticated and guest users)
+  const projectNameFromURL = searchParams.get('project');
+
+  // Fallback to Redux state for authenticated users (if URL param missing)
+  const { currentProject } = useAppSelector((state) => state.projects);
+  const projectName = projectNameFromURL || currentProject?.project_name || null;
+
+  // Tab state - DEFAULT: 'parcels' (Działki)
+  const [activeTab, setActiveTab] = useState<TabValue>('parcels');
 
   // Mapbox search state (global tab)
   const [searchQuery, setSearchQuery] = useState('');
@@ -181,27 +187,15 @@ const SearchModal: React.FC<SearchModalProps> = ({ open, onClose, mapRef }) => {
           }}
         >
           <Tab
-            value="global"
-            label="Wyszukiwanie globalne"
-            icon={<PublicIcon sx={{ fontSize: 18 }} />}
-            iconPosition="start"
-          />
-          <Tab
             value="parcels"
             label="Działki"
             icon={<MapIcon sx={{ fontSize: 18 }} />}
             iconPosition="start"
           />
           <Tab
-            value="advanced"
-            label="Szczegółowe"
-            icon={<FilterListIcon sx={{ fontSize: 18 }} />}
-            iconPosition="start"
-          />
-          <Tab
-            value="keywords"
-            label="Słowa kluczowe"
-            icon={<LabelIcon sx={{ fontSize: 18 }} />}
+            value="global"
+            label="Wyszukiwanie globalne"
+            icon={<PublicIcon sx={{ fontSize: 18 }} />}
             iconPosition="start"
           />
         </Tabs>
@@ -216,9 +210,27 @@ const SearchModal: React.FC<SearchModalProps> = ({ open, onClose, mapRef }) => {
           minHeight: '300px',
         }}
       >
-        {/* Tab 1: Wyszukiwanie globalne (Mapbox Geocoding) */}
+        {/* Tab 1: Działki (Backend Layer Search) */}
+        {activeTab === 'parcels' && (
+          <ParcelSearchTab projectName={projectName} mapRef={mapRef} />
+        )}
+
+        {/* Tab 2: Wyszukiwanie globalne (Mapbox Geocoding) */}
         {activeTab === 'global' && (
           <>
+            {/* Description */}
+            <Box
+              sx={{
+                p: 2,
+                bgcolor: '#e3f2fd',
+                borderBottom: `1px solid ${theme.palette.divider}`,
+              }}
+            >
+              <Typography variant="body2" color="text.secondary" sx={{ fontSize: '13px' }}>
+                <strong>Wyszukiwarka Mapbox</strong> - możesz używać nazw gmin, miejscowości, ulic oraz adresów do wyszukiwania lokalizacji na mapie.
+              </Typography>
+            </Box>
+
             {/* Search Input */}
             <Box
               sx={{
@@ -321,37 +333,6 @@ const SearchModal: React.FC<SearchModalProps> = ({ open, onClose, mapRef }) => {
               )}
             </Box>
           </>
-        )}
-
-        {/* Tab 2: Działki (Backend Layer Search) */}
-        {activeTab === 'parcels' && (
-          <ParcelSearchTab projectName={currentProject?.project_name || null} mapRef={mapRef} />
-        )}
-
-        {/* Tab 3: Szczegółowe (TODO) */}
-        {activeTab === 'advanced' && (
-          <Box sx={{ textAlign: 'center', py: 8, px: 3 }}>
-            <FilterListIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
-            <Typography variant="h6" color="text.secondary" gutterBottom>
-              Wyszukiwanie szczegółowe
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Funkcja w budowie - zaawansowane filtrowanie według atrybutów
-            </Typography>
-          </Box>
-        )}
-
-        {/* Tab 4: Słowa kluczowe (TODO) */}
-        {activeTab === 'keywords' && (
-          <Box sx={{ textAlign: 'center', py: 8, px: 3 }}>
-            <LabelIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
-            <Typography variant="h6" color="text.secondary" gutterBottom>
-              Wyszukiwanie słów kluczowych
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Funkcja w budowie - wyszukiwanie według tagów i kategorii
-            </Typography>
-          </Box>
         )}
       </DialogContent>
     </Dialog>
