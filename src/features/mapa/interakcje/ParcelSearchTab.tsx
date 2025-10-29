@@ -485,12 +485,14 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
               geometry: transformGeometry(feature.geometry),
             }));
 
-            // Show all matched features in identify modal
-            setIdentifiedFeatures(formattedFeatures);
-            setIdentifyModalOpen(true);
-
-            // ✅ Close search modal
+            // ✅ Close search modal FIRST
             onClose?.();
+
+            // Show all matched features in identify modal (delayed to let search modal close)
+            setTimeout(() => {
+              setIdentifiedFeatures(formattedFeatures);
+              setIdentifyModalOpen(true);
+            }, 100);
           }
         } else {
           alert('Nie znaleziono działki spełniającej kryteria');
@@ -827,11 +829,14 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
         geometry: transformedGeometry,
       }];
 
-      setIdentifiedFeatures(formattedFeatures);
-      setIdentifyModalOpen(true);
-
-      // ✅ Close search modal
+      // ✅ Close search modal FIRST
       onClose?.();
+
+      // Show identify modal (delayed to let search modal close)
+      setTimeout(() => {
+        setIdentifiedFeatures(formattedFeatures);
+        setIdentifyModalOpen(true);
+      }, 100);
 
 
 
