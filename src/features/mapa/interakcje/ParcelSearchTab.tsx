@@ -44,9 +44,11 @@ import { useAppSelector } from '@/redux/hooks';
 import IdentifyModal from '@/features/layers/modals/IdentifyModal';
 
 // Coordinate system definitions for transformation
+const EPSG_2180 = 'EPSG:2180'; // ETRS89 / Poland CS92 (Polish National Grid)
 const EPSG_3857 = 'EPSG:3857'; // Web Mercator (meters)
 const EPSG_4326 = 'EPSG:4326'; // WGS84 (degrees long/lat)
 
+proj4.defs(EPSG_2180, '+proj=tmerc +lat_0=0 +lon_0=19 +k=0.9993 +x_0=500000 +y_0=-5300000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs +type=crs');
 proj4.defs(EPSG_3857, '+proj=merc +a=6378137 +b=6378137 +lat_ts=0 +lon_0=0 +x_0=0 +y_0=0 +k=1 +units=m +nadgrids=@null +wktext +no_defs +type=crs');
 proj4.defs(EPSG_4326, '+proj=longlat +datum=WGS84 +no_defs +type=crs');
 
@@ -74,7 +76,16 @@ const fetchWFSFeatures = async (
     }
 
     const geojson = await response.json();
-    console.log(`✅ Fetched ${geojson.features?.length || 0} features from WFS`);
+
+    // Log CRS information
+    const crs = geojson.crs?.properties?.name || 'unknown';
+    console.log(`✅ Fetched ${geojson.features?.length || 0} features from WFS (CRS: ${crs})`);
+
+    // Log sample coordinates to help debug
+    if (geojson.features && geojson.features[0]) {
+      const sampleCoords = geojson.features[0].geometry?.coordinates;
+      console.log('📍 Sample coordinates:', sampleCoords);
+    }
 
     return geojson;
   } catch (error) {
@@ -97,6 +108,37 @@ const extractUniqueValues = (geojson: any, columnName: string): string[] => {
     });
   }
   return Array.from(values).sort();
+};
+
+/**
+ * Smart sort comparator for plot numbers (handles formats like "1", "1/2", "308/13")
+ * Sorts numerically, treating "/" as decimal separator
+ * Examples: 1, 1/2, 2, 9, 9/1, 9/2, 10, 19, 29/1, 29/2, 32/9, 99, 99/1, 999
+ */
+const sortPlotNumbers = (a: string, b: string): number => {
+  // Parse plot number format: "123" or "123/456"
+  const parseNumber = (str: string): [number, number] => {
+    const parts = str.split('/');
+    const main = parseInt(parts[0]) || 0;
+    const sub = parts.length > 1 ? parseInt(parts[1]) || 0 : 0;
+    return [main, sub];
+  };
+
+  const [aMain, aSub] = parseNumber(a);
+  const [bMain, bSub] = parseNumber(b);
+
+  // Sort by main number first
+  if (aMain !== bMain) {
+    return aMain - bMain;
+  }
+
+  // If main numbers equal, sort by sub-number
+  // Numbers without "/" come before numbers with "/" (e.g., "9" before "9/1")
+  if (aSub === 0 && bSub === 0) return 0;
+  if (aSub === 0) return -1;
+  if (bSub === 0) return 1;
+
+  return aSub - bSub;
 };
 
 interface ParcelSearchTabProps {
@@ -450,26 +492,66 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef }
   };
 
   /**
-   * Transform coordinates from EPSG:3857 (Web Mercator) to EPSG:4326 (WGS84)
-   * @param coords [x, y] in EPSG:3857 (meters)
+   * Transform coordinates from any CRS to EPSG:4326 (WGS84)
+   * Auto-detects source CRS based on coordinate ranges
+   * @param coords [x, y] in source CRS
    * @returns [lng, lat] in EPSG:4326 (degrees)
    */
-  const transformCoordinates = (coords: [number, number]): [number, number] => {
-    return proj4(EPSG_3857, EPSG_4326, coords) as [number, number];
+  const transformCoordinates = (coords: [number, number], sourceCRS?: string): [number, number] => {
+    // Auto-detect CRS if not provided
+    let fromCRS = sourceCRS;
+    if (!fromCRS) {
+      const [x, y] = coords;
+      // EPSG:2180 (Polish Grid): x ~200000-900000, y ~-5800000 to -5000000
+      if (x > 100000 && x < 1000000 && y < -4000000 && y > -6000000) {
+        fromCRS = EPSG_2180;
+      }
+      // EPSG:3857 (Web Mercator): x ~-20000000 to 20000000, y ~-20000000 to 20000000
+      else if (Math.abs(x) < 40000000 && Math.abs(y) < 40000000) {
+        fromCRS = EPSG_3857;
+      }
+      // Already EPSG:4326: x ~-180 to 180, y ~-90 to 90
+      else if (Math.abs(x) <= 180 && Math.abs(y) <= 90) {
+        return coords; // Already in WGS84
+      }
+      else {
+        console.warn('⚠️ Could not auto-detect CRS for coordinates:', coords);
+        fromCRS = EPSG_3857; // Fallback
+      }
+    }
+
+    console.log(`🔄 Transforming from ${fromCRS} to ${EPSG_4326}:`, coords);
+    const result = proj4(fromCRS, EPSG_4326, coords) as [number, number];
+    console.log(`✅ Transformed to:`, result);
+    return result;
   };
 
   /**
-   * Transform entire GeoJSON geometry from EPSG:3857 to EPSG:4326
-   * @param geometry GeoJSON geometry in EPSG:3857
+   * Transform entire GeoJSON geometry to EPSG:4326
+   * Auto-detects source CRS from first coordinate
+   * @param geometry GeoJSON geometry in any CRS
    * @returns GeoJSON geometry in EPSG:4326
    */
-  const transformGeometry = (geometry: any): any => {
+  const transformGeometry = (geometry: any, sourceCRS?: string): any => {
     if (!geometry || !geometry.coordinates) return geometry;
+
+    let detectedCRS = sourceCRS;
 
     const transformCoordArray = (coords: any): any => {
       if (typeof coords[0] === 'number') {
         // Single point [x, y] → transform
-        return transformCoordinates(coords as [number, number]);
+        // Auto-detect CRS from first coordinate if not already detected
+        if (!detectedCRS) {
+          const [x, y] = coords;
+          if (x > 100000 && x < 1000000 && y < -4000000 && y > -6000000) {
+            detectedCRS = EPSG_2180;
+            console.log('🔍 Auto-detected CRS: EPSG:2180 (Polish Grid)');
+          } else {
+            detectedCRS = EPSG_3857;
+            console.log('🔍 Auto-detected CRS: EPSG:3857 (Web Mercator)');
+          }
+        }
+        return transformCoordinates(coords as [number, number], detectedCRS);
       } else {
         // Array of points → recurse
         return coords.map((coord: any) => transformCoordArray(coord));
@@ -688,14 +770,7 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef }
         }
       }
 
-      return Array.from(numbers).sort((a, b) => {
-        const numA = parseFloat(a);
-        const numB = parseFloat(b);
-        if (!isNaN(numA) && !isNaN(numB)) {
-          return numA - numB;
-        }
-        return a.localeCompare(b);
-      });
+      return Array.from(numbers).sort(sortPlotNumbers);
     }
 
     // For guests: filter WFS features by selected precinct (client-side filtering)
@@ -723,14 +798,7 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef }
         }
       }
 
-      return Array.from(numbers).sort((a, b) => {
-        const numA = parseFloat(a);
-        const numB = parseFloat(b);
-        if (!isNaN(numA) && !isNaN(numB)) {
-          return numA - numB;
-        }
-        return a.localeCompare(b);
-      });
+      return Array.from(numbers).sort(sortPlotNumbers);
     }
 
     // No precinct selected or no filtering: return all plot numbers (authenticated users only)
