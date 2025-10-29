@@ -56,19 +56,45 @@ proj4.defs(EPSG_4326, '+proj=longlat +datum=WGS84 +no_defs +type=crs');
  * Fetch full GeoJSON from WFS for guest users (no authentication required)
  * Uses QGIS OWS GetFeature endpoint which works without auth for public projects
  * Returns full GeoJSON FeatureCollection for client-side filtering
+ *
+ * PERFORMANCE: Caches result in localStorage for 10 minutes to avoid slow re-fetches
  */
 const fetchWFSFeatures = async (
   projectName: string,
   layerName: string
 ): Promise<any> => {
   try {
+    // Check localStorage cache first (10 minute TTL)
+    const cacheKey = `wfs_cache_${projectName}_${layerName}`;
+    const cached = localStorage.getItem(cacheKey);
+
+    if (cached) {
+      try {
+        const { data, timestamp } = JSON.parse(cached);
+        const age = Date.now() - timestamp;
+        const maxAge = 10 * 60 * 1000; // 10 minutes
+
+        if (age < maxAge) {
+          console.log(`✅ Using cached WFS data (age: ${(age / 1000).toFixed(0)}s)`);
+          return data;
+        } else {
+          console.log(`⏰ Cache expired (age: ${(age / 1000).toFixed(0)}s), fetching fresh data`);
+          localStorage.removeItem(cacheKey);
+        }
+      } catch (e) {
+        console.warn('⚠️ Failed to parse cache, fetching fresh data');
+        localStorage.removeItem(cacheKey);
+      }
+    }
+
     // URL encode layer name (replace spaces with underscores)
     const encodedLayerName = encodeURIComponent(layerName.replace(/ /g, '_'));
 
     // Build WFS GetFeature request
     const url = `https://api.universemapmaker.online/ows?SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature&TYPENAME=${encodedLayerName}&OUTPUTFORMAT=application/json&MAP=/projects/${projectName}/${projectName}.qgs`;
 
-    console.log(`🌐 Fetching WFS features for ${layerName}`);
+    console.log(`🌐 Fetching WFS features for ${layerName} (first load may take 20-30s for large datasets)`);
+    const startTime = performance.now();
 
     const response = await fetch(url);
     if (!response.ok) {
@@ -76,15 +102,28 @@ const fetchWFSFeatures = async (
     }
 
     const geojson = await response.json();
+    const endTime = performance.now();
 
     // Log CRS information
     const crs = geojson.crs?.properties?.name || 'unknown';
-    console.log(`✅ Fetched ${geojson.features?.length || 0} features from WFS (CRS: ${crs})`);
+    const fetchTime = ((endTime - startTime) / 1000).toFixed(1);
+    console.log(`✅ Fetched ${geojson.features?.length || 0} features from WFS in ${fetchTime}s (CRS: ${crs})`);
 
     // Log sample coordinates to help debug
     if (geojson.features && geojson.features[0]) {
       const sampleCoords = geojson.features[0].geometry?.coordinates;
       console.log('📍 Sample coordinates:', sampleCoords);
+    }
+
+    // Cache the result in localStorage (10 minute TTL)
+    try {
+      localStorage.setItem(cacheKey, JSON.stringify({
+        data: geojson,
+        timestamp: Date.now()
+      }));
+      console.log(`💾 Cached WFS data for 10 minutes`);
+    } catch (e) {
+      console.warn('⚠️ Failed to cache WFS data (localStorage full?)');
     }
 
     return geojson;
