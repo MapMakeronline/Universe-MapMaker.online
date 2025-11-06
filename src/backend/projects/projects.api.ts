@@ -274,6 +274,49 @@ export const projectsApi = baseApi.injectEndpoints({
     }),
 
     /**
+     * GET /api/projects/app/set
+     * Download APP set (all layers as GML for national application)
+     */
+    downloadAppSet: builder.mutation<
+      Blob,
+      { project: string }
+    >({
+      queryFn: async ({ project }, api, extraOptions, baseQuery) => {
+        const token = getToken();
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.universemapmaker.online';
+
+        try {
+          const response = await fetch(`${baseUrl}/api/projects/app/set?project=${project}`, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Token ${token}`,
+            },
+          });
+
+          if (!response.ok) {
+            return { error: { status: response.status, data: await response.text() } };
+          }
+
+          const blob = await response.blob();
+
+          // Trigger download
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `${project}_app.gml`;
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+
+          return { data: blob };
+        } catch (error: any) {
+          return { error: { status: 'FETCH_ERROR', error: error.message } };
+        }
+      },
+    }),
+
+    /**
      * POST /api/projects/subdomainAvailability
      * Check subdomain availability
      */
@@ -642,6 +685,50 @@ export const projectsApi = baseApi.injectEndpoints({
         params: { q: query },
       }),
     }),
+
+    /**
+     * POST /api/projects/services/publish
+     * Publish selected layers as WMS/WFS to GeoServer
+     *
+     * Request: { project_name: string, children: LayerTree[] }
+     * Response: { data: { wms_url, wfs_url }, success: boolean, message: string }
+     */
+    publishWMSWFS: builder.mutation<
+      { data: { wms_url: string; wfs_url: string }; success: boolean; message: string },
+      { project_name: string; children: any[] }
+    >({
+      query: (data) => ({
+        url: '/api/projects/services/publish',
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: (result, error, arg) => [
+        { type: 'Project', id: arg.project_name },
+        { type: 'Projects', id: 'LIST' },
+      ],
+    }),
+
+    /**
+     * POST /api/projects/services/unpublish
+     * Remove WMS/WFS services from GeoServer
+     *
+     * Request: { project: string }
+     * Response: { success: boolean, message: string }
+     */
+    unpublishWMSWFS: builder.mutation<
+      { success: boolean; message: string },
+      { project: string }
+    >({
+      query: (data) => ({
+        url: '/api/projects/services/unpublish',
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: (result, error, arg) => [
+        { type: 'Project', id: arg.project },
+        { type: 'Projects', id: 'LIST' },
+      ],
+    }),
   }),
 });
 
@@ -674,4 +761,7 @@ export const {
   useGetMinMaxValuesQuery,
   useGetNumericColumnsQuery,
   useGlobalSearchQuery,
+  usePublishWMSWFSMutation,
+  useUnpublishWMSWFSMutation,
+  useDownloadAppSetMutation,
 } = projectsApi;

@@ -8,17 +8,19 @@
 
 import { useState } from 'react';
 
-export type PropertyModalType = 'publish' | 'download';
+export type PropertyModalType = 'publish' | 'download' | 'publishLayers';
 
 interface ModalState {
   publish: boolean;
   download: boolean;
+  publishLayers: boolean; // NEW: Modal for publishing/unpublishing layers
 }
 
 export function usePropertyModals() {
   const [modals, setModals] = useState<ModalState>({
     publish: false,
     download: false,
+    publishLayers: false,
   });
 
   const openModal = (modal: PropertyModalType) => {
@@ -33,6 +35,7 @@ export function usePropertyModals() {
     setModals({
       publish: false,
       download: false,
+      publishLayers: false,
     });
   };
 

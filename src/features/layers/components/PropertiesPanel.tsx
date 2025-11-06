@@ -32,6 +32,7 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import LockIcon from '@mui/icons-material/Lock';
 import { BasemapSelector } from './BasemapSelector';
 import { PublishServicesModal } from '../modals/PublishServicesModal';
+import { PublishLayersModal } from '../modals/PublishLayersModal';
 import DownloadProjectModal from '../modals/DownloadProjectModal';
 import { LayerInfoModal } from '../modals/LayerInfoModal';
 import { BasemapSelectorModal } from '../modals/BasemapSelectorModal';
@@ -121,7 +122,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   const { modals, openModal, closeModal } = usePropertyModals();
 
   // Backend operations
-  const { handleDownload, handlePublish, isExporting, isPublishing } = usePropertyOperations(projectName, warstwy);
+  const { handleDownload, handlePublish, handleUnpublish, isExporting, isPublishing, isUnpublishing } = usePropertyOperations(projectName, warstwy);
 
   // Wrapper for handleDownload to close modal after operation
   const handleDownloadWithModal = async (format: 'qgs' | 'qgz') => {
@@ -136,6 +137,15 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
     const success = await handlePublish(selectedLayerIds);
     if (success) {
       closeModal('publish');
+      closeModal('publishLayers');
+    }
+  };
+
+  // Wrapper for handleUnpublish to close modal after operation
+  const handleUnpublishWithModal = async () => {
+    const success = await handleUnpublish();
+    if (success) {
+      closeModal('publishLayers');
     }
   };
 
@@ -386,6 +396,19 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
         projectName={projectName}
         wmsUrl={wmsUrl}
         wfsUrl={wfsUrl}
+        layers={warstwy}
+        onOpenPublishModal={() => openModal('publishLayers')}
+      />
+
+      {/* Publish Layers Modal (NEW) - For WMS/WFS publication with custom positioning */}
+      <PublishLayersModal
+        open={modals.publishLayers}
+        projectName={projectName}
+        layers={warstwy}
+        onClose={() => closeModal('publishLayers')}
+        onPublish={handlePublishWithModal}
+        onUnpublish={handleUnpublishWithModal}
+        isLoading={isPublishing || isUnpublishing}
       />
     </Box>
   );

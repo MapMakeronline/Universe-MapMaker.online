@@ -8,10 +8,11 @@
 
 import { useAppDispatch } from '@/redux/hooks';
 import { showSuccess, showError, showInfo } from '@/redux/slices/notificationSlice';
-import { useExportProjectMutation } from '@/backend/projects';
-
-// Temporary mock hook
-const usePublishWMSWFSMutation = () => [async () => {}, { isLoading: false }] as any;
+import {
+  useExportProjectMutation,
+  usePublishWMSWFSMutation,
+  useUnpublishWMSWFSMutation,
+} from '@/backend/projects';
 
 // Types defined locally for now
 interface Warstwa {
@@ -27,6 +28,7 @@ export function usePropertyOperations(projectName: string, warstwy: Warstwa[]) {
   const dispatch = useAppDispatch();
   const [exportProject, { isLoading: isExporting }] = useExportProjectMutation();
   const [publishWMSWFS, { isLoading: isPublishing }] = usePublishWMSWFSMutation();
+  const [unpublishWMSWFS, { isLoading: isUnpublishing }] = useUnpublishWMSWFSMutation();
 
   // Handle Project Download
   const handleDownload = async (format: 'qgs' | 'qgz') => {
@@ -156,10 +158,41 @@ export function usePropertyOperations(projectName: string, warstwy: Warstwa[]) {
     }
   };
 
+  // Handle WMS/WFS Unpublication
+  const handleUnpublish = async () => {
+    if (!projectName) {
+      dispatch(showError('Nie można odpublikować - brak nazwy projektu'));
+      return false;
+    }
+
+    console.log('🚫 Unpublishing WMS/WFS services for project:', projectName);
+    dispatch(showInfo('Odpublikowywanie usług WMS/WFS...', 10000));
+
+    try {
+      const result = await unpublishWMSWFS({
+        project: projectName,
+      }).unwrap();
+
+      console.log('✅ WMS/WFS Unpublication successful:', result);
+      dispatch(showSuccess('Usunięto publikację WMS/WFS', 5000));
+
+      return true;
+      // RTK Query automatically invalidates cache and refetches project data
+    } catch (error: any) {
+      console.error('❌ WMS/WFS Unpublication failed:', error);
+      const errorMessage = error?.data?.message || error?.data?.detail || error?.message || 'Nieznany błąd';
+      dispatch(showError(`Nie udało się odpublikować usług: ${errorMessage}`, 8000));
+
+      return false;
+    }
+  };
+
   return {
     handleDownload,
     handlePublish,
+    handleUnpublish,
     isExporting,
     isPublishing,
+    isUnpublishing,
   };
 }
