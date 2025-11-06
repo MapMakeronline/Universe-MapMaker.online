@@ -58,6 +58,9 @@ export function AttributeTableModal({
   const [searchText, setSearchText] = useState('');
   const [editedRows, setEditedRows] = useState<Map<number, GridRowModel>>(new Map());
 
+  // Debug logging
+  console.log('🔍 AttributeTableModal props:', { open, projectName, layerId, layerName });
+
   // Fetch layer features (row-based data)
   const {
     data: featuresResponse,
@@ -68,6 +71,13 @@ export function AttributeTableModal({
     { project: projectName, layer_id: layerId },
     { skip: !open } // Don't fetch until modal opens
   );
+
+  console.log('📊 useGetLayerFeaturesQuery state:', {
+    featuresResponse,
+    isLoading,
+    error,
+    skip: !open
+  });
 
   // Fetch column constraints (NOT NULL, UNIQUE, AUTO_INCREMENT)
   const { data: constraintsResponse } = useGetLayerConstraintsQuery(

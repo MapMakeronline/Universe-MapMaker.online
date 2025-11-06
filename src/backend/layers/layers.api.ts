@@ -806,6 +806,36 @@ export const layersApi = baseApi.injectEndpoints({
         url: '/api/layer/features',
         params: { project, layer_id },
       }),
+      // Transform response: Parse string → Extract GeoJSON features → Convert to row-based
+      transformResponse: (response: any) => {
+        // Step 1: Parse string to JSON if needed
+        let parsed = response;
+        if (typeof response === 'string') {
+          try {
+            parsed = JSON.parse(response);
+          } catch (error) {
+            console.error('❌ Failed to parse layer features response:', error);
+            return { data: [], success: false, message: 'Parse error' };
+          }
+        }
+
+        // Step 2: Check if backend returned GeoJSON FeatureCollection
+        if (parsed.data && parsed.data.type === 'FeatureCollection' && Array.isArray(parsed.data.features)) {
+          console.log('🔄 Converting GeoJSON FeatureCollection to row-based format');
+          // Extract properties from each feature (row-based)
+          const rows = parsed.data.features.map((feature: any) => feature.properties || {});
+          console.log('✅ Converted features:', { totalFeatures: rows.length, sample: rows[0] });
+          return {
+            data: rows,
+            success: parsed.success !== false,
+            message: parsed.message || ''
+          };
+        }
+
+        // Step 3: If already row-based, return as-is
+        console.log('✅ Using response as-is:', parsed);
+        return parsed;
+      },
       // Cache by layer_id
       providesTags: (result, error, { layer_id }) => [
         { type: 'LayerAttributes', id: layer_id },
