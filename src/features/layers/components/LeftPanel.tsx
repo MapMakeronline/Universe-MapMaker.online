@@ -298,11 +298,15 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
 
   // Show attribute table for layer
   const handleShowAttributeTable = (layerId: string) => {
-    const layer = findLayerById(layerId, layers);
+    console.log('🔍 handleShowAttributeTable called with layerId:', layerId);
+    const layer = findLayerById(layers, layerId); // FIX: Correct argument order
+    console.log('🎯 Found layer:', layer);
     if (!layer) {
+      console.error('❌ Layer not found in tree! layerId:', layerId);
       dispatch(showError('Nie znaleziono warstwy'));
       return;
     }
+    console.log('✅ Opening attribute table for layer:', layer.name);
     setSelectedLayer(layer); // Set selected layer for modal
     openModal('attributeTable');
   };

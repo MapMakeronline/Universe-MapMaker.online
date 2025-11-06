@@ -38,7 +38,8 @@
       "Bash(cmd /c \"screenshot.bat http://localhost:3000/map?project=Wyszki auth-guard-test-logged-out.png\")",
       "Bash(timeout /t 15 /nobreak)",
       "Bash(tree:*)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "Bash(cmd /c \"screenshot.bat http://localhost:3000/map?project=Wyszki attribute-table-test.png\")"
     ],
     "deny": [],
     "ask": []

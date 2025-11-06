@@ -5,7 +5,7 @@
 export { LayerInfoModal } from './LayerInfoModal';
 export { BasemapSelectorModal } from './BasemapSelectorModal';
 export { ProjectPropertiesModal } from './ProjectPropertiesModal';
-export { DeleteLayerConfirmModal } from './DeleteLayerConfirmModal';
+export { default as DeleteLayerConfirmModal } from './DeleteLayerConfirmModal';
 export { PublishServicesModal } from './PublishServicesModal';
 export { PublishLayersModal } from './PublishLayersModal';
 export { AttributeTableModal } from './AttributeTableModal';
