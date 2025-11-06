@@ -1,0 +1,355 @@
+'use client';
+
+import React, { useState, useMemo } from 'react';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import Button from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
+import TextField from '@mui/material/TextField';
+import Box from '@mui/material/Box';
+import Typography from '@mui/material/Typography';
+import CircularProgress from '@mui/material/CircularProgress';
+import Alert from '@mui/material/Alert';
+import { DataGrid, GridColDef, GridRowModel, GridRowsProp } from '@mui/x-data-grid';
+import CloseIcon from '@mui/icons-material/Close';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import DownloadIcon from '@mui/icons-material/Download';
+import SearchIcon from '@mui/icons-material/Search';
+import { useTheme } from '@mui/material/styles';
+import {
+  useGetLayerFeaturesQuery,
+  useGetLayerConstraintsQuery,
+  useSaveMultipleRecordsMutation,
+} from '@/backend/layers';
+import { useAppDispatch } from '@/redux/hooks';
+import { showSuccess, showError } from '@/redux/slices/notificationSlice';
+
+interface AttributeTableModalProps {
+  open: boolean;
+  onClose: () => void;
+  projectName: string;
+  layerId: string;
+  layerName: string;
+}
+
+/**
+ * Attribute Table Modal
+ * Displays layer attributes in editable DataGrid table
+ *
+ * Features:
+ * - Display all layer attributes in row-based table
+ * - In-line editing (double-click cell)
+ * - Search across all columns
+ * - Export to CSV
+ * - Batch save changes
+ * - Validation (NOT NULL, UNIQUE, AUTO_INCREMENT)
+ */
+export function AttributeTableModal({
+  open,
+  onClose,
+  projectName,
+  layerId,
+  layerName,
+}: AttributeTableModalProps) {
+  const theme = useTheme();
+  const dispatch = useAppDispatch();
+  const [searchText, setSearchText] = useState('');
+  const [editedRows, setEditedRows] = useState<Map<number, GridRowModel>>(new Map());
+
+  // Fetch layer features (row-based data)
+  const {
+    data: featuresResponse,
+    isLoading,
+    error,
+    refetch,
+  } = useGetLayerFeaturesQuery(
+    { project: projectName, layer_id: layerId },
+    { skip: !open } // Don't fetch until modal opens
+  );
+
+  // Fetch column constraints (NOT NULL, UNIQUE, AUTO_INCREMENT)
+  const { data: constraintsResponse } = useGetLayerConstraintsQuery(
+    { project: projectName, layer_id: layerId },
+    { skip: !open }
+  );
+
+  const [saveRecords, { isLoading: isSaving }] = useSaveMultipleRecordsMutation();
+
+  // Extract data from response
+  const features = featuresResponse?.data || [];
+  const constraints = constraintsResponse?.data || {
+    not_null_fields: [],
+    unique_fields: [],
+    sequence_fields: [],
+  };
+
+  // Prepare DataGrid columns
+  const columns: GridColDef[] = useMemo(() => {
+    if (features.length === 0) return [];
+
+    const firstRow = features[0];
+    const cols: GridColDef[] = [];
+
+    Object.keys(firstRow).forEach((key) => {
+      // Skip geometry columns (not editable in table)
+      if (key === 'geom' || key === 'geometry') return;
+
+      const isRequired = constraints.not_null_fields.includes(key);
+      const isUnique = constraints.unique_fields.includes(key);
+      const isAutoIncrement = constraints.sequence_fields.includes(key);
+
+      cols.push({
+        field: key,
+        headerName: key + (isRequired ? ' *' : ''),
+        flex: 1,
+        minWidth: 150,
+        editable: !isAutoIncrement, // Disable editing for auto-increment columns (gid)
+        type: 'string', // Default to string (backend doesn't send type info in /api/layer/features)
+        valueFormatter: (value) => {
+          if (value === null || value === undefined) return '';
+          return String(value);
+        },
+      });
+    });
+
+    return cols;
+  }, [features, constraints]);
+
+  // Prepare DataGrid rows
+  const rows: GridRowsProp = useMemo(() => {
+    return features.map((feature, index) => ({
+      id: feature.gid || index, // Use gid as ID (primary key)
+      ...feature,
+    }));
+  }, [features]);
+
+  // Filter rows by search text
+  const filteredRows = useMemo(() => {
+    if (!searchText) return rows;
+
+    return rows.filter((row) =>
+      Object.values(row).some((value) =>
+        String(value).toLowerCase().includes(searchText.toLowerCase())
+      )
+    );
+  }, [rows, searchText]);
+
+  // Handler for cell edit
+  const handleRowEditCommit = (newRow: GridRowModel) => {
+    setEditedRows((prev) => new Map(prev).set(newRow.id as number, newRow));
+    return newRow;
+  };
+
+  // Save all changes to backend
+  const handleSave = async () => {
+    if (editedRows.size === 0) {
+      dispatch(showSuccess('Brak zmian do zapisania'));
+      return;
+    }
+
+    const dataToSave = Array.from(editedRows.values());
+
+    try {
+      await saveRecords({
+        project: projectName,
+        layer: layerId,
+        data: dataToSave,
+      }).unwrap();
+
+      dispatch(showSuccess(`Zapisano ${dataToSave.length} rekordów`));
+      setEditedRows(new Map()); // Clear edited rows
+      refetch(); // Refresh data
+    } catch (err: any) {
+      console.error('Save error:', err);
+      dispatch(showError(`Błąd zapisu: ${err.message || 'Nieznany błąd'}`));
+    }
+  };
+
+  // Export to CSV
+  const handleExport = () => {
+    if (filteredRows.length === 0) {
+      dispatch(showError('Brak danych do eksportu'));
+      return;
+    }
+
+    const csv = [
+      // Header row
+      columns.map((col) => col.headerName).join(','),
+      // Data rows
+      ...filteredRows.map((row) =>
+        columns.map((col) => {
+          const value = row[col.field];
+          // Escape commas and quotes in CSV
+          if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
+            return `"${value.replace(/"/g, '""')}"`;
+          }
+          return value || '';
+        }).join(',')
+      ),
+    ].join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${layerName}_attributes_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+
+    dispatch(showSuccess('Eksportowano do CSV'));
+  };
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth fullScreen>
+      {/* Header */}
+      <DialogTitle
+        sx={{
+          bgcolor: theme.palette.modal?.header || '#4a5568',
+          color: 'white',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          py: 2,
+          px: 3,
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Typography sx={{ fontSize: '16px', fontWeight: 600 }}>
+            Tabela atrybutów: {layerName}
+          </Typography>
+          <Typography sx={{ fontSize: '12px', color: 'rgba(255,255,255,0.7)' }}>
+            {filteredRows.length} rekordów
+          </Typography>
+        </Box>
+
+        <IconButton onClick={onClose} size="small" sx={{ color: 'white' }}>
+          <CloseIcon />
+        </IconButton>
+      </DialogTitle>
+
+      {/* Content */}
+      <DialogContent sx={{ p: 0, display: 'flex', flexDirection: 'column', height: '100%' }}>
+        {/* Toolbar */}
+        <Box
+          sx={{
+            display: 'flex',
+            gap: 1,
+            p: 2,
+            borderBottom: '1px solid #e0e0e0',
+            bgcolor: '#fafafa',
+          }}
+        >
+          {/* Search */}
+          <TextField
+            size="small"
+            placeholder="Wyszukaj..."
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            InputProps={{
+              startAdornment: <SearchIcon sx={{ mr: 1, color: 'text.secondary' }} />,
+            }}
+            sx={{ flex: 1, maxWidth: '400px' }}
+          />
+
+          {/* Actions */}
+          <Button
+            variant="outlined"
+            startIcon={<RefreshIcon />}
+            onClick={() => refetch()}
+            disabled={isLoading}
+          >
+            Odśwież
+          </Button>
+
+          <Button
+            variant="outlined"
+            startIcon={<DownloadIcon />}
+            onClick={handleExport}
+            disabled={filteredRows.length === 0}
+          >
+            Eksportuj CSV
+          </Button>
+        </Box>
+
+        {/* DataGrid or Loading/Error */}
+        <Box sx={{ flex: 1, minHeight: 0 }}>
+          {isLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : error ? (
+            <Box sx={{ p: 2 }}>
+              <Alert severity="error">
+                Błąd ładowania danych: {(error as any).message || 'Nieznany błąd'}
+              </Alert>
+            </Box>
+          ) : filteredRows.length === 0 ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 4 }}>
+              <Typography color="text.secondary">
+                {searchText ? 'Brak wyników wyszukiwania' : 'Brak danych'}
+              </Typography>
+            </Box>
+          ) : (
+            <DataGrid
+              rows={filteredRows}
+              columns={columns}
+              pagination
+              pageSizeOptions={[10, 25, 50, 100]}
+              initialState={{
+                pagination: { paginationModel: { pageSize: 25 } },
+              }}
+              processRowUpdate={handleRowEditCommit}
+              onProcessRowUpdateError={(error) => {
+                console.error('Row edit error:', error);
+                dispatch(showError('Błąd edycji wiersza'));
+              }}
+              sx={{
+                border: 'none',
+                '& .MuiDataGrid-cell': {
+                  fontSize: '13px',
+                },
+                '& .MuiDataGrid-columnHeader': {
+                  bgcolor: '#f5f5f5',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                },
+                '& .MuiDataGrid-row:hover': {
+                  bgcolor: 'rgba(0, 0, 0, 0.04)',
+                },
+              }}
+            />
+          )}
+        </Box>
+      </DialogContent>
+
+      {/* Footer */}
+      <DialogActions
+        sx={{
+          borderTop: '1px solid #e0e0e0',
+          px: 3,
+          py: 2,
+          gap: 2,
+        }}
+      >
+        <Typography variant="caption" sx={{ mr: 'auto', color: 'text.secondary' }}>
+          {editedRows.size > 0 && `${editedRows.size} niezapisanych zmian`}
+        </Typography>
+
+        <Button onClick={onClose} variant="outlined">
+          Anuluj
+        </Button>
+
+        <Button
+          onClick={handleSave}
+          variant="contained"
+          disabled={editedRows.size === 0 || isSaving}
+          startIcon={isSaving ? <CircularProgress size={16} /> : null}
+        >
+          {isSaving ? 'Zapisywanie...' : 'Zapisz zmiany'}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}

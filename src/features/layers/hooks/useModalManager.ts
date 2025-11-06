@@ -43,7 +43,8 @@ export type ModalType =
   | 'layerManager'
   | 'printConfig'
   | 'editLayerStyle'
-  | 'deleteLayerConfirm';
+  | 'deleteLayerConfirm'
+  | 'attributeTable';
 
 /**
  * Modal state interface
@@ -60,6 +61,7 @@ export interface ModalState {
   printConfig: boolean;
   editLayerStyle: boolean;
   deleteLayerConfirm: boolean;
+  attributeTable: boolean;
 }
 
 /**
@@ -85,6 +87,7 @@ export function useModalManager() {
     printConfig: false,
     editLayerStyle: false,
     deleteLayerConfirm: false,
+    attributeTable: false,
   });
 
   /**
@@ -131,6 +134,7 @@ export function useModalManager() {
       printConfig: false,
       editLayerStyle: false,
       deleteLayerConfirm: false,
+      attributeTable: false,
     });
   };
 

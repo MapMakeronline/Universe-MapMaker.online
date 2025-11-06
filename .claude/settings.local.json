@@ -35,7 +35,10 @@
       "Bash(cmd /c \"screenshot.bat http://localhost:3000/map?project=Wyszki scale-visibility-modal.png\")",
       "Bash(cmd /c \"screenshot.bat http://localhost:3000/map?project=Wyszki guest-parcel-identify-test.png\")",
       "Bash(gcloud builds submit:*)",
-      "Bash(cmd /c \"screenshot.bat http://localhost:3000/map?project=Wyszki auth-guard-test-logged-out.png\")"
+      "Bash(cmd /c \"screenshot.bat http://localhost:3000/map?project=Wyszki auth-guard-test-logged-out.png\")",
+      "Bash(timeout /t 15 /nobreak)",
+      "Bash(tree:*)",
+      "Bash(findstr:*)"
     ],
     "deny": [],
     "ask": []

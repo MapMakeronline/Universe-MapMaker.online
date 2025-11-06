@@ -95,7 +95,8 @@ export const baseApi = createApi({
     'PublicProjects', // Published projects list
     'Layer',          // Single layer (detail)
     'Layers',         // List of layers
-    'LayerAttributes', // Layer attribute column names
+    'LayerAttributes', // Layer attribute column names and data
+    'LayerConstraints', // Layer column constraints (NOT NULL, UNIQUE, etc.)
     'LayerStyle',     // Layer styling (QML/SLD)
     'Search',         // Parcel search results
     'WypisConfiguration', // Wypis/Wyrys configurations

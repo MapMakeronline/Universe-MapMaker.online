@@ -774,6 +774,142 @@ export const layersApi = baseApi.injectEndpoints({
     }),
 
     /**
+     * Get Layer Features (Row-Based)
+     * GET /api/layer/features
+     * Retrieves all layer features in row-based JSON format
+     *
+     * Backend endpoint: /api/layer/features
+     * Documentation: User guide
+     *
+     * Response:
+     * {
+     *   data: [
+     *     { gid: 1, nazwa: "Działka A", powierzchnia: 100.5 },
+     *     { gid: 2, nazwa: "Działka B", powierzchnia: 250.3 }
+     *   ],
+     *   success: boolean,
+     *   message: string
+     * }
+     *
+     * IMPORTANT: This endpoint returns row-based data (easier for table display)
+     * compared to getLayerAttributesWithTypes which returns column-based data.
+     */
+    getLayerFeatures: builder.query<{
+      data: Array<Record<string, any>>;
+      success: boolean;
+      message: string;
+    }, {
+      project: string;
+      layer_id: string;
+    }>({
+      query: ({ project, layer_id }) => ({
+        url: '/api/layer/features',
+        params: { project, layer_id },
+      }),
+      // Cache by layer_id
+      providesTags: (result, error, { layer_id }) => [
+        { type: 'LayerAttributes', id: layer_id },
+      ],
+    }),
+
+    /**
+     * Get Layer Constraints
+     * GET /api/layer/constraints
+     * Retrieves column constraints (NOT NULL, UNIQUE, AUTO_INCREMENT)
+     *
+     * Backend endpoint: /api/layer/constraints
+     * Documentation: User guide
+     *
+     * Response:
+     * {
+     *   data: {
+     *     not_null_fields: ["gid", "nazwa"],
+     *     unique_fields: ["gid"],
+     *     sequence_fields: ["gid"]
+     *   },
+     *   success: boolean,
+     *   message: string
+     * }
+     *
+     * Usage: Form validation in attribute table editor
+     * - not_null_fields: Require input
+     * - unique_fields: Check uniqueness before save
+     * - sequence_fields: Disable editing (auto-generated)
+     */
+    getLayerConstraints: builder.query<{
+      data: {
+        not_null_fields: string[];
+        unique_fields: string[];
+        sequence_fields: string[];
+      };
+      success: boolean;
+      message: string;
+    }, {
+      project: string;
+      layer_id: string;
+    }>({
+      query: ({ project, layer_id }) => ({
+        url: '/api/layer/constraints',
+        params: { project, layer_id },
+      }),
+      // Cache constraints (rarely change)
+      providesTags: (result, error, { layer_id }) => [
+        { type: 'LayerConstraints', id: layer_id },
+      ],
+    }),
+
+    /**
+     * Save Multiple Records (Batch Update/Insert)
+     * POST /api/layer/multipleSaving
+     * Saves multiple attribute records at once
+     *
+     * Backend endpoint: /api/layer/multipleSaving
+     * Documentation: User guide
+     *
+     * Request:
+     * {
+     *   project: "moj_projekt",
+     *   layer: "layer_123",
+     *   data: [
+     *     { gid: 1, nazwa: "Nowa nazwa", powierzchnia: 150.5 },
+     *     { gid: 2, nazwa: "Inna nazwa", powierzchnia: 200.3 }
+     *   ]
+     * }
+     *
+     * Response:
+     * {
+     *   data: "",
+     *   success: boolean,
+     *   message: "Zapisano 2 rekordy"
+     * }
+     *
+     * IMPORTANT: Backend uses `gid` as primary key
+     * - If record has `gid` → UPDATE
+     * - If record has no `gid` → INSERT (probably, needs testing)
+     */
+    saveMultipleRecords: builder.mutation<{
+      data: string;
+      success: boolean;
+      message: string;
+    }, {
+      project: string;
+      layer: string;
+      data: Array<Record<string, any>>;
+    }>({
+      query: (body) => ({
+        url: '/api/layer/multipleSaving',
+        method: 'POST',
+        body,
+      }),
+      // Invalidate layer attributes cache after save
+      invalidatesTags: (result, error, { layer }) => [
+        { type: 'LayerAttributes', id: layer },
+        { type: 'Layer', id: layer },
+        'Layers',
+      ],
+    }),
+
+    /**
      * Export Layer
      * GET /api/layer/export
      * Downloads layer in specified format (Shapefile, GeoJSON, GML, KML)
@@ -853,4 +989,10 @@ export const {
   useSetLayerScaleMutation,
   useSetLayerPublishedMutation,
   useLazyExportLayerQuery,
+  // Attribute Table hooks
+  useGetLayerFeaturesQuery,
+  useLazyGetLayerFeaturesQuery,
+  useGetLayerConstraintsQuery,
+  useLazyGetLayerConstraintsQuery,
+  useSaveMultipleRecordsMutation,
 } = layersApi;

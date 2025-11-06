@@ -17,6 +17,7 @@ import LayerManagerModal from '../modals/LayerManagerModal';
 import PrintConfigModal from '../../mapa/komponenty/PrintConfigModal';
 import EditLayerStyleModal from '../modals/EditLayerStyleModal';
 import DeleteLayerConfirmModal from '../modals/DeleteLayerConfirmModal';
+import { AttributeTableModal } from '../modals';
 import { AuthRequiredModal } from '@/features/auth/components';
 import { useResizable, useDragDrop } from '@/hooks/index';
 import { useAppSelector, useAppDispatch } from '@/redux/hooks';
@@ -295,6 +296,17 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
     openModal('deleteLayerConfirm');
   };
 
+  // Show attribute table for layer
+  const handleShowAttributeTable = (layerId: string) => {
+    const layer = findLayerById(layerId, layers);
+    if (!layer) {
+      dispatch(showError('Nie znaleziono warstwy'));
+      return;
+    }
+    setSelectedLayer(layer); // Set selected layer for modal
+    openModal('attributeTable');
+  };
+
   // Delete layer confirmed - execute deletion
   const handleDeleteLayerConfirmed = async () => {
     closeModal('deleteLayerConfirm');
@@ -527,6 +539,7 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
             onDropAtEnd={dragDropHandlers.handleDropAtEnd}
             onLayerTreeDragOver={dragDropHandlers.handleLayerTreeDragOver}
             onMainLevelDragOver={dragDropHandlers.handleMainLevelDragOver}
+            onShowAttributeTable={handleShowAttributeTable}
           />
 
           <PropertiesPanel
@@ -664,6 +677,17 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
         onConfirm={handleDeleteLayerConfirmed}
         layerName={selectedLayer?.name || 'warstwy'}
       />
+
+      {/* Attribute Table Modal */}
+      {selectedLayer && (
+        <AttributeTableModal
+          open={modals.attributeTable}
+          onClose={() => closeModal('attributeTable')}
+          projectName={projectName}
+          layerId={selectedLayer.id}
+          layerName={selectedLayer.name}
+        />
+      )}
 
       {/* Auth Required Modal */}
       <AuthRequiredModal

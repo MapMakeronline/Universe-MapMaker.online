@@ -60,6 +60,7 @@ interface LayerTreeProps {
   onDropAtEnd: (e: any, groupId: string) => void;
   onLayerTreeDragOver: (e: any) => void;
   onMainLevelDragOver: (e: any) => void;
+  onShowAttributeTable: (layerId: string) => void; // NEW: Show attribute table modal
 }
 
 // Colors from theme
@@ -223,7 +224,8 @@ export const LayerTree: React.FC<LayerTreeProps> = ({
   onDrop,
   onDropAtEnd,
   onLayerTreeDragOver,
-  onMainLevelDragOver
+  onMainLevelDragOver,
+  onShowAttributeTable
 }) => {
   const theme = useTheme();
   const dispatch = useAppDispatch();
@@ -657,7 +659,7 @@ export const LayerTree: React.FC<LayerTreeProps> = ({
                   size="small"
                   onClick={(e) => {
                     e.stopPropagation();
-                    console.log('Calendar for:', warstwa.name);
+                    onShowAttributeTable(warstwa.id);
                   }}
                   sx={{
                     color: theme.palette.text.secondary,
