@@ -55,6 +55,11 @@ const LayerVisibilitySync = dynamic(
   { ssr: false }
 );
 
+const AttributeTablePanel = dynamic(
+  () => import('@/features/layers/components/AttributeTablePanel').then(mod => ({ AttributeTablePanel: mod.AttributeTablePanel })),
+  { ssr: false }
+);
+
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import { setCurrentProject } from '@/redux/slices/projectsSlice';
 import { loadLayers, resetLayers } from '@/redux/slices/layersSlice';
@@ -121,9 +126,25 @@ export default function MapPage() {
   // DEFAULT: Collapsed (true) - drzewo warstw zwinięte domyślnie dla wszystkich użytkowników
   const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(true);
 
+  // State for AttributeTablePanel (bottom-docked panel)
+  const [attributeTableOpen, setAttributeTableOpen] = useState(false);
+  const [selectedLayerForTable, setSelectedLayerForTable] = useState<LayerNode | null>(null);
+
   // Toggle handler for LayersFAB
   const handleToggleLeftPanel = () => {
     setLeftPanelCollapsed(!leftPanelCollapsed);
+  };
+
+  // Handler for opening attribute table panel
+  const handleShowAttributeTable = (layerId: string) => {
+    const layer = layers.find(l => l.id === layerId);
+    if (!layer) {
+      console.error('❌ Layer not found for attribute table:', layerId);
+      return;
+    }
+    console.log('🎯 Opening attribute table panel for layer:', layer.name);
+    setSelectedLayerForTable(layer);
+    setAttributeTableOpen(true);
   };
 
   // Count layers for badge (flatten layer tree to get total count)
@@ -291,6 +312,7 @@ export default function MapPage() {
           isOwner={isOwner}
           isCollapsed={leftPanelCollapsed}
           onToggle={handleToggleLeftPanel}
+          onShowAttributeTable={handleShowAttributeTable}
         />
         <Box component="main" sx={{ flexGrow: 1, position: 'relative', height: '100vh' }}>
           {isLoading && (
@@ -320,6 +342,27 @@ export default function MapPage() {
           </MapContainer>
         </Box>
         {/* RightToolbar removed - replaced by FAB buttons in MapContainer */}
+
+        {/* AttributeTablePanel - Bottom-docked resizable panel */}
+        {attributeTableOpen && selectedLayerForTable && projectName && (
+          <AttributeTablePanel
+            projectName={projectName}
+            layerId={selectedLayerForTable.id}
+            layerName={selectedLayerForTable.name}
+            onClose={() => {
+              setAttributeTableOpen(false);
+              setSelectedLayerForTable(null);
+            }}
+            onRowSelect={(featureId, feature) => {
+              console.log('🎯 Row selected in table:', featureId, feature);
+              // TODO: Implement map highlight using Mapbox feature-state
+              // mapRef.current?.setFeatureState(
+              //   { source: 'qgis-layer', id: featureId },
+              //   { selected: true }
+              // );
+            }}
+          />
+        )}
       </Box>
 
       {/* LayersFAB - Toggle button for layer panel (bottom left corner) */}

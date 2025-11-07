@@ -93,11 +93,13 @@ interface LeftPanelProps {
   isCollapsed?: boolean;
   onToggle?: () => void;
   width?: number;
+  onShowAttributeTable?: (layerId: string) => void; // NEW: Callback to open AttributeTablePanel in page.tsx
 }
 
 const LeftPanel: React.FC<LeftPanelProps> = ({
   isOwner = true,
   isCollapsed: externalCollapsed,
+  onShowAttributeTable: onShowAttributeTableFromParent,
   onToggle: externalOnToggle,
   width: externalWidth
 }) => {
@@ -299,16 +301,22 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
   // Show attribute table for layer
   const handleShowAttributeTable = (layerId: string) => {
     console.log('🔍 handleShowAttributeTable called with layerId:', layerId);
-    const layer = findLayerById(layers, layerId); // FIX: Correct argument order
-    console.log('🎯 Found layer:', layer);
-    if (!layer) {
-      console.error('❌ Layer not found in tree! layerId:', layerId);
-      dispatch(showError('Nie znaleziono warstwy'));
-      return;
+
+    // Use parent callback if provided (panel mode), otherwise use modal
+    if (onShowAttributeTableFromParent) {
+      onShowAttributeTableFromParent(layerId);
+    } else {
+      // Fallback to modal mode (deprecated)
+      const layer = findLayerById(layers, layerId);
+      if (!layer) {
+        console.error('❌ Layer not found in tree! layerId:', layerId);
+        dispatch(showError('Nie znaleziono warstwy'));
+        return;
+      }
+      console.log('✅ Opening attribute table modal for layer:', layer.name);
+      setSelectedLayer(layer);
+      openModal('attributeTable');
     }
-    console.log('✅ Opening attribute table for layer:', layer.name);
-    setSelectedLayer(layer); // Set selected layer for modal
-    openModal('attributeTable');
   };
 
   // Delete layer confirmed - execute deletion
