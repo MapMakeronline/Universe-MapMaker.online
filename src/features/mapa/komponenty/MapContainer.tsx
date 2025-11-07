@@ -9,6 +9,7 @@ import { setViewState, setMapLoaded, setFullscreen } from '@/redux/slices/mapSli
 import { MAPBOX_TOKEN, MAP_CONFIG } from '@/mapbox/config';
 import { mapLogger } from '@/tools/logger';
 import { saveViewport, loadViewport, autoSaveViewport } from '@/mapbox/viewport-persistence';
+import { saveQGISLayers, restoreQGISLayers } from '@/mapbox/layer-preservation';
 import MeasurementTools from '../narzedzia/MeasurementTools';
 import IdentifyTool from './IdentifyTool';
 import Buildings3D from './Buildings3D';
@@ -176,6 +177,44 @@ const MapContainer: React.FC<MapContainerProps> = ({ children, projectName }) =>
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       if (resizeTimeout) clearTimeout(resizeTimeout);
       if (visibilityTimeout) clearTimeout(visibilityTimeout);
+    };
+  }, [mapRef]);
+
+  // ==================== QGIS LAYER PRESERVATION ====================
+  // Save and restore QGIS layers when basemap style changes
+  useEffect(() => {
+    if (!mapRef.current) return;
+    const map = mapRef.current.getMap();
+    if (!map) return;
+
+    let savedLayers: any[] = [];
+    let savedSources: any[] = [];
+
+    // Save layers before style change
+    const handleStyleWillChange = () => {
+      const saved = saveQGISLayers(map);
+      savedLayers = saved.layers;
+      savedSources = saved.sources;
+      mapLogger.log('📦 Basemap changing - layers saved');
+    };
+
+    // Restore layers after new style loads
+    const handleStyleLoaded = () => {
+      if (savedLayers.length > 0 || savedSources.length > 0) {
+        restoreQGISLayers(map, savedLayers, savedSources);
+        mapLogger.log('✅ Basemap changed - layers restored');
+        savedLayers = [];
+        savedSources = [];
+      }
+    };
+
+    // Listen to style events
+    map.on('styledata', handleStyleWillChange); // Fires BEFORE style change
+    map.on('style.load', handleStyleLoaded);    // Fires AFTER style loads
+
+    return () => {
+      map.off('styledata', handleStyleWillChange);
+      map.off('style.load', handleStyleLoaded);
     };
   }, [mapRef]);
 
