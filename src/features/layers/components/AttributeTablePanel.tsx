@@ -513,7 +513,7 @@ export function AttributeTablePanel({
       </Box>
 
       {/* DataGrid Content */}
-      <Box sx={{ flex: 1, minHeight: 0 }}>
+      <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
         {isLoading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
             <CircularProgress />
@@ -529,7 +529,8 @@ export function AttributeTablePanel({
             </Typography>
           </Box>
         ) : (
-          <DataGrid
+          <Box sx={{ flex: 1, minHeight: 0 }}>
+            <DataGrid
             rows={filteredRows}
             columns={columns}
             getRowId={(row) => row.id}
@@ -577,6 +578,7 @@ export function AttributeTablePanel({
               },
             }}
           />
+          </Box>
         )}
       </Box>
     </Box>
