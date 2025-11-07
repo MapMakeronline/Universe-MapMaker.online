@@ -50,7 +50,7 @@ export const BasemapSelectorModal: React.FC<BasemapSelectorModalProps> = ({
     setSelectedKey(key);
   };
 
-  const handleApply = async () => {
+  const handleApply = () => {
     const style = MAP_STYLES[selectedKey];
     if (!style) {
       mapLogger.error(`❌ Style not found: ${selectedKey}`);
@@ -58,41 +58,25 @@ export const BasemapSelectorModal: React.FC<BasemapSelectorModalProps> = ({
     }
 
     try {
-      // KROK 1: Zapisz wybór w backendzie
-      mapLogger.log(`💾 Saving basemap preference: ${selectedKey}`);
+      mapLogger.log(`🎨 Changing basemap to: ${selectedKey}`);
 
-      const basemapData = {
-        project: projectName,
-        base_map: [
-          {
-            name: style.name,
-            url: style.style,
-            layers: [], // Backend requires this field (can be empty for Mapbox styles)
-          },
-        ],
-        default: style.name,
-      };
-
-      const result = await setBasemap(basemapData).unwrap();
-
-      if (!result.success) {
-        throw new Error(result.message || 'Failed to save basemap');
+      // Save preference to localStorage for persistence
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('mapStyleKey', selectedKey);
+        mapLogger.log(`💾 Saved basemap preference to localStorage: ${selectedKey}`);
       }
 
-      mapLogger.log(`✅ Basemap saved in backend`);
-
-      // KROK 2: Zmień styl mapy w Redux (to wywołuje re-render MapContainer + QGISProjectLayersLoader)
+      // Change map style in Redux (triggers QGISProjectLayersLoader to reload layers)
       dispatch(setMapStyle({ url: style.style, key: selectedKey }));
 
       mapLogger.log(`✅ Basemap changed: ${selectedKey}`);
 
-      // KROK 3: Zamknij modal
+      // Close modal
       onClose();
 
     } catch (err: any) {
-      const errorMessage = err?.data?.message || err?.message || 'Unknown error';
-      mapLogger.error('❌ Failed to save basemap:', errorMessage, err);
-      // Nie zamykaj modala jeśli błąd - użytkownik zobaczy alert z szczegółami
+      const errorMessage = err?.message || 'Unknown error';
+      mapLogger.error('❌ Failed to change basemap:', errorMessage, err);
     }
   };
 
