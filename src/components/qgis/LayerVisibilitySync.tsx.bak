@@ -28,7 +28,6 @@ export function LayerVisibilitySync({ projectName }: LayerVisibilitySyncProps) {
   const mapRef = useMap();
   const layers = useAppSelector((state) => state.layers.layers);
   const isMapLoaded = useAppSelector((state) => state.map.isLoaded);
-  const mapStyle = useAppSelector((state) => state.map.mapStyle);
 
   useEffect(() => {
     if (!mapRef.current || !isMapLoaded || !projectName) {
@@ -67,7 +66,7 @@ export function LayerVisibilitySync({ projectName }: LayerVisibilitySyncProps) {
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isMapLoaded, projectName, layers, mapStyle]); // FIXED: Removed mapRef from dependencies (causes re-render loops)
+  }, [isMapLoaded, projectName, layers]); // FIXED: Removed mapRef from dependencies (causes re-render loops)
 
   return null; // No UI rendering
 }
