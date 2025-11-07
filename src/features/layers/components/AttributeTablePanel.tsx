@@ -8,7 +8,7 @@ import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
 import Alert from '@mui/material/Alert';
-import { DataGrid, GridColDef, GridRowModel, GridRowsProp, GridRowSelectionModel } from '@mui/x-data-grid';
+import { DataGrid, GridColDef, GridRowModel, GridRowsProp } from '@mui/x-data-grid';
 import CloseIcon from '@mui/icons-material/Close';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import DownloadIcon from '@mui/icons-material/Download';
@@ -54,7 +54,7 @@ export function AttributeTablePanel({
   const [editedRows, setEditedRows] = useState<Map<number, GridRowModel>>(new Map());
   const [panelHeight, setPanelHeight] = useState(300); // Default 300px
   const [isDragging, setIsDragging] = useState(false);
-  const [selectionModel, setSelectionModel] = useState<GridRowSelectionModel>([]);
+  const [clickedRowId, setClickedRowId] = useState<string | number | null>(null);
 
   // Fetch layer features (row-based data)
   const {
@@ -135,19 +135,16 @@ export function AttributeTablePanel({
     return newRow;
   };
 
-  // Handle row selection (highlight on map)
-  const handleRowSelection = useCallback((newSelection: GridRowSelectionModel) => {
-    setSelectionModel(newSelection);
+  // Handle row click (highlight on map without checkboxes)
+  const handleRowClick = useCallback((params: any) => {
+    const rowId = params.id;
+    setClickedRowId(rowId);
 
-    if (newSelection.length > 0 && onRowSelect) {
-      const selectedId = newSelection[0];
-      const selectedRow = rows.find((row) => row.id === selectedId);
-      if (selectedRow) {
-        console.log('🎯 Row selected:', selectedId, selectedRow);
-        onRowSelect(selectedId, selectedRow);
-      }
+    if (onRowSelect) {
+      console.log('🎯 Row clicked:', rowId, params.row);
+      onRowSelect(rowId, params.row);
     }
-  }, [rows, onRowSelect]);
+  }, [onRowSelect]);
 
   // Save all changes
   const handleSave = async () => {
@@ -252,19 +249,25 @@ export function AttributeTablePanel({
       <Box
         onMouseDown={handleMouseDown}
         sx={{
-          height: 8,
+          height: 10,
           bgcolor: isDragging ? 'primary.main' : 'divider',
           cursor: 'ns-resize',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          transition: 'background-color 0.2s',
+          transition: 'all 0.2s ease-in-out',
+          borderTop: '2px solid',
+          borderColor: isDragging ? 'primary.main' : 'divider',
+          boxShadow: isDragging ? '0 -2px 8px rgba(0,0,0,0.2)' : 'none',
           '&:hover': {
             bgcolor: 'primary.light',
+            borderColor: 'primary.main',
+            height: 12,
+            boxShadow: '0 -2px 6px rgba(0,0,0,0.15)',
           },
         }}
       >
-        <DragHandleIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+        <DragHandleIcon sx={{ fontSize: 18, color: isDragging ? 'primary.contrastText' : 'text.secondary' }} />
       </Box>
 
       {/* Header */}
@@ -285,7 +288,9 @@ export function AttributeTablePanel({
             Tabela atrybutów: {layerName}
           </Typography>
           <Typography sx={{ fontSize: '12px', color: 'text.secondary' }}>
-            {filteredRows.length} rekordów
+            {searchText && filteredRows.length !== rows.length
+              ? `${filteredRows.length} z ${rows.length} rekordów`
+              : `${rows.length} rekordów`}
           </Typography>
         </Box>
 
@@ -343,6 +348,7 @@ export function AttributeTablePanel({
             columns={columns}
             getRowId={(row) => row.id}
             disableRowSelectionOnClick
+            onRowClick={handleRowClick}
             pagination
             pageSizeOptions={[10, 25, 50, 100]}
             initialState={{
@@ -353,6 +359,9 @@ export function AttributeTablePanel({
               console.error('Row edit error:', error);
               dispatch(showError('Błąd edycji wiersza'));
             }}
+            getRowClassName={(params) =>
+              params.id === clickedRowId ? 'clicked-row' : ''
+            }
             sx={{
               border: 'none',
               '& .MuiDataGrid-cell': {
@@ -363,8 +372,22 @@ export function AttributeTablePanel({
                 fontWeight: 600,
                 fontSize: '12px',
               },
-              '& .MuiDataGrid-row:hover': {
-                bgcolor: theme.palette.mode === 'dark' ? 'grey.800' : 'grey.100',
+              '& .MuiDataGrid-row': {
+                cursor: 'pointer',
+                '&:hover': {
+                  bgcolor: theme.palette.mode === 'dark' ? 'grey.800' : 'grey.100',
+                },
+              },
+              '& .MuiDataGrid-row.clicked-row': {
+                bgcolor: theme.palette.mode === 'dark' ? '#c62828' : '#ef5350',
+                color: '#fff',
+                fontWeight: 500,
+                '&:hover': {
+                  bgcolor: theme.palette.mode === 'dark' ? '#b71c1c' : '#e53935',
+                },
+                '& .MuiDataGrid-cell': {
+                  color: '#fff',
+                },
               },
             }}
           />
