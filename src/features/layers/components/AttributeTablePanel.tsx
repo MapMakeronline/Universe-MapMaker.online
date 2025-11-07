@@ -341,6 +341,7 @@ export function AttributeTablePanel({
           <DataGrid
             rows={filteredRows}
             columns={columns}
+            getRowId={(row) => row.id}
             pagination
             pageSizeOptions={[10, 25, 50, 100]}
             initialState={{
