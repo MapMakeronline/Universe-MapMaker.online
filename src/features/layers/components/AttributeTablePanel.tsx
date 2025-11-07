@@ -73,6 +73,7 @@ export function AttributeTablePanel({
   const dispatch = useAppDispatch();
   const [searchText, setSearchText] = useState('');
   const [editedRows, setEditedRows] = useState<Map<number, GridRowModel>>(new Map());
+  const [newRows, setNewRows] = useState<GridRowsProp>([]); // Local state for new rows
   const [panelHeight, setPanelHeight] = useState(300); // Default 300px
   const [isDragging, setIsDragging] = useState(false);
   const [clickedRowId, setClickedRowId] = useState<string | number | null>(null);
@@ -134,13 +135,15 @@ export function AttributeTablePanel({
     return cols;
   }, [features, constraints]);
 
-  // Prepare DataGrid rows
+  // Prepare DataGrid rows (combine API data + new local rows)
   const rows: GridRowsProp = useMemo(() => {
-    return features.map((feature, index) => ({
+    const apiRows = features.map((feature, index) => ({
       id: feature.gid || feature.fid || index,
       ...feature,
     }));
-  }, [features]);
+    // Prepend new rows at the top
+    return [...newRows, ...apiRows];
+  }, [features, newRows]);
 
   // Filter rows by search text
   const filteredRows = useMemo(() => {
@@ -187,7 +190,8 @@ export function AttributeTablePanel({
 
       dispatch(showSuccess(`Zapisano ${dataToSave.length} rekordów`));
       setEditedRows(new Map());
-      refetch();
+      setNewRows([]); // Clear new rows after save
+      refetch(); // Refresh to get real gid from backend
     } catch (err: any) {
       console.error('Save error:', err);
       dispatch(showError(`Błąd zapisu: ${err.message || 'Nieznany błąd'}`));
@@ -210,6 +214,9 @@ export function AttributeTablePanel({
     // Add temporary ID (without gid - backend will generate it)
     const tempId = `temp-${Date.now()}`;
     newRow.id = tempId;
+
+    // Add to local state (will appear in DataGrid)
+    setNewRows((prev) => [newRow, ...prev]);
 
     // Mark as edited immediately (user needs to fill data and save)
     setEditedRows((prev) => {
