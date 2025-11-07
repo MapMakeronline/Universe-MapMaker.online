@@ -342,6 +342,7 @@ export function AttributeTablePanel({
             rows={filteredRows}
             columns={columns}
             getRowId={(row) => row.id}
+            checkboxSelection
             pagination
             pageSizeOptions={[10, 25, 50, 100]}
             initialState={{
