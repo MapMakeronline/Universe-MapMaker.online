@@ -155,7 +155,18 @@ export function addWMSLayer(
       maxzoom: maxZoom,
     });
 
-    // Add raster layer
+    // Find the first symbol layer (labels, POI icons, etc.) to insert QGIS layers below them
+    // This ensures QGIS layers appear above basemap but below labels
+    const layers = map.getStyle().layers;
+    let firstSymbolId: string | undefined;
+    for (const layer of layers) {
+      if (layer.type === 'symbol') {
+        firstSymbolId = layer.id;
+        break;
+      }
+    }
+
+    // Add raster layer (before first symbol layer to appear above basemap but below labels)
     map.addLayer({
       id: layerId,
       type: 'raster',
@@ -166,7 +177,7 @@ export function addWMSLayer(
       layout: {
         visibility: visible ? 'visible' : 'none',
       },
-    });
+    }, firstSymbolId); // Insert before labels
 
     return { sourceId, layerId };
   } catch (error) {
