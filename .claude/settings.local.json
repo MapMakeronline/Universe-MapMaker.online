@@ -45,7 +45,9 @@
       "Bash(cmd /c \"screenshot.bat http://localhost:3000/map?project=Wyszki attribute-table-panel-test.png\")",
       "Bash(cmd /c \"screenshot.bat http://dev.universemapmaker.online/map?project=Wyszki attribute-table-test-fixed.png\")",
       "Bash(cmd /c \"screenshot.bat http://localhost:3000/map?project=Wyszki attribute-table-new-functions.png\")",
-      "Bash(timeout /t 5 /nobreak)"
+      "Bash(timeout /t 5 /nobreak)",
+      "Bash(cmd /c \"screenshot.bat http://localhost:3000/map?project=Wyszki basemap-switch-before.png\")",
+      "Bash(del \"c:\\Users\\Bartosz\\Desktop\\Universe-MapMaker.online\\src\\mapbox\\layer-preservation.ts\")"
     ],
     "deny": [],
     "ask": []

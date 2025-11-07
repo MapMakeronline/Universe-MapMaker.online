@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useMap } from 'react-map-gl';
 import { useAppSelector } from '@/redux/hooks';
-import { addProjectLayers } from '@/mapbox/qgis-layers';
+import { addProjectLayers, removeQGISLayer, getQGISLayers } from '@/mapbox/qgis-layers';
 import { mapLogger } from '@/tools/logger';
 
 interface QGISProjectLayersLoaderProps {
@@ -33,6 +33,8 @@ export function QGISProjectLayersLoader({ projectName, projectData }: QGISProjec
   // PERFORMANCE: Subscribe only to isLoaded (not entire state.map)
   // Prevents re-render when viewState changes during map panning
   const isMapLoaded = useAppSelector((state) => state.map.isLoaded);
+  // Subscribe to mapStyle changes to reload layers when basemap changes
+  const mapStyle = useAppSelector((state) => state.map.mapStyle);
 
   useEffect(() => {
     if (!mapRef.current || !isMapLoaded || !projectData || !projectName) {
@@ -113,7 +115,7 @@ export function QGISProjectLayersLoader({ projectName, projectData }: QGISProjec
       mapLogger.log(`✅ Added ${layersAdded} new WMS layers`);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isMapLoaded, projectData, projectName]); // FIXED: Removed mapRef from dependencies (causes re-render loops)
+  }, [isMapLoaded, projectData, projectName, mapStyle]); // ADDED mapStyle to reload layers when basemap changes
 
   return null; // No UI rendering needed
 }

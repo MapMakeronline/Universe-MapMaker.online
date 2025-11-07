@@ -9,7 +9,6 @@ import { setViewState, setMapLoaded, setFullscreen } from '@/redux/slices/mapSli
 import { MAPBOX_TOKEN, MAP_CONFIG } from '@/mapbox/config';
 import { mapLogger } from '@/tools/logger';
 import { saveViewport, loadViewport, autoSaveViewport } from '@/mapbox/viewport-persistence';
-import { saveQGISLayers, restoreQGISLayers } from '@/mapbox/layer-preservation';
 import MeasurementTools from '../narzedzia/MeasurementTools';
 import IdentifyTool from './IdentifyTool';
 import Buildings3D from './Buildings3D';
@@ -179,58 +178,6 @@ const MapContainer: React.FC<MapContainerProps> = ({ children, projectName }) =>
       if (visibilityTimeout) clearTimeout(visibilityTimeout);
     };
   }, [mapRef]);
-
-  // ==================== QGIS LAYER PRESERVATION ====================
-  // Save and restore QGIS layers when basemap style changes via Redux
-  useEffect(() => {
-    if (!mapRef.current || !mapStyle) return;
-    const map = mapRef.current.getMap();
-    if (!map || !map.isStyleLoaded()) return;
-
-    let savedLayers: any[] = [];
-    let savedSources: any[] = [];
-    let isInitialLoad = true;
-
-    // Save layers BEFORE style change
-    const handleBeforeStyleChange = () => {
-      // Skip preservation on initial map load
-      if (isInitialLoad) {
-        isInitialLoad = false;
-        return;
-      }
-
-      const saved = saveQGISLayers(map);
-      savedLayers = saved.layers;
-      savedSources = saved.sources;
-
-      if (savedLayers.length > 0 || savedSources.length > 0) {
-        mapLogger.log('📦 Basemap changing - layers saved');
-      }
-    };
-
-    // Restore layers AFTER new style loads
-    const handleAfterStyleLoad = () => {
-      if (savedLayers.length > 0 || savedSources.length > 0) {
-        // Wait longer to ensure style is fully applied and QGISProjectLayersLoader hasn't interfered
-        // Increased from 100ms to 300ms to avoid race condition with layer loader
-        setTimeout(() => {
-          restoreQGISLayers(map, savedLayers, savedSources);
-          mapLogger.log('✅ Basemap changed - layers restored');
-          savedLayers = [];
-          savedSources = [];
-        }, 300);
-      }
-    };
-
-    // Listen to Mapbox style events
-    map.on('styledata', handleBeforeStyleChange);
-    map.on('style.load', handleAfterStyleLoad);
-
-    return () => {
-      map.off('styledata', handleBeforeStyleChange);
-      map.off('style.load', handleAfterStyleLoad);
-    };
-  }, [mapStyle, mapRef]);
 
   // Show error state
   if (tokenError) {

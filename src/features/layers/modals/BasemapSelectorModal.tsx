@@ -2,14 +2,14 @@
  * BASEMAP SELECTOR MODAL - Modal wyboru mapy podkładowej
  *
  * Funkcjonalność:
- * - Lista dostępnych map podkładowych Mapbox (Ulice, Satelita, Outdoor, etc.)
+ * - Lista dostępnych map podkładowych Mapbox
  * - Radio buttons do wyboru
  * - Synchronizacja z Redux store
- * - **LAYER PRESERVATION** - Zachowuje warstwy QGIS podczas zmiany mapy podkładowej
+ * - **Zapisuje wybór w backendzie** (tree.json)
  */
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -21,33 +21,77 @@ import Radio from '@mui/material/Radio';
 import RadioGroup from '@mui/material/RadioGroup';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import FormControl from '@mui/material/FormControl';
+import CircularProgress from '@mui/material/CircularProgress';
+import Alert from '@mui/material/Alert';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import { setMapStyle } from '@/redux/slices/mapSlice';
 import { MAP_STYLES } from '@/mapbox/config';
+import { useSetBasemapMutation } from '@/backend/projects';
+import { mapLogger } from '@/tools/logger';
 
 interface BasemapSelectorModalProps {
   open: boolean;
   onClose: () => void;
+  projectName: string; // Nazwa projektu do zapisania w backendzie
 }
 
 export const BasemapSelectorModal: React.FC<BasemapSelectorModalProps> = ({
   open,
   onClose,
+  projectName,
 }) => {
   const dispatch = useAppDispatch();
   const mapStyleKey = useAppSelector((state) => state.map.mapStyleKey);
 
+  const [setBasemap, { isLoading, error }] = useSetBasemapMutation();
+  const [selectedKey, setSelectedKey] = useState(mapStyleKey || 'streets');
+
   const handleBasemapChange = (key: string) => {
-    const style = MAP_STYLES[key];
-    if (style) {
-      // Layer preservation is now handled in MapContainer via Redux state change
-      dispatch(setMapStyle({ url: style.style, key }));
-    }
+    setSelectedKey(key);
   };
 
-  const handleApply = () => {
-    // Zamknij modal - wybrana mapa jest już zastosowana przez handleBasemapChange
-    onClose();
+  const handleApply = async () => {
+    const style = MAP_STYLES[selectedKey];
+    if (!style) {
+      mapLogger.error(`❌ Style not found: ${selectedKey}`);
+      return;
+    }
+
+    try {
+      // KROK 1: Zapisz wybór w backendzie
+      mapLogger.log(`💾 Saving basemap preference: ${selectedKey}`);
+
+      const basemapData = {
+        project: projectName,
+        base_map: [
+          {
+            name: style.name,
+            url: style.style,
+          },
+        ],
+        default: style.name,
+      };
+
+      const result = await setBasemap(basemapData).unwrap();
+
+      if (!result.success) {
+        throw new Error(result.message || 'Failed to save basemap');
+      }
+
+      mapLogger.log(`✅ Basemap saved in backend`);
+
+      // KROK 2: Zmień styl mapy w Redux (to wywołuje re-render MapContainer + QGISProjectLayersLoader)
+      dispatch(setMapStyle({ url: style.style, key: selectedKey }));
+
+      mapLogger.log(`✅ Basemap changed: ${selectedKey}`);
+
+      // KROK 3: Zamknij modal
+      onClose();
+
+    } catch (err) {
+      mapLogger.error('❌ Failed to save basemap:', err);
+      // Nie zamykaj modala jeśli błąd - użytkownik zobaczy alert
+    }
   };
 
   return (
@@ -55,9 +99,15 @@ export const BasemapSelectorModal: React.FC<BasemapSelectorModalProps> = ({
       <DialogTitle>Wybór mapy podkładowej</DialogTitle>
       <DialogContent>
         <Box sx={{ py: 2 }}>
-          <FormControl component="fieldset" fullWidth>
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              Nie udało się zapisać mapy podkładowej. Spróbuj ponownie.
+            </Alert>
+          )}
+
+          <FormControl component="fieldset" fullWidth disabled={isLoading}>
             <RadioGroup
-              value={mapStyleKey || 'streets'}
+              value={selectedKey}
               onChange={(e) => handleBasemapChange(e.target.value)}
             >
               {Object.entries(MAP_STYLES).map(([key, style]) => (
@@ -80,8 +130,8 @@ export const BasemapSelectorModal: React.FC<BasemapSelectorModalProps> = ({
                     p: 1,
                     borderRadius: 1,
                     border: '1px solid',
-                    borderColor: mapStyleKey === key ? 'primary.main' : 'divider',
-                    bgcolor: mapStyleKey === key ? 'action.selected' : 'transparent',
+                    borderColor: selectedKey === key ? 'primary.main' : 'divider',
+                    bgcolor: selectedKey === key ? 'action.selected' : 'transparent',
                     '&:hover': {
                       bgcolor: 'action.hover',
                     },
@@ -92,14 +142,20 @@ export const BasemapSelectorModal: React.FC<BasemapSelectorModalProps> = ({
           </FormControl>
 
           <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: 'block' }}>
-            💡 Warstwy projektu są zachowane podczas zmiany mapy podkładowej
+            💡 Wybrana mapa jest zapisana w projekcie
           </Typography>
         </Box>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose}>Anuluj</Button>
-        <Button variant="contained" onClick={handleApply}>
-          Zastosuj
+        <Button onClick={onClose} disabled={isLoading}>
+          Anuluj
+        </Button>
+        <Button
+          variant="contained"
+          onClick={handleApply}
+          disabled={isLoading || selectedKey === mapStyleKey}
+        >
+          {isLoading ? <CircularProgress size={20} /> : 'Zastosuj'}
         </Button>
       </DialogActions>
     </Dialog>

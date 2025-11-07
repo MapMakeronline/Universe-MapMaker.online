@@ -186,9 +186,11 @@ export function AttributeTablePanel({
 
     // ✅ VALIDATE NOT NULL FIELDS
     const notNullFields = constraints?.not_null_fields || [];
+    const sequenceFields = constraints?.sequence_fields || [];
     for (const row of dataToSave) {
       for (const field of notNullFields) {
-        if (field === 'gid' || field === 'id') continue; // Skip auto-increment
+        // Skip ALL auto-increment fields (gid, id, ogc_fid, etc.)
+        if (sequenceFields.includes(field)) continue;
 
         const value = row[field];
         if (value === null || value === undefined || value === '') {

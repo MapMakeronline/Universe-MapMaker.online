@@ -597,17 +597,17 @@ export const projectsApi = baseApi.injectEndpoints({
     }),
 
     /**
-     * POST /api/projects/basemap
-     * Set basemap
+     * POST /api/projects/basemap/set
+     * Set basemap (save user's basemap preference in tree.json)
      */
     setBasemap: builder.mutation<
-      { message: string },
-      { project: string; basemap: string }
+      { data: any; success: boolean; message: string },
+      { project: string; base_map: Array<{ name: string; url: string; layers?: string[] }>; default?: string }
     >({
-      query: ({ project, basemap }) => ({
-        url: '/api/projects/basemap',
+      query: (data) => ({
+        url: '/api/projects/basemap/set',
         method: 'POST',
-        body: { project, basemap },
+        body: data,
       }),
       invalidatesTags: (result, error, arg) => [
         { type: 'Project', id: arg.project },

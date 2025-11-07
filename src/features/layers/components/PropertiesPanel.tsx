@@ -387,6 +387,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
       <BasemapSelectorModal
         open={basemapModalOpen}
         onClose={() => setBasemapModalOpen(false)}
+        projectName={projectName || ''}
       />
 
       {/* Project Properties Modal */}
