@@ -351,6 +351,7 @@ export default function MapPage() {
             projectName={projectName}
             layerId={selectedLayerForTable.id}
             layerName={selectedLayerForTable.name}
+            leftPanelWidth={leftPanelCollapsed ? 0 : 320}
             onClose={() => {
               setAttributeTableOpen(false);
               setSelectedLayerForTable(null);

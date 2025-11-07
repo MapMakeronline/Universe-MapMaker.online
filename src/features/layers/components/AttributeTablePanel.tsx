@@ -45,6 +45,7 @@ interface AttributeTablePanelProps {
   layerName: string;
   onClose: () => void;
   onRowSelect?: (featureId: string | number, feature: any) => void; // Callback for map highlight
+  leftPanelWidth?: number; // Width of left panel (for dynamic offset)
 }
 
 /**
@@ -63,6 +64,7 @@ export function AttributeTablePanel({
   layerName,
   onClose,
   onRowSelect,
+  leftPanelWidth = 0,
 }: AttributeTablePanelProps) {
   const theme = useTheme();
   const dispatch = useAppDispatch();
@@ -249,7 +251,7 @@ export function AttributeTablePanel({
       sx={{
         position: 'absolute',
         bottom: 0,
-        left: 0,
+        left: leftPanelWidth, // Dynamic offset based on left panel width
         right: 70, // Offset for right toolbar (matching old app)
         height: panelHeight,
         bgcolor: 'background.paper',
@@ -261,6 +263,9 @@ export function AttributeTablePanel({
         boxShadow: '0 -2px 10px rgba(0,0,0,0.1)',
         borderRight: '1px solid',
         borderRightColor: 'divider',
+        borderLeft: leftPanelWidth > 0 ? '1px solid' : 'none',
+        borderLeftColor: 'divider',
+        transition: 'left 0.3s ease-in-out', // Smooth transition when panel opens/closes
       }}
     >
       {/* Drag Handle */}
