@@ -56,7 +56,7 @@ const LayerVisibilitySync = dynamic(
 );
 
 const AttributeTablePanel = dynamic(
-  () => import('@/features/layers/components/AttributeTablePanel').then(mod => ({ AttributeTablePanel: mod.AttributeTablePanel })),
+  () => import('@/features/layers/components/AttributeTablePanel').then(mod => ({ default: mod.AttributeTablePanel })),
   { ssr: false }
 );
 
@@ -68,6 +68,7 @@ import { showError } from '@/redux/slices/notificationSlice';
 import { useGetProjectsQuery, useGetProjectDataQuery } from '@/backend/projects';
 import { MAP_STYLES } from '@/mapbox/config';
 import { transformExtent, transformExtentFromWebMercator, detectCRS, isValidWGS84 } from '@/mapbox/coordinates';
+import { findLayerById } from '@/utils/layerTreeUtils';
 import type { QGISLayerNode } from '@/types/qgis';
 import type { LayerNode } from '@/types-app/layers';
 
@@ -137,9 +138,10 @@ export default function MapPage() {
 
   // Handler for opening attribute table panel
   const handleShowAttributeTable = (layerId: string) => {
-    const layer = layers.find(l => l.id === layerId);
+    const layer = findLayerById(layers, layerId);
     if (!layer) {
       console.error('❌ Layer not found for attribute table:', layerId);
+      dispatch(showError('Nie znaleziono warstwy'));
       return;
     }
     console.log('🎯 Opening attribute table panel for layer:', layer.name);
