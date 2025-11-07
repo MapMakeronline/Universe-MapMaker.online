@@ -578,7 +578,7 @@ export function AttributeTablePanel({
               },
             }}
           />
-          </Box>
+        </Box>
         )}
       </Box>
     </Box>
