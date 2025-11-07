@@ -14,7 +14,23 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import DownloadIcon from '@mui/icons-material/Download';
 import SearchIcon from '@mui/icons-material/Search';
 import DragHandleIcon from '@mui/icons-material/DragHandle';
+import AddIcon from '@mui/icons-material/Add';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import SaveIcon from '@mui/icons-material/Save';
+import CancelIcon from '@mui/icons-material/Cancel';
+import ZoomInIcon from '@mui/icons-material/ZoomIn';
+import FilterListIcon from '@mui/icons-material/FilterList';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import ContentPasteIcon from '@mui/icons-material/ContentPaste';
+import UndoIcon from '@mui/icons-material/Undo';
+import RedoIcon from '@mui/icons-material/Redo';
+import SettingsIcon from '@mui/icons-material/Settings';
+import ViewColumnIcon from '@mui/icons-material/ViewColumn';
 import { useTheme } from '@mui/material/styles';
+import Divider from '@mui/material/Divider';
+import Tooltip from '@mui/material/Tooltip';
 import {
   useGetLayerFeaturesQuery,
   useGetLayerConstraintsQuery,
@@ -274,27 +290,184 @@ export function AttributeTablePanel({
       <Box
         sx={{
           display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          px: 2,
-          py: 1,
-          bgcolor: theme.palette.mode === 'dark' ? 'grey.900' : 'grey.100',
+          flexDirection: 'column',
           borderBottom: '1px solid',
           borderColor: 'divider',
         }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Typography sx={{ fontSize: '14px', fontWeight: 600 }}>
-            Tabela atrybutów: {layerName}
-          </Typography>
-          <Typography sx={{ fontSize: '12px', color: 'text.secondary' }}>
-            {searchText && filteredRows.length !== rows.length
-              ? `${filteredRows.length} z ${rows.length} rekordów`
-              : `${rows.length} rekordów`}
-          </Typography>
+        {/* Top Row - Title & Close */}
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            px: 2,
+            py: 1,
+            bgcolor: theme.palette.mode === 'dark' ? 'grey.900' : 'grey.100',
+            borderBottom: '1px solid',
+            borderColor: 'divider',
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Typography sx={{ fontSize: '14px', fontWeight: 600 }}>
+              Tabela atrybutów: {layerName}
+            </Typography>
+            <Typography sx={{ fontSize: '12px', color: 'text.secondary' }}>
+              {searchText && filteredRows.length !== rows.length
+                ? `${filteredRows.length} z ${rows.length} rekordów`
+                : `${rows.length} rekordów`}
+            </Typography>
+          </Box>
+
+          <IconButton size="small" onClick={onClose}>
+            <CloseIcon fontSize="small" />
+          </IconButton>
         </Box>
 
-        <Box sx={{ display: 'flex', gap: 1 }}>
+        {/* Toolbar - Icons matching old app */}
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            px: 1,
+            py: 0.5,
+            bgcolor: theme.palette.mode === 'dark' ? 'grey.800' : 'grey.50',
+            gap: 0.5,
+            flexWrap: 'wrap',
+          }}
+        >
+          {/* Selection & Navigation Group */}
+          <Tooltip title="Zaznacz wszystkie">
+            <IconButton size="small" disabled>
+              <ViewColumnIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Odznacz wszystkie">
+            <IconButton size="small" disabled>
+              <CancelIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Odwróć zaznaczenie">
+            <IconButton size="small" disabled>
+              <ContentCopyIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+
+          <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
+
+          {/* Editing Group */}
+          <Tooltip title="Dodaj rekord">
+            <IconButton size="small" disabled>
+              <AddIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Edytuj rekord">
+            <IconButton size="small" disabled>
+              <EditIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Usuń zaznaczone">
+            <IconButton size="small" disabled>
+              <DeleteIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+
+          <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
+
+          {/* Save/Cancel Group */}
+          <Tooltip title="Zapisz zmiany">
+            <span>
+              <IconButton
+                size="small"
+                onClick={handleSave}
+                disabled={editedRows.size === 0 || isSaving}
+                color={editedRows.size > 0 ? 'primary' : 'default'}
+              >
+                <SaveIcon fontSize="small" />
+              </IconButton>
+            </span>
+          </Tooltip>
+          <Tooltip title="Anuluj zmiany">
+            <IconButton
+              size="small"
+              disabled={editedRows.size === 0}
+              onClick={() => setEditedRows(new Map())}
+            >
+              <CancelIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+
+          <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
+
+          {/* Undo/Redo Group */}
+          <Tooltip title="Cofnij">
+            <IconButton size="small" disabled>
+              <UndoIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Ponów">
+            <IconButton size="small" disabled>
+              <RedoIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+
+          <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
+
+          {/* View Group */}
+          <Tooltip title="Przybliż do zaznaczonych">
+            <IconButton size="small" disabled>
+              <ZoomInIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Pokaż na mapie">
+            <IconButton size="small" disabled>
+              <VisibilityIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+
+          <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
+
+          {/* Filter Group */}
+          <Tooltip title="Filtruj">
+            <IconButton size="small" disabled>
+              <FilterListIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+
+          <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
+
+          {/* Export/Refresh Group */}
+          <Tooltip title="Eksportuj CSV">
+            <span>
+              <IconButton
+                size="small"
+                onClick={handleExport}
+                disabled={filteredRows.length === 0}
+              >
+                <DownloadIcon fontSize="small" />
+              </IconButton>
+            </span>
+          </Tooltip>
+          <Tooltip title="Odśwież dane">
+            <span>
+              <IconButton size="small" onClick={() => refetch()} disabled={isLoading}>
+                <RefreshIcon fontSize="small" />
+              </IconButton>
+            </span>
+          </Tooltip>
+
+          <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
+
+          {/* Settings */}
+          <Tooltip title="Ustawienia tabeli">
+            <IconButton size="small" disabled>
+              <SettingsIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+
+          <Box sx={{ flex: 1 }} />
+
+          {/* Search Box - Right side */}
           <TextField
             size="small"
             placeholder="Wyszukaj..."
@@ -303,26 +476,32 @@ export function AttributeTablePanel({
             InputProps={{
               startAdornment: <SearchIcon sx={{ mr: 1, color: 'text.secondary', fontSize: 18 }} />,
             }}
-            sx={{ width: 250 }}
+            sx={{
+              width: 250,
+              '& .MuiOutlinedInput-root': {
+                height: 32,
+                fontSize: '13px',
+              },
+            }}
           />
 
-          <Button size="small" variant="outlined" startIcon={<RefreshIcon />} onClick={() => refetch()} disabled={isLoading}>
-            Odśwież
-          </Button>
-
-          <Button size="small" variant="outlined" startIcon={<DownloadIcon />} onClick={handleExport} disabled={filteredRows.length === 0}>
-            CSV
-          </Button>
-
+          {/* Edit indicator */}
           {editedRows.size > 0 && (
-            <Button size="small" variant="contained" onClick={handleSave} disabled={isSaving}>
-              {isSaving ? <CircularProgress size={16} /> : `Zapisz (${editedRows.size})`}
-            </Button>
+            <Box
+              sx={{
+                ml: 1,
+                px: 1.5,
+                py: 0.5,
+                bgcolor: 'warning.main',
+                color: 'warning.contrastText',
+                borderRadius: 1,
+                fontSize: '12px',
+                fontWeight: 600,
+              }}
+            >
+              {editedRows.size} zmian
+            </Box>
           )}
-
-          <IconButton size="small" onClick={onClose}>
-            <CloseIcon fontSize="small" />
-          </IconButton>
         </Box>
       </Box>
 
