@@ -127,6 +127,10 @@ export default function MapPage() {
   // DEFAULT: Collapsed (true) - drzewo warstw zwinięte domyślnie dla wszystkich użytkowników
   const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(true);
 
+  // State for LeftPanel actual width (for AttributeTablePanel offset)
+  // This tracks the dynamic resizable width, not just collapsed/open boolean
+  const [leftPanelWidth, setLeftPanelWidth] = useState(0);
+
   // State for AttributeTablePanel (bottom-docked panel)
   const [attributeTableOpen, setAttributeTableOpen] = useState(false);
   const [selectedLayerForTable, setSelectedLayerForTable] = useState<LayerNode | null>(null);
@@ -315,6 +319,7 @@ export default function MapPage() {
           isCollapsed={leftPanelCollapsed}
           onToggle={handleToggleLeftPanel}
           onShowAttributeTable={handleShowAttributeTable}
+          onWidthChange={setLeftPanelWidth}
         />
         <Box component="main" sx={{ flexGrow: 1, position: 'relative', height: '100vh' }}>
           {isLoading && (
@@ -351,7 +356,7 @@ export default function MapPage() {
             projectName={projectName}
             layerId={selectedLayerForTable.id}
             layerName={selectedLayerForTable.name}
-            leftPanelWidth={leftPanelCollapsed ? 0 : 320}
+            leftPanelWidth={leftPanelWidth}
             onClose={() => {
               setAttributeTableOpen(false);
               setSelectedLayerForTable(null);

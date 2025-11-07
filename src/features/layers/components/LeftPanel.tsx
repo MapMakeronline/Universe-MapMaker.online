@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Box from '@mui/material/Box';
 import { useTheme } from '@mui/material/styles';
 import { Toolbar } from './Toolbar';
@@ -94,6 +94,7 @@ interface LeftPanelProps {
   onToggle?: () => void;
   width?: number;
   onShowAttributeTable?: (layerId: string) => void; // NEW: Callback to open AttributeTablePanel in page.tsx
+  onWidthChange?: (width: number) => void; // NEW: Callback to report width changes to parent
 }
 
 const LeftPanel: React.FC<LeftPanelProps> = ({
@@ -101,7 +102,8 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
   isCollapsed: externalCollapsed,
   onShowAttributeTable: onShowAttributeTableFromParent,
   onToggle: externalOnToggle,
-  width: externalWidth
+  width: externalWidth,
+  onWidthChange
 }) => {
   const theme = useTheme();
   const dispatch = useAppDispatch();
@@ -201,6 +203,15 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
   const handleMouseDown = resizable.handleMouseDown;
 
   const dragDropHandlers = useDragDrop(layers, handleDragDropMove);
+
+  // Report width changes to parent (for AttributeTablePanel offset)
+  useEffect(() => {
+    if (onWidthChange) {
+      // Report actual width when expanded, 0 when collapsed
+      const effectiveWidth = sidebarCollapsed ? 0 : width;
+      onWidthChange(effectiveWidth);
+    }
+  }, [width, sidebarCollapsed, onWidthChange]);
 
   // Helper functions
   const handleLayerSelect = (id: string) => {
