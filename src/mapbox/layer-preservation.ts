@@ -94,21 +94,30 @@ export function restoreQGISLayers(
     return;
   }
 
+  let sourcesRestored = 0;
+  let layersRestored = 0;
+  let sourcesSkipped = 0;
+  let layersSkipped = 0;
+
   // Restore sources first
   savedSources.forEach(({ id, spec }) => {
-    if (!map.getSource(id)) {
+    const existing = map.getSource(id);
+    if (!existing) {
       try {
         map.addSource(id, spec as any);
-        mapLogger.log(`✅ Restored source: ${id}`);
+        sourcesRestored++;
       } catch (error) {
         mapLogger.error(`❌ Failed to restore source ${id}:`, error);
       }
+    } else {
+      sourcesSkipped++; // Source already exists (likely added by QGISProjectLayersLoader)
     }
   });
 
   // Restore layers
   savedLayers.forEach((layer) => {
-    if (!map.getLayer(layer.id)) {
+    const existing = map.getLayer(layer.id);
+    if (!existing) {
       try {
         map.addLayer({
           id: layer.id,
@@ -122,12 +131,19 @@ export function restoreQGISLayers(
           maxzoom: layer.maxzoom,
           metadata: layer.metadata,
         });
-        mapLogger.log(`✅ Restored layer: ${layer.id}`);
+        layersRestored++;
       } catch (error) {
         mapLogger.error(`❌ Failed to restore layer ${layer.id}:`, error);
       }
+    } else {
+      layersSkipped++; // Layer already exists (likely added by QGISProjectLayersLoader)
     }
   });
 
-  mapLogger.log(`🔄 Restored ${savedLayers.length} QGIS layers`);
+  if (layersRestored > 0 || sourcesRestored > 0) {
+    mapLogger.log(`🔄 Restored ${layersRestored} layers and ${sourcesRestored} sources`);
+  }
+  if (layersSkipped > 0 || sourcesSkipped > 0) {
+    mapLogger.log(`⏭️ Skipped ${layersSkipped} layers and ${sourcesSkipped} sources (already exist)`);
+  }
 }

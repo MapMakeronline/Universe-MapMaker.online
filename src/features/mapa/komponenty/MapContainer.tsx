@@ -211,13 +211,14 @@ const MapContainer: React.FC<MapContainerProps> = ({ children, projectName }) =>
     // Restore layers AFTER new style loads
     const handleAfterStyleLoad = () => {
       if (savedLayers.length > 0 || savedSources.length > 0) {
-        // Wait a tick to ensure style is fully applied
+        // Wait longer to ensure style is fully applied and QGISProjectLayersLoader hasn't interfered
+        // Increased from 100ms to 300ms to avoid race condition with layer loader
         setTimeout(() => {
           restoreQGISLayers(map, savedLayers, savedSources);
           mapLogger.log('✅ Basemap changed - layers restored');
           savedLayers = [];
           savedSources = [];
-        }, 100);
+        }, 300);
       }
     };
 
