@@ -312,10 +312,13 @@ const IdentifyTool = () => {
     map.on('touchend', handleTouchEnd);
 
     // Change cursor when identify mode is active
-    if (identify.isActive) {
-      map.getCanvas().style.cursor = 'help';
-    } else {
-      map.getCanvas().style.cursor = '';
+    const canvas = map.getCanvas();
+    if (canvas) {
+      if (identify.isActive) {
+        canvas.style.cursor = 'help';
+      } else {
+        canvas.style.cursor = '';
+      }
     }
 
     // Cleanup
@@ -323,7 +326,10 @@ const IdentifyTool = () => {
       map.off('click', handleMapClick);
       map.off('touchstart', handleTouchStart);
       map.off('touchend', handleTouchEnd);
-      map.getCanvas().style.cursor = '';
+      const canvas = map.getCanvas();
+      if (canvas) {
+        canvas.style.cursor = '';
+      }
     };
   }, [mapRef, identify.isActive, dispatch, identifyFeature, projectName, layers]);
 

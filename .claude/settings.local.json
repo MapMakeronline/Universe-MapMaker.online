@@ -41,7 +41,8 @@
       "Bash(findstr:*)",
       "Bash(cmd /c \"screenshot.bat http://localhost:3000/map?project=Wyszki attribute-table-test.png\")",
       "Bash(cmd /c \"screenshot.bat http://dev.universemapmaker.online/map?project=Wyszki attribute-table-dev-test.png\")",
-      "Bash(npx playwright test:*)"
+      "Bash(npx playwright test:*)",
+      "Bash(cmd /c \"screenshot.bat http://localhost:3000/map?project=Wyszki attribute-table-panel-test.png\")"
     ],
     "deny": [],
     "ask": []
