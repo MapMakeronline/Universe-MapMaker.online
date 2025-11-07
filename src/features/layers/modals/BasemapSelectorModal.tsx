@@ -21,12 +21,9 @@ import Radio from '@mui/material/Radio';
 import RadioGroup from '@mui/material/RadioGroup';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import FormControl from '@mui/material/FormControl';
-import { useMap } from 'react-map-gl';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import { setMapStyle } from '@/redux/slices/mapSlice';
 import { MAP_STYLES } from '@/mapbox/config';
-import { saveQGISLayers, restoreQGISLayers } from '@/mapbox/layer-preservation';
-import { mapLogger } from '@/tools/logger';
 
 interface BasemapSelectorModalProps {
   open: boolean;
@@ -39,40 +36,13 @@ export const BasemapSelectorModal: React.FC<BasemapSelectorModalProps> = ({
 }) => {
   const dispatch = useAppDispatch();
   const mapStyleKey = useAppSelector((state) => state.map.mapStyleKey);
-  const { current: mapRef } = useMap();
 
   const handleBasemapChange = (key: string) => {
     const style = MAP_STYLES[key];
-    if (!style) {
-      mapLogger.error(`❌ Style not found: ${key}`);
-      return;
+    if (style) {
+      // Layer preservation is now handled in MapContainer via Redux state change
+      dispatch(setMapStyle({ url: style.style, key }));
     }
-
-    // Get Mapbox GL instance
-    const map = mapRef?.getMap();
-    if (!map) {
-      mapLogger.error('❌ Map instance not available');
-      return;
-    }
-
-    // ==================== LAYER PRESERVATION ====================
-    // STEP 1: Save QGIS layers BEFORE changing style
-    mapLogger.log(`📦 Basemap changing: ${mapStyleKey} → ${key}`);
-    const savedState = saveQGISLayers(map);
-
-    // STEP 2: Change map style (this will clear all layers)
-    dispatch(setMapStyle({ url: style.style, key }));
-
-    // STEP 3: Restore QGIS layers AFTER new style loads
-    // Wait for style to load, then restore
-    const handleStyleLoad = () => {
-      mapLogger.log(`✅ New style loaded: ${key}, restoring QGIS layers...`);
-      restoreQGISLayers(map, savedState.layers, savedState.sources);
-      map.off('style.load', handleStyleLoad); // Clean up listener
-    };
-
-    map.once('style.load', handleStyleLoad);
-    // ==================== END PRESERVATION ====================
   };
 
   const handleApply = () => {
