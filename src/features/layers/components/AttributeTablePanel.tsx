@@ -250,7 +250,7 @@ export function AttributeTablePanel({
         position: 'absolute',
         bottom: 0,
         left: 0,
-        right: 0,
+        right: 70, // Offset for right toolbar (matching old app)
         height: panelHeight,
         bgcolor: 'background.paper',
         borderTop: '1px solid',
@@ -259,6 +259,8 @@ export function AttributeTablePanel({
         flexDirection: 'column',
         zIndex: 1000,
         boxShadow: '0 -2px 10px rgba(0,0,0,0.1)',
+        borderRight: '1px solid',
+        borderRightColor: 'divider',
       }}
     >
       {/* Drag Handle */}
