@@ -293,70 +293,48 @@ export function AttributeTablePanel({
         <DragHandleIcon sx={{ fontSize: 18, color: isDragging ? 'primary.contrastText' : 'text.secondary' }} />
       </Box>
 
-      {/* Header */}
+      {/* Header - Compact single row */}
       <Box
         sx={{
           display: 'flex',
-          flexDirection: 'column',
+          alignItems: 'center',
+          px: 1,
+          py: 0.25, // Reduced from 0.5
+          bgcolor: theme.palette.mode === 'dark' ? 'grey.800' : 'grey.50',
           borderBottom: '1px solid',
           borderColor: 'divider',
+          gap: 0.5,
+          minHeight: 40, // Compact height
         }}
       >
-        {/* Top Row - Title & Close */}
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            px: 2,
-            py: 1,
-            bgcolor: theme.palette.mode === 'dark' ? 'grey.900' : 'grey.100',
-            borderBottom: '1px solid',
-            borderColor: 'divider',
-          }}
-        >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Typography sx={{ fontSize: '14px', fontWeight: 600 }}>
-              Tabela atrybutów: {layerName}
-            </Typography>
-            <Typography sx={{ fontSize: '12px', color: 'text.secondary' }}>
-              {searchText && filteredRows.length !== rows.length
-                ? `${filteredRows.length} z ${rows.length} rekordów`
-                : `${rows.length} rekordów`}
-            </Typography>
-          </Box>
-
-          <IconButton size="small" onClick={onClose}>
-            <CloseIcon fontSize="small" />
-          </IconButton>
+        {/* Title & Record Count - Left side */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mr: 1 }}>
+          <Typography sx={{ fontSize: '13px', fontWeight: 600, whiteSpace: 'nowrap' }}>
+            {layerName}
+          </Typography>
+          <Typography sx={{ fontSize: '11px', color: 'text.secondary', whiteSpace: 'nowrap' }}>
+            {searchText && filteredRows.length !== rows.length
+              ? `${filteredRows.length}/${rows.length}`
+              : `${rows.length}`}
+          </Typography>
         </Box>
 
-        {/* Toolbar - Icons matching old app */}
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            px: 1,
-            py: 0.5,
-            bgcolor: theme.palette.mode === 'dark' ? 'grey.800' : 'grey.50',
-            gap: 0.5,
-            flexWrap: 'wrap',
-          }}
-        >
-          {/* Selection & Navigation Group */}
-          <Tooltip title="Zaznacz wszystkie">
-            <IconButton size="small" disabled>
-              <ViewColumnIcon fontSize="small" />
+        <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
+
+        {/* Selection & Navigation Group */}
+        <Tooltip title="Zaznacz wszystkie">
+            <IconButton size="small" disabled sx={{ p: 0.5 }}>
+              <ViewColumnIcon sx={{ fontSize: 18 }} />
             </IconButton>
           </Tooltip>
           <Tooltip title="Odznacz wszystkie">
-            <IconButton size="small" disabled>
-              <CancelIcon fontSize="small" />
+            <IconButton size="small" disabled sx={{ p: 0.5 }}>
+              <CancelIcon sx={{ fontSize: 18 }} />
             </IconButton>
           </Tooltip>
           <Tooltip title="Odwróć zaznaczenie">
-            <IconButton size="small" disabled>
-              <ContentCopyIcon fontSize="small" />
+            <IconButton size="small" disabled sx={{ p: 0.5 }}>
+              <ContentCopyIcon sx={{ fontSize: 18 }} />
             </IconButton>
           </Tooltip>
 
@@ -364,18 +342,18 @@ export function AttributeTablePanel({
 
           {/* Editing Group */}
           <Tooltip title="Dodaj rekord">
-            <IconButton size="small" disabled>
-              <AddIcon fontSize="small" />
+            <IconButton size="small" disabled sx={{ p: 0.5 }}>
+              <AddIcon sx={{ fontSize: 18 }} />
             </IconButton>
           </Tooltip>
           <Tooltip title="Edytuj rekord">
-            <IconButton size="small" disabled>
-              <EditIcon fontSize="small" />
+            <IconButton size="small" disabled sx={{ p: 0.5 }}>
+              <EditIcon sx={{ fontSize: 18 }} />
             </IconButton>
           </Tooltip>
           <Tooltip title="Usuń zaznaczone">
-            <IconButton size="small" disabled>
-              <DeleteIcon fontSize="small" />
+            <IconButton size="small" disabled sx={{ p: 0.5 }}>
+              <DeleteIcon sx={{ fontSize: 18 }} />
             </IconButton>
           </Tooltip>
 
@@ -389,8 +367,9 @@ export function AttributeTablePanel({
                 onClick={handleSave}
                 disabled={editedRows.size === 0 || isSaving}
                 color={editedRows.size > 0 ? 'primary' : 'default'}
+                sx={{ p: 0.5 }}
               >
-                <SaveIcon fontSize="small" />
+                <SaveIcon sx={{ fontSize: 18 }} />
               </IconButton>
             </span>
           </Tooltip>
@@ -399,8 +378,9 @@ export function AttributeTablePanel({
               size="small"
               disabled={editedRows.size === 0}
               onClick={() => setEditedRows(new Map())}
+              sx={{ p: 0.5 }}
             >
-              <CancelIcon fontSize="small" />
+              <CancelIcon sx={{ fontSize: 18 }} />
             </IconButton>
           </Tooltip>
 
@@ -408,13 +388,13 @@ export function AttributeTablePanel({
 
           {/* Undo/Redo Group */}
           <Tooltip title="Cofnij">
-            <IconButton size="small" disabled>
-              <UndoIcon fontSize="small" />
+            <IconButton size="small" disabled sx={{ p: 0.5 }}>
+              <UndoIcon sx={{ fontSize: 18 }} />
             </IconButton>
           </Tooltip>
           <Tooltip title="Ponów">
-            <IconButton size="small" disabled>
-              <RedoIcon fontSize="small" />
+            <IconButton size="small" disabled sx={{ p: 0.5 }}>
+              <RedoIcon sx={{ fontSize: 18 }} />
             </IconButton>
           </Tooltip>
 
@@ -422,13 +402,13 @@ export function AttributeTablePanel({
 
           {/* View Group */}
           <Tooltip title="Przybliż do zaznaczonych">
-            <IconButton size="small" disabled>
-              <ZoomInIcon fontSize="small" />
+            <IconButton size="small" disabled sx={{ p: 0.5 }}>
+              <ZoomInIcon sx={{ fontSize: 18 }} />
             </IconButton>
           </Tooltip>
           <Tooltip title="Pokaż na mapie">
-            <IconButton size="small" disabled>
-              <VisibilityIcon fontSize="small" />
+            <IconButton size="small" disabled sx={{ p: 0.5 }}>
+              <VisibilityIcon sx={{ fontSize: 18 }} />
             </IconButton>
           </Tooltip>
 
@@ -436,8 +416,8 @@ export function AttributeTablePanel({
 
           {/* Filter Group */}
           <Tooltip title="Filtruj">
-            <IconButton size="small" disabled>
-              <FilterListIcon fontSize="small" />
+            <IconButton size="small" disabled sx={{ p: 0.5 }}>
+              <FilterListIcon sx={{ fontSize: 18 }} />
             </IconButton>
           </Tooltip>
 
@@ -450,15 +430,16 @@ export function AttributeTablePanel({
                 size="small"
                 onClick={handleExport}
                 disabled={filteredRows.length === 0}
+                sx={{ p: 0.5 }}
               >
-                <DownloadIcon fontSize="small" />
+                <DownloadIcon sx={{ fontSize: 18 }} />
               </IconButton>
             </span>
           </Tooltip>
           <Tooltip title="Odśwież dane">
             <span>
-              <IconButton size="small" onClick={() => refetch()} disabled={isLoading}>
-                <RefreshIcon fontSize="small" />
+              <IconButton size="small" onClick={() => refetch()} disabled={isLoading} sx={{ p: 0.5 }}>
+                <RefreshIcon sx={{ fontSize: 18 }} />
               </IconButton>
             </span>
           </Tooltip>
@@ -467,8 +448,8 @@ export function AttributeTablePanel({
 
           {/* Settings */}
           <Tooltip title="Ustawienia tabeli">
-            <IconButton size="small" disabled>
-              <SettingsIcon fontSize="small" />
+            <IconButton size="small" disabled sx={{ p: 0.5 }}>
+              <SettingsIcon sx={{ fontSize: 18 }} />
             </IconButton>
           </Tooltip>
 
@@ -481,13 +462,13 @@ export function AttributeTablePanel({
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
             InputProps={{
-              startAdornment: <SearchIcon sx={{ mr: 1, color: 'text.secondary', fontSize: 18 }} />,
+              startAdornment: <SearchIcon sx={{ mr: 0.5, color: 'text.secondary', fontSize: 16 }} />,
             }}
             sx={{
-              width: 250,
+              width: 200,
               '& .MuiOutlinedInput-root': {
-                height: 32,
-                fontSize: '13px',
+                height: 28,
+                fontSize: '12px',
               },
             }}
           />
@@ -497,19 +478,25 @@ export function AttributeTablePanel({
             <Box
               sx={{
                 ml: 1,
-                px: 1.5,
-                py: 0.5,
+                px: 1,
+                py: 0.25,
                 bgcolor: 'warning.main',
                 color: 'warning.contrastText',
-                borderRadius: 1,
-                fontSize: '12px',
+                borderRadius: 0.5,
+                fontSize: '11px',
                 fontWeight: 600,
               }}
             >
-              {editedRows.size} zmian
+              {editedRows.size}
             </Box>
           )}
-        </Box>
+
+          {/* Close Button */}
+          <Tooltip title="Zamknij">
+            <IconButton size="small" onClick={onClose} sx={{ ml: 0.5 }}>
+              <CloseIcon sx={{ fontSize: 18 }} />
+            </IconButton>
+          </Tooltip>
       </Box>
 
       {/* DataGrid Content */}
