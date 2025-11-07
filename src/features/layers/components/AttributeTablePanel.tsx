@@ -31,10 +31,13 @@ import ViewColumnIcon from '@mui/icons-material/ViewColumn';
 import { useTheme } from '@mui/material/styles';
 import Divider from '@mui/material/Divider';
 import Tooltip from '@mui/material/Tooltip';
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
 import {
   useGetLayerFeaturesQuery,
   useGetLayerConstraintsQuery,
   useSaveMultipleRecordsMutation,
+  useLazyExportLayerQuery,
 } from '@/backend/layers';
 import { useAppDispatch } from '@/redux/hooks';
 import { showSuccess, showError } from '@/redux/slices/notificationSlice';
@@ -89,6 +92,8 @@ export function AttributeTablePanel({
   });
 
   const [saveRecords, { isLoading: isSaving }] = useSaveMultipleRecordsMutation();
+  const [exportLayer] = useLazyExportLayerQuery();
+  const [exportMenuAnchor, setExportMenuAnchor] = useState<null | HTMLElement>(null);
 
   // Extract data from response
   const features = featuresResponse?.data || [];
@@ -189,8 +194,35 @@ export function AttributeTablePanel({
     }
   };
 
-  // Export to CSV
-  const handleExport = () => {
+  // Add new record
+  const handleAddRow = () => {
+    // Create empty record with default values
+    const newRow: Record<string, any> = {};
+
+    columns.forEach((col) => {
+      // Skip auto-increment columns (e.g., gid)
+      if (constraints.sequence_fields.includes(col.field)) return;
+
+      // Set null for all other columns
+      newRow[col.field] = null;
+    });
+
+    // Add temporary ID (without gid - backend will generate it)
+    const tempId = `temp-${Date.now()}`;
+    newRow.id = tempId;
+
+    // Mark as edited immediately (user needs to fill data and save)
+    setEditedRows((prev) => {
+      const updated = new Map(prev);
+      updated.set(tempId, newRow);
+      return updated;
+    });
+
+    dispatch(showSuccess('Dodano nowy wiersz. Wypełnij dane i kliknij "Zapisz"'));
+  };
+
+  // Export to CSV (client-side)
+  const handleExportCSV = () => {
     if (filteredRows.length === 0) {
       dispatch(showError('Brak danych do eksportu'));
       return;
@@ -218,6 +250,40 @@ export function AttributeTablePanel({
     window.URL.revokeObjectURL(url);
 
     dispatch(showSuccess('Eksportowano do CSV'));
+  };
+
+  // Export to various formats (backend)
+  const handleExportFormat = async (format: 'ESRI SHAPEFILE' | 'GEOJSON' | 'GML' | 'KML') => {
+    setExportMenuAnchor(null); // Close menu
+
+    try {
+      const result = await exportLayer({
+        project: projectName,
+        layer_id: layerId,
+        epsg: 4326, // WGS84 by default
+        layer_format: format,
+      }).unwrap();
+
+      // Download blob
+      const url = window.URL.createObjectURL(result);
+      const a = document.createElement('a');
+      a.href = url;
+
+      // Determine file extension
+      const extension = format === 'ESRI SHAPEFILE' ? 'zip'
+        : format === 'GEOJSON' ? 'geojson'
+        : format === 'GML' ? 'gml'
+        : 'kml';
+
+      a.download = `${layerName}.${extension}`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+
+      dispatch(showSuccess(`Eksportowano do ${format}`));
+    } catch (err: any) {
+      console.error('Export error:', err);
+      dispatch(showError(`Błąd eksportu: ${err.message || 'Nieznany błąd'}`));
+    }
   };
 
   // Resize handle drag handlers
@@ -342,7 +408,7 @@ export function AttributeTablePanel({
 
           {/* Editing Group */}
           <Tooltip title="Dodaj rekord">
-            <IconButton size="small" disabled sx={{ p: 0.5 }}>
+            <IconButton size="small" onClick={handleAddRow} sx={{ p: 0.5 }}>
               <AddIcon sx={{ fontSize: 18 }} />
             </IconButton>
           </Tooltip>
@@ -424,11 +490,11 @@ export function AttributeTablePanel({
           <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
 
           {/* Export/Refresh Group */}
-          <Tooltip title="Eksportuj CSV">
+          <Tooltip title="Eksportuj">
             <span>
               <IconButton
                 size="small"
-                onClick={handleExport}
+                onClick={(e) => setExportMenuAnchor(e.currentTarget)}
                 disabled={filteredRows.length === 0}
                 sx={{ p: 0.5 }}
               >
@@ -568,6 +634,29 @@ export function AttributeTablePanel({
           </Box>
         )}
       </Box>
+
+      {/* Export Menu */}
+      <Menu
+        anchorEl={exportMenuAnchor}
+        open={Boolean(exportMenuAnchor)}
+        onClose={() => setExportMenuAnchor(null)}
+      >
+        <MenuItem onClick={handleExportCSV}>
+          CSV (tabela atrybutów)
+        </MenuItem>
+        <MenuItem onClick={() => handleExportFormat('GEOJSON')}>
+          GeoJSON (geometria + atrybuty)
+        </MenuItem>
+        <MenuItem onClick={() => handleExportFormat('ESRI SHAPEFILE')}>
+          Shapefile (.zip)
+        </MenuItem>
+        <MenuItem onClick={() => handleExportFormat('GML')}>
+          GML (OGC standard)
+        </MenuItem>
+        <MenuItem onClick={() => handleExportFormat('KML')}>
+          KML (Google Earth)
+        </MenuItem>
+      </Menu>
     </Box>
   );
 }
