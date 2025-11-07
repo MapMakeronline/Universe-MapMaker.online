@@ -38,6 +38,7 @@ export function QGISProjectLayersLoader({ projectName, projectData }: QGISProjec
 
   useEffect(() => {
     if (!mapRef.current || !isMapLoaded || !projectData || !projectName) {
+      mapLogger.log('⏸️ QGISProjectLayersLoader: Waiting for map to load...');
       return;
     }
 
@@ -45,18 +46,55 @@ export function QGISProjectLayersLoader({ projectName, projectData }: QGISProjec
     const layers = projectData.children || [];
 
     if (layers.length === 0) {
+      mapLogger.log('⚠️ No layers found in projectData');
       return;
     }
 
+    mapLogger.log(`🔄 QGISProjectLayersLoader triggered (mapStyle: ${mapStyle})`);
+
+    // Helper to add layers after style loads
+    const addLayersWhenReady = () => {
+      mapLogger.log('✅ Map style loaded, adding QGIS layers...');
+
+      // Remove all existing QGIS layers first (clean slate)
+      const layerIdPattern = `qgis-wms-layer-${projectName}-`;
+      const mapLayers = map.getStyle().layers;
+      const existingLayerIds = mapLayers?.filter(l => l.id.startsWith(layerIdPattern)).map(l => l.id) || [];
+
+      if (existingLayerIds.length > 0) {
+        mapLogger.log(`🧹 Removing ${existingLayerIds.length} existing QGIS layers before re-adding...`);
+        existingLayerIds.forEach((layerId) => {
+          try {
+            if (map.getLayer(layerId)) {
+              map.removeLayer(layerId);
+            }
+            const sourceId = layerId.replace('qgis-wms-layer-', 'qgis-wms-');
+            if (map.getSource(sourceId)) {
+              map.removeSource(sourceId);
+            }
+          } catch (err) {
+            // Silent fail
+          }
+        });
+      }
+
+      // Add all project layers (fresh)
+      mapLogger.log(`➕ Adding ${layers.length} project layers...`);
+      const layersAdded = addProjectLayers(map, layers, projectName);
+
+      if (layersAdded > 0) {
+        mapLogger.log(`✅ Successfully added ${layersAdded} WMS layers from QGIS Server`);
+      } else {
+        mapLogger.log(`⚠️ No layers were added (this may indicate an issue)`);
+      }
+    };
+
     // CRITICAL: Wait for map style to load before adding WMS layers
-    // Use 'idle' event instead of 'style.load' because style.load may have already fired
     if (!map.isStyleLoaded()) {
+      mapLogger.log('⏳ Waiting for map style to load...');
       const onMapIdle = () => {
         if (map.isStyleLoaded()) {
-          const layersAdded = addProjectLayers(map, layers, projectName);
-          if (layersAdded > 0) {
-            mapLogger.log(`✅ Loaded ${layersAdded} WMS layers from QGIS Server`);
-          }
+          addLayersWhenReady();
         } else {
           map.once('idle', onMapIdle); // Retry
         }
@@ -65,55 +103,8 @@ export function QGISProjectLayersLoader({ projectName, projectData }: QGISProjec
       return;
     }
 
-    // Smart sync: Only remove layers that no longer exist in projectData
-    // This prevents unnecessary re-loading of unchanged layers
-    const layerIdPattern = `qgis-wms-layer-${projectName}-`;
-    const mapLayers = map.getStyle().layers;
-    const existingLayerIds = mapLayers?.filter(l => l.id.startsWith(layerIdPattern)).map(l => l.id) || [];
-
-    // Collect all layer names from projectData (recursively, including groups)
-    const collectLayerNames = (items: any[]): string[] => {
-      const names: string[] = [];
-      items.forEach(item => {
-        if (item.type === 'VectorLayer' || item.type === 'RasterLayer') {
-          names.push(item.name);
-        }
-        if (item.type === 'group' && item.children) {
-          names.push(...collectLayerNames(item.children));
-        }
-      });
-      return names;
-    };
-
-    const currentLayerNames = collectLayerNames(layers);
-    const expectedLayerIds = currentLayerNames.map(name => `qgis-wms-layer-${projectName}-${name}`);
-
-    // Remove only layers that are NO LONGER in projectData
-    const layersToRemove = existingLayerIds.filter(id => !expectedLayerIds.includes(id));
-
-    if (layersToRemove.length > 0) {
-      layersToRemove.forEach((layerId) => {
-        try {
-          if (map.getLayer(layerId)) {
-            map.removeLayer(layerId);
-          }
-          const sourceId = layerId.replace('qgis-wms-layer-', 'qgis-wms-');
-          if (map.getSource(sourceId)) {
-            map.removeSource(sourceId);
-          }
-        } catch (err) {
-          // Silent fail
-        }
-      });
-      mapLogger.log(`🧹 Removed ${layersToRemove.length} obsolete layers`);
-    }
-
-    // Add all project layers (addWMSLayer will skip if already exists)
-    const layersAdded = addProjectLayers(map, layers, projectName);
-
-    if (layersAdded > 0) {
-      mapLogger.log(`✅ Added ${layersAdded} new WMS layers`);
-    }
+    // Style already loaded - add layers immediately
+    addLayersWhenReady();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isMapLoaded, projectData, projectName, mapStyle]); // ADDED mapStyle to reload layers when basemap changes
 
