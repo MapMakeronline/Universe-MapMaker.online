@@ -531,54 +531,54 @@ export function AttributeTablePanel({
         ) : (
           <Box sx={{ flex: 1, minHeight: 0 }}>
             <DataGrid
-            rows={filteredRows}
-            columns={columns}
-            getRowId={(row) => row.id}
-            disableRowSelectionOnClick
-            onRowClick={handleRowClick}
-            pagination
-            pageSizeOptions={[10, 25, 50, 100]}
-            initialState={{
-              pagination: { paginationModel: { pageSize: 25 } },
-            }}
-            processRowUpdate={handleRowEditCommit}
-            onProcessRowUpdateError={(error) => {
-              console.error('Row edit error:', error);
-              dispatch(showError('Błąd edycji wiersza'));
-            }}
-            getRowClassName={(params) =>
-              params.id === clickedRowId ? 'clicked-row' : ''
-            }
-            sx={{
-              border: 'none',
-              '& .MuiDataGrid-cell': {
-                fontSize: '12px',
-              },
-              '& .MuiDataGrid-columnHeader': {
-                bgcolor: theme.palette.mode === 'dark' ? 'grey.800' : 'grey.200',
-                fontWeight: 600,
-                fontSize: '12px',
-              },
-              '& .MuiDataGrid-row': {
-                cursor: 'pointer',
-                '&:hover': {
-                  bgcolor: theme.palette.mode === 'dark' ? 'grey.800' : 'grey.100',
-                },
-              },
-              '& .MuiDataGrid-row.clicked-row': {
-                bgcolor: theme.palette.mode === 'dark' ? '#c62828' : '#ef5350',
-                color: '#fff',
-                fontWeight: 500,
-                '&:hover': {
-                  bgcolor: theme.palette.mode === 'dark' ? '#b71c1c' : '#e53935',
-                },
+              rows={filteredRows}
+              columns={columns}
+              getRowId={(row) => row.id}
+              disableRowSelectionOnClick
+              onRowClick={handleRowClick}
+              pagination
+              pageSizeOptions={[10, 25, 50, 100]}
+              initialState={{
+                pagination: { paginationModel: { pageSize: 25 } },
+              }}
+              processRowUpdate={handleRowEditCommit}
+              onProcessRowUpdateError={(error) => {
+                console.error('Row edit error:', error);
+                dispatch(showError('Błąd edycji wiersza'));
+              }}
+              getRowClassName={(params) =>
+                params.id === clickedRowId ? 'clicked-row' : ''
+              }
+              sx={{
+                border: 'none',
                 '& .MuiDataGrid-cell': {
-                  color: '#fff',
+                  fontSize: '12px',
                 },
-              },
-            }}
-          />
-        </Box>
+                '& .MuiDataGrid-columnHeader': {
+                  bgcolor: theme.palette.mode === 'dark' ? 'grey.800' : 'grey.200',
+                  fontWeight: 600,
+                  fontSize: '12px',
+                },
+                '& .MuiDataGrid-row': {
+                  cursor: 'pointer',
+                  '&:hover': {
+                    bgcolor: theme.palette.mode === 'dark' ? 'grey.800' : 'grey.100',
+                  },
+                },
+                '& .MuiDataGrid-row.clicked-row': {
+                  bgcolor: theme.palette.mode === 'dark' ? '#c62828' : '#ef5350',
+                  color: '#fff',
+                  fontWeight: 500,
+                  '&:hover': {
+                    bgcolor: theme.palette.mode === 'dark' ? '#b71c1c' : '#e53935',
+                  },
+                  '& .MuiDataGrid-cell': {
+                    color: '#fff',
+                  },
+                },
+              }}
+            />
+          </Box>
         )}
       </Box>
     </Box>
