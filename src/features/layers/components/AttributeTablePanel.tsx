@@ -342,15 +342,12 @@ export function AttributeTablePanel({
             rows={filteredRows}
             columns={columns}
             getRowId={(row) => row.id}
-            checkboxSelection
-            keepNonExistentRowsSelected
+            disableRowSelectionOnClick
             pagination
             pageSizeOptions={[10, 25, 50, 100]}
             initialState={{
               pagination: { paginationModel: { pageSize: 25 } },
             }}
-            rowSelectionModel={selectionModel}
-            onRowSelectionModelChange={handleRowSelection}
             processRowUpdate={handleRowEditCommit}
             onProcessRowUpdateError={(error) => {
               console.error('Row edit error:', error);
@@ -368,12 +365,6 @@ export function AttributeTablePanel({
               },
               '& .MuiDataGrid-row:hover': {
                 bgcolor: theme.palette.mode === 'dark' ? 'grey.800' : 'grey.100',
-              },
-              '& .MuiDataGrid-row.Mui-selected': {
-                bgcolor: theme.palette.mode === 'dark' ? 'primary.dark' : 'primary.light',
-                '&:hover': {
-                  bgcolor: theme.palette.mode === 'dark' ? 'primary.dark' : 'primary.light',
-                },
               },
             }}
           />
