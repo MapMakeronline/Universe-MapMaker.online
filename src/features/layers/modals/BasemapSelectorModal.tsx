@@ -44,7 +44,7 @@ export const BasemapSelectorModal: React.FC<BasemapSelectorModalProps> = ({
   const mapStyleKey = useAppSelector((state) => state.map.mapStyleKey);
 
   const [setBasemap, { isLoading, error }] = useSetBasemapMutation();
-  const [selectedKey, setSelectedKey] = useState(mapStyleKey || 'streets');
+  const [selectedKey, setSelectedKey] = useState(mapStyleKey || 'full3d');
 
   const handleBasemapChange = (key: string) => {
     setSelectedKey(key);
@@ -67,6 +67,7 @@ export const BasemapSelectorModal: React.FC<BasemapSelectorModalProps> = ({
           {
             name: style.name,
             url: style.style,
+            layers: [], // Backend requires this field (can be empty for Mapbox styles)
           },
         ],
         default: style.name,

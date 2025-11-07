@@ -20,31 +20,6 @@ export const DEFAULT_VIEW_STATE = {
 };
 
 export const MAP_STYLES: MapStyles = {
-  streets: {
-    name: 'Ulice',
-    style: 'mapbox://styles/mapbox/streets-v12',
-  },
-  satellite: {
-    name: 'Satelita',
-    style: 'mapbox://styles/mapbox/satellite-v9',
-  },
-  outdoors: {
-    name: 'Outdoor',
-    style: 'mapbox://styles/mapbox/outdoors-v12',
-  },
-  light: {
-    name: 'Jasny',
-    style: 'mapbox://styles/mapbox/light-v11',
-  },
-  dark: {
-    name: 'Ciemny',
-    style: 'mapbox://styles/mapbox/dark-v11',
-  },
-  buildings3d: {
-    name: '3D Budynki',
-    style: 'mapbox://styles/mapbox/streets-v12',
-    enable3D: true,
-  },
   full3d: {
     name: '3D Pełny (Teren + Budynki)',
     style: 'mapbox://styles/mapbox/streets-v12',
@@ -52,12 +27,24 @@ export const MAP_STYLES: MapStyles = {
     enableTerrain: true,
     enableSky: true,
   },
+  none: {
+    name: 'Brak mapy podkładowej',
+    style: 'mapbox://styles/mapbox/light-v11', // Minimalistic light style
+  },
   satellite3d: {
-    name: 'Satelita 3D',
+    name: 'Satelita (Teren + Budynki)',
     style: 'mapbox://styles/mapbox/satellite-streets-v12',
     enable3D: true,
     enableTerrain: true,
     enableSky: true,
+  },
+  dark: {
+    name: 'Ciemna',
+    style: 'mapbox://styles/mapbox/dark-v11',
+  },
+  navigation: {
+    name: 'Nawigacja',
+    style: 'mapbox://styles/mapbox/navigation-night-v1',
   },
 };
 

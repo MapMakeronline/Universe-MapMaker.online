@@ -9,8 +9,8 @@ const initialState: MapState = {
     bearing: 0,
     pitch: 0,
   },
-  mapStyle: 'mapbox://styles/mapbox/streets-v12',
-  mapStyleKey: 'full3d', // Default to Full 3D mode
+  mapStyle: 'mapbox://styles/mapbox/streets-v12', // full3d uses streets-v12 + terrain + 3D
+  mapStyleKey: 'full3d', // Default to Full 3D mode (Teren + Budynki)
   isLoaded: false,
   isFullscreen: false,
 };
