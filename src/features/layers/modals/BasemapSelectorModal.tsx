@@ -5,7 +5,7 @@
  * - Lista dostępnych map podkładowych Mapbox (Ulice, Satelita, Outdoor, etc.)
  * - Radio buttons do wyboru
  * - Synchronizacja z Redux store
- * - Automatyczne zastosowanie wybranej mapy
+ * - **LAYER PRESERVATION** - Zachowuje warstwy QGIS podczas zmiany mapy podkładowej
  */
 'use client';
 
@@ -21,9 +21,12 @@ import Radio from '@mui/material/Radio';
 import RadioGroup from '@mui/material/RadioGroup';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import FormControl from '@mui/material/FormControl';
+import { useMap } from 'react-map-gl';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import { setMapStyle } from '@/redux/slices/mapSlice';
 import { MAP_STYLES } from '@/mapbox/config';
+import { saveQGISLayers, restoreQGISLayers } from '@/mapbox/layer-preservation';
+import { mapLogger } from '@/tools/logger';
 
 interface BasemapSelectorModalProps {
   open: boolean;
@@ -36,12 +39,40 @@ export const BasemapSelectorModal: React.FC<BasemapSelectorModalProps> = ({
 }) => {
   const dispatch = useAppDispatch();
   const mapStyleKey = useAppSelector((state) => state.map.mapStyleKey);
+  const { current: mapRef } = useMap();
 
   const handleBasemapChange = (key: string) => {
     const style = MAP_STYLES[key];
-    if (style) {
-      dispatch(setMapStyle({ url: style.style, key }));
+    if (!style) {
+      mapLogger.error(`❌ Style not found: ${key}`);
+      return;
     }
+
+    // Get Mapbox GL instance
+    const map = mapRef?.getMap();
+    if (!map) {
+      mapLogger.error('❌ Map instance not available');
+      return;
+    }
+
+    // ==================== LAYER PRESERVATION ====================
+    // STEP 1: Save QGIS layers BEFORE changing style
+    mapLogger.log(`📦 Basemap changing: ${mapStyleKey} → ${key}`);
+    const savedState = saveQGISLayers(map);
+
+    // STEP 2: Change map style (this will clear all layers)
+    dispatch(setMapStyle({ url: style.style, key }));
+
+    // STEP 3: Restore QGIS layers AFTER new style loads
+    // Wait for style to load, then restore
+    const handleStyleLoad = () => {
+      mapLogger.log(`✅ New style loaded: ${key}, restoring QGIS layers...`);
+      restoreQGISLayers(map, savedState.layers, savedState.sources);
+      map.off('style.load', handleStyleLoad); // Clean up listener
+    };
+
+    map.once('style.load', handleStyleLoad);
+    // ==================== END PRESERVATION ====================
   };
 
   const handleApply = () => {
@@ -91,7 +122,7 @@ export const BasemapSelectorModal: React.FC<BasemapSelectorModalProps> = ({
           </FormControl>
 
           <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: 'block' }}>
-            💡 Wybrana mapa jest automatycznie zastosowana na projekcie
+            💡 Warstwy projektu są zachowane podczas zmiany mapy podkładowej
           </Typography>
         </Box>
       </DialogContent>
