@@ -89,9 +89,10 @@ export const BasemapSelectorModal: React.FC<BasemapSelectorModalProps> = ({
       // KROK 3: Zamknij modal
       onClose();
 
-    } catch (err) {
-      mapLogger.error('❌ Failed to save basemap:', err);
-      // Nie zamykaj modala jeśli błąd - użytkownik zobaczy alert
+    } catch (err: any) {
+      const errorMessage = err?.data?.message || err?.message || 'Unknown error';
+      mapLogger.error('❌ Failed to save basemap:', errorMessage, err);
+      // Nie zamykaj modala jeśli błąd - użytkownik zobaczy alert z szczegółami
     }
   };
 
