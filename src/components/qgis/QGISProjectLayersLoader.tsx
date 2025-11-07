@@ -87,6 +87,37 @@ export function QGISProjectLayersLoader({ projectName, projectData }: QGISProjec
       } else {
         mapLogger.log(`⚠️ No layers were added (this may indicate an issue)`);
       }
+
+      // CRITICAL FIX: Re-add layers after 3D features rebuild the style
+      // When Buildings3D applies 3D features, Mapbox rebuilds the style from scratch,
+      // which removes our QGIS layers. We need to wait for that rebuild to complete
+      // and then re-add our layers.
+      const reAddLayersAfter3D = () => {
+        if (!map.isStyleLoaded()) {
+          mapLogger.log('⏳ Waiting for 3D features to finish applying...');
+          map.once('idle', reAddLayersAfter3D);
+          return;
+        }
+
+        // Check if QGIS layers still exist after 3D rebuild
+        const currentLayers = map.getStyle().layers;
+        const qgisLayersExist = currentLayers?.some(l => l.id.startsWith(layerIdPattern));
+
+        if (!qgisLayersExist) {
+          mapLogger.log('🔄 Re-adding QGIS layers after 3D features rebuild...');
+          const reAddedCount = addProjectLayers(map, layers, projectName);
+          if (reAddedCount > 0) {
+            mapLogger.log(`✅ Re-added ${reAddedCount} QGIS layers after 3D rebuild`);
+          }
+        } else {
+          mapLogger.log('✅ QGIS layers survived 3D rebuild, no re-add needed');
+        }
+      };
+
+      // Wait 500ms for 3D features to potentially trigger style rebuild
+      setTimeout(() => {
+        reAddLayersAfter3D();
+      }, 500);
     };
 
     // CRITICAL: Wait for map style to load before adding WMS layers
