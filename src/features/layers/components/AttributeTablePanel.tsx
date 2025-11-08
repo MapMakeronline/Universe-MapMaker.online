@@ -512,9 +512,7 @@ export function AttributeTablePanel({
             {layerName}
           </Typography>
           <Typography sx={{ fontSize: { xs: '10px', sm: '11px' }, color: 'text.secondary', whiteSpace: 'nowrap' }}>
-            {displayedRows.length < allFilteredRows.length
-              ? `${displayedRows.length} / ${allFilteredRows.length} ${searchText ? '(filtrowane)' : ''}`
-              : searchText && allFilteredRows.length !== rows.length
+            {searchText && allFilteredRows.length !== rows.length
               ? `${allFilteredRows.length} / ${rows.length} wierszy`
               : `${rows.length} ${rows.length === 1 ? 'wiersz' : rows.length < 5 ? 'wiersze' : 'wierszy'}`}
           </Typography>
