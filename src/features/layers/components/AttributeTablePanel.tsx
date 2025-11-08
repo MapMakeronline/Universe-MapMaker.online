@@ -93,17 +93,27 @@ export function AttributeTablePanel({
     isLoading,
     error,
     refetch,
-  } = useGetLayerFeaturesQuery({
-    project: projectName,
-    layer_id: layerId,
-    limit: 1000, // Reduced from 999999 - load max 1000 records for better performance
-  });
+  } = useGetLayerFeaturesQuery(
+    {
+      project: projectName,
+      layer_id: layerId,
+      limit: 1000, // Reduced from 999999 - load max 1000 records for better performance
+    },
+    {
+      skip: !projectName || !layerId, // Don't fetch if project or layer not specified
+    }
+  );
 
   // Fetch column constraints
-  const { data: constraintsResponse } = useGetLayerConstraintsQuery({
-    project: projectName,
-    layer_id: layerId,
-  });
+  const { data: constraintsResponse } = useGetLayerConstraintsQuery(
+    {
+      project: projectName,
+      layer_id: layerId,
+    },
+    {
+      skip: !projectName || !layerId, // Don't fetch if project or layer not specified
+    }
+  );
 
   const [saveRecords, { isLoading: isSaving }] = useSaveMultipleRecordsMutation();
   const [exportLayer] = useLazyExportLayerQuery();
