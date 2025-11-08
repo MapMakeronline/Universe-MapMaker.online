@@ -117,7 +117,6 @@ const fetchWFSFeatures = async (
     // Log CRS information
     const crs = geojson.crs?.properties?.name || 'unknown';
     const fetchTime = ((endTime - startTime) / 1000).toFixed(1);
-    console.log(`✅ Fetched ${geojson.features?.length || 0} features from WFS in ${fetchTime}s (CRS: ${crs})`);
 
     // Log sample coordinates to help debug
     if (geojson.features && geojson.features[0]) {
@@ -315,7 +314,6 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
       setPrecinctColumn('NAZWA_OBRE');
       setPlotNumberColumn('NUMER_DZIA');
     } else {
-      console.log('⚠️ Could not auto-detect "Działki" layer. Available layers:', vectorLayers.map((l: any) => l.name));
     }
   }, [projectName, parcelLayerId, layers]);
 
@@ -390,33 +388,6 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
       });
     }
   }, [projectName, tempParcelLayerId, configModalOpen, fetchLayerAttributes]);
-
-  // Log API response/error when it changes
-  useEffect(() => {
-    if (layerAttributesLoading) {
-    }
-    if (layerAttributesData) {
-    }
-    if (isLayerAttributesError) {
-    }
-  }, [layerAttributesData, layerAttributesLoading, isLayerAttributesError, layerAttributesError]);
-
-  // Log precinct fetch response
-  useEffect(() => {
-    if (precinctsLoading) {
-    }
-    if (precinctsData) {
-    }
-  }, [precinctsData, precinctsLoading]);
-
-  // Log WFS fetch status
-  useEffect(() => {
-    if (wfsLoading) {
-      
-    }
-    if (wfsFeatures) {
-    }
-  }, [wfsLoading, wfsFeatures]);
 
   // Handle search
   const handleSearch = async () => {
