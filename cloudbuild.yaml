@@ -19,6 +19,7 @@ steps:
       '--build-arg', 'NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN=pk.eyJ1IjoibWFwbWFrZXItb25saW5lIiwiYSI6ImNtZzN3bm8wYTBwaXIybHM5dDlpc3YwOTQifQ.8Hrv97gishqnvI_h7PiqlQ',
       '--build-arg', 'NEXT_PUBLIC_API_URL=https://api.universemapmaker.online',
       '--build-arg', 'NEXT_PUBLIC_GOOGLE_CLIENT_ID=576538488457-4u4di9b6slc7605tlj4vri7jt9apm467.apps.googleusercontent.com',
+      '--build-arg', 'NEXT_PUBLIC_MUI_LICENSE_KEY=41de8c8af3b93959ef2c9389bf3da2c0Tz0xMjE1OTYsRT0xNzk0MjY4Nzk5MDAwLFM9cHJvLExNPXN1YnNjcmlwdGlvbixQVj1RMy0yMDI0LEtWPTI=',
       '-t', 'europe-central2-docker.pkg.dev/$PROJECT_ID/app-repo/app:latest',
       '.'
     ]
@@ -45,7 +46,7 @@ steps:
       '--max-instances', '5',
       '--concurrency', '80',
       '--timeout', '300',
-      '--set-env-vars', 'NODE_ENV=production,NEXT_TELEMETRY_DISABLED=1,NEXT_PUBLIC_MAPBOX_TOKEN=pk.eyJ1IjoibWFwbWFrZXItb25saW5lIiwiYSI6ImNtZzN3bm8wYTBwaXIybHM5dDlpc3YwOTQifQ.8Hrv97gishqnvI_h7PiqlQ,NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN=pk.eyJ1IjoibWFwbWFrZXItb25saW5lIiwiYSI6ImNtZzN3bm8wYTBwaXIybHM5dDlpc3YwOTQifQ.8Hrv97gishqnvI_h7PiqlQ,NEXT_PUBLIC_API_URL=https://api.universemapmaker.online,NEXT_PUBLIC_GOOGLE_CLIENT_ID=576538488457-4u4di9b6slc7605tlj4vri7jt9apm467.apps.googleusercontent.com'
+      '--set-env-vars', 'NODE_ENV=production,NEXT_TELEMETRY_DISABLED=1,NEXT_PUBLIC_MAPBOX_TOKEN=pk.eyJ1IjoibWFwbWFrZXItb25saW5lIiwiYSI6ImNtZzN3bm8wYTBwaXIybHM5dDlpc3YwOTQifQ.8Hrv97gishqnvI_h7PiqlQ,NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN=pk.eyJ1IjoibWFwbWFrZXItb25saW5lIiwiYSI6ImNtZzN3bm8wYTBwaXIybHM5dDlpc3YwOTQifQ.8Hrv97gishqnvI_h7PiqlQ,NEXT_PUBLIC_API_URL=https://api.universemapmaker.online,NEXT_PUBLIC_GOOGLE_CLIENT_ID=576538488457-4u4di9b6slc7605tlj4vri7jt9apm467.apps.googleusercontent.com,NEXT_PUBLIC_MUI_LICENSE_KEY=41de8c8af3b93959ef2c9389bf3da2c0Tz0xMjE1OTYsRT0xNzk0MjY4Nzk5MDAwLFM9cHJvLExNPXN1YnNjcmlwdGlvbixQVj1RMy0yMDI0LEtWPTI='
     ]
 
 # Store images in Artifact Registry
