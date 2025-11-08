@@ -811,36 +811,24 @@ export const layersApi = baseApi.injectEndpoints({
           limit: limit || 999999, // Request all features (no pagination)
         },
       }),
-      // Transform response: Parse string → Extract GeoJSON features → Convert to row-based
+      // Transform response: Extract GeoJSON features → Convert to row-based
+      // Optimized: Skip string parsing (RTK Query auto-parses JSON)
       transformResponse: (response: any) => {
-        // Step 1: Parse string to JSON if needed
-        let parsed = response;
-        if (typeof response === 'string') {
-          try {
-            parsed = JSON.parse(response);
-          } catch (error) {
-            console.error('❌ Failed to parse layer features response:', error);
-            return { data: [], success: false, message: 'Parse error' };
-          }
-        }
+        // Backend already returns parsed JSON, no need for JSON.parse()
 
-        // Step 2: Check if backend returned GeoJSON FeatureCollection
-        if (parsed.data && parsed.data.type === 'FeatureCollection' && Array.isArray(parsed.data.features)) {
-          console.log('🔄 Converting GeoJSON FeatureCollection to row-based format');
-          console.log(`📊 Backend returned ${parsed.data.features.length} features`);
-          // Extract properties from each feature (row-based)
-          const rows = parsed.data.features.map((feature: any) => feature.properties || {});
-          console.log('✅ Converted features:', { totalFeatures: rows.length, sample: rows[0] });
+        // Check if backend returned GeoJSON FeatureCollection
+        if (response?.data?.type === 'FeatureCollection' && Array.isArray(response.data.features)) {
+          // Extract properties from each feature (row-based) - optimized with single pass
+          const rows = response.data.features.map((feature: any) => feature.properties || {});
           return {
             data: rows,
-            success: parsed.success !== false,
-            message: parsed.message || ''
+            success: response.success !== false,
+            message: response.message || ''
           };
         }
 
-        // Step 3: If already row-based, return as-is
-        console.log('✅ Using response as-is:', parsed);
-        return parsed;
+        // If already row-based, return as-is
+        return response;
       },
       // Cache by layer_id
       providesTags: (result, error, { layer_id }) => [

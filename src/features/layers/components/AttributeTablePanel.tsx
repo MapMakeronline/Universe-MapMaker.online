@@ -7,6 +7,7 @@ import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
+import Skeleton from '@mui/material/Skeleton';
 import Alert from '@mui/material/Alert';
 import { DataGridPro, GridColDef, GridRowModel, GridRowsProp } from '@mui/x-data-grid-pro';
 import CloseIcon from '@mui/icons-material/Close';
@@ -90,6 +91,8 @@ export function AttributeTablePanel({
   const [displayedRowsCount, setDisplayedRowsCount] = useState(100);
 
   // Fetch layer features (row-based data)
+  // Optimization: Load only 1000 records initially (backend doesn't support pagination yet)
+  // For large datasets, this reduces initial load time significantly
   const {
     data: featuresResponse,
     isLoading,
@@ -98,7 +101,7 @@ export function AttributeTablePanel({
   } = useGetLayerFeaturesQuery({
     project: projectName,
     layer_id: layerId,
-    limit: 999999, // Load all features without pagination
+    limit: 1000, // Reduced from 999999 - load max 1000 records for better performance
   });
 
   // Fetch column constraints
@@ -760,8 +763,16 @@ export function AttributeTablePanel({
       {/* DataGrid Content */}
       <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
         {isLoading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-            <CircularProgress />
+          <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
+            {/* Skeleton loader - table-like structure */}
+            <Skeleton variant="rectangular" height={32} sx={{ borderRadius: 1 }} /> {/* Header */}
+            {[...Array(8)].map((_, i) => (
+              <Skeleton key={i} variant="rectangular" height={36} sx={{ borderRadius: 0.5, opacity: 1 - i * 0.1 }} />
+            ))}
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, mt: 2 }}>
+              <CircularProgress size={20} />
+              <Typography variant="caption" color="text.secondary">Ładowanie danych...</Typography>
+            </Box>
           </Box>
         ) : error ? (
           <Box sx={{ p: 2 }}>

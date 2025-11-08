@@ -18,7 +18,9 @@
       "Bash(gcloud run services update:*)",
       "Bash(gcloud builds list:*)",
       "Bash(gcloud builds submit:*)",
-      "Bash(tr:*)"
+      "Bash(tr:*)",
+      "Bash(nul)",
+      "Bash(git log:*)"
     ],
     "deny": [],
     "ask": []

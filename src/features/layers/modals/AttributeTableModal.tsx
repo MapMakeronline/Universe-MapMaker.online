@@ -11,6 +11,7 @@ import TextField from '@mui/material/TextField';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
+import Skeleton from '@mui/material/Skeleton';
 import Alert from '@mui/material/Alert';
 import { DataGridPro, GridColDef, GridRowModel, GridRowsProp } from '@mui/x-data-grid-pro';
 import CloseIcon from '@mui/icons-material/Close';
@@ -64,14 +65,15 @@ export function AttributeTableModal({
   // Debug logging
   console.log('🔍 AttributeTableModal props:', { open, projectName, layerId, layerName });
 
-  // Fetch layer features (row-based data) - Load ALL features without pagination
+  // Fetch layer features (row-based data)
+  // Optimization: Load only 1000 records for better performance
   const {
     data: featuresResponse,
     isLoading,
     error,
     refetch,
   } = useGetLayerFeaturesQuery(
-    { project: projectName, layer_id: layerId, limit: 999999 },
+    { project: projectName, layer_id: layerId, limit: 1000 },
     { skip: !open } // Don't fetch until modal opens
   );
 
@@ -311,8 +313,16 @@ export function AttributeTableModal({
         {/* DataGrid or Loading/Error */}
         <Box sx={{ flex: 1, minHeight: 0 }}>
           {isLoading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 4 }}>
-              <CircularProgress />
+            <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
+              {/* Skeleton loader - table-like structure */}
+              <Skeleton variant="rectangular" height={40} sx={{ borderRadius: 1 }} /> {/* Header */}
+              {[...Array(12)].map((_, i) => (
+                <Skeleton key={i} variant="rectangular" height={42} sx={{ borderRadius: 0.5, opacity: 1 - i * 0.07 }} />
+              ))}
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, mt: 3 }}>
+                <CircularProgress size={24} />
+                <Typography variant="body2" color="text.secondary">Ładowanie tabeli atrybutów...</Typography>
+              </Box>
             </Box>
           ) : error ? (
             <Box sx={{ p: 2 }}>
