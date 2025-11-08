@@ -90,7 +90,11 @@ export function AttributeTablePanel({
     isLoading,
     error,
     refetch,
-  } = useGetLayerFeaturesQuery({ project: projectName, layer_id: layerId });
+  } = useGetLayerFeaturesQuery({
+    project: projectName,
+    layer_id: layerId,
+    limit: 999999, // Load all features without pagination
+  });
 
   // Fetch column constraints
   const { data: constraintsResponse } = useGetLayerConstraintsQuery({
