@@ -114,12 +114,17 @@ export function AttributeTablePanel({
     sequence_fields: [],
   };
 
-  // Debug: Log feature count
+  // Debug: Log API response
   React.useEffect(() => {
-    if (features.length > 0) {
+    console.log('🔍 RTK Query State:', { isLoading, error, featuresResponse });
+    if (error) {
+      console.error('❌ API Error:', error);
+    }
+    if (featuresResponse) {
+      console.log('✅ Features Response:', featuresResponse);
       console.log(`📊 AttributeTable loaded ${features.length} features from backend`);
     }
-  }, [features.length]);
+  }, [isLoading, error, featuresResponse, features.length]);
 
   // Prepare DataGrid columns
   const columns: GridColDef[] = useMemo(() => {
@@ -154,12 +159,16 @@ export function AttributeTablePanel({
 
   // Prepare DataGrid rows (combine API data + new local rows)
   const rows: GridRowsProp = useMemo(() => {
+    console.log('📊 Features from backend:', features.length);
     const apiRows = features.map((feature, index) => ({
       id: feature.gid || feature.fid || index,
       ...feature,
     }));
+    console.log('📊 API rows created:', apiRows.length);
     // Prepend new rows at the top
-    return [...newRows, ...apiRows];
+    const combined = [...newRows, ...apiRows];
+    console.log('📊 Total rows (new + api):', combined.length);
+    return combined;
   }, [features, newRows]);
 
   // Filter rows by search text
@@ -738,12 +747,9 @@ export function AttributeTablePanel({
               getRowId={(row) => row.id}
               disableRowSelectionOnClick
               onRowClick={handleRowClick}
-              // WORKAROUND: MUI Community v8 has 100 row virtualization limit
-              // disableVirtualization not available in v8 Community
-              // Solution: Use pagination with very large page size (10,000)
-              paginationModel={{ page: 0, pageSize: 10000 }}
-              pageSizeOptions={[10000]}
-              hideFooter // Remove pagination footer (user won't see controls)
+              // Continuous scroll without pagination
+              // Virtualization renders only visible rows for performance
+              hideFooter
               rowHeight={36} // Compact row height
               columnHeaderHeight={32} // Compact header height
               // Enable sorting for all columns
