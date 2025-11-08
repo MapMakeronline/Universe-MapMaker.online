@@ -25,9 +25,9 @@
  */
 
 import { useAppDispatch } from '@/redux/hooks';
-import { moveLayer } from '@/redux/slices/layersSlice';
+import { moveLayer, restoreLayers } from '@/redux/slices/layersSlice';
 import { showSuccess, showError } from '@/redux/slices/notificationSlice';
-import { useChangeLayersOrderMutation, projectsApi } from '@/backend/projects';
+import { useChangeLayersOrderMutation } from '@/backend/projects';
 import { LayerNode } from '@/types-app/layers';
 import {
   findLayerById,
@@ -96,7 +96,8 @@ export function useDragDropSync(layers: LayerNode[], projectName: string) {
     });
 
     // 1. Optimistic update - update Redux immediately
-    const previousState = { ...layers }; // Save state for rollback
+    // Deep clone layers for rollback (JSON trick for deep copy)
+    const previousState = JSON.parse(JSON.stringify(layers)) as LayerNode[];
     dispatch(moveLayer({ layerId, targetId, position }));
 
     // 2. Sync with backend (async)
@@ -124,18 +125,12 @@ export function useDragDropSync(layers: LayerNode[], projectName: string) {
     } catch (error: any) {
       console.error('❌ Failed to sync layer order:', error);
 
-      // 3. Rollback on error - revert Redux state
-      // NOTE: We can't easily rollback to previous state, so we just show error
-      // User can undo with Ctrl+Z if needed
+      // 3. Rollback on error - restore previous state immediately
+      console.log('🔄 Rolling back to previous layer order (optimistic update failed)');
+      dispatch(restoreLayers(previousState));
+
       const errorMessage = error?.data?.message || error?.message || 'Nieznany błąd';
       dispatch(showError(`Nie udało się przenieść warstwy: ${errorMessage}`, 6000));
-
-      // TODO: Implement proper rollback by dispatching previous state
-      // For now, reload project data from backend to restore correct order
-      console.log('🔄 Reloading project data from backend to restore correct order');
-      dispatch(
-        projectsApi.util.invalidateTags([{ type: 'Project', id: projectName }])
-      );
     }
   };
 

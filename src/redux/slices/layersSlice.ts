@@ -253,6 +253,11 @@ const layersSlice = createSlice({
       state.layers = action.payload;
     },
 
+    // NEW: Restore layers to previous state (for rollback on error)
+    restoreLayers: (state, action: PayloadAction<LayerNode[]>) => {
+      state.layers = action.payload;
+    },
+
     // NEW: Toggle all layers visibility in a group (cascade)
     toggleGroupVisibilityCascade: (state, action: PayloadAction<string>) => {
       const groupId = action.payload;
@@ -324,6 +329,7 @@ export const {
   // NEW actions
   moveLayer,
   reorderLayers,
+  restoreLayers,
   toggleGroupVisibilityCascade,
   expandAllGroups,
   collapseAllGroups,
