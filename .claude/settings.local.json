@@ -47,7 +47,10 @@
       "Bash(cmd /c \"screenshot.bat http://localhost:3000/map?project=Wyszki attribute-table-new-functions.png\")",
       "Bash(timeout /t 5 /nobreak)",
       "Bash(cmd /c \"screenshot.bat http://localhost:3000/map?project=Wyszki basemap-switch-before.png\")",
-      "Bash(del \"c:\\Users\\Bartosz\\Desktop\\Universe-MapMaker.online\\src\\mapbox\\layer-preservation.ts\")"
+      "Bash(del \"c:\\Users\\Bartosz\\Desktop\\Universe-MapMaker.online\\src\\mapbox\\layer-preservation.ts\")",
+      "Bash(cmd /c \"screenshot.bat http://localhost:3000/map?project=testshp basemap-test-current.png\")",
+      "Bash(gcloud builds triggers:*)",
+      "Bash(cmd /c \"screenshot.bat http://localhost:3000/map?project=Wyszki logout-button-test.png\")"
     ],
     "deny": [],
     "ask": []

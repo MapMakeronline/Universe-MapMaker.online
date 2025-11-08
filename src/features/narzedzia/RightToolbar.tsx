@@ -38,6 +38,8 @@ import Apartment from '@mui/icons-material/Apartment';
 import { useRouter } from "next/navigation"
 import { useAppDispatch, useAppSelector } from "@/redux/hooks"
 import { setMeasurementMode, clearAllMeasurements, setIdentifyMode } from "@/redux/slices/drawSlice"
+import { clearAuth } from "@/redux/slices/authSlice"
+import { useLogoutMutation } from "@/backend/auth"
 import SearchModal from "@/features/mapa/interakcje/SearchModal"
 import MeasurementModal from "@/features/layers/modals/MeasurementModal"
 import ExportPDFModal, { type ExportConfig } from "@/features/layers/modals/ExportPDFModal"
@@ -55,6 +57,8 @@ const RightToolbar: React.FC = () => {
   const [searchModalOpen, setSearchModalOpen] = useState(false)
   const [measurementModalOpen, setMeasurementModalOpen] = useState(false)
   const [pdfModalOpen, setPdfModalOpen] = useState(false)
+
+  const [logout] = useLogoutMutation()
 
   const handleDistanceMeasure = () => {
     dispatch(
@@ -106,11 +110,26 @@ const RightToolbar: React.FC = () => {
     handleUserMenuClose()
   }
 
-  const handleLogout = () => {
-    // TODO: Implement actual logout logic
-    console.log("Logout")
-    router.push('/auth?tab=0')
-    handleUserMenuClose()
+  const handleLogout = async () => {
+    try {
+      // Call logout mutation (clears localStorage)
+      await logout().unwrap()
+
+      // Clear Redux state
+      dispatch(clearAuth())
+
+      // Close menu
+      handleUserMenuClose()
+
+      // Redirect to login
+      router.push('/auth?tab=0')
+    } catch (error) {
+      console.error('Logout error:', error)
+      // Even if logout fails, clear local state and redirect
+      dispatch(clearAuth())
+      handleUserMenuClose()
+      router.push('/auth?tab=0')
+    }
   }
 
   const handleLogin = () => {
