@@ -377,31 +377,34 @@ export function AttributeTablePanel({
     }
   };
 
-  // Resize handle drag handlers
-  const handleMouseDown = () => {
+  // Resize handle drag handlers (mouse + touch support)
+  const handlePointerDown = () => {
     setIsDragging(true);
   };
 
-  const handleMouseMove = useCallback((e: MouseEvent) => {
+  const handlePointerMove = useCallback((e: PointerEvent) => {
     if (!isDragging) return;
+    e.preventDefault(); // Prevent scrolling on mobile
     const newHeight = window.innerHeight - e.clientY;
     setPanelHeight(Math.max(150, Math.min(newHeight, window.innerHeight - 100)));
   }, [isDragging]);
 
-  const handleMouseUp = useCallback(() => {
+  const handlePointerUp = useCallback(() => {
     setIsDragging(false);
   }, []);
 
   React.useEffect(() => {
     if (isDragging) {
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
+      window.addEventListener('pointermove', handlePointerMove);
+      window.addEventListener('pointerup', handlePointerUp);
+      window.addEventListener('pointercancel', handlePointerUp); // Handle touch cancel
       return () => {
-        window.removeEventListener('mousemove', handleMouseMove);
-        window.removeEventListener('mouseup', handleMouseUp);
+        window.removeEventListener('pointermove', handlePointerMove);
+        window.removeEventListener('pointerup', handlePointerUp);
+        window.removeEventListener('pointercancel', handlePointerUp);
       };
     }
-  }, [isDragging, handleMouseMove, handleMouseUp]);
+  }, [isDragging, handlePointerMove, handlePointerUp]);
 
   return (
     <Box
@@ -425,11 +428,11 @@ export function AttributeTablePanel({
         transition: 'left 0.3s ease-in-out', // Smooth transition when panel opens/closes
       }}
     >
-      {/* Drag Handle */}
+      {/* Drag Handle - Mobile & Desktop optimized */}
       <Box
-        onMouseDown={handleMouseDown}
+        onPointerDown={handlePointerDown}
         sx={{
-          height: 10,
+          height: { xs: 20, sm: 10 }, // Larger touch target on mobile
           bgcolor: isDragging ? 'primary.main' : 'divider',
           cursor: 'ns-resize',
           display: 'flex',
@@ -439,47 +442,67 @@ export function AttributeTablePanel({
           borderTop: '2px solid',
           borderColor: isDragging ? 'primary.main' : 'divider',
           boxShadow: isDragging ? '0 -2px 8px rgba(0,0,0,0.2)' : 'none',
+          touchAction: 'none', // Prevent default touch behaviors
+          userSelect: 'none', // Prevent text selection during drag
           '&:hover': {
             bgcolor: 'primary.light',
             borderColor: 'primary.main',
-            height: 12,
+            height: { xs: 24, sm: 12 }, // Maintain larger size on mobile
             boxShadow: '0 -2px 6px rgba(0,0,0,0.15)',
+          },
+          '&:active': {
+            bgcolor: 'primary.main',
           },
         }}
       >
-        <DragHandleIcon sx={{ fontSize: 18, color: isDragging ? 'primary.contrastText' : 'text.secondary' }} />
+        <DragHandleIcon
+          sx={{
+            fontSize: { xs: 24, sm: 18 }, // Larger icon on mobile
+            color: isDragging ? 'primary.contrastText' : 'text.secondary'
+          }}
+        />
       </Box>
 
-      {/* Header - Compact single row */}
+      {/* Header - Responsive toolbar */}
       <Box
         sx={{
           display: 'flex',
           alignItems: 'center',
-          px: 1,
-          py: 0.25, // Reduced from 0.5
+          px: { xs: 0.5, sm: 1 }, // Less padding on mobile
+          py: { xs: 0.5, sm: 0.25 },
           bgcolor: theme.palette.mode === 'dark' ? 'grey.800' : 'grey.50',
           borderBottom: '1px solid',
           borderColor: 'divider',
-          gap: 0.5,
-          minHeight: 40, // Compact height
+          gap: { xs: 0.25, sm: 0.5 }, // Tighter spacing on mobile
+          minHeight: { xs: 48, sm: 40 }, // Taller on mobile for touch
+          flexWrap: { xs: 'wrap', md: 'nowrap' }, // Wrap on small screens
+          overflowX: { xs: 'auto', md: 'visible' }, // Horizontal scroll on mobile if needed
+          '&::-webkit-scrollbar': {
+            height: 4,
+          },
+          '&::-webkit-scrollbar-thumb': {
+            bgcolor: 'divider',
+            borderRadius: 2,
+          },
         }}
       >
         {/* Title & Record Count - Left side */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mr: 1 }}>
-          <Typography sx={{ fontSize: '13px', fontWeight: 600, whiteSpace: 'nowrap' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1 }, mr: { xs: 0.5, sm: 1 } }}>
+          <Typography sx={{ fontSize: { xs: '12px', sm: '13px' }, fontWeight: 600, whiteSpace: 'nowrap' }}>
             {layerName}
           </Typography>
-          <Typography sx={{ fontSize: '11px', color: 'text.secondary', whiteSpace: 'nowrap' }}>
+          <Typography sx={{ fontSize: { xs: '10px', sm: '11px' }, color: 'text.secondary', whiteSpace: 'nowrap' }}>
             {searchText && filteredRows.length !== rows.length
               ? `${filteredRows.length}/${rows.length}`
               : `${rows.length}`}
           </Typography>
         </Box>
 
-        <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
+        <Divider orientation="vertical" flexItem sx={{ mx: { xs: 0.25, sm: 0.5 }, display: { xs: 'none', sm: 'block' } }} />
 
-        {/* Selection & Navigation Group */}
-        <Tooltip title="Zaznacz wszystkie">
+        {/* Selection & Navigation Group - HIDDEN ON MOBILE (disabled features) */}
+        <Box sx={{ display: { xs: 'none', lg: 'flex' }, alignItems: 'center', gap: 0.5 }}>
+          <Tooltip title="Zaznacz wszystkie">
             <IconButton size="small" disabled sx={{ p: 0.5 }}>
               <ViewColumnIcon sx={{ fontSize: 18 }} />
             </IconButton>
@@ -494,29 +517,31 @@ export function AttributeTablePanel({
               <ContentCopyIcon sx={{ fontSize: 18 }} />
             </IconButton>
           </Tooltip>
-
           <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
+        </Box>
 
-          {/* Editing Group */}
+          {/* Editing Group - ALWAYS VISIBLE (important) */}
           <Tooltip title="Dodaj rekord">
-            <IconButton size="small" onClick={handleAddRow} sx={{ p: 0.5 }}>
-              <AddIcon sx={{ fontSize: 18 }} />
+            <IconButton size="small" onClick={handleAddRow} sx={{ p: { xs: 0.75, sm: 0.5 } }}>
+              <AddIcon sx={{ fontSize: { xs: 20, sm: 18 } }} />
             </IconButton>
           </Tooltip>
-          <Tooltip title="Edytuj rekord">
-            <IconButton size="small" disabled sx={{ p: 0.5 }}>
-              <EditIcon sx={{ fontSize: 18 }} />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Usuń zaznaczone">
-            <IconButton size="small" disabled sx={{ p: 0.5 }}>
-              <DeleteIcon sx={{ fontSize: 18 }} />
-            </IconButton>
-          </Tooltip>
+          <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 0.5 }}>
+            <Tooltip title="Edytuj rekord">
+              <IconButton size="small" disabled sx={{ p: 0.5 }}>
+                <EditIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Usuń zaznaczone">
+              <IconButton size="small" disabled sx={{ p: 0.5 }}>
+                <DeleteIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+            </Tooltip>
+          </Box>
 
-          <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
+          <Divider orientation="vertical" flexItem sx={{ mx: { xs: 0.25, sm: 0.5 } }} />
 
-          {/* Save/Cancel Group */}
+          {/* Save/Cancel Group - ALWAYS VISIBLE (critical) */}
           <Tooltip title="Zapisz zmiany">
             <span>
               <IconButton
@@ -524,9 +549,9 @@ export function AttributeTablePanel({
                 onClick={handleSave}
                 disabled={editedRows.size === 0 || isSaving}
                 color={editedRows.size > 0 ? 'primary' : 'default'}
-                sx={{ p: 0.5 }}
+                sx={{ p: { xs: 0.75, sm: 0.5 } }}
               >
-                <SaveIcon sx={{ fontSize: 18 }} />
+                <SaveIcon sx={{ fontSize: { xs: 20, sm: 18 } }} />
               </IconButton>
             </span>
           </Tooltip>
@@ -535,97 +560,102 @@ export function AttributeTablePanel({
               size="small"
               disabled={editedRows.size === 0}
               onClick={() => setEditedRows(new Map())}
-              sx={{ p: 0.5 }}
+              sx={{ p: { xs: 0.75, sm: 0.5 } }}
             >
-              <CancelIcon sx={{ fontSize: 18 }} />
+              <CancelIcon sx={{ fontSize: { xs: 20, sm: 18 } }} />
             </IconButton>
           </Tooltip>
 
-          <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
+          <Divider orientation="vertical" flexItem sx={{ mx: { xs: 0.25, sm: 0.5 } }} />
 
-          {/* Undo/Redo Group */}
-          <Tooltip title="Cofnij">
-            <IconButton size="small" disabled sx={{ p: 0.5 }}>
-              <UndoIcon sx={{ fontSize: 18 }} />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Ponów">
-            <IconButton size="small" disabled sx={{ p: 0.5 }}>
-              <RedoIcon sx={{ fontSize: 18 }} />
-            </IconButton>
-          </Tooltip>
+          {/* Undo/Redo Group - HIDDEN ON MOBILE (disabled features) */}
+          <Box sx={{ display: { xs: 'none', lg: 'flex' }, alignItems: 'center', gap: 0.5 }}>
+            <Tooltip title="Cofnij">
+              <IconButton size="small" disabled sx={{ p: 0.5 }}>
+                <UndoIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Ponów">
+              <IconButton size="small" disabled sx={{ p: 0.5 }}>
+                <RedoIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+            </Tooltip>
+            <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
+          </Box>
 
-          <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
+          {/* View Group - HIDDEN ON MOBILE (disabled features) */}
+          <Box sx={{ display: { xs: 'none', lg: 'flex' }, alignItems: 'center', gap: 0.5 }}>
+            <Tooltip title="Przybliż do zaznaczonych">
+              <IconButton size="small" disabled sx={{ p: 0.5 }}>
+                <ZoomInIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Pokaż na mapie">
+              <IconButton size="small" disabled sx={{ p: 0.5 }}>
+                <VisibilityIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+            </Tooltip>
+            <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
+          </Box>
 
-          {/* View Group */}
-          <Tooltip title="Przybliż do zaznaczonych">
-            <IconButton size="small" disabled sx={{ p: 0.5 }}>
-              <ZoomInIcon sx={{ fontSize: 18 }} />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Pokaż na mapie">
-            <IconButton size="small" disabled sx={{ p: 0.5 }}>
-              <VisibilityIcon sx={{ fontSize: 18 }} />
-            </IconButton>
-          </Tooltip>
+          {/* Filter Group - HIDDEN ON MOBILE (disabled features) */}
+          <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 0.5 }}>
+            <Tooltip title="Filtruj">
+              <IconButton size="small" disabled sx={{ p: 0.5 }}>
+                <FilterListIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+            </Tooltip>
+            <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
+          </Box>
 
-          <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
-
-          {/* Filter Group */}
-          <Tooltip title="Filtruj">
-            <IconButton size="small" disabled sx={{ p: 0.5 }}>
-              <FilterListIcon sx={{ fontSize: 18 }} />
-            </IconButton>
-          </Tooltip>
-
-          <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
-
-          {/* Export/Refresh Group */}
+          {/* Export/Refresh Group - ALWAYS VISIBLE */}
           <Tooltip title="Eksportuj">
             <span>
               <IconButton
                 size="small"
                 onClick={(e) => setExportMenuAnchor(e.currentTarget)}
                 disabled={filteredRows.length === 0}
-                sx={{ p: 0.5 }}
+                sx={{ p: { xs: 0.75, sm: 0.5 } }}
               >
-                <DownloadIcon sx={{ fontSize: 18 }} />
+                <DownloadIcon sx={{ fontSize: { xs: 20, sm: 18 } }} />
               </IconButton>
             </span>
           </Tooltip>
           <Tooltip title="Odśwież dane">
             <span>
-              <IconButton size="small" onClick={() => refetch()} disabled={isLoading} sx={{ p: 0.5 }}>
-                <RefreshIcon sx={{ fontSize: 18 }} />
+              <IconButton size="small" onClick={() => refetch()} disabled={isLoading} sx={{ p: { xs: 0.75, sm: 0.5 } }}>
+                <RefreshIcon sx={{ fontSize: { xs: 20, sm: 18 } }} />
               </IconButton>
             </span>
           </Tooltip>
 
-          <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
+          <Divider orientation="vertical" flexItem sx={{ mx: { xs: 0.25, sm: 0.5 }, display: { xs: 'none', md: 'block' } }} />
 
-          {/* Settings */}
-          <Tooltip title="Ustawienia tabeli">
-            <IconButton size="small" disabled sx={{ p: 0.5 }}>
-              <SettingsIcon sx={{ fontSize: 18 }} />
-            </IconButton>
-          </Tooltip>
+          {/* Settings - HIDDEN ON MOBILE */}
+          <Box sx={{ display: { xs: 'none', lg: 'flex' } }}>
+            <Tooltip title="Ustawienia tabeli">
+              <IconButton size="small" disabled sx={{ p: 0.5 }}>
+                <SettingsIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+            </Tooltip>
+          </Box>
 
           <Box sx={{ flex: 1 }} />
 
-          {/* Search Box - Right side */}
+          {/* Search Box - Responsive width */}
           <TextField
             size="small"
             placeholder="Wyszukaj..."
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
             InputProps={{
-              startAdornment: <SearchIcon sx={{ mr: 0.5, color: 'text.secondary', fontSize: 16 }} />,
+              startAdornment: <SearchIcon sx={{ mr: 0.5, color: 'text.secondary', fontSize: { xs: 18, sm: 16 } }} />,
             }}
             sx={{
-              width: 200,
+              width: { xs: 120, sm: 160, md: 200 },
               '& .MuiOutlinedInput-root': {
-                height: 28,
-                fontSize: '12px',
+                height: { xs: 32, sm: 28 },
+                fontSize: { xs: '13px', sm: '12px' },
               },
             }}
           />
@@ -634,13 +664,13 @@ export function AttributeTablePanel({
           {editedRows.size > 0 && (
             <Box
               sx={{
-                ml: 1,
-                px: 1,
+                ml: { xs: 0.5, sm: 1 },
+                px: { xs: 0.75, sm: 1 },
                 py: 0.25,
                 bgcolor: 'warning.main',
                 color: 'warning.contrastText',
                 borderRadius: 0.5,
-                fontSize: '11px',
+                fontSize: { xs: '10px', sm: '11px' },
                 fontWeight: 600,
               }}
             >
@@ -648,10 +678,10 @@ export function AttributeTablePanel({
             </Box>
           )}
 
-          {/* Close Button */}
+          {/* Close Button - Larger on mobile */}
           <Tooltip title="Zamknij">
-            <IconButton size="small" onClick={onClose} sx={{ ml: 0.5 }}>
-              <CloseIcon sx={{ fontSize: 18 }} />
+            <IconButton size="small" onClick={onClose} sx={{ ml: { xs: 0.25, sm: 0.5 }, p: { xs: 0.75, sm: 0.5 } }}>
+              <CloseIcon sx={{ fontSize: { xs: 20, sm: 18 } }} />
             </IconButton>
           </Tooltip>
       </Box>
@@ -696,15 +726,18 @@ export function AttributeTablePanel({
               sx={{
                 border: 'none',
                 '& .MuiDataGrid-cell': {
-                  fontSize: '12px',
+                  fontSize: { xs: '13px', sm: '12px' },
+                  padding: { xs: '8px 12px', sm: '8px 16px' },
                 },
                 '& .MuiDataGrid-columnHeader': {
                   bgcolor: theme.palette.mode === 'dark' ? 'grey.800' : 'grey.200',
                   fontWeight: 600,
-                  fontSize: '12px',
+                  fontSize: { xs: '13px', sm: '12px' },
+                  padding: { xs: '8px 12px', sm: '8px 16px' },
                 },
                 '& .MuiDataGrid-row': {
                   cursor: 'pointer',
+                  minHeight: { xs: 44, sm: 36 }, // Taller rows on mobile for easier touch
                   '&:hover': {
                     bgcolor: theme.palette.mode === 'dark' ? 'grey.800' : 'grey.100',
                   },
@@ -719,6 +752,15 @@ export function AttributeTablePanel({
                   '& .MuiDataGrid-cell': {
                     color: '#fff',
                   },
+                },
+                '& .MuiDataGrid-footerContainer': {
+                  minHeight: { xs: 48, sm: 52 }, // Taller footer on mobile
+                },
+                '& .MuiTablePagination-root': {
+                  fontSize: { xs: '13px', sm: '12px' },
+                },
+                '& .MuiIconButton-root': {
+                  padding: { xs: '10px', sm: '8px' }, // Larger touch targets on mobile
                 },
               }}
             />
