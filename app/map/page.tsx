@@ -55,10 +55,9 @@ const LayerVisibilitySync = dynamic(
   { ssr: false }
 );
 
-const AttributeTablePanel = dynamic(
-  () => import('@/features/layers/components/AttributeTablePanel').then(mod => ({ default: mod.AttributeTablePanel })),
-  { ssr: false }
-);
+// IMPORTANT: Removed dynamic() lazy loading for instant display
+// AttributeTablePanel is now in main bundle for immediate rendering
+import { AttributeTablePanel } from '@/features/layers/components/AttributeTablePanel';
 
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import { setCurrentProject } from '@/redux/slices/projectsSlice';

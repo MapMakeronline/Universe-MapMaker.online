@@ -22,7 +22,21 @@
       "Bash(nul)",
       "Bash(git log:*)",
       "Bash(for file in \"src/features/layers/modals/AttributeTableModal.tsx\" \"src/features/layers/components/LeftPanel.tsx\" \"app/map/page.tsx\")",
-      "Bash(do echo \"=== $file ===\")"
+      "Bash(do echo \"=== $file ===\")",
+      "Bash(tasklist:*)",
+      "Bash(findstr:*)",
+      "Bash(taskkill //F //PID 4192)",
+      "Bash(done)",
+      "Bash(taskkill //F //PID 16864)",
+      "Bash(taskkill //F //PID 15844)",
+      "Bash(taskkill //F //PID 16932)",
+      "Bash(python:*)",
+      "Bash(if [ -d \".next\" ])",
+      "Bash(then echo \"Cache exists - needs cleanup\")",
+      "Bash(else echo \"Cache already clean\")",
+      "Bash(fi)",
+      "Bash(npm run build:*)",
+      "Bash(git fetch:*)"
     ],
     "deny": [],
     "ask": []

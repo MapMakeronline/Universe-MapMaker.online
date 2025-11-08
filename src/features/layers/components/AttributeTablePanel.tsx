@@ -76,6 +76,13 @@ export function AttributeTablePanel({
   });
   const [isDragging, setIsDragging] = useState(false);
   const [clickedRowId, setClickedRowId] = useState<string | number | null>(null);
+  const [isLayerSwitching, setIsLayerSwitching] = useState(false); // Track layer switching state
+  const [rowLimit, setRowLimit] = useState(5000); // Current row limit (increases on scroll)
+  const [hasMoreRows, setHasMoreRows] = useState(true); // Whether there are more rows to load
+
+  // Local state for displayed features (decoupled from RTK Query cache)
+  // This prevents stale data from previous layer appearing during switch
+  const [displayedFeatures, setDisplayedFeatures] = useState<Array<Record<string, any>>>([]);
 
   // Debounce search text (500ms delay) - prevents excessive backend requests
   React.useEffect(() => {
@@ -86,21 +93,26 @@ export function AttributeTablePanel({
   }, [searchText]);
 
   // Fetch layer features (row-based data)
-  // Load ALL features at once - MUI DataGrid Pro has built-in virtualization
-  // Can handle 100k+ rows with smooth scrolling
+  // PERFORMANCE: Infinite scroll with automatic loading
+  // Start with 5000 rows, load +5000 more on scroll to bottom
+  const BATCH_SIZE = 5000; // Load 5000 rows per batch
+
   const {
     data: featuresResponse,
     isLoading,
     error,
     refetch,
+    isFetching, // Tracks active requests (including re-fetch)
   } = useGetLayerFeaturesQuery(
     {
       project: projectName,
       layer_id: layerId,
-      limit: 999999, // Load all features - DataGrid Pro virtualizes rendering
+      limit: rowLimit, // Dynamic limit (increases on scroll)
     },
     {
       skip: !projectName || !layerId, // Don't fetch if project or layer not specified
+      // OPTIMIZATION: Use cache for fast layer switching - only refetch when actually needed
+      // Cache is invalidated by tags when layer data changes (edits, deletes, etc.)
     }
   );
 
@@ -121,21 +133,41 @@ export function AttributeTablePanel({
   const [exportLayer] = useLazyExportLayerQuery();
   const [exportMenuAnchor, setExportMenuAnchor] = useState<null | HTMLElement>(null);
 
-  // Extract data from response
-  // IMPORTANT: Clear features while loading to prevent showing stale data from previous layer
-  const features = isLoading ? [] : (featuresResponse?.data || []);
+  // Extract constraints
   const constraints = constraintsResponse?.data || {
     not_null_fields: [],
     unique_fields: [],
     sequence_fields: [],
   };
 
+  // Sync displayedFeatures with RTK Query data (ONLY when not switching layers)
+  // This is the CRITICAL fix - prevents stale cache data from showing
+  // IMPORTANT: Also check if data is for current layer (prevent race conditions)
+  React.useEffect(() => {
+    if (!isLayerSwitching && featuresResponse?.data) {
+      // Additional safety: Only update if we're not in the middle of switching
+      // This prevents RTK Query cache from briefly showing old layer data
+      setDisplayedFeatures(featuresResponse.data);
+    }
+  }, [featuresResponse?.data, isLayerSwitching]);
+
+  // Detect if we've loaded all rows (for infinite scroll)
+  React.useEffect(() => {
+    if (displayedFeatures.length > 0 && displayedFeatures.length < rowLimit) {
+      // Backend returned fewer rows than requested → no more data
+      setHasMoreRows(false);
+    } else if (displayedFeatures.length === rowLimit) {
+      // Loaded exactly the limit → might have more
+      setHasMoreRows(true);
+    }
+  }, [displayedFeatures.length, rowLimit]);
+
 
   // Prepare DataGrid columns
   const columns: GridColDef[] = useMemo(() => {
-    if (features.length === 0) return [];
+    if (displayedFeatures.length === 0) return [];
 
-    const firstRow = features[0];
+    const firstRow = displayedFeatures[0];
     const cols: GridColDef[] = [];
 
     Object.keys(firstRow).forEach((key) => {
@@ -160,7 +192,7 @@ export function AttributeTablePanel({
     });
 
     return cols;
-  }, [features, constraints]);
+  }, [displayedFeatures, constraints]);
 
   // Find primary key column dynamically (ogc_fid, gid, fid, or id)
   // IMPORTANT: ogc_fid is the standard PostGIS/QGIS primary key
@@ -170,9 +202,9 @@ export function AttributeTablePanel({
     )?.field || '';
   }, [columns]);
 
-  // Prepare DataGrid rows (combine API data + new local rows)
+  // Prepare DataGrid rows (combine displayed features + new local rows)
   const rows: GridRowsProp = useMemo(() => {
-    const apiRows = features.map((feature, index) => ({
+    const apiRows = displayedFeatures.map((feature, index) => ({
       // IMPORTANT: Try ogc_fid first (PostGIS standard), then gid, fid, or fall back to index
       id: feature.ogc_fid || feature.gid || feature.fid || feature.id || index,
       ...feature,
@@ -180,7 +212,7 @@ export function AttributeTablePanel({
     // Prepend new rows at the top
     const combined = [...newRows, ...apiRows];
     return combined;
-  }, [features, newRows]);
+  }, [displayedFeatures, newRows]);
 
   // Filter rows by search text (client-side only - TODO: move to backend)
   // NOTE: For large datasets (10k+ rows), this should be moved to backend filtering
@@ -199,19 +231,51 @@ export function AttributeTablePanel({
     return filtered;
   }, [rows, debouncedSearch]);
 
-  // Notify parent of initial height (for FAB positioning)
-  // Clear state when switching layers to prevent showing stale data
+  // CRITICAL: Clear state IMMEDIATELY when switching layers
+  // This prevents stale data from previous layer showing up
   React.useEffect(() => {
+    // 1. Clear displayed features FIRST (instant clear)
+    setDisplayedFeatures([]);
+
+    // 2. Mark as switching (shows loader)
+    setIsLayerSwitching(true);
+
+    // 3. Reset all other state
     setEditedRows(new Map());
     setNewRows([]);
     setClickedRowId(null);
     setSearchText("");
     setDebouncedSearch("");
-  }, [layerId]); // Reset when layer changes
+    setRowLimit(BATCH_SIZE); // Reset to initial batch size
+    setHasMoreRows(true); // Reset "more rows" flag
+
+    // NOTE: Don't use timeout here - let the sync effect (line 134-140) handle clearing isLayerSwitching
+    // when new data actually arrives
+  }, [layerId, BATCH_SIZE]); // Reset when layer changes
+
+  // Clear isLayerSwitching flag when new data arrives
+  React.useEffect(() => {
+    // Check if data fetch is complete (even if result is empty array)
+    if (!isLoading && !isFetching && featuresResponse?.data !== undefined) {
+      // New data has arrived (even if empty), safe to clear switching flag
+      setIsLayerSwitching(false);
+    }
+  }, [isLoading, isFetching, featuresResponse?.data]);
 
   React.useEffect(() => {
     onHeightChange?.(panelHeight);
   }, [panelHeight, onHeightChange]);
+
+  // Handle infinite scroll - load more rows when user scrolls to bottom
+  const handleRowsScrollEnd = useCallback(() => {
+    // Only load more if:
+    // 1. Not currently fetching
+    // 2. Has more rows to load
+    // 3. Not in search mode (search is client-side)
+    if (!isFetching && hasMoreRows && !searchText) {
+      setRowLimit((prev) => prev + BATCH_SIZE);
+    }
+  }, [isFetching, hasMoreRows, searchText, BATCH_SIZE]);
 
   // Handle row edit
   const handleRowEditCommit = (newRow: GridRowModel) => {
@@ -536,10 +600,18 @@ export function AttributeTablePanel({
             {layerName}
           </Typography>
           <Typography sx={{ fontSize: { xs: '10px', sm: '11px' }, color: 'text.secondary', whiteSpace: 'nowrap' }}>
-            {searchText && allFilteredRows.length !== rows.length
-              ? `${allFilteredRows.length} / ${rows.length} wierszy`
-              : `${rows.length} ${rows.length === 1 ? 'wiersz' : rows.length < 5 ? 'wiersze' : 'wierszy'}`}
+            {/* Force 0 rows display during layer switch to prevent stale count */}
+            {isLayerSwitching ? '0 wierszy' : (
+              searchText && allFilteredRows.length !== rows.length
+                ? `${allFilteredRows.length} / ${rows.length} wierszy`
+                : `${rows.length} ${rows.length === 1 ? 'wiersz' : rows.length < 5 ? 'wiersze' : 'wierszy'}`
+            )}
+            {!isLayerSwitching && hasMoreRows && !searchText && ` (więcej...)`}
           </Typography>
+          {/* Loading indicator during fetch */}
+          {isFetching && (
+            <CircularProgress size={14} sx={{ ml: 0.5 }} />
+          )}
         </Box>
 
         <Divider orientation="vertical" flexItem sx={{ mx: { xs: 0.25, sm: 0.5 }, display: { xs: 'none', sm: 'block' } }} />
@@ -653,7 +725,8 @@ export function AttributeTablePanel({
 
       {/* DataGrid Content */}
       <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-        {isLoading || features.length === 0 ? (
+        {/* Only show skeleton loader during initial load or layer switch (NOT during infinite scroll) */}
+        {(isLoading || isLayerSwitching) && displayedFeatures.length === 0 ? (
           <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
             {/* Skeleton loader - table-like structure */}
             <Skeleton variant="rectangular" height={32} sx={{ borderRadius: 1 }} /> {/* Header */}
@@ -663,7 +736,7 @@ export function AttributeTablePanel({
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, mt: 2 }}>
               <CircularProgress size={20} />
               <Typography variant="caption" color="text.secondary">
-                {isLoading ? 'Ładowanie danych...' : 'Inicjalizacja tabeli...'}
+                {isLayerSwitching ? 'Przełączanie warstwy...' : 'Ładowanie danych...'}
               </Typography>
             </Box>
           </Box>
@@ -686,14 +759,17 @@ export function AttributeTablePanel({
               disableRowSelectionOnClick
               onRowClick={handleRowClick}
 
+              // Infinite scroll - load more rows when scrolled to bottom
+              onRowsScrollEnd={handleRowsScrollEnd}
+
               // Performance Optimizations
               columnVirtualizationEnabled // Only render visible columns (100+ columns)
               pinnedColumns={{ left: primaryKeyColumn ? [primaryKeyColumn] : [], right: [] }} // Pin primary key column
 
-              // NO PAGINATION - Show all rows with virtualization
+              // NO PAGINATION - Show all rows with virtualization + infinite scroll
               // MUI DataGrid Pro virtualizes rendering (only renders ~20 visible rows at a time)
               // Can smoothly handle 10k+ rows with infinite scroll
-              pagination={false} // Disable pagination - show all rows
+              pagination={false} // Disable pagination - use infinite scroll instead
 
               rowHeight={36} // Compact row height
               columnHeaderHeight={32} // Compact header height
@@ -730,8 +806,14 @@ export function AttributeTablePanel({
                     alignItems: 'center',
                   }}>
                     <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '11px' }}>
-                      {allFilteredRows.length} {allFilteredRows.length === 1 ? 'wiersz' : allFilteredRows.length < 5 ? 'wiersze' : 'wierszy'}
-                      {debouncedSearch && ` (filtrowane: "${debouncedSearch}")`}
+                      {/* Force 0 rows display during layer switch */}
+                      {isLayerSwitching ? '0 wierszy' : (
+                        <>
+                          {allFilteredRows.length} {allFilteredRows.length === 1 ? 'wiersz' : allFilteredRows.length < 5 ? 'wiersze' : 'wierszy'}
+                          {debouncedSearch && ` (filtrowane: "${debouncedSearch}")`}
+                          {hasMoreRows && !searchText && ` • Przewiń w dół aby załadować więcej`}
+                        </>
+                      )}
                     </Typography>
                     {editedRows.size > 0 && (
                       <Box sx={{
