@@ -64,6 +64,7 @@ export function AttributeTablePanel({
   const theme = useTheme();
   const dispatch = useAppDispatch();
   const [searchText, setSearchText] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState(''); // Debounced search for backend filtering
   const [editedRows, setEditedRows] = useState<Map<number, GridRowModel>>(new Map());
   const [newRows, setNewRows] = useState<GridRowsProp>([]); // Local state for new rows
   // Default height: smaller on mobile (200px) for landscape compatibility
@@ -78,6 +79,14 @@ export function AttributeTablePanel({
 
   // Infinite scroll state: how many rows to display (starts at 100)
   const [displayedRowsCount, setDisplayedRowsCount] = useState(100);
+
+  // Debounce search text (500ms delay) - prevents excessive backend requests
+  React.useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchText);
+    }, 500);
+    return () => clearTimeout(handler);
+  }, [searchText]);
 
   // Fetch layer features (row-based data)
   // Optimization: Load only 1000 records initially (backend doesn't support pagination yet)
@@ -154,20 +163,22 @@ export function AttributeTablePanel({
     return combined;
   }, [features, newRows]);
 
-  // Filter rows by search text (all rows, not sliced)
+  // Filter rows by search text (client-side only - TODO: move to backend)
+  // NOTE: For large datasets (10k+ rows), this should be moved to backend filtering
+  // Use debouncedSearch to prevent excessive re-renders
   const allFilteredRows = useMemo(() => {
-    if (!searchText) {
+    if (!debouncedSearch) {
       return rows;
     }
 
     const filtered = rows.filter((row) =>
       Object.values(row).some((value) =>
-        String(value).toLowerCase().includes(searchText.toLowerCase())
+        String(value).toLowerCase().includes(debouncedSearch.toLowerCase())
       )
     );
 
     return filtered;
-  }, [rows, searchText]);
+  }, [rows, debouncedSearch]);
 
   // Infinite scroll: Display only first N rows (grows as user scrolls)
   const displayedRows = useMemo(() => {
@@ -662,15 +673,30 @@ export function AttributeTablePanel({
               getRowId={(row) => row.id}
               disableRowSelectionOnClick
               onRowClick={handleRowClick}
+
+              // Performance Optimizations
+              columnVirtualizationEnabled // Only render visible columns (100+ columns)
+              pinnedColumns={{ left: ['gid'], right: [] }} // Pin gid column to left
+
               // Infinite scroll: DataGridPro native implementation
               onRowsScrollEnd={handleScrollEnd}
               scrollEndThreshold={200} // Trigger when 200px from bottom
-              hideFooter
+
+              // Pagination
+              pagination
+              paginationMode="client"
+              pageSizeOptions={[25, 50, 100, 200]}
+              initialState={{
+                pagination: { paginationModel: { pageSize: 100 } },
+              }}
+
               rowHeight={36} // Compact row height
               columnHeaderHeight={32} // Compact header height
+
               // Enable sorting for all columns
               sortingMode="client"
               disableColumnFilter={false}
+
               processRowUpdate={handleRowEditCommit}
               onProcessRowUpdateError={(error) => {
                 dispatch(showError('Błąd edycji wiersza'));
@@ -678,6 +704,51 @@ export function AttributeTablePanel({
               getRowClassName={(params) =>
                 params.id === clickedRowId ? 'clicked-row' : ''
               }
+
+              // Custom footer with load all button
+              slots={{
+                footer: () => (
+                  <Box sx={{
+                    p: 1,
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    borderTop: '1px solid',
+                    borderColor: 'divider',
+                    bgcolor: theme.palette.mode === 'dark' ? 'grey.900' : 'grey.50',
+                  }}>
+                    <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '11px' }}>
+                      Wyświetlono {displayedRows.length} z {allFilteredRows.length} wierszy
+                      {debouncedSearch && ` (filtrowane: "${debouncedSearch}")`}
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                      {displayedRowsCount < allFilteredRows.length && (
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          onClick={() => setDisplayedRowsCount(allFilteredRows.length)}
+                          sx={{ fontSize: '11px', py: 0.5, px: 1 }}
+                        >
+                          Załaduj wszystkie ({allFilteredRows.length})
+                        </Button>
+                      )}
+                      {editedRows.size > 0 && (
+                        <Box sx={{
+                          px: 1,
+                          py: 0.5,
+                          bgcolor: 'warning.main',
+                          color: 'warning.contrastText',
+                          borderRadius: 1,
+                          fontSize: '11px',
+                          fontWeight: 600,
+                        }}>
+                          {editedRows.size} {editedRows.size === 1 ? 'zmiana' : 'zmian'}
+                        </Box>
+                      )}
+                    </Box>
+                  </Box>
+                ),
+              }}
               sx={{
                 border: 'none',
                 '& .MuiDataGrid-cell': {
