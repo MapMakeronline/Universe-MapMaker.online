@@ -110,6 +110,13 @@ export function AttributeTablePanel({
     sequence_fields: [],
   };
 
+  // Debug: Log feature count
+  React.useEffect(() => {
+    if (features.length > 0) {
+      console.log(`📊 AttributeTable loaded ${features.length} features from backend`);
+    }
+  }, [features.length]);
+
   // Prepare DataGrid columns
   const columns: GridColDef[] = useMemo(() => {
     if (features.length === 0) return [];

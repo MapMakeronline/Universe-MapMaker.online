@@ -801,10 +801,15 @@ export const layersApi = baseApi.injectEndpoints({
     }, {
       project: string;
       layer_id: string;
+      limit?: number; // Optional pagination limit
     }>({
-      query: ({ project, layer_id }) => ({
+      query: ({ project, layer_id, limit }) => ({
         url: '/api/layer/features',
-        params: { project, layer_id },
+        params: {
+          project,
+          layer_id,
+          limit: limit || 999999, // Request all features (no pagination)
+        },
       }),
       // Transform response: Parse string → Extract GeoJSON features → Convert to row-based
       transformResponse: (response: any) => {
@@ -822,6 +827,7 @@ export const layersApi = baseApi.injectEndpoints({
         // Step 2: Check if backend returned GeoJSON FeatureCollection
         if (parsed.data && parsed.data.type === 'FeatureCollection' && Array.isArray(parsed.data.features)) {
           console.log('🔄 Converting GeoJSON FeatureCollection to row-based format');
+          console.log(`📊 Backend returned ${parsed.data.features.length} features`);
           // Extract properties from each feature (row-based)
           const rows = parsed.data.features.map((feature: any) => feature.properties || {});
           console.log('✅ Converted features:', { totalFeatures: rows.length, sample: rows[0] });
