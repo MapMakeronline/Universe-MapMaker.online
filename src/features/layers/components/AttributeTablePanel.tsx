@@ -84,6 +84,9 @@ export function AttributeTablePanel({
   const [isDragging, setIsDragging] = useState(false);
   const [clickedRowId, setClickedRowId] = useState<string | number | null>(null);
 
+  // Infinite scroll state: how many rows to display (starts at 100)
+  const [displayedRowsCount, setDisplayedRowsCount] = useState(100);
+
   // Fetch layer features (row-based data)
   const {
     data: featuresResponse,
@@ -171,8 +174,8 @@ export function AttributeTablePanel({
     return combined;
   }, [features, newRows]);
 
-  // Filter rows by search text
-  const filteredRows = useMemo(() => {
+  // Filter rows by search text (all rows, not sliced)
+  const allFilteredRows = useMemo(() => {
     if (!searchText) {
       console.log('🔍 Filtered rows (no search):', rows.length);
       return rows;
@@ -187,6 +190,43 @@ export function AttributeTablePanel({
     console.log('🔍 Filtered rows (with search):', filtered.length, 'from', rows.length);
     return filtered;
   }, [rows, searchText]);
+
+  // Infinite scroll: Display only first N rows (grows as user scrolls)
+  const displayedRows = useMemo(() => {
+    const sliced = allFilteredRows.slice(0, displayedRowsCount);
+    console.log(`📊 Displaying ${sliced.length} of ${allFilteredRows.length} rows (infinite scroll)`);
+    return sliced;
+  }, [allFilteredRows, displayedRowsCount]);
+
+  // Reset displayedRowsCount when layer changes or search changes
+  React.useEffect(() => {
+    setDisplayedRowsCount(100);
+  }, [layerId, searchText]);
+
+  // Infinite scroll: Load more rows when scrolled to bottom
+  const dataGridRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const gridElement = dataGridRef.current;
+    if (!gridElement) return;
+
+    // Find virtualScroller div inside DataGrid
+    const virtualScroller = gridElement.querySelector('.MuiDataGrid-virtualScroller');
+    if (!virtualScroller) return;
+
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = virtualScroller;
+      const scrolledToBottom = scrollTop + clientHeight >= scrollHeight - 50; // 50px threshold
+
+      if (scrolledToBottom && displayedRowsCount < allFilteredRows.length) {
+        console.log(`📊 Infinite scroll: Loading 100 more rows (current: ${displayedRowsCount}, total: ${allFilteredRows.length})`);
+        setDisplayedRowsCount(prev => Math.min(prev + 100, allFilteredRows.length));
+      }
+    };
+
+    virtualScroller.addEventListener('scroll', handleScroll);
+    return () => virtualScroller.removeEventListener('scroll', handleScroll);
+  }, [displayedRowsCount, allFilteredRows.length]);
 
   // Handle row edit
   const handleRowEditCommit = (newRow: GridRowModel) => {
@@ -527,8 +567,10 @@ export function AttributeTablePanel({
             {layerName}
           </Typography>
           <Typography sx={{ fontSize: { xs: '10px', sm: '11px' }, color: 'text.secondary', whiteSpace: 'nowrap' }}>
-            {searchText && filteredRows.length !== rows.length
-              ? `${filteredRows.length} / ${rows.length} wierszy`
+            {displayedRows.length < allFilteredRows.length
+              ? `${displayedRows.length} / ${allFilteredRows.length} ${searchText ? '(filtrowane)' : ''}`
+              : searchText && allFilteredRows.length !== rows.length
+              ? `${allFilteredRows.length} / ${rows.length} wierszy`
               : `${rows.length} ${rows.length === 1 ? 'wiersz' : rows.length < 5 ? 'wiersze' : 'wierszy'}`}
           </Typography>
         </Box>
@@ -649,7 +691,7 @@ export function AttributeTablePanel({
               <IconButton
                 size="small"
                 onClick={(e) => setExportMenuAnchor(e.currentTarget)}
-                disabled={filteredRows.length === 0}
+                disabled={allFilteredRows.length === 0}
                 sx={{ p: { xs: 0.75, sm: 0.5 } }}
               >
                 <DownloadIcon sx={{ fontSize: { xs: 20, sm: 18 } }} />
@@ -733,21 +775,21 @@ export function AttributeTablePanel({
           <Box sx={{ p: 2 }}>
             <Alert severity="error">Błąd ładowania danych: {(error as any).message || 'Nieznany błąd'}</Alert>
           </Box>
-        ) : filteredRows.length === 0 ? (
+        ) : allFilteredRows.length === 0 ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
             <Typography color="text.secondary">
               {searchText ? 'Brak wyników wyszukiwania' : 'Brak danych'}
             </Typography>
           </Box>
         ) : (
-          <Box sx={{ flex: 1, minHeight: 0 }}>
+          <Box ref={dataGridRef} sx={{ flex: 1, minHeight: 0 }}>
             <DataGrid
-              rows={filteredRows}
+              rows={displayedRows}
               columns={columns}
               getRowId={(row) => row.id}
               disableRowSelectionOnClick
               onRowClick={handleRowClick}
-              // Continuous scroll without pagination
+              // Infinite scroll: Loads 100 rows at a time as user scrolls
               // Virtualization renders only visible rows for performance
               hideFooter
               rowHeight={36} // Compact row height
