@@ -720,11 +720,10 @@ export function AttributeTablePanel({
               getRowId={(row) => row.id}
               disableRowSelectionOnClick
               onRowClick={handleRowClick}
-              pagination
-              pageSizeOptions={[10, 25, 50, 100]}
-              initialState={{
-                pagination: { paginationModel: { pageSize: 25 } },
-              }}
+              // Remove pagination - use virtualization for infinite scroll
+              hideFooter
+              rowHeight={36} // Compact row height
+              columnHeaderHeight={32} // Compact header height
               processRowUpdate={handleRowEditCommit}
               onProcessRowUpdateError={(error) => {
                 console.error('Row edit error:', error);
@@ -737,17 +736,24 @@ export function AttributeTablePanel({
                 border: 'none',
                 '& .MuiDataGrid-cell': {
                   fontSize: { xs: '13px', sm: '12px' },
-                  padding: { xs: '8px 12px', sm: '8px 16px' },
+                  padding: { xs: '6px 12px', sm: '6px 16px' }, // Reduced vertical padding
                 },
                 '& .MuiDataGrid-columnHeader': {
                   bgcolor: theme.palette.mode === 'dark' ? 'grey.800' : 'grey.200',
                   fontWeight: 600,
-                  fontSize: { xs: '13px', sm: '12px' },
-                  padding: { xs: '8px 12px', sm: '8px 16px' },
+                  fontSize: { xs: '12px', sm: '11px' }, // Smaller header font
+                  padding: { xs: '4px 12px', sm: '4px 16px' }, // Reduced header padding
+                  minHeight: '32px !important', // Force compact header
+                  maxHeight: '32px !important',
+                },
+                '& .MuiDataGrid-columnHeaderTitle': {
+                  fontWeight: 600,
+                  fontSize: { xs: '12px', sm: '11px' },
+                  lineHeight: '1.2',
                 },
                 '& .MuiDataGrid-row': {
                   cursor: 'pointer',
-                  minHeight: { xs: 44, sm: 36 }, // Taller rows on mobile for easier touch
+                  minHeight: { xs: 40, sm: 36 }, // Slightly taller on mobile for touch
                   '&:hover': {
                     bgcolor: theme.palette.mode === 'dark' ? 'grey.800' : 'grey.100',
                   },
@@ -763,14 +769,22 @@ export function AttributeTablePanel({
                     color: '#fff',
                   },
                 },
-                '& .MuiDataGrid-footerContainer': {
-                  minHeight: { xs: 48, sm: 52 }, // Taller footer on mobile
-                },
-                '& .MuiTablePagination-root': {
-                  fontSize: { xs: '13px', sm: '12px' },
-                },
-                '& .MuiIconButton-root': {
-                  padding: { xs: '10px', sm: '8px' }, // Larger touch targets on mobile
+                // Hide scrollbar for cleaner look
+                '& .MuiDataGrid-virtualScroller': {
+                  '&::-webkit-scrollbar': {
+                    width: 8,
+                    height: 8,
+                  },
+                  '&::-webkit-scrollbar-track': {
+                    bgcolor: 'transparent',
+                  },
+                  '&::-webkit-scrollbar-thumb': {
+                    bgcolor: 'divider',
+                    borderRadius: 4,
+                    '&:hover': {
+                      bgcolor: 'action.hover',
+                    },
+                  },
                 },
               }}
             />
