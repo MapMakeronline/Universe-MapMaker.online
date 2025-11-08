@@ -288,12 +288,10 @@ export const layersApi = baseApi.injectEndpoints({
         if (params.encoding) formData.append('encoding', params.encoding);
 
         // DEBUG: Log all FormData entries
-        console.log('🔍 RTK Query - Sending FormData to /api/layer/add/shp/:');
         for (const [key, value] of formData.entries()) {
           if (value instanceof File) {
             console.log(`  ${key}: File(${value.name}, ${value.size} bytes, ${value.type})`);
           } else {
-            console.log(`  ${key}: ${value}`);
           }
         }
 
@@ -552,7 +550,6 @@ export const layersApi = baseApi.injectEndpoints({
           try {
             return JSON.parse(response);
           } catch (error) {
-            console.error('Failed to parse layer attributes response:', error);
             return response;
           }
         }
@@ -803,32 +800,44 @@ export const layersApi = baseApi.injectEndpoints({
       layer_id: string;
       limit?: number; // Optional pagination limit
     }>({
-      query: ({ project, layer_id, limit }) => ({
-        url: '/api/layer/features',
-        params: {
-          project,
-          layer_id,
-          limit: limit || 999999, // Request all features (no pagination)
-        },
-      }),
+      query: ({ project, layer_id, limit }) => {
+        return {
+          url: '/api/layer/features',
+          params: {
+            project,
+            layer_id,
+            limit: limit || 999999, // Request all features (no pagination)
+          },
+        };
+      },
       // Transform response: Extract GeoJSON features → Convert to row-based
-      // Optimized: Skip string parsing (RTK Query auto-parses JSON)
+      // IMPORTANT: Backend returns JSON as string, must parse manually
       transformResponse: (response: any) => {
-        // Backend already returns parsed JSON, no need for JSON.parse()
+        // Parse JSON string if needed
+        let parsedResponse = response;
+        if (typeof response === 'string') {
+          try {
+            parsedResponse = JSON.parse(response);
+          } catch (error) {
+            return { data: [], success: false, message: 'Failed to parse JSON response' };
+          }
+        }
+
+        
 
         // Check if backend returned GeoJSON FeatureCollection
-        if (response?.data?.type === 'FeatureCollection' && Array.isArray(response.data.features)) {
+        if (parsedResponse?.data?.type === 'FeatureCollection' && Array.isArray(parsedResponse.data.features)) {
           // Extract properties from each feature (row-based) - optimized with single pass
-          const rows = response.data.features.map((feature: any) => feature.properties || {});
+          const rows = parsedResponse.data.features.map((feature: any) => feature.properties || {});
           return {
             data: rows,
-            success: response.success !== false,
-            message: response.message || ''
+            success: parsedResponse.success !== false,
+            message: parsedResponse.message || ''
           };
         }
 
         // If already row-based, return as-is
-        return response;
+        return parsedResponse;
       },
       // Cache by layer_id
       providesTags: (result, error, { layer_id }) => [

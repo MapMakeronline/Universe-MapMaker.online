@@ -86,8 +86,8 @@ export function AttributeTablePanel({
   }, [searchText]);
 
   // Fetch layer features (row-based data)
-  // Optimization: Load only 1000 records initially (backend doesn't support pagination yet)
-  // For large datasets, this reduces initial load time significantly
+  // Load ALL features at once - MUI DataGrid Pro has built-in virtualization
+  // Can handle 100k+ rows with smooth scrolling
   const {
     data: featuresResponse,
     isLoading,
@@ -97,12 +97,14 @@ export function AttributeTablePanel({
     {
       project: projectName,
       layer_id: layerId,
-      limit: 1000, // Reduced from 999999 - load max 1000 records for better performance
+      limit: 999999, // Load all features - DataGrid Pro virtualizes rendering
     },
     {
       skip: !projectName || !layerId, // Don't fetch if project or layer not specified
     }
   );
+
+
 
   // Fetch column constraints
   const { data: constraintsResponse } = useGetLayerConstraintsQuery(
@@ -120,7 +122,8 @@ export function AttributeTablePanel({
   const [exportMenuAnchor, setExportMenuAnchor] = useState<null | HTMLElement>(null);
 
   // Extract data from response
-  const features = featuresResponse?.data || [];
+  // IMPORTANT: Clear features while loading to prevent showing stale data from previous layer
+  const features = isLoading ? [] : (featuresResponse?.data || []);
   const constraints = constraintsResponse?.data || {
     not_null_fields: [],
     unique_fields: [],
@@ -159,17 +162,19 @@ export function AttributeTablePanel({
     return cols;
   }, [features, constraints]);
 
-  // Find primary key column dynamically (gid, fid, or id)
+  // Find primary key column dynamically (ogc_fid, gid, fid, or id)
+  // IMPORTANT: ogc_fid is the standard PostGIS/QGIS primary key
   const primaryKeyColumn = useMemo(() => {
     return columns.find(col =>
-      col.field === 'gid' || col.field === 'fid' || col.field === 'id'
+      col.field === 'ogc_fid' || col.field === 'gid' || col.field === 'fid' || col.field === 'id'
     )?.field || '';
   }, [columns]);
 
   // Prepare DataGrid rows (combine API data + new local rows)
   const rows: GridRowsProp = useMemo(() => {
     const apiRows = features.map((feature, index) => ({
-      id: feature.gid || feature.fid || index,
+      // IMPORTANT: Try ogc_fid first (PostGIS standard), then gid, fid, or fall back to index
+      id: feature.ogc_fid || feature.gid || feature.fid || feature.id || index,
       ...feature,
     }));
     // Prepend new rows at the top
@@ -195,6 +200,15 @@ export function AttributeTablePanel({
   }, [rows, debouncedSearch]);
 
   // Notify parent of initial height (for FAB positioning)
+  // Clear state when switching layers to prevent showing stale data
+  React.useEffect(() => {
+    setEditedRows(new Map());
+    setNewRows([]);
+    setClickedRowId(null);
+    setSearchText("");
+    setDebouncedSearch("");
+  }, [layerId]); // Reset when layer changes
+
   React.useEffect(() => {
     onHeightChange?.(panelHeight);
   }, [panelHeight, onHeightChange]);
@@ -639,7 +653,7 @@ export function AttributeTablePanel({
 
       {/* DataGrid Content */}
       <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-        {isLoading ? (
+        {isLoading || features.length === 0 ? (
           <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
             {/* Skeleton loader - table-like structure */}
             <Skeleton variant="rectangular" height={32} sx={{ borderRadius: 1 }} /> {/* Header */}
@@ -648,7 +662,9 @@ export function AttributeTablePanel({
             ))}
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, mt: 2 }}>
               <CircularProgress size={20} />
-              <Typography variant="caption" color="text.secondary">Ładowanie danych...</Typography>
+              <Typography variant="caption" color="text.secondary">
+                {isLoading ? 'Ładowanie danych...' : 'Inicjalizacja tabeli...'}
+              </Typography>
             </Box>
           </Box>
         ) : error ? (
@@ -674,20 +690,18 @@ export function AttributeTablePanel({
               columnVirtualizationEnabled // Only render visible columns (100+ columns)
               pinnedColumns={{ left: primaryKeyColumn ? [primaryKeyColumn] : [], right: [] }} // Pin primary key column
 
-              // Pagination (NOTE: Disabled infinite scroll to avoid conflict)
-              pagination
-              paginationMode="client"
-              pageSizeOptions={[25, 50, 100, 200, 500]}
-              initialState={{
-                pagination: { paginationModel: { pageSize: 100 } },
-              }}
+              // NO PAGINATION - Show all rows with virtualization
+              // MUI DataGrid Pro virtualizes rendering (only renders ~20 visible rows at a time)
+              // Can smoothly handle 10k+ rows with infinite scroll
+              pagination={false} // Disable pagination - show all rows
 
               rowHeight={36} // Compact row height
               columnHeaderHeight={32} // Compact header height
 
-              // Enable sorting for all columns
+              // Sorting and filtering (client-side)
               sortingMode="client"
-              disableColumnFilter={false}
+              disableColumnFilter // Disable column menu filters for performance
+              disableColumnMenu={false} // Keep column menu for other actions
 
               processRowUpdate={handleRowEditCommit}
               onProcessRowUpdateError={(error) => {

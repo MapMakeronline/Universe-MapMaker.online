@@ -122,7 +122,6 @@ const fetchWFSFeatures = async (
     // Log sample coordinates to help debug
     if (geojson.features && geojson.features[0]) {
       const sampleCoords = geojson.features[0].geometry?.coordinates;
-      console.log('📍 Sample coordinates:', sampleCoords);
     }
 
     // Cache the result in localStorage (10 minute TTL)
@@ -131,7 +130,6 @@ const fetchWFSFeatures = async (
         data: geojson,
         timestamp: Date.now()
       }));
-      console.log(`💾 Cached WFS data for 10 minutes`);
     } catch (e) {
       console.warn('⚠️ Failed to cache WFS data (localStorage full?)');
     }
@@ -143,7 +141,6 @@ const fetchWFSFeatures = async (
 
     return geojson;
   } catch (error) {
-    console.error('❌ Error fetching WFS data:', error);
 
     // Remove loading task on error
     const taskId = `wfs-fetch-${projectName}-${layerName}`;
@@ -285,13 +282,10 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
         if (config.parcelLayerId) setParcelLayerId(config.parcelLayerId);
         if (config.precinctColumn) setPrecinctColumn(config.precinctColumn);
         if (config.plotNumberColumn) setPlotNumberColumn(config.plotNumberColumn);
-        console.log('✅ Loaded parcel search config from localStorage:', config);
       } catch (error) {
-        console.error('Error loading parcel search config:', error);
       }
     } else {
       // No saved config - try auto-detect "Działki" layer
-      console.log('⚠️ No saved config found, will auto-detect "Działki" layer');
     }
   }, [projectName]);
 
@@ -316,7 +310,6 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
     );
 
     if (dzialki) {
-      console.log('✅ Auto-detected "Działki" layer:', dzialki);
       setParcelLayerId(dzialki.id);
       // Use default column names (most common in Polish cadastral data)
       setPrecinctColumn('NAZWA_OBRE');
@@ -342,7 +335,6 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
           setWfsLoading(false);
         })
         .catch((error) => {
-          console.error('Error fetching WFS features:', error);
           setWfsLoading(false);
         });
     } else {
@@ -352,9 +344,12 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
 
   // Fetch precincts for authenticated users (Django API)
   useEffect(() => {
-    if (!projectName || !parcelLayerId || !precinctColumn) return;
-    if (!isAuthenticated) return; // Only for authenticated users
-
+    if (!projectName || !parcelLayerId || !precinctColumn) {
+      return;
+    }
+    if (!isAuthenticated) {
+      return; // Only for authenticated users
+    }
     fetchPrecincts({
       project: projectName,
       layer_id: parcelLayerId,
@@ -397,7 +392,31 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
   }, [projectName, tempParcelLayerId, configModalOpen, fetchLayerAttributes]);
 
   // Log API response/error when it changes
-  useEffect(() => {  }, [layerAttributesData, layerAttributesLoading, isLayerAttributesError, layerAttributesError]);
+  useEffect(() => {
+    if (layerAttributesLoading) {
+    }
+    if (layerAttributesData) {
+    }
+    if (isLayerAttributesError) {
+    }
+  }, [layerAttributesData, layerAttributesLoading, isLayerAttributesError, layerAttributesError]);
+
+  // Log precinct fetch response
+  useEffect(() => {
+    if (precinctsLoading) {
+    }
+    if (precinctsData) {
+    }
+  }, [precinctsData, precinctsLoading]);
+
+  // Log WFS fetch status
+  useEffect(() => {
+    if (wfsLoading) {
+      
+    }
+    if (wfsFeatures) {
+    }
+  }, [wfsLoading, wfsFeatures]);
 
   // Handle search
   const handleSearch = async () => {
@@ -412,7 +431,6 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
     try {
       // FOR GUEST USERS: Client-side filtering of WFS features
       if (!isAuthenticated && wfsFeatures) {
-        console.log('🔍 Guest search:', { selectedPrecinct, selectedPlotNumber });
 
         const matchedFeatures: any[] = [];
 
@@ -436,8 +454,6 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
             }
           }
         }
-
-        console.log(`✅ Found ${matchedFeatures.length} matching parcels in WFS data`);
 
         // Display matched features (show first match geometry, list all in identify modal)
         if (matchedFeatures.length > 0) {
@@ -577,7 +593,6 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
                 allLayerFeatures = qgisFeatures;
               }
             } catch (error) {
-              console.error('❌ Error querying layers:', error);
               // Remove loading task on error
               const identifyTaskId = `identify-parcel-${Date.now()}`;
               dispatch(removeLoadingTask(identifyTaskId));
@@ -630,7 +645,6 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
         });
       }
     } catch (error) {
-      console.error('❌ ParcelSearchTab - Search failed:', error);
     }
   };
 
@@ -712,10 +726,7 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
         fromCRS = EPSG_3857; // Fallback
       }
     }
-
-    console.log(`🔄 Transforming from ${fromCRS} to ${EPSG_4326}:`, coords);
     const result = proj4(fromCRS, EPSG_4326, coords) as [number, number];
-    console.log(`✅ Transformed to:`, result);
     return result;
   };
 
@@ -849,12 +860,10 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
    */
   const handleResultClick = async (layerId: string, gid: number) => {
     if (!projectName) {
-      console.error('❌ Missing projectName');
       return;
     }
 
     if (!map) {
-      console.error('❌ Missing map reference');
       return;
     }
 
@@ -881,7 +890,6 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
     }
 
     if (!featureGeometry) {
-      console.error('❌ Feature geometry not found in search results');
       alert('Nie znaleziono geometrii działki w wynikach wyszukiwania');
       return;
     }
@@ -894,11 +902,6 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
       // ✅ Krok 2.5: Transformuj współrzędne z EPSG:3857 → EPSG:4326
       const [minLng, minLat] = transformCoordinates([minX, minY]);
       const [maxLng, maxLat] = transformCoordinates([maxX, maxY]);
-
-      console.log('🗺️ Transformed coordinates:', {
-        original: { minX, minY, maxX, maxY },
-        wgs84: { minLng, minLat, maxLng, maxLat }
-      });
 
       // ✅ Krok 3: Przybliż mapę do działki (używając WGS84 coordinates)
       map.fitBounds(
@@ -995,7 +998,6 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
         };
 
         const visibleLayers = getVisibleLayers();
-        console.log(`🔍 Querying ${visibleLayers.length} visible layers at parcel center`);
 
         // Add loading task
         const identifyTaskId = `identify-parcel-auth-${Date.now()}`;
@@ -1032,12 +1034,9 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
           };
         });
 
-        console.log(`✅ Found ${qgisFeatures.length} features from QGIS Server`);
-
         // Use only QGIS Server features (no duplicate parcel data)
         allLayerFeatures = qgisFeatures;
       } catch (error) {
-        console.error('❌ Error querying other layers:', error);
         // Remove loading task on error
         const identifyTaskId = `identify-parcel-auth-${Date.now()}`;
         dispatch(removeLoadingTask(identifyTaskId));
@@ -1057,16 +1056,23 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
 
 
     } catch (error) {
-      console.error('❌ Error handling parcel click:', error);
       alert('Błąd podczas wyświetlania działki');
     }
   };
 
   // Extract precincts and plot numbers arrays
   // Use WFS data for guests, Django API data for authenticated users
-  const precincts = isAuthenticated
-    ? (precinctsData?.data || [])
-    : (wfsFeatures && precinctColumn ? extractUniqueValues(wfsFeatures, precinctColumn) : []);
+  const precincts = React.useMemo(() => {
+    if (isAuthenticated) {
+      const data = precinctsData?.data || [];
+      
+      return data;
+    } else {
+      const data = wfsFeatures && precinctColumn ? extractUniqueValues(wfsFeatures, precinctColumn) : [];
+      
+      return data;
+    }
+  }, [isAuthenticated, precinctsData, precinctsLoading, wfsFeatures, precinctColumn, wfsLoading]);
 
   // Plot numbers: If precinct selected, extract from search results (filtered)
   // Otherwise, use all plot numbers from API or WFS
@@ -1379,6 +1385,11 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
               <MenuItem disabled>
                 <CircularProgress size={20} sx={{ mr: 1 }} />
                 Ładowanie...
+              </MenuItem>
+            )}
+            {!precinctsLoading && !wfsLoading && precincts.length === 0 && parcelLayerId && (
+              <MenuItem disabled>
+                <em>Brak danych w wybranej kolumnie</em>
               </MenuItem>
             )}
             {precincts.map((precinct) => (
