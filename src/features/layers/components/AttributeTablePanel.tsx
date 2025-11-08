@@ -74,7 +74,13 @@ export function AttributeTablePanel({
   const [searchText, setSearchText] = useState('');
   const [editedRows, setEditedRows] = useState<Map<number, GridRowModel>>(new Map());
   const [newRows, setNewRows] = useState<GridRowsProp>([]); // Local state for new rows
-  const [panelHeight, setPanelHeight] = useState(300); // Default 300px
+  // Default height: smaller on mobile (200px) for landscape compatibility
+  const [panelHeight, setPanelHeight] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < 600 ? 200 : 300;
+    }
+    return 300;
+  });
   const [isDragging, setIsDragging] = useState(false);
   const [clickedRowId, setClickedRowId] = useState<string | number | null>(null);
 
@@ -411,9 +417,10 @@ export function AttributeTablePanel({
       sx={{
         position: 'absolute',
         bottom: 0,
-        left: leftPanelWidth, // Dynamic offset based on left panel width
-        right: 70, // Offset for right toolbar (matching old app)
+        left: { xs: 0, sm: leftPanelWidth }, // Full width on mobile, dynamic on desktop
+        right: { xs: 70, sm: 70, md: 70 }, // Offset for right toolbar (FAB menu)
         height: panelHeight,
+        maxHeight: { xs: '50vh', sm: '70vh' }, // Limit height on mobile (especially landscape)
         bgcolor: 'background.paper',
         borderTop: '1px solid',
         borderColor: 'divider',
@@ -423,7 +430,7 @@ export function AttributeTablePanel({
         boxShadow: '0 -2px 10px rgba(0,0,0,0.1)',
         borderRight: '1px solid',
         borderRightColor: 'divider',
-        borderLeft: leftPanelWidth > 0 ? '1px solid' : 'none',
+        borderLeft: { xs: 'none', sm: leftPanelWidth > 0 ? '1px solid' : 'none' },
         borderLeftColor: 'divider',
         transition: 'left 0.3s ease-in-out', // Smooth transition when panel opens/closes
       }}
@@ -469,16 +476,17 @@ export function AttributeTablePanel({
           display: 'flex',
           alignItems: 'center',
           px: { xs: 0.5, sm: 1 }, // Less padding on mobile
-          py: { xs: 0.5, sm: 0.25 },
+          py: { xs: 0.25, sm: 0.25 }, // Compact on all screens
           bgcolor: theme.palette.mode === 'dark' ? 'grey.800' : 'grey.50',
           borderBottom: '1px solid',
           borderColor: 'divider',
           gap: { xs: 0.25, sm: 0.5 }, // Tighter spacing on mobile
-          minHeight: { xs: 48, sm: 40 }, // Taller on mobile for touch
-          flexWrap: { xs: 'wrap', md: 'nowrap' }, // Wrap on small screens
-          overflowX: { xs: 'auto', md: 'visible' }, // Horizontal scroll on mobile if needed
+          minHeight: { xs: 40, sm: 40 }, // Compact height
+          flexWrap: 'nowrap', // Never wrap - use horizontal scroll
+          overflowX: 'auto', // Always allow horizontal scroll if needed
+          overflowY: 'hidden',
           '&::-webkit-scrollbar': {
-            height: 4,
+            height: 3,
           },
           '&::-webkit-scrollbar-thumb': {
             bgcolor: 'divider',
@@ -642,23 +650,25 @@ export function AttributeTablePanel({
 
           <Box sx={{ flex: 1 }} />
 
-          {/* Search Box - Responsive width */}
-          <TextField
-            size="small"
-            placeholder="Wyszukaj..."
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            InputProps={{
-              startAdornment: <SearchIcon sx={{ mr: 0.5, color: 'text.secondary', fontSize: { xs: 18, sm: 16 } }} />,
-            }}
-            sx={{
-              width: { xs: 120, sm: 160, md: 200 },
-              '& .MuiOutlinedInput-root': {
-                height: { xs: 32, sm: 28 },
-                fontSize: { xs: '13px', sm: '12px' },
-              },
-            }}
-          />
+          {/* Search Box - Hidden on small mobile screens in landscape */}
+          <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
+            <TextField
+              size="small"
+              placeholder="Wyszukaj..."
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              InputProps={{
+                startAdornment: <SearchIcon sx={{ mr: 0.5, color: 'text.secondary', fontSize: 16 }} />,
+              }}
+              sx={{
+                width: { sm: 140, md: 200 },
+                '& .MuiOutlinedInput-root': {
+                  height: 28,
+                  fontSize: '12px',
+                },
+              }}
+            />
+          </Box>
 
           {/* Edit indicator */}
           {editedRows.size > 0 && (
