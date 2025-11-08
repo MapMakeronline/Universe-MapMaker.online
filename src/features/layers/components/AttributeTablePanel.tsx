@@ -141,6 +141,9 @@ export function AttributeTablePanel({
     return cols;
   }, [features, constraints]);
 
+  // Client-side pagination state for infinite scroll
+  const [paginationModel, setPaginationModel] = useState({ page: 0, pageSize: 100 });
+
   // Prepare DataGrid rows (combine API data + new local rows)
   const rows: GridRowsProp = useMemo(() => {
     const apiRows = features.map((feature, index) => ({
@@ -720,8 +723,12 @@ export function AttributeTablePanel({
               getRowId={(row) => row.id}
               disableRowSelectionOnClick
               onRowClick={handleRowClick}
-              // Remove pagination - use virtualization for infinite scroll
-              hideFooter
+              // Pagination for infinite scroll (client-side)
+              pagination
+              paginationMode="client"
+              paginationModel={paginationModel}
+              onPaginationModelChange={setPaginationModel}
+              pageSizeOptions={[100, 250, 500, 1000]}
               rowHeight={36} // Compact row height
               columnHeaderHeight={32} // Compact header height
               processRowUpdate={handleRowEditCommit}
@@ -769,7 +776,34 @@ export function AttributeTablePanel({
                     color: '#fff',
                   },
                 },
-                // Hide scrollbar for cleaner look
+                // Compact footer with pagination
+                '& .MuiDataGrid-footerContainer': {
+                  minHeight: { xs: 40, sm: 44 }, // Compact footer
+                  borderTop: '1px solid',
+                  borderColor: 'divider',
+                  bgcolor: theme.palette.mode === 'dark' ? 'grey.900' : 'grey.50',
+                },
+                '& .MuiTablePagination-root': {
+                  fontSize: { xs: '11px', sm: '12px' },
+                },
+                '& .MuiTablePagination-displayedRows': {
+                  fontSize: { xs: '11px', sm: '12px' },
+                  margin: 0,
+                },
+                '& .MuiTablePagination-selectLabel': {
+                  fontSize: { xs: '11px', sm: '12px' },
+                  margin: 0,
+                },
+                '& .MuiTablePagination-select': {
+                  fontSize: { xs: '11px', sm: '12px' },
+                },
+                '& .MuiTablePagination-actions': {
+                  marginLeft: { xs: '4px', sm: '8px' },
+                },
+                '& .MuiIconButton-root': {
+                  padding: { xs: '4px', sm: '6px' },
+                },
+                // Custom scrollbar
                 '& .MuiDataGrid-virtualScroller': {
                   '&::-webkit-scrollbar': {
                     width: 8,
