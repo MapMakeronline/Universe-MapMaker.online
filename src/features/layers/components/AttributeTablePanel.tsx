@@ -77,9 +77,6 @@ export function AttributeTablePanel({
   const [isDragging, setIsDragging] = useState(false);
   const [clickedRowId, setClickedRowId] = useState<string | number | null>(null);
 
-  // Infinite scroll state: how many rows to display (starts at 100)
-  const [displayedRowsCount, setDisplayedRowsCount] = useState(100);
-
   // Debounce search text (500ms delay) - prevents excessive backend requests
   React.useEffect(() => {
     const handler = setTimeout(() => {
@@ -152,6 +149,13 @@ export function AttributeTablePanel({
     return cols;
   }, [features, constraints]);
 
+  // Find primary key column dynamically (gid, fid, or id)
+  const primaryKeyColumn = useMemo(() => {
+    return columns.find(col =>
+      col.field === 'gid' || col.field === 'fid' || col.field === 'id'
+    )?.field || '';
+  }, [columns]);
+
   // Prepare DataGrid rows (combine API data + new local rows)
   const rows: GridRowsProp = useMemo(() => {
     const apiRows = features.map((feature, index) => ({
@@ -180,28 +184,10 @@ export function AttributeTablePanel({
     return filtered;
   }, [rows, debouncedSearch]);
 
-  // Infinite scroll: Display only first N rows (grows as user scrolls)
-  const displayedRows = useMemo(() => {
-    const sliced = allFilteredRows.slice(0, displayedRowsCount);
-    return sliced;
-  }, [allFilteredRows, displayedRowsCount]);
-
-  // Reset displayedRowsCount when layer changes or search changes
-  React.useEffect(() => {
-    setDisplayedRowsCount(100);
-  }, [layerId, searchText]);
-
   // Notify parent of initial height (for FAB positioning)
   React.useEffect(() => {
     onHeightChange?.(panelHeight);
   }, [panelHeight, onHeightChange]);
-
-  // Infinite scroll: DataGridPro native implementation
-  const handleScrollEnd = useCallback(() => {
-    if (displayedRowsCount < allFilteredRows.length) {
-      setDisplayedRowsCount(prev => Math.min(prev + 100, allFilteredRows.length));
-    }
-  }, [displayedRowsCount, allFilteredRows.length]);
 
   // Handle row edit
   const handleRowEditCommit = (newRow: GridRowModel) => {
@@ -668,7 +654,7 @@ export function AttributeTablePanel({
         ) : (
           <Box sx={{ flex: 1, minHeight: 0 }}>
             <DataGridPro
-              rows={displayedRows}
+              rows={allFilteredRows}
               columns={columns}
               getRowId={(row) => row.id}
               disableRowSelectionOnClick
@@ -676,16 +662,12 @@ export function AttributeTablePanel({
 
               // Performance Optimizations
               columnVirtualizationEnabled // Only render visible columns (100+ columns)
-              pinnedColumns={{ left: ['gid'], right: [] }} // Pin gid column to left
+              pinnedColumns={{ left: primaryKeyColumn ? [primaryKeyColumn] : [], right: [] }} // Pin primary key column
 
-              // Infinite scroll: DataGridPro native implementation
-              onRowsScrollEnd={handleScrollEnd}
-              scrollEndThreshold={200} // Trigger when 200px from bottom
-
-              // Pagination
+              // Pagination (NOTE: Disabled infinite scroll to avoid conflict)
               pagination
               paginationMode="client"
-              pageSizeOptions={[25, 50, 100, 200]}
+              pageSizeOptions={[25, 50, 100, 200, 500]}
               initialState={{
                 pagination: { paginationModel: { pageSize: 100 } },
               }}
@@ -705,7 +687,16 @@ export function AttributeTablePanel({
                 params.id === clickedRowId ? 'clicked-row' : ''
               }
 
-              // Custom footer with load all button
+              // Custom footer with info and edit counter
+              slotProps={{
+                footer: {
+                  sx: {
+                    borderTop: '1px solid',
+                    borderColor: 'divider',
+                    bgcolor: theme.palette.mode === 'dark' ? 'grey.900' : 'grey.50',
+                  },
+                },
+              }}
               slots={{
                 footer: () => (
                   <Box sx={{
@@ -713,39 +704,24 @@ export function AttributeTablePanel({
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    borderTop: '1px solid',
-                    borderColor: 'divider',
-                    bgcolor: theme.palette.mode === 'dark' ? 'grey.900' : 'grey.50',
                   }}>
                     <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '11px' }}>
-                      Wyświetlono {displayedRows.length} z {allFilteredRows.length} wierszy
+                      {allFilteredRows.length} {allFilteredRows.length === 1 ? 'wiersz' : allFilteredRows.length < 5 ? 'wiersze' : 'wierszy'}
                       {debouncedSearch && ` (filtrowane: "${debouncedSearch}")`}
                     </Typography>
-                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                      {displayedRowsCount < allFilteredRows.length && (
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          onClick={() => setDisplayedRowsCount(allFilteredRows.length)}
-                          sx={{ fontSize: '11px', py: 0.5, px: 1 }}
-                        >
-                          Załaduj wszystkie ({allFilteredRows.length})
-                        </Button>
-                      )}
-                      {editedRows.size > 0 && (
-                        <Box sx={{
-                          px: 1,
-                          py: 0.5,
-                          bgcolor: 'warning.main',
-                          color: 'warning.contrastText',
-                          borderRadius: 1,
-                          fontSize: '11px',
-                          fontWeight: 600,
-                        }}>
-                          {editedRows.size} {editedRows.size === 1 ? 'zmiana' : 'zmian'}
-                        </Box>
-                      )}
-                    </Box>
+                    {editedRows.size > 0 && (
+                      <Box sx={{
+                        px: 1,
+                        py: 0.5,
+                        bgcolor: 'warning.main',
+                        color: 'warning.contrastText',
+                        borderRadius: 1,
+                        fontSize: '11px',
+                        fontWeight: 600,
+                      }}>
+                        {editedRows.size} {editedRows.size === 1 ? 'zmiana' : 'zmian'}
+                      </Box>
+                    )}
                   </Box>
                 ),
               }}
