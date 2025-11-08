@@ -141,9 +141,6 @@ export function AttributeTablePanel({
     return cols;
   }, [features, constraints]);
 
-  // Client-side pagination state for infinite scroll
-  const [paginationModel, setPaginationModel] = useState({ page: 0, pageSize: 100 });
-
   // Prepare DataGrid rows (combine API data + new local rows)
   const rows: GridRowsProp = useMemo(() => {
     const apiRows = features.map((feature, index) => ({
@@ -504,8 +501,8 @@ export function AttributeTablePanel({
           </Typography>
           <Typography sx={{ fontSize: { xs: '10px', sm: '11px' }, color: 'text.secondary', whiteSpace: 'nowrap' }}>
             {searchText && filteredRows.length !== rows.length
-              ? `${filteredRows.length}/${rows.length}`
-              : `${rows.length}`}
+              ? `${filteredRows.length} / ${rows.length} wierszy`
+              : `${rows.length} ${rows.length === 1 ? 'wiersz' : rows.length < 5 ? 'wiersze' : 'wierszy'}`}
           </Typography>
         </Box>
 
@@ -723,14 +720,13 @@ export function AttributeTablePanel({
               getRowId={(row) => row.id}
               disableRowSelectionOnClick
               onRowClick={handleRowClick}
-              // Pagination for infinite scroll (client-side)
-              pagination
-              paginationMode="client"
-              paginationModel={paginationModel}
-              onPaginationModelChange={setPaginationModel}
-              pageSizeOptions={[100, 250, 500, 1000]}
+              // No pagination - full scroll with virtualization
+              hideFooter
               rowHeight={36} // Compact row height
               columnHeaderHeight={32} // Compact header height
+              // Enable sorting for all columns
+              sortingMode="client"
+              disableColumnFilter={false}
               processRowUpdate={handleRowEditCommit}
               onProcessRowUpdateError={(error) => {
                 console.error('Row edit error:', error);
@@ -775,33 +771,6 @@ export function AttributeTablePanel({
                   '& .MuiDataGrid-cell': {
                     color: '#fff',
                   },
-                },
-                // Compact footer with pagination
-                '& .MuiDataGrid-footerContainer': {
-                  minHeight: { xs: 40, sm: 44 }, // Compact footer
-                  borderTop: '1px solid',
-                  borderColor: 'divider',
-                  bgcolor: theme.palette.mode === 'dark' ? 'grey.900' : 'grey.50',
-                },
-                '& .MuiTablePagination-root': {
-                  fontSize: { xs: '11px', sm: '12px' },
-                },
-                '& .MuiTablePagination-displayedRows': {
-                  fontSize: { xs: '11px', sm: '12px' },
-                  margin: 0,
-                },
-                '& .MuiTablePagination-selectLabel': {
-                  fontSize: { xs: '11px', sm: '12px' },
-                  margin: 0,
-                },
-                '& .MuiTablePagination-select': {
-                  fontSize: { xs: '11px', sm: '12px' },
-                },
-                '& .MuiTablePagination-actions': {
-                  marginLeft: { xs: '4px', sm: '8px' },
-                },
-                '& .MuiIconButton-root': {
-                  padding: { xs: '4px', sm: '6px' },
                 },
                 // Custom scrollbar
                 '& .MuiDataGrid-virtualScroller': {
