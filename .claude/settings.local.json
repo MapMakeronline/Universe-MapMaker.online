@@ -2,7 +2,23 @@
   "permissions": {
     "allow": [
       "Bash(gcloud logging read:*)",
-      "Bash(timeout /t 3 /nobreak)"
+      "Bash(timeout /t 3 /nobreak)",
+      "Bash(npm run dev:*)",
+      "Bash(timeout /t 5 /nobreak)",
+      "Bash(powershell:*)",
+      "Bash(npx next dev)",
+      "Bash(gcloud compute ssh:*)",
+      "Bash(curl:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(npm install:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(gcloud run services describe:*)",
+      "Bash(gcloud run services update:*)",
+      "Bash(gcloud builds list:*)",
+      "Bash(gcloud builds submit:*)",
+      "Bash(tr:*)"
     ],
     "deny": [],
     "ask": []
