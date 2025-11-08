@@ -149,7 +149,6 @@ export default function MapPage() {
       dispatch(showError('Nie znaleziono warstwy'));
       return;
     }
-    console.log('🎯 Opening attribute table panel for layer:', layer.name);
     setSelectedLayerForTable(layer);
     setAttributeTableOpen(true);
   };
@@ -181,23 +180,12 @@ export default function MapPage() {
     (p) => p.project_name === projectName
   );
 
-  // DEBUG: Log project detection
-  console.log('🔍 Project Detection:', {
-    projectName,
-    isAuthenticated,
-    isLoadingProjects,
-    totalProjects: projectsData?.list_of_projects?.length,
-    projectFound: !!project,
-    projectsList: projectsData?.list_of_projects?.map(p => p.project_name),
-  });
 
   // Determine if user is owner (edit mode) or viewer (read-only)
   // IMPORTANT: Default to owner mode if authenticated (safer UX)
   // Only show read-only mode if we definitively know user is NOT owner
   const isOwner = isAuthenticated;  // If logged in → owner (can edit own projects)
   const isReadOnly = !isAuthenticated;  // Only read-only if not logged in
-
-  console.log('✏️ Edit Mode:', { isOwner, isReadOnly, isAuthenticated, user: user?.email });
 
   // Redirect to dashboard if no project name
   useEffect(() => {
@@ -224,14 +212,9 @@ export default function MapPage() {
   useEffect(() => {
     if (!projectData || isLoading) return;
 
-    console.log('📦 Loading project data:', projectData.name);
-    console.log('🔄 projectData changed - reloading layers. Children count:', projectData.children?.length || 0);
-    console.log(isOwner ? '✏️ Edit mode (owner)' : '👁️ Read-only mode (viewer)');
-
     // Convert QGIS backend structure to frontend LayerNode structure
     const qgisLayers = projectData.children || [];
     const convertedLayers = qgisLayers.map(convertQGISToLayerNode);
-    console.log('🔄 Dispatching loadLayers with', convertedLayers.length, 'layers');
     dispatch(loadLayers(convertedLayers));
 
     if (projectData.extent && projectData.extent.length === 4) {
@@ -244,21 +227,12 @@ export default function MapPage() {
       if (detectedCRS === 'EPSG:4326') {
         // Already WGS84
         [minLng, minLat, maxLng, maxLat] = projectData.extent;
-        console.log('✅ Extent already in WGS84 (EPSG:4326):', projectData.extent);
       } else if (detectedCRS === 'EPSG:3857') {
         // Transform from Web Mercator to WGS84
         [minLng, minLat, maxLng, maxLat] = transformExtentFromWebMercator(projectData.extent);
-        console.log('🔄 Transformed extent EPSG:3857 (Web Mercator) → WGS84:', {
-          from: projectData.extent,
-          to: [minLng, minLat, maxLng, maxLat]
-        });
       } else if (detectedCRS === 'EPSG:2180') {
         // Transform from Polish Grid to WGS84
         [minLng, minLat, maxLng, maxLat] = transformExtent(projectData.extent);
-        console.log('🔄 Transformed extent EPSG:2180 (Polish Grid) → WGS84:', {
-          from: projectData.extent,
-          to: [minLng, minLat, maxLng, maxLat]
-        });
       } else {
         // Unknown CRS - fallback to original coordinates
         [minLng, minLat, maxLng, maxLat] = projectData.extent;
@@ -365,7 +339,6 @@ export default function MapPage() {
             }}
             onHeightChange={setAttributeTableHeight}
             onRowSelect={(featureId, feature) => {
-              console.log('🎯 Row selected in table:', featureId, feature);
               // TODO: Implement map highlight using Mapbox feature-state
               // mapRef.current?.setFeatureState(
               //   { source: 'qgis-layer', id: featureId },

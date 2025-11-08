@@ -62,9 +62,6 @@ export function AttributeTableModal({
   // Infinite scroll state: how many rows to display (starts at 100)
   const [displayedRowsCount, setDisplayedRowsCount] = useState(100);
 
-  // Debug logging
-  console.log('🔍 AttributeTableModal props:', { open, projectName, layerId, layerName });
-
   // Fetch layer features (row-based data)
   // Optimization: Load only 1000 records for better performance
   const {
@@ -76,13 +73,6 @@ export function AttributeTableModal({
     { project: projectName, layer_id: layerId, limit: 1000 },
     { skip: !open } // Don't fetch until modal opens
   );
-
-  console.log('📊 useGetLayerFeaturesQuery state:', {
-    featuresResponse,
-    isLoading,
-    error,
-    skip: !open
-  });
 
   // Fetch column constraints (NOT NULL, UNIQUE, AUTO_INCREMENT)
   const { data: constraintsResponse } = useGetLayerConstraintsQuery(
@@ -154,7 +144,6 @@ export function AttributeTableModal({
   // Infinite scroll: Display only first N rows (grows as user scrolls)
   const displayedRows = useMemo(() => {
     const sliced = allFilteredRows.slice(0, displayedRowsCount);
-    console.log(`📊 Displaying ${sliced.length} of ${allFilteredRows.length} rows (infinite scroll)`);
     return sliced;
   }, [allFilteredRows, displayedRowsCount]);
 
@@ -166,7 +155,6 @@ export function AttributeTableModal({
   // Infinite scroll: DataGridPro native implementation
   const handleScrollEnd = React.useCallback(() => {
     if (displayedRowsCount < allFilteredRows.length) {
-      console.log(`📊 Infinite scroll: Scrolled to end! Loading 100 more rows (current: ${displayedRowsCount}, total: ${allFilteredRows.length})`);
       setDisplayedRowsCount(prev => Math.min(prev + 100, allFilteredRows.length));
     }
   }, [displayedRowsCount, allFilteredRows.length]);

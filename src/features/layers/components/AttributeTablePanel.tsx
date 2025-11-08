@@ -122,17 +122,6 @@ export function AttributeTablePanel({
     sequence_fields: [],
   };
 
-  // Debug: Log API response
-  React.useEffect(() => {
-    console.log('🔍 RTK Query State:', { isLoading, error, featuresResponse });
-    if (error) {
-      console.error('❌ API Error:', error);
-    }
-    if (featuresResponse) {
-      console.log('✅ Features Response:', featuresResponse);
-      console.log(`📊 AttributeTable loaded ${features.length} features from backend`);
-    }
-  }, [isLoading, error, featuresResponse, features.length]);
 
   // Prepare DataGrid columns
   const columns: GridColDef[] = useMemo(() => {
@@ -167,22 +156,18 @@ export function AttributeTablePanel({
 
   // Prepare DataGrid rows (combine API data + new local rows)
   const rows: GridRowsProp = useMemo(() => {
-    console.log('📊 Features from backend:', features.length);
     const apiRows = features.map((feature, index) => ({
       id: feature.gid || feature.fid || index,
       ...feature,
     }));
-    console.log('📊 API rows created:', apiRows.length);
     // Prepend new rows at the top
     const combined = [...newRows, ...apiRows];
-    console.log('📊 Total rows (new + api):', combined.length);
     return combined;
   }, [features, newRows]);
 
   // Filter rows by search text (all rows, not sliced)
   const allFilteredRows = useMemo(() => {
     if (!searchText) {
-      console.log('🔍 Filtered rows (no search):', rows.length);
       return rows;
     }
 
@@ -192,14 +177,12 @@ export function AttributeTablePanel({
       )
     );
 
-    console.log('🔍 Filtered rows (with search):', filtered.length, 'from', rows.length);
     return filtered;
   }, [rows, searchText]);
 
   // Infinite scroll: Display only first N rows (grows as user scrolls)
   const displayedRows = useMemo(() => {
     const sliced = allFilteredRows.slice(0, displayedRowsCount);
-    console.log(`📊 Displaying ${sliced.length} of ${allFilteredRows.length} rows (infinite scroll)`);
     return sliced;
   }, [allFilteredRows, displayedRowsCount]);
 
@@ -216,7 +199,6 @@ export function AttributeTablePanel({
   // Infinite scroll: DataGridPro native implementation
   const handleScrollEnd = useCallback(() => {
     if (displayedRowsCount < allFilteredRows.length) {
-      console.log(`📊 Infinite scroll: Scrolled to end! Loading 100 more rows (current: ${displayedRowsCount}, total: ${allFilteredRows.length})`);
       setDisplayedRowsCount(prev => Math.min(prev + 100, allFilteredRows.length));
     }
   }, [displayedRowsCount, allFilteredRows.length]);
@@ -233,7 +215,6 @@ export function AttributeTablePanel({
     setClickedRowId(rowId);
 
     if (onRowSelect) {
-      console.log('🎯 Row clicked:', rowId, params.row);
       onRowSelect(rowId, params.row);
     }
   }, [onRowSelect]);
@@ -247,8 +228,6 @@ export function AttributeTablePanel({
 
     // Get all edited rows
     let dataToSave = Array.from(editedRows.values());
-
-    console.log('💾 Preparing to save rows:', dataToSave);
 
     // ✅ VALIDATE NOT NULL FIELDS
     const notNullFields = constraints?.not_null_fields || [];
@@ -277,9 +256,6 @@ export function AttributeTablePanel({
       return !(typeof id === 'string' && id.startsWith('temp-'));
     });
 
-    console.log('📊 New records:', newRecords.length);
-    console.log('📝 Updated records:', updatedRecords.length);
-
     // ✅ CLEAN DATA FOR BACKEND
     // Remove temporary fields (id, temp ID, geometry)
     const cleanedNewRecords = newRecords.map((row) => {
@@ -302,8 +278,6 @@ export function AttributeTablePanel({
     try {
       // ✅ SAVE UPDATED RECORDS (if any)
       if (cleanedUpdatedRecords.length > 0) {
-        console.log('💾 Saving updated records:', cleanedUpdatedRecords);
-
         await saveRecords({
           project: projectName,
           layer: layerId,
@@ -315,13 +289,6 @@ export function AttributeTablePanel({
 
       // ✅ SAVE NEW RECORDS (if any)
       if (cleanedNewRecords.length > 0) {
-        console.log('💾 Saving new records:', cleanedNewRecords);
-        console.log('📤 Request payload:', {
-          project: projectName,
-          layer: layerId,
-          data: cleanedNewRecords,
-        });
-
         // Test if multipleSaving supports INSERT (records without gid)
         await saveRecords({
           project: projectName,
@@ -804,7 +771,6 @@ export function AttributeTablePanel({
               processRowUpdate={handleRowEditCommit}
               onProcessRowUpdateError={(error) => {
                 console.error('Row edit error:', error);
-                dispatch(showError('Błąd edycji wiersza'));
               }}
               getRowClassName={(params) =>
                 params.id === clickedRowId ? 'clicked-row' : ''

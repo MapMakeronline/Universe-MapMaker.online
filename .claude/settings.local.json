@@ -20,7 +20,9 @@
       "Bash(gcloud builds submit:*)",
       "Bash(tr:*)",
       "Bash(nul)",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "Bash(for file in \"src/features/layers/modals/AttributeTableModal.tsx\" \"src/features/layers/components/LeftPanel.tsx\" \"app/map/page.tsx\")",
+      "Bash(do echo \"=== $file ===\")"
     ],
     "deny": [],
     "ask": []

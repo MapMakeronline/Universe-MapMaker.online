@@ -108,9 +108,6 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
   const theme = useTheme();
   const dispatch = useAppDispatch();
 
-  // DEBUG: Log isOwner prop
-  console.log('🔧 LeftPanel received props:', { isOwner, externalCollapsed });
-
   // Get layers and expandedGroups from Redux
   const reduxLayers = useAppSelector((state) => state.layers.layers);
   const expandedGroups = useAppSelector((state) => state.layers.expandedGroups);
@@ -249,13 +246,11 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
   // TODO: Phase 4 - Rewrite these to use Redux + Backend API
   const handleAddDataset = (data: { nazwaPlan: string; nazwaGrupy: string; temat: string }) => {
     closeModal('addDataset');
-    console.log('TODO: Adding new dataset:', data);
     dispatch(showInfo('Dodawanie datasetu - wkrótce dostępne'));
   };
 
   const handleAddNationalLaw = (data: { type: 'create' | 'import'; [key: string]: any }) => {
     closeModal('addNationalLaw');
-    console.log('TODO: Adding new national law:', data);
     dispatch(showInfo('Dodawanie prawa krajowego - wkrótce dostępne'));
   };
 
@@ -282,7 +277,6 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
       setAuthRequiredModalOpen(true);
       return;
     }
-    console.log('Manage layer');
   };
 
   // Auth-protected wrapper for layer labeling
@@ -292,7 +286,6 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
       setAuthRequiredModalOpen(true);
       return;
     }
-    console.log('Layer labeling');
   };
 
   // Auth-protected wrapper for deleting layer
@@ -311,8 +304,6 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
 
   // Show attribute table for layer
   const handleShowAttributeTable = (layerId: string) => {
-    console.log('🔍 handleShowAttributeTable called with layerId:', layerId);
-
     // Use parent callback if provided (panel mode), otherwise use modal
     if (onShowAttributeTableFromParent) {
       onShowAttributeTableFromParent(layerId);
@@ -324,7 +315,6 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
         dispatch(showError('Nie znaleziono warstwy'));
         return;
       }
-      console.log('✅ Opening attribute table modal for layer:', layer.name);
       setSelectedLayer(layer);
       openModal('attributeTable');
     }
@@ -337,16 +327,13 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
     if (success) {
       setSelectedLayer(null); // Close properties panel on success
       // Manually refetch project data to update layer tree
-      console.log('🔄 Manually refetching project data after layer deletion');
       const result = await refetchProjectData();
 
       // Force Redux state update with fresh data
       if (result.data && result.data.children) {
-        console.log('🔄 Forcing Redux update with', result.data.children.length, 'layers from refetched data');
         const qgisLayers = result.data.children || [];
         const convertedLayers = qgisLayers.map(convertQGISToLayerNode);
         dispatch(loadLayers(convertedLayers));
-        console.log('✅ Redux layers state updated after layer deletion');
       }
     }
   };
@@ -359,7 +346,6 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
     dataZakonczenia: string;
   }) => {
     closeModal('createConsultation');
-    console.log('TODO: Creating consultation:', data);
     dispatch(showInfo('Tworzenie konsultacji - wkrótce dostępne'));
   };
 
@@ -368,7 +354,6 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
     restoredLayers: Array<{ id: string; nazwa: string; typ: 'wektor' | 'raster'; grupaNadrzedna?: string }>;
   }) => {
     closeModal('layerManager');
-    console.log('TODO: Layer manager:', data);
     dispatch(showInfo('Zarządzanie warstwami - wkrótce dostępne'));
   };
 
