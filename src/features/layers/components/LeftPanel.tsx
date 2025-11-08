@@ -562,6 +562,7 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
             onManageLayer={handleManageLayerClick}
             onLayerLabeling={handleLayerLabelingClick}
             onDeleteLayer={handleDeleteLayerClick}
+            onShowAttributeTable={handleShowAttributeTable}
             findParentGroup={findParentGroup}
             projectName={projectName}
             wmsUrl={projectData?.wms_url || ''}

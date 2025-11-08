@@ -9,7 +9,7 @@ import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
 import Skeleton from '@mui/material/Skeleton';
 import Alert from '@mui/material/Alert';
-import { DataGridPro, GridColDef, GridRowModel, GridRowsProp } from '@mui/x-data-grid-pro';
+import { DataGridPro, GridColDef, GridRowModel, GridRowsProp, GridColumnVisibilityModel } from '@mui/x-data-grid-pro';
 import CloseIcon from '@mui/icons-material/Close';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import DownloadIcon from '@mui/icons-material/Download';
@@ -18,11 +18,13 @@ import DragHandleIcon from '@mui/icons-material/DragHandle';
 import AddIcon from '@mui/icons-material/Add';
 import SaveIcon from '@mui/icons-material/Save';
 import CancelIcon from '@mui/icons-material/Cancel';
+import ViewWeekIcon from '@mui/icons-material/ViewWeek';
 import { useTheme } from '@mui/material/styles';
 import Divider from '@mui/material/Divider';
 import Tooltip from '@mui/material/Tooltip';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
+import { ColumnManagerModal } from './ColumnManagerModal';
 import {
   useGetLayerFeaturesQuery,
   useGetLayerConstraintsQuery,
@@ -34,8 +36,9 @@ import { showSuccess, showError } from '@/redux/slices/notificationSlice';
 
 interface AttributeTablePanelProps {
   projectName: string;
-  layerId: string;
-  layerName: string;
+  layerId: string; // QGIS layer ID (UUID from tree.json) - used for backend API calls
+  layerName: string; // Display name (for UI)
+  sourceTableName?: string; // PostgreSQL table name (optional - kept for potential future use)
   onClose: () => void;
   onRowSelect?: (featureId: string | number, feature: any) => void; // Callback for map highlight
   leftPanelWidth?: number; // Width of left panel (for dynamic offset)
@@ -56,6 +59,7 @@ export function AttributeTablePanel({
   projectName,
   layerId,
   layerName,
+  sourceTableName,
   onClose,
   onRowSelect,
   leftPanelWidth = 0,
@@ -67,17 +71,51 @@ export function AttributeTablePanel({
   const [debouncedSearch, setDebouncedSearch] = useState(''); // Debounced search for backend filtering
   const [editedRows, setEditedRows] = useState<Map<number, GridRowModel>>(new Map());
   const [newRows, setNewRows] = useState<GridRowsProp>([]); // Local state for new rows
-  // Default height: smaller on mobile (200px) for landscape compatibility
+
+  // PERSISTENCE: Load saved panel height from localStorage
   const [panelHeight, setPanelHeight] = useState(() => {
     if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(`attributeTable_${layerId}_height`);
+      if (saved) return parseInt(saved, 10);
       return window.innerWidth < 600 ? 200 : 300;
     }
     return 300;
   });
+
+  // PERSISTENCE: Save panel height to localStorage when changed
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(`attributeTable_${layerId}_height`, panelHeight.toString());
+    }
+  }, [panelHeight, layerId]);
+
+  // PERSISTENCE: Column visibility state (saved per layer)
+  const [columnVisibilityModel, setColumnVisibilityModel] = useState<GridColumnVisibilityModel>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(`attributeTable_${layerId}_columnVisibility`);
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch (e) {
+          return {};
+        }
+      }
+    }
+    return {};
+  });
+
+  // PERSISTENCE: Save column visibility when changed
+  const handleColumnVisibilityChange = React.useCallback((newModel: GridColumnVisibilityModel) => {
+    setColumnVisibilityModel(newModel);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(`attributeTable_${layerId}_columnVisibility`, JSON.stringify(newModel));
+    }
+  }, [layerId]);
+
   const [isDragging, setIsDragging] = useState(false);
   const [clickedRowId, setClickedRowId] = useState<string | number | null>(null);
   const [isLayerSwitching, setIsLayerSwitching] = useState(false); // Track layer switching state
-  const [rowLimit, setRowLimit] = useState(5000); // Current row limit (increases on scroll)
+  const [rowLimit, setRowLimit] = useState(100); // Current row limit (starts at BATCH_SIZE, increases on scroll)
   const [hasMoreRows, setHasMoreRows] = useState(true); // Whether there are more rows to load
 
   // Local state for displayed features (decoupled from RTK Query cache)
@@ -94,8 +132,9 @@ export function AttributeTablePanel({
 
   // Fetch layer features (row-based data)
   // PERFORMANCE: Infinite scroll with automatic loading
-  // Start with 5000 rows, load +5000 more on scroll to bottom
-  const BATCH_SIZE = 5000; // Load 5000 rows per batch
+  // ULTRA-OPTIMIZED: Start with 100 rows (instant load), load +100 more on scroll
+  // For 19k rows: 100→200→300... (user sees data in ~100-200ms, instant feel)
+  const BATCH_SIZE = 100; // Load 100 rows per batch (ultra-fast UX)
 
   const {
     data: featuresResponse,
@@ -106,13 +145,14 @@ export function AttributeTablePanel({
   } = useGetLayerFeaturesQuery(
     {
       project: projectName,
-      layer_id: layerId,
+      layer_id: layerId, // CRITICAL: Backend expects QGIS layer ID (UUID from tree.json)
       limit: rowLimit, // Dynamic limit (increases on scroll)
     },
     {
       skip: !projectName || !layerId, // Don't fetch if project or layer not specified
-      // OPTIMIZATION: Use cache for fast layer switching - only refetch when actually needed
-      // Cache is invalidated by tags when layer data changes (edits, deletes, etc.)
+      // CRITICAL FIX: Always refetch when layer changes (prevents stale cache data)
+      // Without this, RTK Query returns cached data from previous layer briefly
+      refetchOnMountOrArgChange: true, // Force fresh data on layer change
     }
   );
 
@@ -122,7 +162,7 @@ export function AttributeTablePanel({
   const { data: constraintsResponse } = useGetLayerConstraintsQuery(
     {
       project: projectName,
-      layer_id: layerId,
+      layer_id: layerId, // CRITICAL: Backend expects QGIS layer ID (UUID from tree.json)
     },
     {
       skip: !projectName || !layerId, // Don't fetch if project or layer not specified
@@ -132,6 +172,7 @@ export function AttributeTablePanel({
   const [saveRecords, { isLoading: isSaving }] = useSaveMultipleRecordsMutation();
   const [exportLayer] = useLazyExportLayerQuery();
   const [exportMenuAnchor, setExportMenuAnchor] = useState<null | HTMLElement>(null);
+  const [columnManagerOpen, setColumnManagerOpen] = useState(false);
 
   // Extract constraints
   const constraints = constraintsResponse?.data || {
@@ -140,16 +181,53 @@ export function AttributeTablePanel({
     sequence_fields: [],
   };
 
-  // Sync displayedFeatures with RTK Query data (ONLY when not switching layers)
-  // This is the CRITICAL fix - prevents stale cache data from showing
-  // IMPORTANT: Also check if data is for current layer (prevent race conditions)
+  // Sync displayedFeatures with RTK Query data
+  // PROGRESSIVE LOADING: Show data immediately as it arrives (no batching delay)
   React.useEffect(() => {
-    if (!isLayerSwitching && featuresResponse?.data) {
-      // Additional safety: Only update if we're not in the middle of switching
-      // This prevents RTK Query cache from briefly showing old layer data
+    console.log(`[AttributeTablePanel] useEffect triggered:`, {
+      layerId,
+      layerName,
+      hasData: !!featuresResponse?.data,
+      dataLength: featuresResponse?.data?.length,
+      isLoading,
+      isFetching,
+      currentDisplayedCount: displayedFeatures.length,
+      timestamp: new Date().toISOString()
+    });
+
+    if (featuresResponse?.data && featuresResponse.data.length > 0) {
+      console.log(`[AttributeTablePanel] ✅ Setting displayedFeatures:`, {
+        layerName,
+        count: featuresResponse.data.length,
+        timestamp: new Date().toISOString()
+      });
+
+      // INSTANT UX: Show data immediately without any batching delay
+      // User sees column names + first rows instantly (~50-100ms)
       setDisplayedFeatures(featuresResponse.data);
+
+      // Clear switching flag immediately when we have data
+      // This ensures table becomes interactive ASAP
+      if (isLayerSwitching) {
+        setIsLayerSwitching(false);
+      }
+    } else if (!isLoading && !isFetching && featuresResponse?.data !== undefined) {
+      // Data fetch complete but returned empty array
+      console.log(`[AttributeTablePanel] ⚠️ Empty data received (layer has no features):`, {
+        layerName,
+        timestamp: new Date().toISOString()
+      });
+      setDisplayedFeatures([]);
+      setIsLayerSwitching(false);
+    } else {
+      console.log(`[AttributeTablePanel] ⏳ Still loading:`, {
+        layerName,
+        isLoading,
+        isFetching,
+        timestamp: new Date().toISOString()
+      });
     }
-  }, [featuresResponse?.data, isLayerSwitching]);
+  }, [featuresResponse?.data, layerId, layerName, isLoading, isFetching, isLayerSwitching]);
 
   // Detect if we've loaded all rows (for infinite scroll)
   React.useEffect(() => {
@@ -163,25 +241,66 @@ export function AttributeTablePanel({
   }, [displayedFeatures.length, rowLimit]);
 
 
+  // Helper: Categorize column type (for column manager)
+  const categorizeColumn = (key: string): 'geometry' | 'metadata' | 'attributes' => {
+    // Geometry columns
+    if (key === 'geom' || key === 'geometry' || key === 'wkb_geometry') return 'geometry';
+
+    // Metadata columns (IDs, technical fields)
+    const metadataFields = ['ogc_fid', 'gid', 'fid', 'id', 'lokalnyId', 'wersjaId', 'poczatekWersjiObiektu', 'obowiazujeOd', 'koniecWersjiObiektu'];
+    if (metadataFields.includes(key)) return 'metadata';
+
+    // Everything else is an attribute (descript_1, symbol, etc.)
+    return 'attributes';
+  };
+
   // Prepare DataGrid columns
   const columns: GridColDef[] = useMemo(() => {
     if (displayedFeatures.length === 0) return [];
 
     const firstRow = displayedFeatures[0];
+    const allKeys = Object.keys(firstRow);
+
+    // COLUMN ORDER: Data columns first, then ID columns at the end
+    // This puts important data (descript_1, descript_2) before technical IDs (ogc_fid)
+    const idColumns = ['ogc_fid', 'gid', 'fid', 'id'];
+    const sortedKeys = allKeys.sort((a, b) => {
+      const aIsId = idColumns.includes(a);
+      const bIsId = idColumns.includes(b);
+
+      // ID columns go to the end
+      if (aIsId && !bIsId) return 1;
+      if (!aIsId && bIsId) return -1;
+
+      // Keep original order for non-ID columns
+      return 0;
+    });
+
     const cols: GridColDef[] = [];
 
-    Object.keys(firstRow).forEach((key) => {
+    sortedKeys.forEach((key) => {
       // Skip geometry columns
       if (key === 'geom' || key === 'geometry') return;
 
       const isRequired = constraints.not_null_fields.includes(key);
       const isAutoIncrement = constraints.sequence_fields.includes(key);
 
+      // RESPONSIVE COLUMN WIDTHS: ID columns narrow, data columns wider
+      const isIdColumn = idColumns.includes(key);
+
       cols.push({
         field: key,
         headerName: key + (isRequired ? ' *' : ''),
-        flex: 1,
-        minWidth: 120,
+        // ID columns: fixed narrow width (no flex)
+        // Data columns: flexible width (grows to fill space)
+        ...(isIdColumn ? {
+          width: 60, // Fixed 60px for ID columns (just enough for numbers)
+          minWidth: 60,
+          maxWidth: 80,
+        } : {
+          flex: 1, // Data columns grow to fill available space
+          minWidth: 150, // Wider minimum for readability
+        }),
         editable: !isAutoIncrement,
         type: 'string',
         valueFormatter: (value) => {
@@ -193,6 +312,15 @@ export function AttributeTablePanel({
 
     return cols;
   }, [displayedFeatures, constraints]);
+
+  // Prepare column info for ColumnManagerModal
+  const columnInfoForManager = useMemo(() => {
+    return columns.map((col) => ({
+      field: col.field,
+      headerName: col.headerName || col.field,
+      group: categorizeColumn(col.field),
+    }));
+  }, [columns]);
 
   // Find primary key column dynamically (ogc_fid, gid, fid, or id)
   // IMPORTANT: ogc_fid is the standard PostGIS/QGIS primary key
@@ -234,6 +362,12 @@ export function AttributeTablePanel({
   // CRITICAL: Clear state IMMEDIATELY when switching layers
   // This prevents stale data from previous layer showing up
   React.useEffect(() => {
+    console.log(`[AttributeTablePanel] 🔄 Layer changed, resetting state:`, {
+      layerId,
+      layerName,
+      timestamp: new Date().toISOString()
+    });
+
     // 1. Clear displayed features FIRST (instant clear)
     setDisplayedFeatures([]);
 
@@ -251,16 +385,10 @@ export function AttributeTablePanel({
 
     // NOTE: Don't use timeout here - let the sync effect (line 134-140) handle clearing isLayerSwitching
     // when new data actually arrives
-  }, [layerId, BATCH_SIZE]); // Reset when layer changes
+  }, [layerId, layerName, BATCH_SIZE]); // Reset when layer changes
 
-  // Clear isLayerSwitching flag when new data arrives
-  React.useEffect(() => {
-    // Check if data fetch is complete (even if result is empty array)
-    if (!isLoading && !isFetching && featuresResponse?.data !== undefined) {
-      // New data has arrived (even if empty), safe to clear switching flag
-      setIsLayerSwitching(false);
-    }
-  }, [isLoading, isFetching, featuresResponse?.data]);
+  // NOTE: isLayerSwitching is now cleared in the main sync effect above
+  // No need for separate timeout-based clearing - data shows immediately
 
   React.useEffect(() => {
     onHeightChange?.(panelHeight);
@@ -490,7 +618,9 @@ export function AttributeTablePanel({
     if (!isDragging) return;
     e.preventDefault(); // Prevent scrolling on mobile
     const newHeight = window.innerHeight - e.clientY;
-    const clampedHeight = Math.max(150, Math.min(newHeight, window.innerHeight - 100));
+    // IMPROVED: Better limits - min 150px, max 80% of viewport height
+    const maxHeight = Math.floor(window.innerHeight * 0.8); // 80% of viewport
+    const clampedHeight = Math.max(150, Math.min(newHeight, maxHeight));
     setPanelHeight(clampedHeight);
     onHeightChange?.(clampedHeight); // Notify parent of height change
   }, [isDragging, onHeightChange]);
@@ -545,12 +675,14 @@ export function AttributeTablePanel({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
+          gap: 0.5,
           transition: 'all 0.2s ease-in-out',
           borderTop: '2px solid',
           borderColor: isDragging ? 'primary.main' : 'divider',
           boxShadow: isDragging ? '0 -2px 8px rgba(0,0,0,0.2)' : 'none',
           touchAction: 'none', // Prevent default touch behaviors
           userSelect: 'none', // Prevent text selection during drag
+          position: 'relative', // For height indicator
           '&:hover': {
             bgcolor: 'primary.light',
             borderColor: 'primary.main',
@@ -568,6 +700,77 @@ export function AttributeTablePanel({
             color: isDragging ? 'primary.contrastText' : 'text.secondary'
           }}
         />
+        {/* Height indicator during drag */}
+        {isDragging && (
+          <Box
+            sx={{
+              position: 'absolute',
+              right: 16,
+              bgcolor: 'primary.main',
+              color: 'primary.contrastText',
+              px: 1,
+              py: 0.25,
+              borderRadius: 0.5,
+              fontSize: '11px',
+              fontWeight: 600,
+              pointerEvents: 'none',
+            }}
+          >
+            {panelHeight}px
+          </Box>
+        )}
+        {/* Quick height presets - shown on hover (desktop only) */}
+        {!isDragging && (
+          <Box
+            sx={{
+              position: 'absolute',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              display: { xs: 'none', sm: 'none', md: 'flex' }, // Desktop only
+              gap: 0.5,
+              opacity: 0,
+              transition: 'opacity 0.2s ease-in-out',
+              pointerEvents: 'none',
+              '.MuiBox-root:hover &': {
+                opacity: 1,
+                pointerEvents: 'auto',
+              },
+            }}
+          >
+            {[
+              { label: 'S', height: 200 },
+              { label: 'M', height: 350 },
+              { label: 'L', height: 500 },
+            ].map(({ label, height }) => (
+              <Box
+                key={label}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setPanelHeight(height);
+                  onHeightChange?.(height);
+                }}
+                sx={{
+                  px: 0.75,
+                  py: 0.25,
+                  bgcolor: panelHeight === height ? 'primary.main' : 'background.paper',
+                  color: panelHeight === height ? 'primary.contrastText' : 'text.secondary',
+                  borderRadius: 0.5,
+                  fontSize: '10px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  '&:hover': {
+                    bgcolor: 'primary.light',
+                    color: 'primary.contrastText',
+                  },
+                }}
+              >
+                {label}
+              </Box>
+            ))}
+          </Box>
+        )}
       </Box>
 
       {/* Header - Responsive toolbar */}
@@ -596,21 +799,43 @@ export function AttributeTablePanel({
       >
         {/* Title & Record Count - Left side */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1 }, mr: { xs: 0.5, sm: 1 } }}>
-          <Typography sx={{ fontSize: { xs: '12px', sm: '13px' }, fontWeight: 600, whiteSpace: 'nowrap' }}>
+          <Typography sx={{
+            fontSize: { xs: '12px', sm: '13px' },
+            fontWeight: 600,
+            whiteSpace: 'nowrap',
+            // Highlight layer name during switch for visual feedback
+            color: isLayerSwitching ? 'primary.main' : 'inherit',
+            transition: 'color 0.2s ease-in-out'
+          }}>
             {layerName}
           </Typography>
           <Typography sx={{ fontSize: { xs: '10px', sm: '11px' }, color: 'text.secondary', whiteSpace: 'nowrap' }}>
             {/* Force 0 rows display during layer switch to prevent stale count */}
-            {isLayerSwitching ? '0 wierszy' : (
+            {isLayerSwitching ? '(ładowanie...)' : (
               searchText && allFilteredRows.length !== rows.length
                 ? `${allFilteredRows.length} / ${rows.length} wierszy`
                 : `${rows.length} ${rows.length === 1 ? 'wiersz' : rows.length < 5 ? 'wiersze' : 'wierszy'}`
             )}
             {!isLayerSwitching && hasMoreRows && !searchText && ` (więcej...)`}
           </Typography>
-          {/* Loading indicator during fetch */}
-          {isFetching && (
-            <CircularProgress size={14} sx={{ ml: 0.5 }} />
+          {/* Loading indicator + Refresh button */}
+          {(isFetching || isLayerSwitching) ? (
+            <CircularProgress size={14} sx={{ ml: 0.5, color: 'primary.main' }} />
+          ) : (
+            <Tooltip title="Odśwież dane">
+              <IconButton
+                size="small"
+                onClick={() => refetch()}
+                sx={{
+                  p: 0.25,
+                  ml: 0.25,
+                  opacity: 0.6,
+                  '&:hover': { opacity: 1 }
+                }}
+              >
+                <RefreshIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+            </Tooltip>
           )}
         </Box>
 
@@ -654,7 +879,7 @@ export function AttributeTablePanel({
 
           <Divider orientation="vertical" flexItem sx={{ mx: { xs: 0.25, sm: 0.5 } }} />
 
-          {/* Export/Refresh Group - ALWAYS VISIBLE */}
+          {/* Export/Column Manager Group - ALWAYS VISIBLE */}
           <Tooltip title="Eksportuj">
             <span>
               <IconButton
@@ -667,12 +892,16 @@ export function AttributeTablePanel({
               </IconButton>
             </span>
           </Tooltip>
-          <Tooltip title="Odśwież dane">
-            <span>
-              <IconButton size="small" onClick={() => refetch()} disabled={isLoading} sx={{ p: { xs: 0.75, sm: 0.5 } }}>
-                <RefreshIcon sx={{ fontSize: { xs: 20, sm: 18 } }} />
-              </IconButton>
-            </span>
+
+          <Tooltip title="Zarządzaj kolumnami">
+            <IconButton
+              size="small"
+              onClick={() => setColumnManagerOpen(true)}
+              disabled={columns.length === 0}
+              sx={{ p: { xs: 0.75, sm: 0.5 } }}
+            >
+              <ViewWeekIcon sx={{ fontSize: { xs: 20, sm: 18 } }} />
+            </IconButton>
           </Tooltip>
 
           <Box sx={{ flex: 1 }} />
@@ -724,19 +953,29 @@ export function AttributeTablePanel({
       </Box>
 
       {/* DataGrid Content */}
-      <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      <Box sx={{
+        flex: 1,
+        minHeight: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        // Fade animation during layer switch
+        opacity: isLayerSwitching ? 0.3 : 1,
+        transition: 'opacity 0.15s ease-in-out',
+        pointerEvents: isLayerSwitching ? 'none' : 'auto', // Disable clicks during switch
+      }}>
         {/* Only show skeleton loader during initial load or layer switch (NOT during infinite scroll) */}
+        {/* MINIMAL SKELETON: Only 3 rows to show instantly, then real data appears */}
         {(isLoading || isLayerSwitching) && displayedFeatures.length === 0 ? (
           <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
-            {/* Skeleton loader - table-like structure */}
+            {/* Minimal skeleton loader - just header + 3 rows for instant feel */}
             <Skeleton variant="rectangular" height={32} sx={{ borderRadius: 1 }} /> {/* Header */}
-            {[...Array(8)].map((_, i) => (
-              <Skeleton key={i} variant="rectangular" height={36} sx={{ borderRadius: 0.5, opacity: 1 - i * 0.1 }} />
+            {[...Array(3)].map((_, i) => (
+              <Skeleton key={i} variant="rectangular" height={36} sx={{ borderRadius: 0.5, opacity: 1 - i * 0.15 }} />
             ))}
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, mt: 2 }}>
-              <CircularProgress size={20} />
-              <Typography variant="caption" color="text.secondary">
-                {isLayerSwitching ? 'Przełączanie warstwy...' : 'Ładowanie danych...'}
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, mt: 1 }}>
+              <CircularProgress size={16} />
+              <Typography variant="caption" color="text.secondary" sx={{ fontSize: '10px' }}>
+                {isLayerSwitching ? 'Ładowanie...' : 'Ładowanie...'}
               </Typography>
             </Box>
           </Box>
@@ -762,6 +1001,10 @@ export function AttributeTablePanel({
               // Infinite scroll - load more rows when scrolled to bottom
               onRowsScrollEnd={handleRowsScrollEnd}
 
+              // PERSISTENCE: Column visibility (saved per layer in localStorage)
+              columnVisibilityModel={columnVisibilityModel}
+              onColumnVisibilityModelChange={handleColumnVisibilityChange}
+
               // Performance Optimizations
               columnVirtualizationEnabled // Only render visible columns (100+ columns)
               pinnedColumns={{ left: primaryKeyColumn ? [primaryKeyColumn] : [], right: [] }} // Pin primary key column
@@ -773,9 +1016,13 @@ export function AttributeTablePanel({
 
               rowHeight={36} // Compact row height
               columnHeaderHeight={32} // Compact header height
+              rowBuffer={25} // OPTIMIZED: Render 25 rows before/after viewport (default: 100)
+              columnBuffer={5} // OPTIMIZED: Render 5 columns before/after viewport (default: 10)
 
-              // Sorting and filtering (client-side)
-              sortingMode="client"
+              // Sorting and filtering
+              // SMART: Disable sorting for large datasets (>1000 rows) - client-side sorting is slow
+              sortingMode={rows.length > 1000 ? undefined : "client"}
+              disableColumnSort={rows.length > 1000} // Disable sorting UI for large tables
               disableColumnFilter // Disable column menu filters for performance
               disableColumnMenu={false} // Keep column menu for other actions
 
@@ -789,6 +1036,25 @@ export function AttributeTablePanel({
 
               // Custom footer with info and edit counter
               slotProps={{
+                // POSITIONING FIX: Panel (column menu) opens upward to prevent expanding map
+                panel: {
+                  anchorOrigin: {
+                    vertical: 'top', // Attach to top of anchor element
+                    horizontal: 'left',
+                  },
+                  transformOrigin: {
+                    vertical: 'bottom', // Panel's bottom edge aligns with anchor's top
+                    horizontal: 'left',
+                  },
+                  sx: {
+                    maxHeight: '60vh', // Limit to 60% of viewport height
+                    overflow: 'auto',
+                    // Prevent panel from expanding outside viewport
+                    '& .MuiPaper-root': {
+                      maxHeight: '60vh',
+                    },
+                  },
+                },
                 footer: {
                   sx: {
                     borderTop: '1px solid',
@@ -804,14 +1070,17 @@ export function AttributeTablePanel({
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
+                    bgcolor: isLayerSwitching ? 'action.hover' : 'inherit', // Visual feedback
+                    transition: 'background-color 0.2s ease-in-out',
                   }}>
                     <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '11px' }}>
-                      {/* Force 0 rows display during layer switch */}
-                      {isLayerSwitching ? '0 wierszy' : (
+                      {/* Force loading text during layer switch */}
+                      {isLayerSwitching ? 'Ładowanie warstwy...' : (
                         <>
                           {allFilteredRows.length} {allFilteredRows.length === 1 ? 'wiersz' : allFilteredRows.length < 5 ? 'wiersze' : 'wierszy'}
                           {debouncedSearch && ` (filtrowane: "${debouncedSearch}")`}
                           {hasMoreRows && !searchText && ` • Przewiń w dół aby załadować więcej`}
+                          {rows.length > 1000 && ' • Sortowanie wyłączone (>1000 wierszy)'}
                         </>
                       )}
                     </Typography>
@@ -914,6 +1183,15 @@ export function AttributeTablePanel({
           KML (Google Earth)
         </MenuItem>
       </Menu>
+
+      {/* Column Manager Modal */}
+      <ColumnManagerModal
+        open={columnManagerOpen}
+        onClose={() => setColumnManagerOpen(false)}
+        columns={columnInfoForManager}
+        visibilityModel={columnVisibilityModel}
+        onVisibilityChange={handleColumnVisibilityChange}
+      />
     </Box>
   );
 }

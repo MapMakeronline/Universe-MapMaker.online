@@ -30,6 +30,8 @@ import PaletteIcon from '@mui/icons-material/Palette';
 import MapIcon from '@mui/icons-material/Map';
 import SettingsIcon from '@mui/icons-material/Settings';
 import LockIcon from '@mui/icons-material/Lock';
+import TableChartIcon from '@mui/icons-material/TableChart';
+import ViewWeekIcon from '@mui/icons-material/ViewWeek';
 import { BasemapSelector } from './BasemapSelector';
 import { PublishServicesModal } from '../modals/PublishServicesModal';
 import { PublishLayersModal } from '../modals/PublishLayersModal';
@@ -85,6 +87,7 @@ interface PropertiesPanelProps {
   onManageLayer: () => void;
   onLayerLabeling: () => void;
   onDeleteLayer: () => void;
+  onShowAttributeTable?: (layerId: string) => void; // Callback to open attribute table panel
   findParentGroup: (layers: Warstwa[], childId: string) => Warstwa | null;
   projectName?: string;
   wmsUrl?: string;
@@ -102,6 +105,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   onClosePanel,
   onEditLayerStyle,
   onManageLayer,
+  onShowAttributeTable,
   onLayerLabeling,
   onDeleteLayer,
   findParentGroup,
@@ -287,6 +291,86 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                   <LockIcon sx={{ fontSize: '12px', ml: 0.5, color: theme.palette.text.secondary }} />
                 </Box>
               </Box>
+
+              {/* Tabela atrybutów - Sekcja rozwijalna z przyciskami */}
+              <Accordion
+                disableGutters
+                elevation={0}
+                sx={{
+                  bgcolor: 'transparent',
+                  '&:before': { display: 'none' },
+                  '& .MuiAccordionSummary-root': {
+                    minHeight: PANEL_CONFIG.panel.headerHeight,
+                    p: 0.5,
+                    borderTop: `1px solid ${theme.palette.divider}`,
+                    '&:hover': {
+                      bgcolor: theme.palette.action.hover,
+                    }
+                  },
+                  '& .MuiAccordionDetails-root': {
+                    p: 1,
+                    bgcolor: theme.palette.background.default,
+                    borderTop: `1px solid ${theme.palette.divider}`,
+                  }
+                }}
+              >
+                <AccordionSummary
+                  expandIcon={<ExpandMoreIcon sx={{ fontSize: 16 }} />}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <TableChartIcon sx={{ fontSize: PANEL_CONFIG.typography.iconSize, color: theme.palette.text.secondary }} />
+                    <Typography
+                      sx={{
+                        color: theme.palette.text.primary,
+                        fontSize: PANEL_CONFIG.typography.headerFontSize,
+                        fontWeight: 500,
+                      }}
+                    >
+                      Tabela atrybutów
+                    </Typography>
+                  </Box>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <Stack spacing={1}>
+                    {/* Otwórz tabelę */}
+                    <Button
+                      fullWidth
+                      size="small"
+                      variant="outlined"
+                      startIcon={<TableChartIcon sx={{ fontSize: 16 }} />}
+                      onClick={() => {
+                        if (onShowAttributeTable && selectedLayer) {
+                          onShowAttributeTable(selectedLayer.id);
+                        }
+                      }}
+                      sx={{
+                        justifyContent: 'flex-start',
+                        textTransform: 'none',
+                        fontSize: '12px',
+                        py: 0.75,
+                        borderRadius: 1,
+                      }}
+                    >
+                      Otwórz tabelę
+                    </Button>
+
+                    {/* Informacja o zarządzaniu kolumnami */}
+                    <Box
+                      sx={{
+                        p: 1,
+                        bgcolor: theme.palette.mode === 'dark' ? 'grey.800' : 'grey.100',
+                        borderRadius: 1,
+                        borderLeft: `3px solid ${theme.palette.primary.main}`,
+                      }}
+                    >
+                      <Typography sx={{ fontSize: '11px', color: 'text.secondary', lineHeight: 1.4 }}>
+                        <ViewWeekIcon sx={{ fontSize: 13, verticalAlign: 'middle', mr: 0.5 }} />
+                        Zarządzanie kolumnami dostępne w toolbarze tabeli (po otwarciu)
+                      </Typography>
+                    </Box>
+                  </Stack>
+                </AccordionDetails>
+              </Accordion>
             </>
           )}
         </>
