@@ -738,9 +738,12 @@ export function AttributeTablePanel({
               getRowId={(row) => row.id}
               disableRowSelectionOnClick
               onRowClick={handleRowClick}
-              // No pagination - disable virtualization to bypass 100 row limit
-              disableVirtualization // CRITICAL: MUI Community has 100 row limit with virtualization ON
-              hideFooter // Remove pagination footer entirely
+              // WORKAROUND: MUI Community v8 has 100 row virtualization limit
+              // disableVirtualization not available in v8 Community
+              // Solution: Use pagination with very large page size (10,000)
+              paginationModel={{ page: 0, pageSize: 10000 }}
+              pageSizeOptions={[10000]}
+              hideFooter // Remove pagination footer (user won't see controls)
               rowHeight={36} // Compact row height
               columnHeaderHeight={32} // Compact header height
               // Enable sorting for all columns
