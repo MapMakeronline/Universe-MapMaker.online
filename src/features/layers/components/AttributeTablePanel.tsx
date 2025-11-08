@@ -11,8 +11,8 @@ import Alert from '@mui/material/Alert';
 import { DataGridPro, GridColDef, GridRowModel, GridRowsProp } from '@mui/x-data-grid-pro';
 import { LicenseInfo } from '@mui/x-license';
 
-// Initialize MUI X Pro license on client
-if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_MUI_LICENSE_KEY) {
+// Initialize MUI X Pro license
+if (process.env.NEXT_PUBLIC_MUI_LICENSE_KEY) {
   LicenseInfo.setLicenseKey(process.env.NEXT_PUBLIC_MUI_LICENSE_KEY);
 }
 import CloseIcon from '@mui/icons-material/Close';
