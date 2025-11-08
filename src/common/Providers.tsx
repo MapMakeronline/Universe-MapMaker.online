@@ -5,20 +5,14 @@ import { Provider } from 'react-redux';
 import { ThemeProvider } from '@mui/material/styles';
 import { CssBaseline } from '@mui/material';
 import { GoogleOAuthProvider } from '@react-oauth/google';
-import { LicenseInfo } from '@mui/x-license';
 import { makeStore, AppStore } from '@/redux/store';
 import { themeOptimized as theme } from '@/styles/theme';
 import ErrorBoundary from '@/common/ErrorBoundary';
 import AuthProvider from '@/features/autoryzacja/AuthProvider';
 import { NotificationProvider } from '@/common/NotificationProvider';
+import { MuiLicenseInitializer } from '@/common/MuiLicenseInitializer';
 
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
-
-// Initialize MUI X Pro license on client-side
-if (process.env.NEXT_PUBLIC_MUI_LICENSE_KEY) {
-  LicenseInfo.setLicenseKey(process.env.NEXT_PUBLIC_MUI_LICENSE_KEY);
-  console.log('✅ MUI X Pro license initialized');
-}
 
 interface ProvidersProps {
   children: React.ReactNode;
@@ -35,6 +29,7 @@ export default function Providers({ children }: ProvidersProps) {
 
   return (
     <ErrorBoundary showDetails={isDevelopment}>
+      <MuiLicenseInitializer />
       <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
         <Provider store={storeRef.current}>
           <AuthProvider>
