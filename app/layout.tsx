@@ -5,8 +5,8 @@ import Providers from "@/common/Providers"
 import GoogleAnalytics from "@/common/GoogleAnalytics"
 import { LicenseInfo } from '@mui/x-license';
 
-// Initialize MUI X Pro license
-if (typeof window === 'undefined' && process.env.NEXT_PUBLIC_MUI_LICENSE_KEY) {
+// Initialize MUI X Pro license (must run on both server and client)
+if (process.env.NEXT_PUBLIC_MUI_LICENSE_KEY) {
   LicenseInfo.setLicenseKey(process.env.NEXT_PUBLIC_MUI_LICENSE_KEY);
 }
 
