@@ -554,14 +554,16 @@ export function AttributeTablePanel({
             </span>
           </Tooltip>
           <Tooltip title="Anuluj zmiany">
-            <IconButton
-              size="small"
-              disabled={editedRows.size === 0}
-              onClick={() => setEditedRows(new Map())}
-              sx={{ p: { xs: 0.75, sm: 0.5 } }}
-            >
-              <CancelIcon sx={{ fontSize: { xs: 20, sm: 18 } }} />
-            </IconButton>
+            <span>
+              <IconButton
+                size="small"
+                disabled={editedRows.size === 0}
+                onClick={() => setEditedRows(new Map())}
+                sx={{ p: { xs: 0.75, sm: 0.5 } }}
+              >
+                <CancelIcon sx={{ fontSize: { xs: 20, sm: 18 } }} />
+              </IconButton>
+            </span>
           </Tooltip>
 
           <Divider orientation="vertical" flexItem sx={{ mx: { xs: 0.25, sm: 0.5 } }} />
