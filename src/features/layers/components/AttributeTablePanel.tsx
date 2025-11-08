@@ -8,7 +8,13 @@ import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
 import Alert from '@mui/material/Alert';
-import { DataGrid, GridColDef, GridRowModel, GridRowsProp } from '@mui/x-data-grid';
+import { DataGridPro, GridColDef, GridRowModel, GridRowsProp } from '@mui/x-data-grid-pro';
+import { LicenseInfo } from '@mui/x-license';
+
+// Initialize MUI X Pro license on client
+if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_MUI_LICENSE_KEY) {
+  LicenseInfo.setLicenseKey(process.env.NEXT_PUBLIC_MUI_LICENSE_KEY);
+}
 import CloseIcon from '@mui/icons-material/Close';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import DownloadIcon from '@mui/icons-material/Download';
@@ -49,6 +55,7 @@ interface AttributeTablePanelProps {
   onClose: () => void;
   onRowSelect?: (featureId: string | number, feature: any) => void; // Callback for map highlight
   leftPanelWidth?: number; // Width of left panel (for dynamic offset)
+  onHeightChange?: (height: number) => void; // Callback for height changes (for FAB positioning)
 }
 
 /**
@@ -68,6 +75,7 @@ export function AttributeTablePanel({
   onClose,
   onRowSelect,
   leftPanelWidth = 0,
+  onHeightChange,
 }: AttributeTablePanelProps) {
   const theme = useTheme();
   const dispatch = useAppDispatch();
@@ -203,29 +211,17 @@ export function AttributeTablePanel({
     setDisplayedRowsCount(100);
   }, [layerId, searchText]);
 
-  // Infinite scroll: Load more rows when scrolled to bottom
-  const dataGridRef = React.useRef<HTMLDivElement>(null);
-
+  // Notify parent of initial height (for FAB positioning)
   React.useEffect(() => {
-    const gridElement = dataGridRef.current;
-    if (!gridElement) return;
+    onHeightChange?.(panelHeight);
+  }, [panelHeight, onHeightChange]);
 
-    // Find virtualScroller div inside DataGrid
-    const virtualScroller = gridElement.querySelector('.MuiDataGrid-virtualScroller');
-    if (!virtualScroller) return;
-
-    const handleScroll = () => {
-      const { scrollTop, scrollHeight, clientHeight } = virtualScroller;
-      const scrolledToBottom = scrollTop + clientHeight >= scrollHeight - 50; // 50px threshold
-
-      if (scrolledToBottom && displayedRowsCount < allFilteredRows.length) {
-        console.log(`📊 Infinite scroll: Loading 100 more rows (current: ${displayedRowsCount}, total: ${allFilteredRows.length})`);
-        setDisplayedRowsCount(prev => Math.min(prev + 100, allFilteredRows.length));
-      }
-    };
-
-    virtualScroller.addEventListener('scroll', handleScroll);
-    return () => virtualScroller.removeEventListener('scroll', handleScroll);
+  // Infinite scroll: DataGridPro native implementation
+  const handleScrollEnd = useCallback(() => {
+    if (displayedRowsCount < allFilteredRows.length) {
+      console.log(`📊 Infinite scroll: Scrolled to end! Loading 100 more rows (current: ${displayedRowsCount}, total: ${allFilteredRows.length})`);
+      setDisplayedRowsCount(prev => Math.min(prev + 100, allFilteredRows.length));
+    }
   }, [displayedRowsCount, allFilteredRows.length]);
 
   // Handle row edit
@@ -387,14 +383,14 @@ export function AttributeTablePanel({
 
   // Export to CSV (client-side)
   const handleExportCSV = () => {
-    if (filteredRows.length === 0) {
+    if (allFilteredRows.length === 0) {
       dispatch(showError('Brak danych do eksportu'));
       return;
     }
 
     const csv = [
       columns.map((col) => col.headerName).join(','),
-      ...filteredRows.map((row) =>
+      ...allFilteredRows.map((row) =>
         columns.map((col) => {
           const value = row[col.field];
           if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
@@ -459,8 +455,10 @@ export function AttributeTablePanel({
     if (!isDragging) return;
     e.preventDefault(); // Prevent scrolling on mobile
     const newHeight = window.innerHeight - e.clientY;
-    setPanelHeight(Math.max(150, Math.min(newHeight, window.innerHeight - 100)));
-  }, [isDragging]);
+    const clampedHeight = Math.max(150, Math.min(newHeight, window.innerHeight - 100));
+    setPanelHeight(clampedHeight);
+    onHeightChange?.(clampedHeight); // Notify parent of height change
+  }, [isDragging, onHeightChange]);
 
   const handlePointerUp = useCallback(() => {
     setIsDragging(false);
@@ -782,15 +780,16 @@ export function AttributeTablePanel({
             </Typography>
           </Box>
         ) : (
-          <Box ref={dataGridRef} sx={{ flex: 1, minHeight: 0 }}>
-            <DataGrid
+          <Box sx={{ flex: 1, minHeight: 0 }}>
+            <DataGridPro
               rows={displayedRows}
               columns={columns}
               getRowId={(row) => row.id}
               disableRowSelectionOnClick
               onRowClick={handleRowClick}
-              // Infinite scroll: Loads 100 rows at a time as user scrolls
-              // Virtualization renders only visible rows for performance
+              // Infinite scroll: DataGridPro native implementation
+              onRowsScrollEnd={handleScrollEnd}
+              scrollEndThreshold={200} // Trigger when 200px from bottom
               hideFooter
               rowHeight={36} // Compact row height
               columnHeaderHeight={32} // Compact header height

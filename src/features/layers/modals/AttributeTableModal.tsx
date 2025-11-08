@@ -12,7 +12,13 @@ import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
 import Alert from '@mui/material/Alert';
-import { DataGrid, GridColDef, GridRowModel, GridRowsProp } from '@mui/x-data-grid';
+import { DataGridPro, GridColDef, GridRowModel, GridRowsProp } from '@mui/x-data-grid-pro';
+import { LicenseInfo } from '@mui/x-license';
+
+// Initialize MUI X Pro license on client
+if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_MUI_LICENSE_KEY) {
+  LicenseInfo.setLicenseKey(process.env.NEXT_PUBLIC_MUI_LICENSE_KEY);
+}
 import CloseIcon from '@mui/icons-material/Close';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import DownloadIcon from '@mui/icons-material/Download';
@@ -58,17 +64,20 @@ export function AttributeTableModal({
   const [searchText, setSearchText] = useState('');
   const [editedRows, setEditedRows] = useState<Map<number, GridRowModel>>(new Map());
 
+  // Infinite scroll state: how many rows to display (starts at 100)
+  const [displayedRowsCount, setDisplayedRowsCount] = useState(100);
+
   // Debug logging
   console.log('🔍 AttributeTableModal props:', { open, projectName, layerId, layerName });
 
-  // Fetch layer features (row-based data)
+  // Fetch layer features (row-based data) - Load ALL features without pagination
   const {
     data: featuresResponse,
     isLoading,
     error,
     refetch,
   } = useGetLayerFeaturesQuery(
-    { project: projectName, layer_id: layerId },
+    { project: projectName, layer_id: layerId, limit: 999999 },
     { skip: !open } // Don't fetch until modal opens
   );
 
@@ -135,8 +144,8 @@ export function AttributeTableModal({
     }));
   }, [features]);
 
-  // Filter rows by search text
-  const filteredRows = useMemo(() => {
+  // Filter rows by search text (all rows, not sliced)
+  const allFilteredRows = useMemo(() => {
     if (!searchText) return rows;
 
     return rows.filter((row) =>
@@ -145,6 +154,26 @@ export function AttributeTableModal({
       )
     );
   }, [rows, searchText]);
+
+  // Infinite scroll: Display only first N rows (grows as user scrolls)
+  const displayedRows = useMemo(() => {
+    const sliced = allFilteredRows.slice(0, displayedRowsCount);
+    console.log(`📊 Displaying ${sliced.length} of ${allFilteredRows.length} rows (infinite scroll)`);
+    return sliced;
+  }, [allFilteredRows, displayedRowsCount]);
+
+  // Reset displayedRowsCount when layer changes or search changes
+  React.useEffect(() => {
+    setDisplayedRowsCount(100);
+  }, [layerId, searchText]);
+
+  // Infinite scroll: DataGridPro native implementation
+  const handleScrollEnd = React.useCallback(() => {
+    if (displayedRowsCount < allFilteredRows.length) {
+      console.log(`📊 Infinite scroll: Scrolled to end! Loading 100 more rows (current: ${displayedRowsCount}, total: ${allFilteredRows.length})`);
+      setDisplayedRowsCount(prev => Math.min(prev + 100, allFilteredRows.length));
+    }
+  }, [displayedRowsCount, allFilteredRows.length]);
 
   // Handler for cell edit
   const handleRowEditCommit = (newRow: GridRowModel) => {
@@ -179,7 +208,7 @@ export function AttributeTableModal({
 
   // Export to CSV
   const handleExport = () => {
-    if (filteredRows.length === 0) {
+    if (allFilteredRows.length === 0) {
       dispatch(showError('Brak danych do eksportu'));
       return;
     }
@@ -188,7 +217,7 @@ export function AttributeTableModal({
       // Header row
       columns.map((col) => col.headerName).join(','),
       // Data rows
-      ...filteredRows.map((row) =>
+      ...allFilteredRows.map((row) =>
         columns.map((col) => {
           const value = row[col.field];
           // Escape commas and quotes in CSV
@@ -230,7 +259,9 @@ export function AttributeTableModal({
             Tabela atrybutów: {layerName}
           </Typography>
           <Typography sx={{ fontSize: '12px', color: 'rgba(255,255,255,0.7)' }}>
-            {filteredRows.length} rekordów
+            {displayedRows.length < allFilteredRows.length
+              ? `${displayedRows.length} / ${allFilteredRows.length} rekordów`
+              : `${allFilteredRows.length} rekordów`}
           </Typography>
         </Box>
 
@@ -277,7 +308,7 @@ export function AttributeTableModal({
             variant="outlined"
             startIcon={<DownloadIcon />}
             onClick={handleExport}
-            disabled={filteredRows.length === 0}
+            disabled={allFilteredRows.length === 0}
           >
             Eksportuj CSV
           </Button>
@@ -295,21 +326,20 @@ export function AttributeTableModal({
                 Błąd ładowania danych: {(error as any).message || 'Nieznany błąd'}
               </Alert>
             </Box>
-          ) : filteredRows.length === 0 ? (
+          ) : allFilteredRows.length === 0 ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 4 }}>
               <Typography color="text.secondary">
                 {searchText ? 'Brak wyników wyszukiwania' : 'Brak danych'}
               </Typography>
             </Box>
           ) : (
-            <DataGrid
-              rows={filteredRows}
+            <DataGridPro
+              rows={displayedRows}
               columns={columns}
-              pagination
-              pageSizeOptions={[10, 25, 50, 100]}
-              initialState={{
-                pagination: { paginationModel: { pageSize: 25 } },
-              }}
+              // Infinite scroll: DataGridPro native implementation
+              onRowsScrollEnd={handleScrollEnd}
+              scrollEndThreshold={200} // Trigger when 200px from bottom
+              hideFooter
               processRowUpdate={handleRowEditCommit}
               onProcessRowUpdateError={(error) => {
                 console.error('Row edit error:', error);

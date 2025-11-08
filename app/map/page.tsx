@@ -134,6 +134,7 @@ export default function MapPage() {
   // State for AttributeTablePanel (bottom-docked panel)
   const [attributeTableOpen, setAttributeTableOpen] = useState(false);
   const [selectedLayerForTable, setSelectedLayerForTable] = useState<LayerNode | null>(null);
+  const [attributeTableHeight, setAttributeTableHeight] = useState(0);
 
   // Toggle handler for LayersFAB
   const handleToggleLeftPanel = () => {
@@ -360,7 +361,9 @@ export default function MapPage() {
             onClose={() => {
               setAttributeTableOpen(false);
               setSelectedLayerForTable(null);
+              setAttributeTableHeight(0); // Reset height when closed
             }}
+            onHeightChange={setAttributeTableHeight}
             onRowSelect={(featureId, feature) => {
               console.log('🎯 Row selected in table:', featureId, feature);
               // TODO: Implement map highlight using Mapbox feature-state
@@ -378,6 +381,7 @@ export default function MapPage() {
         isOpen={!leftPanelCollapsed}
         layersCount={layersCount}
         onToggle={handleToggleLeftPanel}
+        attributeTableHeight={attributeTableHeight}
       />
 
       {/* MapLoadingIndicator - Global loading indicator (bottom right corner, above LayersFAB) */}

@@ -11,9 +11,10 @@ interface LayersFABProps {
   isOpen: boolean
   layersCount: number
   onToggle: () => void
+  attributeTableHeight?: number // Height of attribute table panel (if open)
 }
 
-const LayersFAB: React.FC<LayersFABProps> = ({ isOpen, layersCount, onToggle }) => {
+const LayersFAB: React.FC<LayersFABProps> = ({ isOpen, layersCount, onToggle, attributeTableHeight = 0 }) => {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
 
@@ -28,12 +29,15 @@ const LayersFAB: React.FC<LayersFABProps> = ({ isOpen, layersCount, onToggle }) 
     onToggle()
   }
 
+  // Calculate bottom position: default 16px + attribute table height (if open)
+  const bottomPosition = 16 + attributeTableHeight
+
   return (
     <Fab
       onClick={handleClick}
       sx={{
         position: 'fixed',
-        bottom: 16,
+        bottom: bottomPosition,
         // FAB przesuwa się razem z drzewem warstw
         left: isOpen ? LEFT_PANEL_WIDTH + 16 : 16,
         zIndex: 1400,
