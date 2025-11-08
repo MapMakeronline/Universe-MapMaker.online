@@ -738,9 +738,8 @@ export function AttributeTablePanel({
               getRowId={(row) => row.id}
               disableRowSelectionOnClick
               onRowClick={handleRowClick}
-              // No pagination - full scroll with virtualization (unlimited rows)
-              rowBufferPx={2000} // Load 2000px of rows ahead/behind for smooth scrolling
-              columnBufferPx={1000} // Load 1000px of columns ahead/behind
+              // No pagination - disable virtualization to bypass 100 row limit
+              disableVirtualization // CRITICAL: MUI Community has 100 row limit with virtualization ON
               hideFooter // Remove pagination footer entirely
               rowHeight={36} // Compact row height
               columnHeaderHeight={32} // Compact header height
