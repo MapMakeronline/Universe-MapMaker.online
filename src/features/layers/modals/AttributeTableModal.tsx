@@ -185,8 +185,8 @@ export function AttributeTableModal({
       setEditedRows(new Map()); // Clear edited rows
       refetch(); // Refresh data
     } catch (err: any) {
-      console.error('Save error:', err);
-      dispatch(showError(`Błąd zapisu: ${err.message || 'Nieznany błąd'}`));
+      const errorMessage = err?.data?.message || err?.message || 'Nieznany błąd zapisu';
+      dispatch(showError(`Błąd zapisu: ${errorMessage}`));
     }
   };
 
@@ -334,7 +334,6 @@ export function AttributeTableModal({
               hideFooter
               processRowUpdate={handleRowEditCommit}
               onProcessRowUpdateError={(error) => {
-                console.error('Row edit error:', error);
                 dispatch(showError('Błąd edycji wiersza'));
               }}
               sx={{

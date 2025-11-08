@@ -16,19 +16,8 @@ import DownloadIcon from '@mui/icons-material/Download';
 import SearchIcon from '@mui/icons-material/Search';
 import DragHandleIcon from '@mui/icons-material/DragHandle';
 import AddIcon from '@mui/icons-material/Add';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
 import SaveIcon from '@mui/icons-material/Save';
 import CancelIcon from '@mui/icons-material/Cancel';
-import ZoomInIcon from '@mui/icons-material/ZoomIn';
-import FilterListIcon from '@mui/icons-material/FilterList';
-import VisibilityIcon from '@mui/icons-material/Visibility';
-import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import ContentPasteIcon from '@mui/icons-material/ContentPaste';
-import UndoIcon from '@mui/icons-material/Undo';
-import RedoIcon from '@mui/icons-material/Redo';
-import SettingsIcon from '@mui/icons-material/Settings';
-import ViewColumnIcon from '@mui/icons-material/ViewColumn';
 import { useTheme } from '@mui/material/styles';
 import Divider from '@mui/material/Divider';
 import Tooltip from '@mui/material/Tooltip';
@@ -306,9 +295,6 @@ export function AttributeTablePanel({
       // Refresh table to get real gid from backend
       refetch();
     } catch (err: any) {
-      console.error('❌ Save error:', err);
-      console.error('❌ Error details:', err?.data);
-
       // Extract error message from backend response
       const errorMessage = err?.data?.message || err?.message || 'Nieznany błąd zapisu';
       dispatch(showError(`Błąd zapisu: ${errorMessage}`));
@@ -539,48 +525,16 @@ export function AttributeTablePanel({
 
         <Divider orientation="vertical" flexItem sx={{ mx: { xs: 0.25, sm: 0.5 }, display: { xs: 'none', sm: 'block' } }} />
 
-        {/* Selection & Navigation Group - HIDDEN ON MOBILE (disabled features) */}
-        <Box sx={{ display: { xs: 'none', lg: 'flex' }, alignItems: 'center', gap: 0.5 }}>
-          <Tooltip title="Zaznacz wszystkie">
-            <IconButton size="small" disabled sx={{ p: 0.5 }}>
-              <ViewColumnIcon sx={{ fontSize: 18 }} />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Odznacz wszystkie">
-            <IconButton size="small" disabled sx={{ p: 0.5 }}>
-              <CancelIcon sx={{ fontSize: 18 }} />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Odwróć zaznaczenie">
-            <IconButton size="small" disabled sx={{ p: 0.5 }}>
-              <ContentCopyIcon sx={{ fontSize: 18 }} />
-            </IconButton>
-          </Tooltip>
-          <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
-        </Box>
+        {/* Editing Group - ALWAYS VISIBLE (important) */}
+        <Tooltip title="Dodaj rekord">
+          <IconButton size="small" onClick={handleAddRow} sx={{ p: { xs: 0.75, sm: 0.5 } }}>
+            <AddIcon sx={{ fontSize: { xs: 20, sm: 18 } }} />
+          </IconButton>
+        </Tooltip>
 
-          {/* Editing Group - ALWAYS VISIBLE (important) */}
-          <Tooltip title="Dodaj rekord">
-            <IconButton size="small" onClick={handleAddRow} sx={{ p: { xs: 0.75, sm: 0.5 } }}>
-              <AddIcon sx={{ fontSize: { xs: 20, sm: 18 } }} />
-            </IconButton>
-          </Tooltip>
-          <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 0.5 }}>
-            <Tooltip title="Edytuj rekord">
-              <IconButton size="small" disabled sx={{ p: 0.5 }}>
-                <EditIcon sx={{ fontSize: 18 }} />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Usuń zaznaczone">
-              <IconButton size="small" disabled sx={{ p: 0.5 }}>
-                <DeleteIcon sx={{ fontSize: 18 }} />
-              </IconButton>
-            </Tooltip>
-          </Box>
+        <Divider orientation="vertical" flexItem sx={{ mx: { xs: 0.25, sm: 0.5 } }} />
 
-          <Divider orientation="vertical" flexItem sx={{ mx: { xs: 0.25, sm: 0.5 } }} />
-
-          {/* Save/Cancel Group - ALWAYS VISIBLE (critical) */}
+        {/* Save/Cancel Group - ALWAYS VISIBLE (critical) */}
           <Tooltip title="Zapisz zmiany">
             <span>
               <IconButton
@@ -607,46 +561,6 @@ export function AttributeTablePanel({
 
           <Divider orientation="vertical" flexItem sx={{ mx: { xs: 0.25, sm: 0.5 } }} />
 
-          {/* Undo/Redo Group - HIDDEN ON MOBILE (disabled features) */}
-          <Box sx={{ display: { xs: 'none', lg: 'flex' }, alignItems: 'center', gap: 0.5 }}>
-            <Tooltip title="Cofnij">
-              <IconButton size="small" disabled sx={{ p: 0.5 }}>
-                <UndoIcon sx={{ fontSize: 18 }} />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Ponów">
-              <IconButton size="small" disabled sx={{ p: 0.5 }}>
-                <RedoIcon sx={{ fontSize: 18 }} />
-              </IconButton>
-            </Tooltip>
-            <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
-          </Box>
-
-          {/* View Group - HIDDEN ON MOBILE (disabled features) */}
-          <Box sx={{ display: { xs: 'none', lg: 'flex' }, alignItems: 'center', gap: 0.5 }}>
-            <Tooltip title="Przybliż do zaznaczonych">
-              <IconButton size="small" disabled sx={{ p: 0.5 }}>
-                <ZoomInIcon sx={{ fontSize: 18 }} />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Pokaż na mapie">
-              <IconButton size="small" disabled sx={{ p: 0.5 }}>
-                <VisibilityIcon sx={{ fontSize: 18 }} />
-              </IconButton>
-            </Tooltip>
-            <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
-          </Box>
-
-          {/* Filter Group - HIDDEN ON MOBILE (disabled features) */}
-          <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 0.5 }}>
-            <Tooltip title="Filtruj">
-              <IconButton size="small" disabled sx={{ p: 0.5 }}>
-                <FilterListIcon sx={{ fontSize: 18 }} />
-              </IconButton>
-            </Tooltip>
-            <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
-          </Box>
-
           {/* Export/Refresh Group - ALWAYS VISIBLE */}
           <Tooltip title="Eksportuj">
             <span>
@@ -667,17 +581,6 @@ export function AttributeTablePanel({
               </IconButton>
             </span>
           </Tooltip>
-
-          <Divider orientation="vertical" flexItem sx={{ mx: { xs: 0.25, sm: 0.5 }, display: { xs: 'none', md: 'block' } }} />
-
-          {/* Settings - HIDDEN ON MOBILE */}
-          <Box sx={{ display: { xs: 'none', lg: 'flex' } }}>
-            <Tooltip title="Ustawienia tabeli">
-              <IconButton size="small" disabled sx={{ p: 0.5 }}>
-                <SettingsIcon sx={{ fontSize: 18 }} />
-              </IconButton>
-            </Tooltip>
-          </Box>
 
           <Box sx={{ flex: 1 }} />
 
@@ -770,7 +673,7 @@ export function AttributeTablePanel({
               disableColumnFilter={false}
               processRowUpdate={handleRowEditCommit}
               onProcessRowUpdateError={(error) => {
-                console.error('Row edit error:', error);
+                dispatch(showError('Błąd edycji wiersza'));
               }}
               getRowClassName={(params) =>
                 params.id === clickedRowId ? 'clicked-row' : ''
