@@ -10,3 +10,5 @@ export type { ModalType, ModalState } from './useModalManager';
 export { useDragDropSync } from './useDragDropSync';
 
 export { useLayerOperations } from './useLayerOperations';
+
+export { useZoomToFeature } from './useZoomToFeature';

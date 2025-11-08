@@ -996,6 +996,77 @@ export const layersApi = baseApi.injectEndpoints({
       // No caching needed for exports (always fresh download)
       keepUnusedDataFor: 0,
     }),
+
+    /**
+     * Get Selected Features Geometries (for zoom to feature)
+     * POST /api/layer/features/selected
+     *
+     * Retrieves GeoJSON FeatureCollection with geometries and bounding boxes
+     * for selected features by their IDs (primary keys).
+     *
+     * Backend endpoint: /api/layer/features/selected
+     * Files: views.py:900, service.py:3651, db_utils.py:1678
+     *
+     * Request:
+     * {
+     *   project: "Wyszki",
+     *   layer_id: "Budynki_abc123",  // QGIS layer ID (not display name!)
+     *   label: ["123", "456"]        // Array of feature IDs (primary keys)
+     * }
+     *
+     * Response:
+     * {
+     *   data: {
+     *     type: "FeatureCollection",
+     *     bbox: [minX, minY, maxX, maxY],  // Extent of all selected features (EPSG:3857)
+     *     features: [
+     *       {
+     *         type: "Feature",
+     *         id: 123,
+     *         bbox: [minX, minY, maxX, maxY],  // Extent of single feature
+     *         geometry: { type: "Polygon", coordinates: [...] },
+     *         properties: {}
+     *       }
+     *     ]
+     *   },
+     *   success: true,
+     *   message: ""
+     * }
+     *
+     * Usage: Zoom to feature from attribute table
+     * - Click row → Get feature geometry → Fit map to bbox → Highlight feature
+     */
+    getSelectedFeatures: builder.mutation<{
+      data: {
+        type: 'FeatureCollection';
+        bbox: [number, number, number, number]; // [minX, minY, maxX, maxY] in EPSG:3857
+        features: Array<{
+          type: 'Feature';
+          id: number;
+          bbox: [number, number, number, number];
+          geometry: any; // GeoJSON geometry
+          properties: Record<string, any>;
+        }>;
+      };
+      success: boolean;
+      message: string;
+    }, {
+      project: string;
+      layer_id: string;  // QGIS layer ID (not display name!)
+      label: string[];   // Array of feature IDs (primary keys)
+    }>({
+      query: ({ project, layer_id, label }) => ({
+        url: '/api/layer/features/selected',
+        method: 'POST',
+        body: {
+          project,
+          layer_id,
+          label,
+        },
+      }),
+      // No cache invalidation needed (read-only operation)
+      invalidatesTags: [],
+    }),
   }),
 });
 
@@ -1028,4 +1099,6 @@ export const {
   useGetLayerConstraintsQuery,
   useLazyGetLayerConstraintsQuery,
   useSaveMultipleRecordsMutation,
+  // Zoom to Feature hook
+  useGetSelectedFeaturesMutation,
 } = layersApi;

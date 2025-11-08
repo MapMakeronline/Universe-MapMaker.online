@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -13,7 +13,7 @@ import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
 import Skeleton from '@mui/material/Skeleton';
 import Alert from '@mui/material/Alert';
-import { DataGridPro, GridColDef, GridRowModel, GridRowsProp } from '@mui/x-data-grid-pro';
+import { DataGridPro, GridColDef, GridRowModel, GridRowsProp, GridRowParams } from '@mui/x-data-grid-pro';
 import CloseIcon from '@mui/icons-material/Close';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import DownloadIcon from '@mui/icons-material/Download';
@@ -26,6 +26,7 @@ import {
 } from '@/backend/layers';
 import { useAppDispatch } from '@/redux/hooks';
 import { showSuccess, showError } from '@/redux/slices/notificationSlice';
+import { useZoomToFeature } from '../hooks/useZoomToFeature';
 
 interface AttributeTableModalProps {
   open: boolean;
@@ -46,6 +47,7 @@ interface AttributeTableModalProps {
  * - Export to CSV
  * - Batch save changes
  * - Validation (NOT NULL, UNIQUE, AUTO_INCREMENT)
+ * - Zoom to feature on row click
  */
 export function AttributeTableModal({
   open,
@@ -56,6 +58,7 @@ export function AttributeTableModal({
 }: AttributeTableModalProps) {
   const theme = useTheme();
   const dispatch = useAppDispatch();
+  const zoomToFeature = useZoomToFeature();
   const [searchText, setSearchText] = useState('');
   const [editedRows, setEditedRows] = useState<Map<number, GridRowModel>>(new Map());
 
@@ -224,6 +227,25 @@ export function AttributeTableModal({
     dispatch(showSuccess('Eksportowano do CSV'));
   };
 
+  // Zoom to feature on row click
+  const handleRowClick = useCallback(
+    (params: GridRowParams) => {
+      // Get feature ID from row (use gid as primary key)
+      const featureId = params.row.gid || params.row.id;
+
+      if (!featureId) {
+        console.warn('[Attribute Table] Row clicked but no gid found');
+        return;
+      }
+
+      console.log(`[Attribute Table] Row clicked: feature ID = ${featureId}, layer = "${layerName}"`);
+
+      // Zoom to feature on map
+      zoomToFeature(featureId, layerName);
+    },
+    [zoomToFeature, layerName]
+  );
+
   return (
     <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth fullScreen>
       {/* Header */}
@@ -336,6 +358,8 @@ export function AttributeTableModal({
               onProcessRowUpdateError={(error) => {
                 dispatch(showError('Błąd edycji wiersza'));
               }}
+              // Zoom to feature on row click
+              onRowClick={handleRowClick}
               sx={{
                 border: 'none',
                 '& .MuiDataGrid-cell': {
@@ -345,6 +369,9 @@ export function AttributeTableModal({
                   bgcolor: '#f5f5f5',
                   fontWeight: 600,
                   fontSize: '13px',
+                },
+                '& .MuiDataGrid-row': {
+                  cursor: 'pointer', // Indicate clickable rows
                 },
                 '& .MuiDataGrid-row:hover': {
                   bgcolor: 'rgba(0, 0, 0, 0.04)',
