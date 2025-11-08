@@ -164,12 +164,19 @@ export function AttributeTablePanel({
 
   // Filter rows by search text
   const filteredRows = useMemo(() => {
-    if (!searchText) return rows;
-    return rows.filter((row) =>
+    if (!searchText) {
+      console.log('🔍 Filtered rows (no search):', rows.length);
+      return rows;
+    }
+
+    const filtered = rows.filter((row) =>
       Object.values(row).some((value) =>
         String(value).toLowerCase().includes(searchText.toLowerCase())
       )
     );
+
+    console.log('🔍 Filtered rows (with search):', filtered.length, 'from', rows.length);
+    return filtered;
   }, [rows, searchText]);
 
   // Handle row edit
@@ -731,8 +738,10 @@ export function AttributeTablePanel({
               getRowId={(row) => row.id}
               disableRowSelectionOnClick
               onRowClick={handleRowClick}
-              // No pagination - full scroll with virtualization
-              hideFooter
+              // No pagination - full scroll with virtualization (unlimited rows)
+              rowBufferPx={2000} // Load 2000px of rows ahead/behind for smooth scrolling
+              columnBufferPx={1000} // Load 1000px of columns ahead/behind
+              hideFooter // Remove pagination footer entirely
               rowHeight={36} // Compact row height
               columnHeaderHeight={32} // Compact header height
               // Enable sorting for all columns
@@ -783,8 +792,9 @@ export function AttributeTablePanel({
                     color: '#fff',
                   },
                 },
-                // Custom scrollbar
+                // Custom scrollbar + force overflow for unlimited rows
                 '& .MuiDataGrid-virtualScroller': {
+                  overflow: 'auto !important', // CRITICAL: Force scrollbar to show all rows
                   '&::-webkit-scrollbar': {
                     width: 8,
                     height: 8,
