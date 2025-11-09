@@ -20,12 +20,15 @@ import { useCallback, useEffect } from 'react';
 import { useMap } from 'react-map-gl';
 import { useGetSelectedFeaturesMutation } from '@/backend/layers';
 
-const HIGHLIGHT_LAYER_ID = 'selected-feature-highlight';
-const HIGHLIGHT_FILL_LAYER_ID = 'selected-feature-highlight-fill';
-const HIGHLIGHT_OUTLINE_LAYER_ID = 'selected-feature-highlight-outline';
-const VERTICES_LAYER_ID = 'selected-feature-vertices';
-const HIGHLIGHT_SOURCE_ID = 'selected-feature-source';
-const VERTICES_SOURCE_ID = 'selected-vertices-source';
+// IMPORTANT: Use different IDs than useZoomToFeature to avoid conflicts
+// useZoomToFeature uses: 'selected-feature-highlight', 'selected-feature-highlight-fill', 'selected-feature-highlight-outline'
+// This hook uses: 'qgis-selection-*' prefix to differentiate
+const HIGHLIGHT_LAYER_ID = 'qgis-selection-highlight';
+const HIGHLIGHT_FILL_LAYER_ID = 'qgis-selection-fill';
+const HIGHLIGHT_OUTLINE_LAYER_ID = 'qgis-selection-outline';
+const VERTICES_LAYER_ID = 'qgis-selection-vertices';
+const HIGHLIGHT_SOURCE_ID = 'qgis-selection-source';
+const VERTICES_SOURCE_ID = 'qgis-selection-vertices-source';
 
 /**
  * Extracts all vertices from a GeoJSON geometry
@@ -189,6 +192,7 @@ export function useSelectedFeatureVisualization(mapInstanceOverride?: any) {
       });
 
       // Add highlight source
+      console.log('[Feature Visualization] 🎨 Adding highlight source...');
       map.addSource(HIGHLIGHT_SOURCE_ID, {
         type: 'geojson',
         data: {
@@ -196,10 +200,14 @@ export function useSelectedFeatureVisualization(mapInstanceOverride?: any) {
           features: [feature]
         }
       });
+      console.log('[Feature Visualization] ✅ Highlight source added');
 
       // Style based on geometry type
+      console.log('[Feature Visualization] 🎨 Adding style layers for geometry type:', feature.geometry.type);
+
       if (feature.geometry.type.includes('Polygon')) {
         // Polygon fill (yellow with transparency)
+        console.log('[Feature Visualization] 🟡 Adding polygon fill layer...');
         map.addLayer({
           id: HIGHLIGHT_FILL_LAYER_ID,
           type: 'fill',
@@ -209,8 +217,10 @@ export function useSelectedFeatureVisualization(mapInstanceOverride?: any) {
             'fill-opacity': 0.5
           }
         });
+        console.log('[Feature Visualization] ✅ Polygon fill layer added');
 
         // Polygon outline (red)
+        console.log('[Feature Visualization] 🔴 Adding polygon outline layer...');
         map.addLayer({
           id: HIGHLIGHT_OUTLINE_LAYER_ID,
           type: 'line',
@@ -220,8 +230,10 @@ export function useSelectedFeatureVisualization(mapInstanceOverride?: any) {
             'line-width': 3
           }
         });
+        console.log('[Feature Visualization] ✅ Polygon outline layer added');
       } else if (feature.geometry.type.includes('LineString')) {
         // LineString (red)
+        console.log('[Feature Visualization] 🔴 Adding LineString layer...');
         map.addLayer({
           id: HIGHLIGHT_LAYER_ID,
           type: 'line',
@@ -231,8 +243,10 @@ export function useSelectedFeatureVisualization(mapInstanceOverride?: any) {
             'line-width': 4
           }
         });
+        console.log('[Feature Visualization] ✅ LineString layer added');
       } else if (feature.geometry.type.includes('Point')) {
         // Point (red with white outline)
+        console.log('[Feature Visualization] 🔴 Adding Point layer...');
         map.addLayer({
           id: HIGHLIGHT_LAYER_ID,
           type: 'circle',
@@ -244,6 +258,7 @@ export function useSelectedFeatureVisualization(mapInstanceOverride?: any) {
             'circle-stroke-color': '#ffffff'
           }
         });
+        console.log('[Feature Visualization] ✅ Point layer added');
       }
 
       // Extract vertices
@@ -251,6 +266,7 @@ export function useSelectedFeatureVisualization(mapInstanceOverride?: any) {
       console.log('[Feature Visualization] 📍 Extracted vertices:', vertices.length);
 
       // Add vertices layer (small black circles with white stroke)
+      console.log('[Feature Visualization] ⚫ Adding vertices source...');
       map.addSource(VERTICES_SOURCE_ID, {
         type: 'geojson',
         data: {
@@ -268,7 +284,9 @@ export function useSelectedFeatureVisualization(mapInstanceOverride?: any) {
           }))
         }
       });
+      console.log('[Feature Visualization] ✅ Vertices source added');
 
+      console.log('[Feature Visualization] ⚫ Adding vertices layer...');
       map.addLayer({
         id: VERTICES_LAYER_ID,
         type: 'circle',
@@ -280,11 +298,19 @@ export function useSelectedFeatureVisualization(mapInstanceOverride?: any) {
           'circle-stroke-color': '#ffffff' // White outline
         }
       });
+      console.log('[Feature Visualization] ✅ Vertices layer added');
 
-      console.log('[Feature Visualization] ✅ Visualization complete');
+      console.log('[Feature Visualization] ✅ Visualization complete - All layers added!');
 
-    } catch (error) {
-      console.error('[Feature Visualization] ❌ Error:', error);
+    } catch (error: any) {
+      // Don't log as error if it's just missing geometry (expected for ~20% of features)
+      const isMissingGeometry = error?.data?.includes('Nie znaleziono geometrii');
+
+      if (isMissingGeometry) {
+        console.warn('[Feature Visualization] ⚠️ No geometry for this feature (expected for descriptive layers)');
+      } else {
+        console.error('[Feature Visualization] ❌ Error:', error);
+      }
     }
   }, [map, getSelectedFeatures, clearVisualization]);
 
