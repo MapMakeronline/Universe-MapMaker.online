@@ -66,8 +66,8 @@ function extractVertices(geometry: any): Array<[number, number]> {
 }
 
 /**
- * Convert EPSG:3857 (Web Mercator meters) to WGS84 (lng/lat degrees)
- * Backend returns geometries in EPSG:3857, but Mapbox expects WGS84
+ * Convert EPSG:3857 (Web Mercator) coordinates to WGS84 (lat/lng)
+ * Backend returns coordinates in meters, Mapbox expects degrees
  */
 function epsg3857ToWGS84(x: number, y: number): [number, number] {
   const lng = (x / 20037508.34) * 180;
@@ -78,9 +78,7 @@ function epsg3857ToWGS84(x: number, y: number): [number, number] {
 /**
  * Convert lng/lat to screen pixel coordinates
  */
-function projectToScreen(map: any, x: number, y: number): { x: number; y: number } {
-  // Convert from EPSG:3857 (meters) to WGS84 (degrees) first
-  const [lng, lat] = epsg3857ToWGS84(x, y);
+function projectToScreen(map: any, lng: number, lat: number): { x: number; y: number } {
   const point = map.project([lng, lat]);
   return { x: point.x, y: point.y };
 }
@@ -101,7 +99,9 @@ function drawPolygon(
     ctx.beginPath();
 
     ring.forEach((coord, i) => {
-      const { x, y } = projectToScreen(map, coord[0], coord[1]);
+      // Convert EPSG:3857 to WGS84 before projecting
+      const [lng, lat] = epsg3857ToWGS84(coord[0], coord[1]);
+      const { x, y } = projectToScreen(map, lng, lat);
       if (i === 0) {
         ctx.moveTo(x, y);
       } else {
@@ -153,7 +153,9 @@ function drawLineString(
   ctx.beginPath();
 
   coordinates.forEach((coord, i) => {
-    const { x, y } = projectToScreen(map, coord[0], coord[1]);
+    // Convert EPSG:3857 to WGS84 before projecting
+    const [lng, lat] = epsg3857ToWGS84(coord[0], coord[1]);
+    const { x, y } = projectToScreen(map, lng, lat);
     if (i === 0) {
       ctx.moveTo(x, y);
     } else {
@@ -178,7 +180,9 @@ function drawPoint(
   radius: number,
   strokeWidth: number
 ) {
-  const { x, y } = projectToScreen(map, coordinates[0], coordinates[1]);
+  // Convert EPSG:3857 to WGS84 before projecting
+  const [lng, lat] = epsg3857ToWGS84(coordinates[0], coordinates[1]);
+  const { x, y } = projectToScreen(map, lng, lat);
 
   ctx.beginPath();
   ctx.arc(x, y, radius, 0, Math.PI * 2);
@@ -201,7 +205,9 @@ function drawVertices(
   radius: number,
   strokeWidth: number
 ) {
-  vertices.forEach(([lng, lat]) => {
+  vertices.forEach(([x3857, y3857]) => {
+    // Convert EPSG:3857 to WGS84 before projecting
+    const [lng, lat] = epsg3857ToWGS84(x3857, y3857);
     const { x, y } = projectToScreen(map, lng, lat);
 
     ctx.beginPath();
@@ -246,8 +252,6 @@ export function useSelectedFeatureVisualization(mapInstanceOverride?: any) {
 
     const feature = currentFeatureRef.current;
     const vertices = currentVerticesRef.current;
-
-    console.log('[Canvas Overlay] 🎨 Rendering feature:', feature.geometry.type);
 
     // Draw geometry based on type
     if (feature.geometry.type === 'Polygon') {
@@ -300,8 +304,6 @@ export function useSelectedFeatureVisualization(mapInstanceOverride?: any) {
         2 // Stroke width (2px as specified)
       );
     }
-
-    console.log('[Canvas Overlay] ✅ Canvas rendered with', vertices.length, 'vertices');
   }, [map]);
 
   /**
@@ -309,8 +311,6 @@ export function useSelectedFeatureVisualization(mapInstanceOverride?: any) {
    */
   const initCanvas = useCallback(() => {
     if (!map || canvasRef.current) return;
-
-    console.log('[Canvas Overlay] 🎨 Initializing canvas overlay...');
 
     const mapContainer = map.getContainer();
     const canvas = document.createElement('canvas');
@@ -348,16 +348,12 @@ export function useSelectedFeatureVisualization(mapInstanceOverride?: any) {
         renderCanvas();
       }
     });
-
-    console.log('[Canvas Overlay] ✅ Canvas overlay initialized');
   }, [map, renderCanvas]);
 
   /**
    * Removes canvas overlay
    */
   const clearVisualization = useCallback(() => {
-    console.log('[Canvas Overlay] ✨ Clearing visualization...');
-
     if (canvasRef.current) {
       canvasRef.current.remove();
       canvasRef.current = null;
@@ -365,8 +361,6 @@ export function useSelectedFeatureVisualization(mapInstanceOverride?: any) {
 
     currentFeatureRef.current = null;
     currentVerticesRef.current = [];
-
-    console.log('[Canvas Overlay] ✅ Cleared');
   }, []);
 
   /**
@@ -381,13 +375,7 @@ export function useSelectedFeatureVisualization(mapInstanceOverride?: any) {
     layer: { id: string; name: string },
     projectName: string
   ) => {
-    console.log('[Canvas Overlay] 🎨 Starting visualization:', {
-      featureId,
-      layerName: layer.name
-    });
-
     if (!map) {
-      console.error('[Canvas Overlay] ❌ Map not ready');
       return;
     }
 
@@ -413,7 +401,6 @@ export function useSelectedFeatureVisualization(mapInstanceOverride?: any) {
 
       // Handle undefined or null response
       if (!response) {
-        console.error('[Canvas Overlay] ❌ Backend returned undefined/null response');
         return;
       }
 
@@ -423,7 +410,6 @@ export function useSelectedFeatureVisualization(mapInstanceOverride?: any) {
         try {
           parsedResponse = JSON.parse(response);
         } catch (e) {
-          console.error('[Canvas Overlay] ❌ Failed to parse response:', e);
           return;
         }
       }
@@ -431,19 +417,13 @@ export function useSelectedFeatureVisualization(mapInstanceOverride?: any) {
       const actualData = (parsedResponse as any).data || parsedResponse;
 
       if (!actualData.features || actualData.features.length === 0) {
-        console.error('[Canvas Overlay] ❌ No features returned');
         return;
       }
 
       const feature = actualData.features[0];
-      console.log('[Canvas Overlay] ✅ Feature received:', {
-        id: feature.id,
-        geometryType: feature.geometry.type
-      });
 
       // Extract vertices
       const vertices = extractVertices(feature.geometry);
-      console.log('[Canvas Overlay] 📍 Extracted vertices:', vertices.length);
 
       // Store feature and vertices for redrawing
       currentFeatureRef.current = feature;
@@ -452,17 +432,8 @@ export function useSelectedFeatureVisualization(mapInstanceOverride?: any) {
       // Render on canvas
       renderCanvas();
 
-      console.log('[Canvas Overlay] ✅ Visualization complete!');
-
     } catch (error: any) {
-      // Don't log as error if it's just missing geometry (expected for ~20% of features)
-      const isMissingGeometry = error?.data?.includes('Nie znaleziono geometrii');
-
-      if (isMissingGeometry) {
-        console.warn('[Canvas Overlay] ⚠️ No geometry for this feature (expected for descriptive layers)');
-      } else {
-        console.error('[Canvas Overlay] ❌ Error:', error);
-      }
+      // Silently handle missing geometry (expected for ~20% of features)
     }
   }, [map, getSelectedFeatures, initCanvas, renderCanvas]);
 
