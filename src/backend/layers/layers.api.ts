@@ -1063,7 +1063,9 @@ export const layersApi = baseApi.injectEndpoints({
       // Extract 'data' field from backend response
       // Backend returns: {data: {type: "FeatureCollection", ...}, success: true, message: ""}
       // We want: {type: "FeatureCollection", ...}
-      transformResponse: (response: { data: any; success: boolean; message: string }) => response.data,
+      // IMPORTANT: Don't use transformResponse - it breaks error handling
+      // Let useZoomToFeature hook handle response parsing manually
+      // transformResponse: (response: { data: any; success: boolean; message: string }) => response?.data || response,
       // No cache invalidation needed (read-only operation)
       invalidatesTags: [],
     }),

@@ -281,6 +281,13 @@ export function useZoomToFeature(mapInstanceOverride?: any) {
         console.log('[Zoom to Feature] ✅ Backend response (raw):', response);
         console.log('[Zoom to Feature] 🔍 Response type:', typeof response);
 
+        // Handle undefined or null response
+        if (!response) {
+          console.error('[Zoom to Feature] ❌ Backend returned undefined/null response');
+          dispatch(showError('Nie można przybliżyć do obiektu: Brak odpowiedzi z serwera'));
+          return;
+        }
+
         // IMPORTANT: RTK Query might return JSON string instead of parsed object
         // Parse if string, otherwise use as-is
         let parsedResponse = response;
@@ -290,6 +297,7 @@ export function useZoomToFeature(mapInstanceOverride?: any) {
             console.log('[Zoom to Feature] ✅ Parsed string to object:', parsedResponse);
           } catch (e) {
             console.error('[Zoom to Feature] ❌ Failed to parse response:', e);
+            dispatch(showError('Nie można przybliżyć do obiektu: Nieprawidłowa odpowiedź z serwera'));
             return;
           }
         }
