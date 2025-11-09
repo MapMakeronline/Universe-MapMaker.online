@@ -32,9 +32,10 @@ import {
   useSaveMultipleRecordsMutation,
   useLazyExportLayerQuery,
 } from '@/backend/layers';
-import { useAppDispatch } from '@/redux/hooks';
+import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import { showSuccess, showError } from '@/redux/slices/notificationSlice';
 import { useZoomToFeature } from '../hooks/useZoomToFeature';
+import { useSelectedFeatureVisualization } from '../hooks/useSelectedFeatureVisualization';
 import type { LayerNode } from '@/types-app/layers';
 
 interface AttributeTablePanelProps {
@@ -75,6 +76,7 @@ export function AttributeTablePanel({
   const theme = useTheme();
   const dispatch = useAppDispatch();
   const zoomToFeature = useZoomToFeature(mapInstance); // Initialize zoom hook with optional map override
+  const { visualizeFeature, clearVisualization } = useSelectedFeatureVisualization(mapInstance); // Initialize visualization hook
   const [searchText, setSearchText] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState(''); // Debounced search for backend filtering
   const [editedRows, setEditedRows] = useState<Map<number, GridRowModel>>(new Map());
@@ -440,11 +442,14 @@ export function AttributeTablePanel({
     // Zoom to feature on row click - pass full layer object and row data
     zoomToFeature(rowId, layer, params.row);
 
+    // Visualize feature with highlight and vertices (QGIS-style selection)
+    visualizeFeature(rowId, layer, projectName);
+
     // Keep parent callback for other logic (e.g., additional highlight)
     if (onRowSelect) {
       onRowSelect(rowId, params.row);
     }
-  }, [onRowSelect, zoomToFeature, layer]);
+  }, [onRowSelect, zoomToFeature, visualizeFeature, layer, projectName]);
 
   // Zoom to selected row (from toolbar button)
   const handleZoomToSelected = useCallback(() => {
@@ -465,8 +470,12 @@ export function AttributeTablePanel({
     });
 
     zoomToFeature(selectedRowId, layer, selectedRow);
+
+    // Visualize feature with highlight and vertices
+    visualizeFeature(selectedRowId, layer, projectName);
+
     // Note: Success/error notifications are handled inside useZoomToFeature hook
-  }, [selectedRowId, zoomToFeature, layer, displayedFeatures]);
+  }, [selectedRowId, zoomToFeature, visualizeFeature, layer, displayedFeatures, projectName]);
 
   // Save all changes
   const handleSave = async () => {
@@ -688,6 +697,13 @@ export function AttributeTablePanel({
       };
     }
   }, [isDragging, handlePointerMove, handlePointerUp]);
+
+  // Clear visualization when layer changes or component unmounts
+  React.useEffect(() => {
+    return () => {
+      clearVisualization();
+    };
+  }, [layerId, clearVisualization]);
 
   return (
     <Box
