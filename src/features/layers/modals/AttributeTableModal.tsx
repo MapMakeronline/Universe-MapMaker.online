@@ -129,7 +129,8 @@ export function AttributeTableModal({
   const rows: GridRowsProp = useMemo(() => {
     return features.map((feature, index) => ({
       // Use first available primary key: gid > fid > ogc_fid > fallback to index
-      id: feature.gid || feature.fid || feature.ogc_fid || index,
+      // Use ?? instead of || to allow 0 as valid ID
+      id: feature.gid ?? feature.fid ?? feature.ogc_fid ?? index,
       ...feature,
     }));
   }, [features]);
@@ -235,9 +236,10 @@ export function AttributeTableModal({
 
       // Try to get feature ID from row (check multiple possible primary key columns)
       // Priority: gid > fid > ogc_fid > id (DataGrid row ID)
-      const featureId = params.row.gid || params.row.fid || params.row.ogc_fid || params.row.id;
+      // IMPORTANT: Use ?? instead of || to allow 0 as valid ID
+      const featureId = params.row.gid ?? params.row.fid ?? params.row.ogc_fid ?? params.row.id;
 
-      if (!featureId) {
+      if (featureId === undefined || featureId === null) {
         console.warn('[Attribute Table] Row clicked but no primary key found (gid/fid/ogc_fid/id)');
         console.warn('[Attribute Table] Available columns:', Object.keys(params.row));
         return;
