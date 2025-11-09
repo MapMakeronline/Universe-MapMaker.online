@@ -205,14 +205,30 @@ export function useSelectedFeatureVisualization(mapInstanceOverride?: any) {
       // Get all map layers to analyze rendering order
       const layers = map.getStyle().layers;
 
-      // STRATEGY: Add visualization layers at the very top (no beforeId)
-      // This ensures they render above all other layers, including QGIS project layers
-      // Labels will still be readable as they typically render last
-      const firstLabelLayerId = undefined; // Force top of stack
+      // DEBUG: Log all layer IDs to find QGIS WMS layers
+      console.log('[Feature Visualization] 🔍 ALL LAYER IDS:', layers.map((l: any) => l.id));
+
+      // Find QGIS WMS raster layers - they're typically the last layers before labels
+      // QGIS layers are rendered as raster tiles, so we need to add our layers AFTER them
+      // Look for layers with 'qgis', 'wms', or project-specific patterns
+      const qgisLayers = layers.filter((l: any) =>
+        l.id.includes('qgis') ||
+        l.id.includes('wms') ||
+        l.type === 'raster' ||
+        l.id.toLowerCase().includes('wyszki') || // Project name
+        l.id.toLowerCase().includes('layer') // Generic layer pattern
+      );
+
+      console.log('[Feature Visualization] 🗺️ Found QGIS/WMS layers:', qgisLayers.map((l: any) => ({ id: l.id, type: l.type })));
+
+      // Strategy: Add AFTER all raster layers but BEFORE labels
+      // If no QGIS layers found, add at top of stack
+      const firstLabelLayerId = undefined; // Force top of stack for now
 
       console.log('[Feature Visualization] 🔍 Map layers analysis:', {
         totalLayers: layers.length,
-        strategy: 'Add to top of layer stack (above all layers)',
+        qgisLayersCount: qgisLayers.length,
+        strategy: 'Add to top of layer stack (above QGIS WMS rasters)',
         willInsertBefore: firstLabelLayerId || 'TOP OF STACK (above everything)'
       });
 
