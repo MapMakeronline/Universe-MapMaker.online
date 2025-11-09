@@ -136,6 +136,9 @@ export default function MapPage() {
   const [selectedLayerForTable, setSelectedLayerForTable] = useState<LayerNode | null>(null);
   const [attributeTableHeight, setAttributeTableHeight] = useState(0);
 
+  // State for map instance (passed from MapContainer to AttributeTablePanel for zoom functionality)
+  const [mapInstance, setMapInstance] = useState<any>(null);
+
   // Toggle handler for LayersFAB
   const handleToggleLeftPanel = () => {
     setLeftPanelCollapsed(!leftPanelCollapsed);
@@ -308,7 +311,10 @@ export default function MapPage() {
               👁️ Tryb podglądu (tylko odczyt)
             </Box>
           )}
-          <MapContainer projectName={projectName || undefined}>
+          <MapContainer
+            projectName={projectName || undefined}
+            onMapLoad={setMapInstance}
+          >
             {/* DISABLED: QGISProjectLoader duplicates layers (uses different layer IDs) */}
             {/* {projectName && <QGISProjectLoader projectName={projectName} />} */}
             {/* Load ALL WMS layers at once (matches old project pattern) */}
@@ -332,8 +338,10 @@ export default function MapPage() {
             projectName={projectName}
             layerId={selectedLayerForTable.id}
             layerName={selectedLayerForTable.name}
+            layer={selectedLayerForTable} // Pass full layer object for zoom functionality
             sourceTableName={selectedLayerForTable.source_table_name} // PostgreSQL table name for backend API
             leftPanelWidth={leftPanelWidth}
+            mapInstance={mapInstance} // Pass map instance for zoom functionality
             onClose={() => {
               setAttributeTableOpen(false);
               setSelectedLayerForTable(null);

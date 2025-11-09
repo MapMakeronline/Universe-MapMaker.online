@@ -1037,19 +1037,15 @@ export const layersApi = baseApi.injectEndpoints({
      * - Click row → Get feature geometry → Fit map to bbox → Highlight feature
      */
     getSelectedFeatures: builder.mutation<{
-      data: {
-        type: 'FeatureCollection';
-        bbox: [number, number, number, number]; // [minX, minY, maxX, maxY] in EPSG:3857
-        features: Array<{
-          type: 'Feature';
-          id: number;
-          bbox: [number, number, number, number];
-          geometry: any; // GeoJSON geometry
-          properties: Record<string, any>;
-        }>;
-      };
-      success: boolean;
-      message: string;
+      type: 'FeatureCollection';
+      bbox: [number, number, number, number]; // [minX, minY, maxX, maxY] in EPSG:3857
+      features: Array<{
+        type: 'Feature';
+        id: number;
+        bbox: [number, number, number, number];
+        geometry: any; // GeoJSON geometry
+        properties: Record<string, any>;
+      }>;
     }, {
       project: string;
       layer_id: string;  // QGIS layer ID (not display name!)
@@ -1064,6 +1060,10 @@ export const layersApi = baseApi.injectEndpoints({
           label,
         },
       }),
+      // Extract 'data' field from backend response
+      // Backend returns: {data: {type: "FeatureCollection", ...}, success: true, message: ""}
+      // We want: {type: "FeatureCollection", ...}
+      transformResponse: (response: { data: any; success: boolean; message: string }) => response.data,
       // No cache invalidation needed (read-only operation)
       invalidatesTags: [],
     }),

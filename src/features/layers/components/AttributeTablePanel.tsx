@@ -19,6 +19,7 @@ import AddIcon from '@mui/icons-material/Add';
 import SaveIcon from '@mui/icons-material/Save';
 import CancelIcon from '@mui/icons-material/Cancel';
 import ViewWeekIcon from '@mui/icons-material/ViewWeek';
+import GpsFixedIcon from '@mui/icons-material/GpsFixed';
 import { useTheme } from '@mui/material/styles';
 import Divider from '@mui/material/Divider';
 import Tooltip from '@mui/material/Tooltip';
@@ -33,16 +34,20 @@ import {
 } from '@/backend/layers';
 import { useAppDispatch } from '@/redux/hooks';
 import { showSuccess, showError } from '@/redux/slices/notificationSlice';
+import { useZoomToFeature } from '../hooks/useZoomToFeature';
+import type { LayerNode } from '@/types-app/layers';
 
 interface AttributeTablePanelProps {
   projectName: string;
   layerId: string; // QGIS layer ID (UUID from tree.json) - used for backend API calls
   layerName: string; // Display name (for UI)
+  layer: LayerNode; // Full layer object (for zoom functionality)
   sourceTableName?: string; // PostgreSQL table name (optional - kept for potential future use)
   onClose: () => void;
   onRowSelect?: (featureId: string | number, feature: any) => void; // Callback for map highlight
   leftPanelWidth?: number; // Width of left panel (for dynamic offset)
   onHeightChange?: (height: number) => void; // Callback for height changes (for FAB positioning)
+  mapInstance?: any; // Optional map instance override (for components outside MapProvider)
 }
 
 /**
@@ -59,18 +64,22 @@ export function AttributeTablePanel({
   projectName,
   layerId,
   layerName,
+  layer,
   sourceTableName,
   onClose,
   onRowSelect,
   leftPanelWidth = 0,
   onHeightChange,
+  mapInstance,
 }: AttributeTablePanelProps) {
   const theme = useTheme();
   const dispatch = useAppDispatch();
+  const zoomToFeature = useZoomToFeature(mapInstance); // Initialize zoom hook with optional map override
   const [searchText, setSearchText] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState(''); // Debounced search for backend filtering
   const [editedRows, setEditedRows] = useState<Map<number, GridRowModel>>(new Map());
   const [newRows, setNewRows] = useState<GridRowsProp>([]); // Local state for new rows
+  const [selectedRowId, setSelectedRowId] = useState<string | number | null>(null); // Track selected row for zoom button
 
   // PERSISTENCE: Load saved panel height from localStorage
   const [panelHeight, setPanelHeight] = useState(() => {
@@ -411,15 +420,53 @@ export function AttributeTablePanel({
     return newRow;
   };
 
-  // Handle row click (highlight on map without checkboxes)
+  // Handle row click (highlight on map + zoom to feature)
   const handleRowClick = useCallback((params: any) => {
     const rowId = params.id;
     setClickedRowId(rowId);
+    setSelectedRowId(rowId); // Track for zoom button
 
+    // DEBUG: Check if rowData has geometry
+    console.log('[AttributeTablePanel] 🖱️ Row clicked - FULL DEBUG:', {
+      rowId,
+      hasGeometry: !!params.row?.geometry,
+      hasGeom: !!params.row?.geom,
+      allKeys: params.row ? Object.keys(params.row) : [],
+      geometryType: params.row?.geometry?.type || params.row?.geom?.type,
+      geometrySample: params.row?.geometry || params.row?.geom,
+      fullRow: params.row
+    });
+
+    // Zoom to feature on row click - pass full layer object and row data
+    zoomToFeature(rowId, layer, params.row);
+
+    // Keep parent callback for other logic (e.g., additional highlight)
     if (onRowSelect) {
       onRowSelect(rowId, params.row);
     }
-  }, [onRowSelect]);
+  }, [onRowSelect, zoomToFeature, layer]);
+
+  // Zoom to selected row (from toolbar button)
+  const handleZoomToSelected = useCallback(() => {
+    if (!selectedRowId) {
+      dispatch(showError('Zaznacz wiersz klikając w tabelę'));
+      return;
+    }
+
+    // Find row data for selected row
+    const selectedRow = displayedFeatures?.find((row: any) => row.id === selectedRowId || row.ogc_fid === selectedRowId || row.fid === selectedRowId || row.gid === selectedRowId);
+
+    console.log(`[Attribute Table] Zoom to selected:`, {
+      selectedRowId,
+      layerName: layer.name,
+      hasRowData: !!selectedRow,
+      hasGeometry: !!selectedRow?.geometry,
+      hasGeom: !!selectedRow?.geom,
+    });
+
+    zoomToFeature(selectedRowId, layer, selectedRow);
+    // Note: Success/error notifications are handled inside useZoomToFeature hook
+  }, [selectedRowId, zoomToFeature, layer, displayedFeatures]);
 
   // Save all changes
   const handleSave = async () => {
@@ -902,6 +949,39 @@ export function AttributeTablePanel({
             >
               <ViewWeekIcon sx={{ fontSize: { xs: 20, sm: 18 } }} />
             </IconButton>
+          </Tooltip>
+
+          <Divider orientation="vertical" flexItem sx={{ mx: { xs: 0.25, sm: 0.5 } }} />
+
+          {/* Zoom to Selected Button - Orange highlight */}
+          <Tooltip title="Przybliż do zaznaczonego obiektu (kliknij wiersz aby zaznaczyć)">
+            <span>
+              <Button
+                variant="contained"
+                size="small"
+                startIcon={<GpsFixedIcon />}
+                onClick={handleZoomToSelected}
+                disabled={!selectedRowId}
+                sx={{
+                  bgcolor: 'warning.main',
+                  color: 'white',
+                  fontSize: { xs: '11px', sm: '12px' },
+                  px: { xs: 1, sm: 1.5 },
+                  py: { xs: 0.5, sm: 0.5 },
+                  minWidth: 'auto',
+                  whiteSpace: 'nowrap',
+                  '&:hover': {
+                    bgcolor: 'warning.dark',
+                  },
+                  '&.Mui-disabled': {
+                    bgcolor: 'rgba(255, 152, 0, 0.3)',
+                    color: 'rgba(255, 255, 255, 0.5)',
+                  }
+                }}
+              >
+                Przybliż
+              </Button>
+            </span>
           </Tooltip>
 
           <Box sx={{ flex: 1 }} />

@@ -22,9 +22,10 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 interface MapContainerProps {
   children?: React.ReactNode;
   projectName?: string; // Project name for viewport persistence
+  onMapLoad?: (mapInstance: any) => void; // Callback when map instance is ready
 }
 
-const MapContainer: React.FC<MapContainerProps> = ({ children, projectName }) => {
+const MapContainer: React.FC<MapContainerProps> = ({ children, projectName, onMapLoad }) => {
   const dispatch = useAppDispatch();
   const mapRef = useRef<MapRef>(null);
   const [tokenError, setTokenError] = useState<string>('');
@@ -115,7 +116,14 @@ const MapContainer: React.FC<MapContainerProps> = ({ children, projectName }) =>
   const onLoad = useCallback(() => {
     console.log('🗺️ Map onLoad event fired - setting isMapLoaded = true');
     dispatch(setMapLoaded(true));
-  }, [dispatch]);
+
+    // Notify parent component that map is ready
+    if (onMapLoad && mapRef.current) {
+      const mapInstance = mapRef.current.getMap();
+      onMapLoad(mapInstance);
+      console.log('🗺️ Map instance passed to parent via onMapLoad callback');
+    }
+  }, [dispatch, onMapLoad]);
 
   // Debounce resize to prevent excessive map.resize() calls
   const resizeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
