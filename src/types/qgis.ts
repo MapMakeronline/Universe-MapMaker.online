@@ -7,8 +7,9 @@
 
 /** Vector layer type from QGIS */
 export interface QGISVectorLayer {
-  name: string;
-  id: string;
+  name: string; // Display name (e.g., "Działki 29_10_25")
+  id: string; // QGIS UUID (e.g., "tmp_name_abc123...")
+  source_table_name: string; // PostgreSQL table name (e.g., "dzialki_29_10_25")
   visible: boolean;
   consultations: boolean;
   public: boolean;

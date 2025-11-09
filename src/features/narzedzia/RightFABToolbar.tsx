@@ -26,6 +26,7 @@ import SearchIcon from '@mui/icons-material/Search';
 
 // White Icons (Always visible)
 import InfoIcon from '@mui/icons-material/Info';
+import CenterFocusStrongIcon from '@mui/icons-material/CenterFocusStrong';
 import PrintIcon from '@mui/icons-material/Print';
 import MapIcon from '@mui/icons-material/Map';
 import CropIcon from '@mui/icons-material/Crop';
@@ -78,6 +79,11 @@ const RightFABToolbar: React.FC<RightFABToolbarProps> = ({ mapRef }) => {
   const { measurement, identify } = useAppSelector((state) => state.draw)
   const { user, isAuthenticated } = useAppSelector((state) => state.auth)
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+
+  // Zoom to Selected Feature
+  const selectedFeatureId = useAppSelector((state) => state.features.selectedFeatureId);
+  const features = useAppSelector((state) => state.features.features);
+  const selectedFeature = selectedFeatureId ? features[selectedFeatureId] : null;
 
   const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null)
   const [searchModalOpen, setSearchModalOpen] = useState(false)
@@ -154,6 +160,58 @@ const RightFABToolbar: React.FC<RightFABToolbarProps> = ({ mapRef }) => {
   const handleIdentify = () => {
     triggerHapticFeedback();
     dispatch(setIdentifyMode(!identify.isActive))
+  }
+
+  const handleZoomToSelected = () => {
+    if (!map || !selectedFeature) {
+      console.warn('[ZoomToSelected] No map or no selected feature');
+      return;
+    }
+
+    triggerHapticFeedback();
+    console.log('[ZoomToSelected] Zooming to feature:', selectedFeature);
+
+    // If feature has geometry (GeoJSON), calculate bounds
+    if (selectedFeature.geometry) {
+      try {
+        const coords = extractCoordinatesFromGeometry(selectedFeature.geometry);
+        if (coords.length === 0) {
+          throw new Error('No coordinates found in geometry');
+        }
+
+        const bounds = calculateBounds(coords);
+
+        // Zoom to bounding box with padding
+        map.fitBounds(
+          [
+            [bounds.minX, bounds.minY], // SW corner
+            [bounds.maxX, bounds.maxY], // NE corner
+          ],
+          {
+            padding: { top: 100, bottom: 100, left: 100, right: 100 },
+            duration: 1000,
+            maxZoom: 18,
+          }
+        );
+      } catch (error) {
+        console.error('[ZoomToSelected] Error calculating bounds:', error);
+        // Fallback to center point
+        zoomToCenter();
+      }
+    } else {
+      // Fallback: Use center point
+      zoomToCenter();
+    }
+
+    function zoomToCenter() {
+      if (selectedFeature!.coordinates) {
+        map!.flyTo({
+          center: selectedFeature!.coordinates,
+          zoom: 16,
+          duration: 1000,
+        });
+      }
+    }
   }
 
   const handleGeolocation = () => {
@@ -234,6 +292,15 @@ const RightFABToolbar: React.FC<RightFABToolbarProps> = ({ mapRef }) => {
       color: 'default',
       // authRequired: false - Visible for guests
     },
+    // Zoom to Selected Feature (only shown when feature is selected)
+    ...(selectedFeature ? [{
+      id: "zoom-to-selected",
+      icon: CenterFocusStrongIcon,
+      tooltip: `Przybliż do zaznaczonego: ${selectedFeature.name}`,
+      onClick: handleZoomToSelected,
+      color: 'success' as const,
+      // authRequired: false - Visible for guests
+    }] : []),
     {
       id: "print",
       icon: PrintIcon,
@@ -367,6 +434,7 @@ const RightFABToolbar: React.FC<RightFABToolbarProps> = ({ mapRef }) => {
           const IconComponent = tool.icon;
           const isActive = tool.active;
           const isPrimary = tool.color === 'primary';
+          const isSuccess = tool.color === 'success';
 
           // Add larger spacing after "crop-mask" icon (before keyboard section)
           const isCropIcon = tool.id === 'crop-mask';
@@ -388,12 +456,16 @@ const RightFABToolbar: React.FC<RightFABToolbarProps> = ({ mapRef }) => {
                       ? theme.palette.primary.main
                       : isPrimary
                         ? theme.palette.primary.main
-                        : 'background.paper',
+                        : isSuccess
+                          ? theme.palette.success.main
+                          : 'background.paper',
                     color: isActive
                       ? 'white'
                       : isPrimary
                         ? 'white'
-                        : 'text.secondary',
+                        : isSuccess
+                          ? 'white'
+                          : 'text.secondary',
                     boxShadow: 2,
                     transition: 'all 0.2s ease',
                     '&:hover': {
@@ -401,7 +473,9 @@ const RightFABToolbar: React.FC<RightFABToolbarProps> = ({ mapRef }) => {
                         ? theme.palette.primary.dark
                         : isPrimary
                           ? theme.palette.primary.dark
-                          : 'action.hover',
+                          : isSuccess
+                            ? theme.palette.success.dark
+                            : 'action.hover',
                       transform: 'scale(1.05)',
                       boxShadow: 4,
                     },
@@ -581,3 +655,68 @@ const RightFABToolbar: React.FC<RightFABToolbarProps> = ({ mapRef }) => {
 }
 
 export default RightFABToolbar
+
+// Helper functions for geometry bbox calculation
+
+/**
+ * Extract all coordinates from GeoJSON geometry (recursive)
+ */
+function extractCoordinatesFromGeometry(geometry: any): number[][] {
+  const coords: number[][] = []
+
+  function extractRecursive(geo: any) {
+    if (!geo || !geo.type) return
+
+    switch (geo.type) {
+      case 'Point':
+        coords.push(geo.coordinates)
+        break
+      case 'LineString':
+      case 'MultiPoint':
+        coords.push(...geo.coordinates)
+        break
+      case 'Polygon':
+        // First ring (outer boundary)
+        coords.push(...geo.coordinates[0])
+        break
+      case 'MultiLineString':
+        geo.coordinates.forEach((line: number[][]) => coords.push(...line))
+        break
+      case 'MultiPolygon':
+        geo.coordinates.forEach((polygon: number[][][]) => {
+          coords.push(...polygon[0]) // Outer ring of each polygon
+        })
+        break
+      case 'GeometryCollection':
+        geo.geometries.forEach(extractRecursive)
+        break
+    }
+  }
+
+  extractRecursive(geometry)
+  return coords
+}
+
+/**
+ * Calculate bounding box from coordinates
+ */
+function calculateBounds(coords: number[][]): {
+  minX: number
+  minY: number
+  maxX: number
+  maxY: number
+} {
+  let minX = Infinity
+  let minY = Infinity
+  let maxX = -Infinity
+  let maxY = -Infinity
+
+  coords.forEach(([x, y]) => {
+    if (x < minX) minX = x
+    if (y < minY) minY = y
+    if (x > maxX) maxX = x
+    if (y > maxY) maxY = y
+  })
+
+  return { minX, minY, maxX, maxY }
+}

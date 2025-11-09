@@ -95,6 +95,7 @@ function convertQGISToLayerNode(qgisNode: QGISLayerNode): LayerNode {
   const baseNode: LayerNode = {
     id: layerId,
     name: qgisNode.name,
+    source_table_name: 'source_table_name' in qgisNode ? qgisNode.source_table_name : undefined, // PostgreSQL table name (for backend API calls)
     visible: qgisNode.visible !== false,
     opacity: 'opacity' in qgisNode ? qgisNode.opacity / 255 : 1, // QGIS uses 0-255, we use 0-1
     type: qgisNode.type,
@@ -327,9 +328,11 @@ export default function MapPage() {
         {/* AttributeTablePanel - Bottom-docked resizable panel */}
         {attributeTableOpen && selectedLayerForTable && projectName && (
           <AttributeTablePanel
+            key={selectedLayerForTable.id} // CRITICAL: Force remount on layer change
             projectName={projectName}
             layerId={selectedLayerForTable.id}
             layerName={selectedLayerForTable.name}
+            sourceTableName={selectedLayerForTable.source_table_name} // PostgreSQL table name for backend API
             leftPanelWidth={leftPanelWidth}
             onClose={() => {
               setAttributeTableOpen(false);

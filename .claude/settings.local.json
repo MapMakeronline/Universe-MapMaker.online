@@ -36,7 +36,10 @@
       "Bash(else echo \"Cache already clean\")",
       "Bash(fi)",
       "Bash(npm run build:*)",
-      "Bash(git fetch:*)"
+      "Bash(git fetch:*)",
+      "Bash(git clone:*)",
+      "Bash(netstat:*)",
+      "Bash(taskkill //F //PID 22264)"
     ],
     "deny": [],
     "ask": []

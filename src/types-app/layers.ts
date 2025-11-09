@@ -1,6 +1,7 @@
 export interface LayerNode {
-  id: string;
-  name: string;
+  id: string; // QGIS UUID for layers, name for groups
+  name: string; // Display name
+  source_table_name?: string; // PostgreSQL table name (for VectorLayers only)
   type: 'group' | 'layer' | 'RasterLayer' | 'VectorLayer' | 'WMSLayer';
   visible: boolean;
   opacity: number;
