@@ -13,11 +13,12 @@ import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
 import Skeleton from '@mui/material/Skeleton';
 import Alert from '@mui/material/Alert';
-import { DataGridPro, GridColDef, GridRowModel, GridRowsProp, GridRowParams } from '@mui/x-data-grid-pro';
+import { DataGridPro, GridColDef, GridRowModel, GridRowsProp, GridRowParams, GridRenderCellParams } from '@mui/x-data-grid-pro';
 import CloseIcon from '@mui/icons-material/Close';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import DownloadIcon from '@mui/icons-material/Download';
 import SearchIcon from '@mui/icons-material/Search';
+import MyLocationIcon from '@mui/icons-material/MyLocation';
 import { useTheme } from '@mui/material/styles';
 import {
   useGetLayerFeaturesQuery,
@@ -93,12 +94,51 @@ export function AttributeTableModal({
     sequence_fields: [],
   };
 
+  // Zoom to feature and close modal
+  const handleZoomToFeature = useCallback(
+    (featureId: string | number) => {
+      console.log(`[Attribute Table] Zoom button clicked: feature ID = ${featureId}, layer = "${layerName}"`);
+
+      // Zoom to feature on map
+      zoomToFeature(featureId, layerName);
+
+      // Close modal after short delay to show zoom animation
+      setTimeout(() => {
+        onClose();
+      }, 300);
+    },
+    [zoomToFeature, layerName, onClose]
+  );
+
   // Prepare DataGrid columns
   const columns: GridColDef[] = useMemo(() => {
     if (features.length === 0) return [];
 
     const firstRow = features[0];
     const cols: GridColDef[] = [];
+
+    // Add "Zoom" action column as first column
+    cols.push({
+      field: 'actions',
+      headerName: '',
+      width: 60,
+      sortable: false,
+      filterable: false,
+      disableColumnMenu: true,
+      renderCell: (params: GridRenderCellParams) => {
+        const featureId = params.row.gid ?? params.row.fid ?? params.row.ogc_fid ?? params.row.id;
+        return (
+          <IconButton
+            size="small"
+            onClick={() => handleZoomToFeature(featureId)}
+            title="Przybliż do obiektu i zamknij tabelę"
+            sx={{ color: 'primary.main' }}
+          >
+            <MyLocationIcon fontSize="small" />
+          </IconButton>
+        );
+      },
+    });
 
     Object.keys(firstRow).forEach((key) => {
       // Skip geometry columns (not editable in table)
@@ -123,7 +163,7 @@ export function AttributeTableModal({
     });
 
     return cols;
-  }, [features, constraints]);
+  }, [features, constraints, handleZoomToFeature]);
 
   // Prepare DataGrid rows
   const rows: GridRowsProp = useMemo(() => {
@@ -228,30 +268,6 @@ export function AttributeTableModal({
 
     dispatch(showSuccess('Eksportowano do CSV'));
   };
-
-  // Zoom to feature on row click
-  const handleRowClick = useCallback(
-    (params: GridRowParams) => {
-      console.log('[Attribute Table] Row clicked, full row data:', params.row);
-
-      // Try to get feature ID from row (check multiple possible primary key columns)
-      // Priority: gid > fid > ogc_fid > id (DataGrid row ID)
-      // IMPORTANT: Use ?? instead of || to allow 0 as valid ID
-      const featureId = params.row.gid ?? params.row.fid ?? params.row.ogc_fid ?? params.row.id;
-
-      if (featureId === undefined || featureId === null) {
-        console.warn('[Attribute Table] Row clicked but no primary key found (gid/fid/ogc_fid/id)');
-        console.warn('[Attribute Table] Available columns:', Object.keys(params.row));
-        return;
-      }
-
-      console.log(`[Attribute Table] Row clicked: feature ID = ${featureId}, layer = "${layerName}"`);
-
-      // Zoom to feature on map
-      zoomToFeature(featureId, layerName);
-    },
-    [zoomToFeature, layerName]
-  );
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth fullScreen>
@@ -365,8 +381,6 @@ export function AttributeTableModal({
               onProcessRowUpdateError={(error) => {
                 dispatch(showError('Błąd edycji wiersza'));
               }}
-              // Zoom to feature on row click
-              onRowClick={handleRowClick}
               sx={{
                 border: 'none',
                 '& .MuiDataGrid-cell': {
@@ -376,9 +390,6 @@ export function AttributeTableModal({
                   bgcolor: '#f5f5f5',
                   fontWeight: 600,
                   fontSize: '13px',
-                },
-                '& .MuiDataGrid-row': {
-                  cursor: 'pointer', // Indicate clickable rows
                 },
                 '& .MuiDataGrid-row:hover': {
                   bgcolor: 'rgba(0, 0, 0, 0.04)',
