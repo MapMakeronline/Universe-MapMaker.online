@@ -242,9 +242,9 @@ export function ColumnManagerModal({
         }}
       >
         <ViewColumnIcon sx={{ color: 'primary.main' }} />
-        <Typography variant="h6" sx={{ flex: 1, fontSize: '16px', fontWeight: 600 }}>
+        <Box component="span" sx={{ flex: 1, fontSize: '16px', fontWeight: 600 }}>
           Zarządzaj kolumnami
-        </Typography>
+        </Box>
         <Chip
           icon={<VisibilityIcon sx={{ fontSize: 14 }} />}
           label={`${visibleCount}/${columns.length} widocznych`}
