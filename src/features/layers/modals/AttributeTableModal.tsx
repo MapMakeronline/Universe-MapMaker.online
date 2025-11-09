@@ -13,12 +13,13 @@ import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
 import Skeleton from '@mui/material/Skeleton';
 import Alert from '@mui/material/Alert';
-import { DataGridPro, GridColDef, GridRowModel, GridRowsProp, GridRowParams, GridRenderCellParams } from '@mui/x-data-grid-pro';
+import { DataGridPro, GridColDef, GridRowModel, GridRowsProp, GridRowParams, GridRenderCellParams, GridRowSelectionModel } from '@mui/x-data-grid-pro';
 import CloseIcon from '@mui/icons-material/Close';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import DownloadIcon from '@mui/icons-material/Download';
 import SearchIcon from '@mui/icons-material/Search';
 import MyLocationIcon from '@mui/icons-material/MyLocation';
+import GpsFixedIcon from '@mui/icons-material/GpsFixed';
 import { useTheme } from '@mui/material/styles';
 import {
   useGetLayerFeaturesQuery,
@@ -62,6 +63,7 @@ export function AttributeTableModal({
   const zoomToFeature = useZoomToFeature();
   const [searchText, setSearchText] = useState('');
   const [editedRows, setEditedRows] = useState<Map<number, GridRowModel>>(new Map());
+  const [selectedRows, setSelectedRows] = useState<GridRowSelectionModel>([]);
 
   // Infinite scroll state: how many rows to display (starts at 100)
   const [displayedRowsCount, setDisplayedRowsCount] = useState(100);
@@ -104,6 +106,22 @@ export function AttributeTableModal({
     },
     [zoomToFeature, layerName]
   );
+
+  // Zoom to selected row (from toolbar button)
+  const handleZoomToSelected = useCallback(() => {
+    if (selectedRows.length === 0) {
+      dispatch(showError('Zaznacz wiersz do przybliżenia'));
+      return;
+    }
+
+    // Get first selected row ID
+    const selectedId = selectedRows[0];
+    console.log(`[Attribute Table] Zoom to selected: ID = ${selectedId}, layer = "${layerName}"`);
+
+    // Zoom to feature
+    zoomToFeature(selectedId as string | number, layerName);
+    dispatch(showSuccess('Przybliżono do zaznaczonego obiektu'));
+  }, [selectedRows, zoomToFeature, layerName, dispatch]);
 
   // Prepare DataGrid columns
   const columns: GridColDef[] = useMemo(() => {
@@ -342,6 +360,26 @@ export function AttributeTableModal({
           >
             Eksportuj CSV
           </Button>
+
+          <Button
+            variant="contained"
+            startIcon={<GpsFixedIcon />}
+            onClick={handleZoomToSelected}
+            disabled={selectedRows.length === 0}
+            sx={{
+              bgcolor: 'warning.main',
+              color: 'white',
+              '&:hover': {
+                bgcolor: 'warning.dark',
+              },
+              '&.Mui-disabled': {
+                bgcolor: 'rgba(255, 152, 0, 0.3)',
+                color: 'rgba(255, 255, 255, 0.5)',
+              }
+            }}
+          >
+            Przybliż do zaznaczonego
+          </Button>
         </Box>
 
         {/* DataGrid or Loading/Error */}
@@ -382,6 +420,10 @@ export function AttributeTableModal({
               onProcessRowUpdateError={(error) => {
                 dispatch(showError('Błąd edycji wiersza'));
               }}
+              // Row selection (checkboxes)
+              checkboxSelection
+              rowSelectionModel={selectedRows}
+              onRowSelectionModelChange={(newSelection) => setSelectedRows(newSelection)}
               // Pin "actions" column to left (always visible when scrolling)
               initialState={{
                 pinnedColumns: { left: ['actions'] }
