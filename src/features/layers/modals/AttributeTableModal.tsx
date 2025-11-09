@@ -94,20 +94,15 @@ export function AttributeTableModal({
     sequence_fields: [],
   };
 
-  // Zoom to feature and close modal
+  // Zoom to feature WITHOUT closing modal
   const handleZoomToFeature = useCallback(
     (featureId: string | number) => {
       console.log(`[Attribute Table] Zoom button clicked: feature ID = ${featureId}, layer = "${layerName}"`);
 
-      // Zoom to feature on map
+      // Just zoom to feature, keep modal open
       zoomToFeature(featureId, layerName);
-
-      // Close modal after short delay to show zoom animation
-      setTimeout(() => {
-        onClose();
-      }, 300);
     },
-    [zoomToFeature, layerName, onClose]
+    [zoomToFeature, layerName]
   );
 
   // Prepare DataGrid columns
@@ -117,22 +112,28 @@ export function AttributeTableModal({
     const firstRow = features[0];
     const cols: GridColDef[] = [];
 
-    // Add "Zoom" action column as first column
+    // Add "Zoom" action column as pinned left column (always visible)
     cols.push({
       field: 'actions',
-      headerName: '',
+      headerName: '🎯', // Target emoji as header
       width: 60,
       sortable: false,
       filterable: false,
       disableColumnMenu: true,
+      pinnable: false, // Cannot be unpinned by user
       renderCell: (params: GridRenderCellParams) => {
         const featureId = params.row.gid ?? params.row.fid ?? params.row.ogc_fid ?? params.row.id;
         return (
           <IconButton
             size="small"
             onClick={() => handleZoomToFeature(featureId)}
-            title="Przybliż do obiektu i zamknij tabelę"
-            sx={{ color: 'primary.main' }}
+            title="Przybliż do obiektu (tabela pozostanie otwarta)"
+            sx={{
+              color: 'primary.main',
+              '&:hover': {
+                bgcolor: 'rgba(0, 0, 0, 0.08)',
+              }
+            }}
           >
             <MyLocationIcon fontSize="small" />
           </IconButton>
@@ -381,6 +382,10 @@ export function AttributeTableModal({
               onProcessRowUpdateError={(error) => {
                 dispatch(showError('Błąd edycji wiersza'));
               }}
+              // Pin "actions" column to left (always visible when scrolling)
+              initialState={{
+                pinnedColumns: { left: ['actions'] }
+              }}
               sx={{
                 border: 'none',
                 '& .MuiDataGrid-cell': {
@@ -393,6 +398,11 @@ export function AttributeTableModal({
                 },
                 '& .MuiDataGrid-row:hover': {
                   bgcolor: 'rgba(0, 0, 0, 0.04)',
+                },
+                // Pinned column styling (stronger shadow for visibility)
+                '& .MuiDataGrid-cell--pinnedLeft, & .MuiDataGrid-columnHeader--pinnedLeft': {
+                  bgcolor: '#ffffff',
+                  boxShadow: '2px 0 4px rgba(0, 0, 0, 0.1)',
                 },
               }}
             />
