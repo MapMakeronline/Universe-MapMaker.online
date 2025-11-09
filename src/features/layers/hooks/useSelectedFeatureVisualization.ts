@@ -202,6 +202,19 @@ export function useSelectedFeatureVisualization(mapInstanceOverride?: any) {
       });
       console.log('[Feature Visualization] ✅ Highlight source added');
 
+      // Find first label/symbol layer to insert visualization layers before it
+      // This ensures selection highlight appears above geometry but below labels
+      const layers = map.getStyle().layers;
+      const firstLabelLayerId = layers.find((layer: any) =>
+        layer.type === 'symbol' || layer.id.includes('label')
+      )?.id;
+
+      console.log('[Feature Visualization] 🔍 Map layers analysis:', {
+        totalLayers: layers.length,
+        firstLabelLayerId,
+        willInsertBefore: firstLabelLayerId || 'top of stack'
+      });
+
       // Style based on geometry type
       console.log('[Feature Visualization] 🎨 Adding style layers for geometry type:', feature.geometry.type);
 
@@ -216,10 +229,10 @@ export function useSelectedFeatureVisualization(mapInstanceOverride?: any) {
             'fill-color': '#ffff00', // Yellow
             'fill-opacity': 0.5
           }
-        });
+        }, firstLabelLayerId); // Insert before first label layer
         console.log('[Feature Visualization] ✅ Polygon fill layer added');
 
-        // Polygon outline (red)
+        // Polygon outline (red) - add on top of fill
         console.log('[Feature Visualization] 🔴 Adding polygon outline layer...');
         map.addLayer({
           id: HIGHLIGHT_OUTLINE_LAYER_ID,
@@ -229,7 +242,7 @@ export function useSelectedFeatureVisualization(mapInstanceOverride?: any) {
             'line-color': '#ff0000', // Red
             'line-width': 3
           }
-        });
+        }, firstLabelLayerId); // Insert before first label layer
         console.log('[Feature Visualization] ✅ Polygon outline layer added');
       } else if (feature.geometry.type.includes('LineString')) {
         // LineString (red)
@@ -242,7 +255,7 @@ export function useSelectedFeatureVisualization(mapInstanceOverride?: any) {
             'line-color': '#ff0000', // Red
             'line-width': 4
           }
-        });
+        }, firstLabelLayerId);
         console.log('[Feature Visualization] ✅ LineString layer added');
       } else if (feature.geometry.type.includes('Point')) {
         // Point (red with white outline)
@@ -257,7 +270,7 @@ export function useSelectedFeatureVisualization(mapInstanceOverride?: any) {
             'circle-stroke-width': 2,
             'circle-stroke-color': '#ffffff'
           }
-        });
+        }, firstLabelLayerId);
         console.log('[Feature Visualization] ✅ Point layer added');
       }
 
@@ -297,7 +310,7 @@ export function useSelectedFeatureVisualization(mapInstanceOverride?: any) {
           'circle-stroke-width': 2,
           'circle-stroke-color': '#ffffff' // White outline
         }
-      });
+      }, firstLabelLayerId); // Insert before labels so vertices are visible
       console.log('[Feature Visualization] ✅ Vertices layer added');
 
       console.log('[Feature Visualization] ✅ Visualization complete - All layers added!');
