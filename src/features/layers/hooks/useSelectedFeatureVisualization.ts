@@ -202,17 +202,18 @@ export function useSelectedFeatureVisualization(mapInstanceOverride?: any) {
       });
       console.log('[Feature Visualization] ✅ Highlight source added');
 
-      // Find first label/symbol layer to insert visualization layers before it
-      // This ensures selection highlight appears above geometry but below labels
+      // Get all map layers to analyze rendering order
       const layers = map.getStyle().layers;
-      const firstLabelLayerId = layers.find((layer: any) =>
-        layer.type === 'symbol' || layer.id.includes('label')
-      )?.id;
+
+      // STRATEGY: Add visualization layers at the very top (no beforeId)
+      // This ensures they render above all other layers, including QGIS project layers
+      // Labels will still be readable as they typically render last
+      const firstLabelLayerId = undefined; // Force top of stack
 
       console.log('[Feature Visualization] 🔍 Map layers analysis:', {
         totalLayers: layers.length,
-        firstLabelLayerId,
-        willInsertBefore: firstLabelLayerId || 'top of stack'
+        strategy: 'Add to top of layer stack (above all layers)',
+        willInsertBefore: firstLabelLayerId || 'TOP OF STACK (above everything)'
       });
 
       // Style based on geometry type
