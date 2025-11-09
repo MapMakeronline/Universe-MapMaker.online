@@ -330,6 +330,31 @@ export function useSelectedFeatureVisualization(mapInstanceOverride?: any) {
       }, firstLabelLayerId); // undefined = top of stack
       console.log('[Feature Visualization] ✅ Vertices layer added');
 
+      // CRITICAL: Move our layers ABOVE all QGIS WMS layers
+      // This ensures they render on top of raster tiles
+      console.log('[Feature Visualization] 🔺 Moving visualization layers to top of stack...');
+
+      // Get first layer after QGIS layers (to position our layers right after them)
+      const firstLayerAfterQGIS = layers.findIndex((l: any, index: number) =>
+        index > 0 &&
+        layers[index - 1].id.includes('qgis-wms-layer')
+      );
+
+      if (firstLayerAfterQGIS !== -1) {
+        const targetLayerId = layers[firstLayerAfterQGIS].id;
+        console.log('[Feature Visualization] 🎯 Moving layers before:', targetLayerId);
+
+        // Move all our layers before the target layer
+        try {
+          map.moveLayer(HIGHLIGHT_FILL_LAYER_ID, targetLayerId);
+          map.moveLayer(HIGHLIGHT_OUTLINE_LAYER_ID, targetLayerId);
+          map.moveLayer(VERTICES_LAYER_ID, targetLayerId);
+          console.log('[Feature Visualization] ✅ Layers moved to correct position!');
+        } catch (e) {
+          console.warn('[Feature Visualization] ⚠️ Could not move layers:', e);
+        }
+      }
+
       console.log('[Feature Visualization] ✅ Visualization complete - All layers added!');
 
     } catch (error: any) {
