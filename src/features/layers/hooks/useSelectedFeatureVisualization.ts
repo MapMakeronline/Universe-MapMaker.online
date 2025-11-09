@@ -66,9 +66,21 @@ function extractVertices(geometry: any): Array<[number, number]> {
 }
 
 /**
+ * Convert EPSG:3857 (Web Mercator meters) to WGS84 (lng/lat degrees)
+ * Backend returns geometries in EPSG:3857, but Mapbox expects WGS84
+ */
+function epsg3857ToWGS84(x: number, y: number): [number, number] {
+  const lng = (x / 20037508.34) * 180;
+  const lat = (Math.atan(Math.exp((y / 20037508.34) * Math.PI)) / (Math.PI / 4) - 1) * 90;
+  return [lng, lat];
+}
+
+/**
  * Convert lng/lat to screen pixel coordinates
  */
-function projectToScreen(map: any, lng: number, lat: number): { x: number; y: number } {
+function projectToScreen(map: any, x: number, y: number): { x: number; y: number } {
+  // Convert from EPSG:3857 (meters) to WGS84 (degrees) first
+  const [lng, lat] = epsg3857ToWGS84(x, y);
   const point = map.project([lng, lat]);
   return { x: point.x, y: point.y };
 }
