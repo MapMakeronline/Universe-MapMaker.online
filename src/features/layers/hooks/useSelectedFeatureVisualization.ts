@@ -220,30 +220,30 @@ export function useSelectedFeatureVisualization(mapInstanceOverride?: any) {
       console.log('[Feature Visualization] 🎨 Adding style layers for geometry type:', feature.geometry.type);
 
       if (feature.geometry.type.includes('Polygon')) {
-        // Polygon fill (yellow with transparency)
+        // Polygon fill (bright cyan - very visible for debugging)
         console.log('[Feature Visualization] 🟡 Adding polygon fill layer...');
         map.addLayer({
           id: HIGHLIGHT_FILL_LAYER_ID,
           type: 'fill',
           source: HIGHLIGHT_SOURCE_ID,
           paint: {
-            'fill-color': '#ffff00', // Yellow
-            'fill-opacity': 0.5
+            'fill-color': '#00ffff', // Bright cyan (very visible)
+            'fill-opacity': 0.6 // Increased opacity for visibility
           }
-        }, firstLabelLayerId); // Insert before first label layer
+        }, firstLabelLayerId); // undefined = top of stack
         console.log('[Feature Visualization] ✅ Polygon fill layer added');
 
-        // Polygon outline (red) - add on top of fill
+        // Polygon outline (magenta/pink - very visible for debugging)
         console.log('[Feature Visualization] 🔴 Adding polygon outline layer...');
         map.addLayer({
           id: HIGHLIGHT_OUTLINE_LAYER_ID,
           type: 'line',
           source: HIGHLIGHT_SOURCE_ID,
           paint: {
-            'line-color': '#ff0000', // Red
-            'line-width': 3
+            'line-color': '#ff00ff', // Magenta/pink (very visible)
+            'line-width': 5 // Thicker for visibility
           }
-        }, firstLabelLayerId); // Insert before first label layer
+        }, firstLabelLayerId); // undefined = top of stack
         console.log('[Feature Visualization] ✅ Polygon outline layer added');
       } else if (feature.geometry.type.includes('LineString')) {
         // LineString (red)
@@ -306,12 +306,12 @@ export function useSelectedFeatureVisualization(mapInstanceOverride?: any) {
         type: 'circle',
         source: VERTICES_SOURCE_ID,
         paint: {
-          'circle-color': '#000000', // Black
-          'circle-radius': 5,
-          'circle-stroke-width': 2,
+          'circle-color': '#ff0000', // Bright red (very visible)
+          'circle-radius': 8, // Larger for visibility
+          'circle-stroke-width': 3, // Thicker outline
           'circle-stroke-color': '#ffffff' // White outline
         }
-      }, firstLabelLayerId); // Insert before labels so vertices are visible
+      }, firstLabelLayerId); // undefined = top of stack
       console.log('[Feature Visualization] ✅ Vertices layer added');
 
       console.log('[Feature Visualization] ✅ Visualization complete - All layers added!');
