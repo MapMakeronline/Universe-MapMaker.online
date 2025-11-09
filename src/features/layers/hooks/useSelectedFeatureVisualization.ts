@@ -1,12 +1,15 @@
 /**
- * useSelectedFeatureVisualization Hook
+ * useSelectedFeatureVisualization Hook (Canvas Overlay Version)
  *
  * Provides functionality to visualize selected feature(s) from attribute table
  * with highlight and vertices (nodes) on the map - similar to QGIS selection.
  *
+ * Uses HTML Canvas overlay to render above QGIS WMS raster tiles.
+ *
  * Features:
- * - Highlight selected geometry (fill + outline)
- * - Show vertices (nodes) as small circles
+ * - Highlight selected geometry (fill + outline) - YELLOW + RED
+ * - Show vertices (nodes) as small circles - BLACK with WHITE stroke
+ * - Canvas overlay renders ABOVE all map layers (including WMS rasters)
  * - Auto-cleanup on layer change or unmount
  *
  * Usage:
@@ -16,19 +19,9 @@
  * ```
  */
 
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useMap } from 'react-map-gl';
 import { useGetSelectedFeaturesMutation } from '@/backend/layers';
-
-// IMPORTANT: Use different IDs than useZoomToFeature to avoid conflicts
-// useZoomToFeature uses: 'selected-feature-highlight', 'selected-feature-highlight-fill', 'selected-feature-highlight-outline'
-// This hook uses: 'qgis-selection-*' prefix to differentiate
-const HIGHLIGHT_LAYER_ID = 'qgis-selection-highlight';
-const HIGHLIGHT_FILL_LAYER_ID = 'qgis-selection-fill';
-const HIGHLIGHT_OUTLINE_LAYER_ID = 'qgis-selection-outline';
-const VERTICES_LAYER_ID = 'qgis-selection-vertices';
-const HIGHLIGHT_SOURCE_ID = 'qgis-selection-source';
-const VERTICES_SOURCE_ID = 'qgis-selection-vertices-source';
 
 /**
  * Extracts all vertices from a GeoJSON geometry
@@ -73,7 +66,144 @@ function extractVertices(geometry: any): Array<[number, number]> {
 }
 
 /**
- * Hook for visualizing selected feature with highlight and vertices
+ * Convert lng/lat to screen pixel coordinates
+ */
+function projectToScreen(map: any, lng: number, lat: number): { x: number; y: number } {
+  const point = map.project([lng, lat]);
+  return { x: point.x, y: point.y };
+}
+
+/**
+ * Draw polygon on canvas
+ */
+function drawPolygon(
+  ctx: CanvasRenderingContext2D,
+  map: any,
+  coordinates: number[][][],
+  fillColor: string,
+  strokeColor: string,
+  lineWidth: number
+) {
+  // Draw each ring (outer + holes)
+  coordinates.forEach((ring, ringIndex) => {
+    ctx.beginPath();
+
+    ring.forEach((coord, i) => {
+      const { x, y } = projectToScreen(map, coord[0], coord[1]);
+      if (i === 0) {
+        ctx.moveTo(x, y);
+      } else {
+        ctx.lineTo(x, y);
+      }
+    });
+
+    ctx.closePath();
+
+    // Fill only outer ring
+    if (ringIndex === 0) {
+      ctx.fillStyle = fillColor;
+      ctx.fill();
+    }
+
+    // Stroke all rings
+    ctx.strokeStyle = strokeColor;
+    ctx.lineWidth = lineWidth;
+    ctx.stroke();
+  });
+}
+
+/**
+ * Draw MultiPolygon on canvas
+ */
+function drawMultiPolygon(
+  ctx: CanvasRenderingContext2D,
+  map: any,
+  coordinates: number[][][][],
+  fillColor: string,
+  strokeColor: string,
+  lineWidth: number
+) {
+  coordinates.forEach(polygon => {
+    drawPolygon(ctx, map, polygon, fillColor, strokeColor, lineWidth);
+  });
+}
+
+/**
+ * Draw LineString on canvas
+ */
+function drawLineString(
+  ctx: CanvasRenderingContext2D,
+  map: any,
+  coordinates: number[][],
+  strokeColor: string,
+  lineWidth: number
+) {
+  ctx.beginPath();
+
+  coordinates.forEach((coord, i) => {
+    const { x, y } = projectToScreen(map, coord[0], coord[1]);
+    if (i === 0) {
+      ctx.moveTo(x, y);
+    } else {
+      ctx.lineTo(x, y);
+    }
+  });
+
+  ctx.strokeStyle = strokeColor;
+  ctx.lineWidth = lineWidth;
+  ctx.stroke();
+}
+
+/**
+ * Draw Point on canvas
+ */
+function drawPoint(
+  ctx: CanvasRenderingContext2D,
+  map: any,
+  coordinates: number[],
+  fillColor: string,
+  strokeColor: string,
+  radius: number,
+  strokeWidth: number
+) {
+  const { x, y } = projectToScreen(map, coordinates[0], coordinates[1]);
+
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.fillStyle = fillColor;
+  ctx.fill();
+  ctx.strokeStyle = strokeColor;
+  ctx.lineWidth = strokeWidth;
+  ctx.stroke();
+}
+
+/**
+ * Draw vertices as circles on canvas
+ */
+function drawVertices(
+  ctx: CanvasRenderingContext2D,
+  map: any,
+  vertices: Array<[number, number]>,
+  fillColor: string,
+  strokeColor: string,
+  radius: number,
+  strokeWidth: number
+) {
+  vertices.forEach(([lng, lat]) => {
+    const { x, y } = projectToScreen(map, lng, lat);
+
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fillStyle = fillColor;
+    ctx.fill();
+    ctx.strokeStyle = strokeColor;
+    ctx.lineWidth = strokeWidth;
+    ctx.stroke();
+  });
+}
+
+/**
+ * Hook for visualizing selected feature with highlight and vertices using Canvas overlay
  *
  * @param mapInstanceOverride - Optional map instance override (for components outside MapProvider)
  * @returns Object with visualizeFeature and clearVisualization functions
@@ -83,43 +213,152 @@ export function useSelectedFeatureVisualization(mapInstanceOverride?: any) {
   const map = mapInstanceOverride || mapFromContext;
   const [getSelectedFeatures] = useGetSelectedFeaturesMutation();
 
+  // Canvas overlay element reference
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  // Current feature geometry for redrawing on map move/zoom
+  const currentFeatureRef = useRef<any>(null);
+  const currentVerticesRef = useRef<Array<[number, number]>>([]);
+
   /**
-   * Removes existing highlight and vertices layers
+   * Render canvas overlay
    */
-  const clearVisualization = useCallback(() => {
-    if (!map) return;
+  const renderCanvas = useCallback(() => {
+    if (!map || !canvasRef.current || !currentFeatureRef.current) return;
 
-    try {
-      // Remove layers (in reverse order)
-      if (map.getLayer(VERTICES_LAYER_ID)) {
-        map.removeLayer(VERTICES_LAYER_ID);
-      }
-      if (map.getLayer(HIGHLIGHT_OUTLINE_LAYER_ID)) {
-        map.removeLayer(HIGHLIGHT_OUTLINE_LAYER_ID);
-      }
-      if (map.getLayer(HIGHLIGHT_FILL_LAYER_ID)) {
-        map.removeLayer(HIGHLIGHT_FILL_LAYER_ID);
-      }
-      if (map.getLayer(HIGHLIGHT_LAYER_ID)) {
-        map.removeLayer(HIGHLIGHT_LAYER_ID);
-      }
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
-      // Remove sources
-      if (map.getSource(VERTICES_SOURCE_ID)) {
-        map.removeSource(VERTICES_SOURCE_ID);
-      }
-      if (map.getSource(HIGHLIGHT_SOURCE_ID)) {
-        map.removeSource(HIGHLIGHT_SOURCE_ID);
-      }
+    // Clear canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      console.log('[Feature Visualization] ✨ Cleared previous visualization');
-    } catch (error) {
-      console.debug('[Feature Visualization] Cleanup error (map may be destroyed):', error);
+    const feature = currentFeatureRef.current;
+    const vertices = currentVerticesRef.current;
+
+    console.log('[Canvas Overlay] 🎨 Rendering feature:', feature.geometry.type);
+
+    // Draw geometry based on type
+    if (feature.geometry.type === 'Polygon') {
+      drawPolygon(
+        ctx,
+        map,
+        feature.geometry.coordinates,
+        'rgba(255, 255, 0, 0.5)', // Yellow fill (50% opacity)
+        '#ff0000', // Red outline
+        3 // Line width
+      );
+    } else if (feature.geometry.type === 'MultiPolygon') {
+      drawMultiPolygon(
+        ctx,
+        map,
+        feature.geometry.coordinates,
+        'rgba(255, 255, 0, 0.5)', // Yellow fill (50% opacity)
+        '#ff0000', // Red outline
+        3 // Line width
+      );
+    } else if (feature.geometry.type === 'LineString') {
+      drawLineString(
+        ctx,
+        map,
+        feature.geometry.coordinates,
+        '#ff0000', // Red
+        4 // Line width
+      );
+    } else if (feature.geometry.type === 'Point') {
+      drawPoint(
+        ctx,
+        map,
+        feature.geometry.coordinates,
+        '#ff0000', // Red fill
+        '#ffffff', // White stroke
+        8, // Radius
+        2 // Stroke width
+      );
     }
+
+    // Draw vertices (black circles with white outline)
+    if (vertices.length > 0) {
+      drawVertices(
+        ctx,
+        map,
+        vertices,
+        '#000000', // Black fill
+        '#ffffff', // White stroke
+        5, // Radius (5px as specified)
+        2 // Stroke width (2px as specified)
+      );
+    }
+
+    console.log('[Canvas Overlay] ✅ Canvas rendered with', vertices.length, 'vertices');
   }, [map]);
 
   /**
-   * Visualizes selected feature with highlight and vertices
+   * Initialize canvas overlay
+   */
+  const initCanvas = useCallback(() => {
+    if (!map || canvasRef.current) return;
+
+    console.log('[Canvas Overlay] 🎨 Initializing canvas overlay...');
+
+    const mapContainer = map.getContainer();
+    const canvas = document.createElement('canvas');
+    canvas.id = 'qgis-selection-canvas-overlay';
+    canvas.style.position = 'absolute';
+    canvas.style.top = '0';
+    canvas.style.left = '0';
+    canvas.style.pointerEvents = 'none'; // Allow clicks to pass through
+    canvas.style.zIndex = '999'; // Above all map layers
+
+    // Match map container size
+    const rect = mapContainer.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+    canvas.style.width = `${rect.width}px`;
+    canvas.style.height = `${rect.height}px`;
+
+    mapContainer.appendChild(canvas);
+    canvasRef.current = canvas;
+
+    // Redraw on map move/zoom
+    const handleMapUpdate = () => {
+      renderCanvas();
+    };
+
+    map.on('move', handleMapUpdate);
+    map.on('zoom', handleMapUpdate);
+    map.on('resize', () => {
+      if (canvasRef.current) {
+        const rect = mapContainer.getBoundingClientRect();
+        canvasRef.current.width = rect.width;
+        canvasRef.current.height = rect.height;
+        canvasRef.current.style.width = `${rect.width}px`;
+        canvasRef.current.style.height = `${rect.height}px`;
+        renderCanvas();
+      }
+    });
+
+    console.log('[Canvas Overlay] ✅ Canvas overlay initialized');
+  }, [map, renderCanvas]);
+
+  /**
+   * Removes canvas overlay
+   */
+  const clearVisualization = useCallback(() => {
+    console.log('[Canvas Overlay] ✨ Clearing visualization...');
+
+    if (canvasRef.current) {
+      canvasRef.current.remove();
+      canvasRef.current = null;
+    }
+
+    currentFeatureRef.current = null;
+    currentVerticesRef.current = [];
+
+    console.log('[Canvas Overlay] ✅ Cleared');
+  }, []);
+
+  /**
+   * Visualizes selected feature with highlight and vertices using Canvas overlay
    *
    * @param featureId - Feature ID (ogc_fid)
    * @param layer - Layer object with id and name
@@ -130,19 +369,19 @@ export function useSelectedFeatureVisualization(mapInstanceOverride?: any) {
     layer: { id: string; name: string },
     projectName: string
   ) => {
-    console.log('[Feature Visualization] 🎨 Starting visualization:', {
+    console.log('[Canvas Overlay] 🎨 Starting visualization:', {
       featureId,
       layerName: layer.name
     });
 
     if (!map) {
-      console.error('[Feature Visualization] ❌ Map not ready');
+      console.error('[Canvas Overlay] ❌ Map not ready');
       return;
     }
 
     try {
-      // Clear previous visualization
-      clearVisualization();
+      // Initialize canvas if needed
+      initCanvas();
 
       // Extract numeric ogc_fid from GML ID if needed
       let actualFeatureId = featureId;
@@ -162,7 +401,7 @@ export function useSelectedFeatureVisualization(mapInstanceOverride?: any) {
 
       // Handle undefined or null response
       if (!response) {
-        console.error('[Feature Visualization] ❌ Backend returned undefined/null response');
+        console.error('[Canvas Overlay] ❌ Backend returned undefined/null response');
         return;
       }
 
@@ -172,7 +411,7 @@ export function useSelectedFeatureVisualization(mapInstanceOverride?: any) {
         try {
           parsedResponse = JSON.parse(response);
         } catch (e) {
-          console.error('[Feature Visualization] ❌ Failed to parse response:', e);
+          console.error('[Canvas Overlay] ❌ Failed to parse response:', e);
           return;
         }
       }
@@ -180,194 +419,40 @@ export function useSelectedFeatureVisualization(mapInstanceOverride?: any) {
       const actualData = (parsedResponse as any).data || parsedResponse;
 
       if (!actualData.features || actualData.features.length === 0) {
-        console.error('[Feature Visualization] ❌ No features returned');
+        console.error('[Canvas Overlay] ❌ No features returned');
         return;
       }
 
       const feature = actualData.features[0];
-      console.log('[Feature Visualization] ✅ Feature received:', {
+      console.log('[Canvas Overlay] ✅ Feature received:', {
         id: feature.id,
-        geometryType: feature.geometry.type,
-        bbox: feature.bbox
+        geometryType: feature.geometry.type
       });
-
-      // Add highlight source
-      console.log('[Feature Visualization] 🎨 Adding highlight source...');
-      map.addSource(HIGHLIGHT_SOURCE_ID, {
-        type: 'geojson',
-        data: {
-          type: 'FeatureCollection',
-          features: [feature]
-        }
-      });
-      console.log('[Feature Visualization] ✅ Highlight source added');
-
-      // Get all map layers to analyze rendering order
-      const layers = map.getStyle().layers;
-
-      // DEBUG: Log all layer IDs to find QGIS WMS layers
-      console.log('[Feature Visualization] 🔍 ALL LAYER IDS:', layers.map((l: any) => l.id));
-
-      // Find QGIS WMS raster layers - they're typically the last layers before labels
-      // QGIS layers are rendered as raster tiles, so we need to add our layers AFTER them
-      // Look for layers with 'qgis', 'wms', or project-specific patterns
-      const qgisLayers = layers.filter((l: any) =>
-        l.id.includes('qgis') ||
-        l.id.includes('wms') ||
-        l.type === 'raster' ||
-        l.id.toLowerCase().includes('wyszki') || // Project name
-        l.id.toLowerCase().includes('layer') // Generic layer pattern
-      );
-
-      console.log('[Feature Visualization] 🗺️ Found QGIS/WMS layers:', qgisLayers.map((l: any) => ({ id: l.id, type: l.type })));
-
-      // Strategy: Add AFTER all raster layers but BEFORE labels
-      // If no QGIS layers found, add at top of stack
-      const firstLabelLayerId = undefined; // Force top of stack for now
-
-      console.log('[Feature Visualization] 🔍 Map layers analysis:', {
-        totalLayers: layers.length,
-        qgisLayersCount: qgisLayers.length,
-        strategy: 'Add to top of layer stack (above QGIS WMS rasters)',
-        willInsertBefore: firstLabelLayerId || 'TOP OF STACK (above everything)'
-      });
-
-      // Style based on geometry type
-      console.log('[Feature Visualization] 🎨 Adding style layers for geometry type:', feature.geometry.type);
-
-      if (feature.geometry.type.includes('Polygon')) {
-        // Polygon fill (bright cyan - very visible for debugging)
-        console.log('[Feature Visualization] 🟡 Adding polygon fill layer...');
-        map.addLayer({
-          id: HIGHLIGHT_FILL_LAYER_ID,
-          type: 'fill',
-          source: HIGHLIGHT_SOURCE_ID,
-          paint: {
-            'fill-color': '#00ffff', // Bright cyan (very visible)
-            'fill-opacity': 0.6 // Increased opacity for visibility
-          }
-        }, firstLabelLayerId); // undefined = top of stack
-        console.log('[Feature Visualization] ✅ Polygon fill layer added');
-
-        // Polygon outline (magenta/pink - very visible for debugging)
-        console.log('[Feature Visualization] 🔴 Adding polygon outline layer...');
-        map.addLayer({
-          id: HIGHLIGHT_OUTLINE_LAYER_ID,
-          type: 'line',
-          source: HIGHLIGHT_SOURCE_ID,
-          paint: {
-            'line-color': '#ff00ff', // Magenta/pink (very visible)
-            'line-width': 5 // Thicker for visibility
-          }
-        }, firstLabelLayerId); // undefined = top of stack
-        console.log('[Feature Visualization] ✅ Polygon outline layer added');
-      } else if (feature.geometry.type.includes('LineString')) {
-        // LineString (red)
-        console.log('[Feature Visualization] 🔴 Adding LineString layer...');
-        map.addLayer({
-          id: HIGHLIGHT_LAYER_ID,
-          type: 'line',
-          source: HIGHLIGHT_SOURCE_ID,
-          paint: {
-            'line-color': '#ff0000', // Red
-            'line-width': 4
-          }
-        }, firstLabelLayerId);
-        console.log('[Feature Visualization] ✅ LineString layer added');
-      } else if (feature.geometry.type.includes('Point')) {
-        // Point (red with white outline)
-        console.log('[Feature Visualization] 🔴 Adding Point layer...');
-        map.addLayer({
-          id: HIGHLIGHT_LAYER_ID,
-          type: 'circle',
-          source: HIGHLIGHT_SOURCE_ID,
-          paint: {
-            'circle-color': '#ff0000', // Red
-            'circle-radius': 8,
-            'circle-stroke-width': 2,
-            'circle-stroke-color': '#ffffff'
-          }
-        }, firstLabelLayerId);
-        console.log('[Feature Visualization] ✅ Point layer added');
-      }
 
       // Extract vertices
       const vertices = extractVertices(feature.geometry);
-      console.log('[Feature Visualization] 📍 Extracted vertices:', vertices.length);
+      console.log('[Canvas Overlay] 📍 Extracted vertices:', vertices.length);
 
-      // Add vertices layer (small black circles with white stroke)
-      console.log('[Feature Visualization] ⚫ Adding vertices source...');
-      map.addSource(VERTICES_SOURCE_ID, {
-        type: 'geojson',
-        data: {
-          type: 'FeatureCollection',
-          features: vertices.map((coord, index) => ({
-            type: 'Feature',
-            id: index,
-            geometry: {
-              type: 'Point',
-              coordinates: coord
-            },
-            properties: {
-              vertexIndex: index
-            }
-          }))
-        }
-      });
-      console.log('[Feature Visualization] ✅ Vertices source added');
+      // Store feature and vertices for redrawing
+      currentFeatureRef.current = feature;
+      currentVerticesRef.current = vertices;
 
-      console.log('[Feature Visualization] ⚫ Adding vertices layer...');
-      map.addLayer({
-        id: VERTICES_LAYER_ID,
-        type: 'circle',
-        source: VERTICES_SOURCE_ID,
-        paint: {
-          'circle-color': '#ff0000', // Bright red (very visible)
-          'circle-radius': 8, // Larger for visibility
-          'circle-stroke-width': 3, // Thicker outline
-          'circle-stroke-color': '#ffffff' // White outline
-        }
-      }, firstLabelLayerId); // undefined = top of stack
-      console.log('[Feature Visualization] ✅ Vertices layer added');
+      // Render on canvas
+      renderCanvas();
 
-      // CRITICAL: Move our layers ABOVE all QGIS WMS layers
-      // This ensures they render on top of raster tiles
-      console.log('[Feature Visualization] 🔺 Moving visualization layers to top of stack...');
-
-      // Get first layer after QGIS layers (to position our layers right after them)
-      const firstLayerAfterQGIS = layers.findIndex((l: any, index: number) =>
-        index > 0 &&
-        layers[index - 1].id.includes('qgis-wms-layer')
-      );
-
-      if (firstLayerAfterQGIS !== -1) {
-        const targetLayerId = layers[firstLayerAfterQGIS].id;
-        console.log('[Feature Visualization] 🎯 Moving layers before:', targetLayerId);
-
-        // Move all our layers before the target layer
-        try {
-          map.moveLayer(HIGHLIGHT_FILL_LAYER_ID, targetLayerId);
-          map.moveLayer(HIGHLIGHT_OUTLINE_LAYER_ID, targetLayerId);
-          map.moveLayer(VERTICES_LAYER_ID, targetLayerId);
-          console.log('[Feature Visualization] ✅ Layers moved to correct position!');
-        } catch (e) {
-          console.warn('[Feature Visualization] ⚠️ Could not move layers:', e);
-        }
-      }
-
-      console.log('[Feature Visualization] ✅ Visualization complete - All layers added!');
+      console.log('[Canvas Overlay] ✅ Visualization complete!');
 
     } catch (error: any) {
       // Don't log as error if it's just missing geometry (expected for ~20% of features)
       const isMissingGeometry = error?.data?.includes('Nie znaleziono geometrii');
 
       if (isMissingGeometry) {
-        console.warn('[Feature Visualization] ⚠️ No geometry for this feature (expected for descriptive layers)');
+        console.warn('[Canvas Overlay] ⚠️ No geometry for this feature (expected for descriptive layers)');
       } else {
-        console.error('[Feature Visualization] ❌ Error:', error);
+        console.error('[Canvas Overlay] ❌ Error:', error);
       }
     }
-  }, [map, getSelectedFeatures, clearVisualization]);
+  }, [map, getSelectedFeatures, initCanvas, renderCanvas]);
 
   // Cleanup on unmount
   useEffect(() => {
