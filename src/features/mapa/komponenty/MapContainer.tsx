@@ -14,6 +14,7 @@ import IdentifyTool from './IdentifyTool';
 import Buildings3D from './Buildings3D';
 import FeatureAttributesModal from '@/features/layers/modals/FeatureAttributesModal';
 import RightFABToolbar from '@/features/narzedzia/RightFABToolbar';
+import ZoomToSelectedControl from './ZoomToSelectedControl';
 
 // Import CSS dla Mapbox GL
 import 'mapbox-gl/dist/mapbox-gl.css';
@@ -232,6 +233,9 @@ const MapContainer: React.FC<MapContainerProps> = ({ children, projectName }) =>
             unit="metric"
           />
         )}
+
+        {/* Zoom to Selected Control - Custom Mapbox control (top-right, below navigation) */}
+        {isMapLoaded && <ZoomToSelectedControl position="top-right" />}
 
         {/* Geocoder - Search (disabled, now using SearchModal from RightToolbar) */}
         {/* <Geocoder /> */}
