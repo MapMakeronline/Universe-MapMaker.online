@@ -7,6 +7,7 @@ import featuresReducer from './slices/featuresSlice';
 import projectsReducer from './slices/projectsSlice';
 import notificationReducer from './slices/notificationSlice';
 import loadingReducer from './slices/loadingSlice';
+import wypisReducer from './slices/wypisSlice';
 
 // NEW: Single baseApi for all backend communication (RTK Query)
 import { baseApi } from '@/backend';
@@ -23,8 +24,9 @@ export const makeStore = () => {
       projects: projectsReducer,
       notification: notificationReducer,
       loading: loadingReducer,
+      wypis: wypisReducer,
 
-      // NEW: Single baseApi (all modules: auth, projects, layers, users)
+      // NEW: Single baseApi (all modules: auth, projects, layers, users, wypis)
       [baseApi.reducerPath]: baseApi.reducer,
     },
     middleware: (getDefaultMiddleware) =>
