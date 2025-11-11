@@ -663,10 +663,11 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
         open={modals.printConfig}
         onClose={() => closeModal('printConfig')}
         projectName={projectName}
-        availableLayers={layers.filter(l => l.type !== 'group').map(l => ({
+        projectLayers={(layers || []).filter(l => l.type !== 'group').map(l => ({
           id: l.id,
           name: l.name,
-          columns: [] // TODO: Fetch from layer attributes API
+          type: l.type === 'raster' ? 'raster' : 'vector',
+          attributes: [] // TODO: Fetch from layer attributes API
         }))}
       />
 

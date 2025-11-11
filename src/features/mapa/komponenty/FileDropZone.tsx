@@ -17,6 +17,7 @@ interface FileDropZoneProps {
   maxSize?: number
   placeholder?: string
   disabled?: boolean
+  multiple?: boolean
 }
 
 /**
@@ -45,11 +46,12 @@ const FileDropZone: React.FC<FileDropZoneProps> = ({
   maxSize = 50 * 1024 * 1024, // 50MB
   placeholder = 'Przeciągnij plik DOC/DOCX tutaj lub kliknij, aby wybrać',
   disabled = false,
+  multiple = false,
 }) => {
   const { getRootProps, getInputProps, isDragActive, isDragReject } = useDropzone({
     accept,
     maxSize,
-    multiple: false,
+    multiple,
     disabled,
     onDrop,
     onDropRejected: (fileRejections) => {
@@ -170,7 +172,7 @@ const FileDropZone: React.FC<FileDropZoneProps> = ({
           : placeholder}
       </Typography>
       <Typography variant="caption" sx={{ color: '#95a5a6', display: 'block', mt: 1 }}>
-        Dozwolone: .doc, .docx (max {maxSize / (1024 * 1024)}MB)
+        Dozwolone: .doc, .docx (max {maxSize / (1024 * 1024)}MB){multiple ? ' - możesz wybrać wiele plików' : ''}
       </Typography>
     </Box>
   )
