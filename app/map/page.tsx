@@ -61,6 +61,7 @@ import { AttributeTablePanel } from '@/features/layers/components/AttributeTable
 
 // Wypis i Wyrys components
 import WypisGenerateDialog from '@/features/mapa/komponenty/WypisGenerateDialog';
+import WypisPlotSelector from '@/features/mapa/komponenty/WypisPlotSelector';
 
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import { setCurrentProject } from '@/redux/slices/projectsSlice';
@@ -379,6 +380,9 @@ export default function MapPage() {
             availablePlots={selectedPlots}
           />
         )}
+
+        {/* WypisPlotSelector - Handles plot selection from map clicks */}
+        {projectName && <WypisPlotSelector />}
       </Box>
 
       {/* LayersFAB - Toggle button for layer panel (bottom left corner) */}
