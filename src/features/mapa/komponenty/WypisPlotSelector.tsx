@@ -9,7 +9,7 @@ import { addPlot } from '@/redux/slices/wypisSlice';
 import { useGetPlotSpatialDevelopmentMutation, useGetWypisConfigurationQuery } from '@/backend/wypis';
 import { getQGISFeatureInfoMultiLayer } from '@/lib/qgis/getFeatureInfo';
 import { mapLogger } from '@/tools/logger';
-import { showError, showSuccess } from '@/redux/slices/snackbarSlice';
+import { showError, showSuccess } from '@/redux/slices/notificationSlice';
 
 /**
  * WypisPlotSelector - Component for selecting plots (parcels) from map for wypis generation
