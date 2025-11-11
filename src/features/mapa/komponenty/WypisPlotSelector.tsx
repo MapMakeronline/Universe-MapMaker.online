@@ -223,11 +223,12 @@ const WypisPlotSelector = () => {
         mapLogger.log('✅ Wypis: Extracted plot data', plotData);
 
         // 4. Query spatial development endpoint
+        // NOTE: Backend expects plot as ARRAY, not object (Django serializer: plot = ListField)
         dispatch(showSuccess(`Pobieranie informacji o przeznaczeniu działki ${precinct}/${number}...`));
 
         const result = await getPlotSpatialDevelopment({
           project: projectName,
-          plot: plotData,
+          plot: [plotData], // ✅ Wrap in array - backend expects ListField
         }).unwrap();
 
         if (!result.success || !result.data || result.data.length === 0) {
