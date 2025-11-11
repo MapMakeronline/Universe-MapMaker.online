@@ -41,8 +41,8 @@ const DocumentFAB: React.FC<DocumentFABProps> = ({ projectName }) => {
   useEffect(() => {
     if (response?.success && response.data) {
       // Show FAB if ANY configuration exists (even without DOC files)
-      // Check if configurations array exists and has at least one config
-      const configurations = response.data.configurations || []
+      // Backend returns config_structure when no config_id specified
+      const configurations = response.data.config_structure || response.data.configurations || []
       const hasConfigs = configurations.length > 0
       dispatch(setHasConfigurations(hasConfigs))
     }

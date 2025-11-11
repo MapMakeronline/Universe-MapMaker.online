@@ -77,10 +77,11 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
 
   // Auto-select first config when loaded
   useEffect(() => {
-    if (configurationsData && 'configurations' in configurationsData && configurationsData.configurations.length > 0) {
-      if (!selectedConfigId) {
-        dispatch(setSelectedConfigId(configurationsData.configurations[0].config_id))
-      }
+    const configs = configurationsData?.config_structure || configurationsData?.configurations || []
+    if (configs.length > 0 && !selectedConfigId) {
+      // Backend returns {id, name} not {config_id, configuration_name}
+      const firstConfig = configs[0]
+      dispatch(setSelectedConfigId(firstConfig.id || firstConfig.config_id))
     }
   }, [configurationsData, selectedConfigId, dispatch])
 
@@ -137,9 +138,7 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
     }
   }
 
-  const configurations = configurationsData && 'configurations' in configurationsData
-    ? configurationsData.configurations
-    : []
+  const configurations = configurationsData?.config_structure || configurationsData?.configurations || []
 
   return (
     <Dialog
@@ -208,8 +207,8 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
                 label="Wybierz konfigurację"
               >
                 {configurations.map(config => (
-                  <MenuItem key={config.config_id} value={config.config_id}>
-                    {config.configuration_name}
+                  <MenuItem key={config.id || config.config_id} value={config.id || config.config_id}>
+                    {config.name || config.configuration_name}
                   </MenuItem>
                 ))}
               </Select>
