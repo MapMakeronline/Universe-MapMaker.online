@@ -746,10 +746,20 @@ export const projectsApi = baseApi.injectEndpoints({
       { data: any; success: boolean; message: string },
       { project: string; config_id?: string }
     >({
-      query: ({ project, config_id }) => ({
-        url: '/api/projects/wypis/get/configuration',
-        params: config_id ? { project, config_id } : { project },
-      }),
+      query: ({ project, config_id }) => {
+        console.log('🔍 RTK Query getWypisConfigurations REQUEST:', { project, config_id });
+        return {
+          url: '/api/projects/wypis/get/configuration',
+          params: config_id ? { project, config_id } : { project },
+        };
+      },
+      transformResponse: (response: any) => {
+        console.log('🔍 RTK Query getWypisConfigurations RAW RESPONSE:', response);
+        console.log('  - data:', response?.data);
+        console.log('  - config_structure:', response?.data?.config_structure);
+        console.log('  - config_structure length:', response?.data?.config_structure?.length);
+        return response;
+      },
       providesTags: (result, error, { project, config_id }) =>
         config_id
           ? [{ type: 'WypisConfiguration', id: `${project}-${config_id}` }]

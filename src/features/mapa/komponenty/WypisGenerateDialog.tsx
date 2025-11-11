@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useTheme } from '@mui/material/styles'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import Dialog from '@mui/material/Dialog'
@@ -19,10 +19,12 @@ import FormControlLabel from '@mui/material/FormControlLabel'
 import Checkbox from '@mui/material/Checkbox'
 import Alert from '@mui/material/Alert'
 import CircularProgress from '@mui/material/CircularProgress'
+import Paper from '@mui/material/Paper'
 import CloseIcon from '@mui/icons-material/Close'
 import DescriptionIcon from '@mui/icons-material/Description'
 
 import { useGetWypisConfigurationQuery, useCreateWypisMutation } from '@/backend/wypis'
+import { useGetWypisConfigurationsQuery } from '@/backend/projects'
 import type { WypisPlot } from '@/backend/types'
 import { useAppDispatch, useAppSelector } from '@/redux/hooks'
 import { showSuccess, showError } from '@/redux/slices/notificationSlice'
@@ -45,11 +47,83 @@ interface WypisGenerateDialogProps {
 }
 
 /**
- * WypisGenerateDialog - Dialog for generating wypis PDF
+ * Draggable Paper component using simple mouse events
+ * No external libraries needed - lightweight and React 19 compatible
+ */
+function DraggablePaper(props: any) {
+  const [position, setPosition] = useState({ x: 0, y: 0 })
+  const [isDragging, setIsDragging] = useState(false)
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
+  const paperRef = useRef<HTMLDivElement>(null)
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    // Only start drag if clicking on the header (has data-drag-handle attribute)
+    const target = e.target as HTMLElement
+    if (!target.closest('[data-drag-handle]')) {
+      return
+    }
+
+    if (paperRef.current) {
+      const rect = paperRef.current.getBoundingClientRect()
+      setDragOffset({
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+      })
+      setIsDragging(true)
+    }
+  }
+
+  useEffect(() => {
+    if (!isDragging) return
+
+    const handleMouseMove = (e: MouseEvent) => {
+      setPosition({
+        x: e.clientX - dragOffset.x,
+        y: e.clientY - dragOffset.y,
+      })
+    }
+
+    const handleMouseUp = () => {
+      setIsDragging(false)
+    }
+
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [isDragging, dragOffset])
+
+  return (
+    <Paper
+      {...props}
+      ref={paperRef}
+      onMouseDown={handleMouseDown}
+      style={{
+        ...props.style,
+        position: 'fixed',
+        left: position.x || props.style?.left,
+        top: position.y || props.style?.top,
+        transform: position.x ? 'none' : props.style?.transform,
+        margin: 0,
+      }}
+      sx={{
+        ...props.sx,
+        userSelect: isDragging ? 'none' : 'auto',
+      }}
+    />
+  )
+}
+
+/**
+ * WypisGenerateDialog - Draggable dialog for generating wypis PDF
  *
  * Features:
+ * - Draggable window (non-blocking, can interact with map)
  * - Select configuration from list
- * - Select plots (parcels) with checkboxes
+ * - Select plots (parcels) by clicking on map
  * - Generate PDF via backend
  * - Auto-download PDF file
  */
@@ -68,7 +142,7 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
   const selectedConfigId = useAppSelector(selectSelectedConfigId)
 
   // RTK Query hooks
-  const { data: configurationsData, isLoading: isLoadingConfigs } = useGetWypisConfigurationQuery(
+  const { data: configurationsData, isLoading: isLoadingConfigs } = useGetWypisConfigurationsQuery(
     { project: projectName },
     { skip: !projectName || !open }
   )
@@ -77,11 +151,21 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
 
   // Auto-select first config when loaded
   useEffect(() => {
-    const configs = configurationsData?.config_structure || configurationsData?.configurations || []
+    const configs = configurationsData?.data?.config_structure || configurationsData?.data?.configurations || []
+    console.log('🗺️ Wypis Dialog: Auto-select effect', {
+      hasConfigs: configs.length > 0,
+      configsCount: configs.length,
+      selectedConfigId,
+      firstConfigId: configs[0]?.id || configs[0]?.config_id,
+      willAutoSelect: configs.length > 0 && !selectedConfigId,
+    })
+
     if (configs.length > 0 && !selectedConfigId) {
       // Backend returns {id, name} not {config_id, configuration_name}
       const firstConfig = configs[0]
-      dispatch(setSelectedConfigId(firstConfig.id || firstConfig.config_id))
+      const configIdToSet = firstConfig.id || firstConfig.config_id
+      console.log('🗺️ Wypis Dialog: Auto-selecting config', configIdToSet)
+      dispatch(setSelectedConfigId(configIdToSet))
     }
   }, [configurationsData, selectedConfigId, dispatch])
 
@@ -138,24 +222,52 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
     }
   }
 
-  const configurations = configurationsData?.config_structure || configurationsData?.configurations || []
+  const configurations = configurationsData?.data?.config_structure || configurationsData?.data?.configurations || []
+
+  // Only close on mobile when clicking backdrop, on desktop only close via X button
+  const handleClose = (_event: any, reason: string) => {
+    // Prevent closing when clicking outside on desktop
+    if (!isMobile && reason === 'backdropClick') {
+      return
+    }
+    onClose()
+  }
 
   return (
     <Dialog
       open={open}
-      onClose={onClose}
+      onClose={handleClose}
       maxWidth="sm"
       fullWidth
       fullScreen={isMobile}
+      hideBackdrop={!isMobile} // No backdrop on desktop - allows map interaction
+      disableEnforceFocus // Allows clicking on map behind dialog
+      disableScrollLock // Allows scrolling map behind dialog
+      PaperComponent={isMobile ? undefined : DraggablePaper} // Draggable on desktop only
+      sx={{
+        // CRITICAL: Allow clicks to pass through to map on desktop
+        pointerEvents: isMobile ? 'auto' : 'none',
+      }}
       PaperProps={{
         sx: {
+          // CRITICAL: Re-enable pointer events on dialog itself
+          pointerEvents: 'auto',
           borderRadius: isMobile ? 0 : '12px',
           maxHeight: '80vh',
+          // Position dialog on desktop (not centered by default)
+          ...(isMobile ? {} : {
+            position: 'fixed',
+            top: '10%',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            m: 0,
+          }),
         }
       }}
     >
-      {/* Header */}
+      {/* Header - Draggable handle */}
       <DialogTitle
+        data-drag-handle // Mark as drag handle
         sx={{
           bgcolor: '#2c3e50',
           color: 'white',
@@ -164,6 +276,7 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
           justifyContent: 'space-between',
           py: 2,
           px: 3,
+          cursor: isMobile ? 'default' : 'move', // Move cursor on desktop for drag affordance
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>

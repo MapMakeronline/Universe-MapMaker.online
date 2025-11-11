@@ -40,9 +40,11 @@ import Logout from '@mui/icons-material/Logout';
 import Person from '@mui/icons-material/Person';
 
 import { useRouter } from "next/navigation"
+import { useEffect } from "react"
 import { useAppDispatch, useAppSelector } from "@/redux/hooks"
 import { setMeasurementMode, clearAllMeasurements, setIdentifyMode } from "@/redux/slices/drawSlice"
-import { openGenerateModal, selectHasConfigurations } from "@/redux/slices/wypisSlice"
+import { openGenerateModal, selectHasConfigurations, setHasConfigurations } from "@/redux/slices/wypisSlice"
+import { useGetWypisConfigurationsQuery } from "@/backend/projects"
 import SearchModal from "@/features/mapa/interakcje/SearchModal"
 import MeasurementModal from "@/features/layers/modals/MeasurementModal"
 import ExportPDFModal, { type ExportConfig } from "@/features/layers/modals/ExportPDFModal"
@@ -69,9 +71,10 @@ interface FABTool {
 
 interface RightFABToolbarProps {
   mapRef: React.RefObject<MapRef>;
+  projectName?: string;
 }
 
-const RightFABToolbar: React.FC<RightFABToolbarProps> = ({ mapRef }) => {
+const RightFABToolbar: React.FC<RightFABToolbarProps> = ({ mapRef, projectName }) => {
   const theme = useTheme();
   const router = useRouter()
   const dispatch = useAppDispatch()
@@ -81,6 +84,22 @@ const RightFABToolbar: React.FC<RightFABToolbarProps> = ({ mapRef }) => {
   const { user, isAuthenticated } = useAppSelector((state) => state.auth)
   const hasConfigurations = useAppSelector(selectHasConfigurations)
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+
+  // Query wypis configurations to determine if FAB should be shown
+  const { data: wypisConfigResponse } = useGetWypisConfigurationsQuery(
+    { project: projectName || '' },
+    { skip: !projectName }
+  )
+
+  // Update hasConfigurations flag when configurations are fetched
+  useEffect(() => {
+    if (wypisConfigResponse?.success && wypisConfigResponse.data) {
+      // Show FAB if ANY configuration exists (even without DOC files)
+      const configurations = wypisConfigResponse.data.config_structure || wypisConfigResponse.data.configurations || []
+      const hasConfigs = configurations.length > 0
+      dispatch(setHasConfigurations(hasConfigs))
+    }
+  }, [wypisConfigResponse, dispatch])
 
   const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null)
   const [searchModalOpen, setSearchModalOpen] = useState(false)

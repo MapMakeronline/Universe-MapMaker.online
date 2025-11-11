@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import { selectGenerateModalOpen, selectSelectedConfigId } from '@/redux/slices/wypisSlice';
 import { addPlot } from '@/redux/slices/wypisSlice';
+import { setIdentifyMode } from '@/redux/slices/drawSlice';
 import { useGetPlotSpatialDevelopmentMutation, useGetWypisConfigurationQuery } from '@/backend/wypis';
 import { getQGISFeatureInfoMultiLayer } from '@/lib/qgis/getFeatureInfo';
 import { mapLogger } from '@/tools/logger';
@@ -44,22 +45,78 @@ const WypisPlotSelector = () => {
     useGetPlotSpatialDevelopmentMutation();
 
   // Get wypis configuration to identify parcel layer
-  const { data: configResponse } = useGetWypisConfigurationQuery(
+  const { data: configResponse, isLoading: isLoadingConfig, error: configError } = useGetWypisConfigurationQuery(
     { project: projectName, config_id: selectedConfigId || undefined },
     { skip: !projectName || !selectedConfigId }
   );
 
+  // Debug logging
   useEffect(() => {
-    if (!mapRef || !generateModalOpen) return;
+    if (generateModalOpen) {
+      mapLogger.log('🗺️ Wypis: Modal opened', {
+        generateModalOpen,
+        selectedConfigId,
+        projectName,
+        hasConfigResponse: !!configResponse,
+        isLoadingConfig,
+        configError,
+        configResponseData: configResponse,
+      });
+    }
+  }, [generateModalOpen, selectedConfigId, configResponse, isLoadingConfig, configError, projectName]);
+
+  // Disable Identify tool when modal is open
+  useEffect(() => {
+    if (generateModalOpen) {
+      // Dispatch action to disable identify mode
+      dispatch(setIdentifyMode(false));
+      mapLogger.log('🗺️ Wypis: Disabled Identify tool for plot selection');
+    }
+  }, [generateModalOpen, dispatch]);
+
+  useEffect(() => {
+    if (!mapRef || !generateModalOpen) {
+      mapLogger.log('🗺️ Wypis: Click handler NOT attached - missing mapRef or modal closed', {
+        hasMapRef: !!mapRef,
+        generateModalOpen,
+      });
+      return;
+    }
 
     const map = mapRef.getMap();
-    if (!map) return;
+    if (!map) {
+      mapLogger.log('🗺️ Wypis: Click handler NOT attached - map instance not ready');
+      return;
+    }
+
+    // CRITICAL: Check if we have config data before attaching listener
+    if (!selectedConfigId) {
+      mapLogger.log('🗺️ Wypis: Click handler NOT attached - no config selected', {
+        selectedConfigId,
+      });
+      return;
+    }
+
+    if (!configResponse) {
+      mapLogger.log('🗺️ Wypis: Click handler NOT attached - config not loaded yet', {
+        hasConfigResponse: !!configResponse,
+      });
+      return;
+    }
+
+    mapLogger.log('🗺️ Wypis: Attaching click handler', {
+      hasMap: !!map,
+      generateModalOpen,
+      selectedConfigId,
+      hasConfigResponse: !!configResponse,
+    });
 
     // Change cursor to crosshair when selection mode is active
     map.getCanvas().style.cursor = 'crosshair';
+    mapLogger.log('🗺️ Wypis: Cursor changed to crosshair');
 
     const handleMapClick = async (e: any) => {
-      mapLogger.log('🗺️ Wypis: Plot selection click', {
+      mapLogger.log('🗺️ Wypis: Plot selection click FIRED!!!', {
         lngLat: [e.lngLat.lng, e.lngLat.lat],
       });
 
@@ -67,18 +124,19 @@ const WypisPlotSelector = () => {
         // 1. Get parcel layer name from configuration
         let parcelLayerName: string | undefined;
 
-        if ('data' in configResponse && configResponse.data?.data) {
-          // Single config response
-          const config = configResponse.data.data;
-          parcelLayerName = config.parcel_layer_name;
-          mapLogger.log('🗺️ Wypis: Using parcel layer from config', { parcelLayerName });
+        // Backend returns: { data: { plotsLayer: "...", plotsLayerName: "..." }, success: true }
+        // We need plotsLayer (internal ID), not plotsLayerName (display name)
+        if ('data' in configResponse && configResponse.data) {
+          const config = configResponse.data as any;
+          parcelLayerName = config.plotsLayer || config.parcel_layer_name;
+          mapLogger.log('🗺️ Wypis: Using parcel layer from config', {
+            parcelLayerName,
+            fullConfig: config
+          });
         }
 
         if (!parcelLayerName) {
-          dispatch(showError({
-            message: 'Brak warstwy działek w konfiguracji. Wybierz konfigurację.',
-            severity: 'error'
-          }));
+          dispatch(showError('Brak warstwy działek w konfiguracji. Wybierz konfigurację.'));
           return;
         }
 
@@ -103,10 +161,7 @@ const WypisPlotSelector = () => {
         );
 
         if (qgisResult.features.length === 0) {
-          dispatch(showError({
-            message: 'Nie znaleziono działki w tym miejscu. Kliknij na działkę.',
-            severity: 'warning'
-          }));
+          dispatch(showError('Nie znaleziono działki w tym miejscu. Kliknij na działkę.'));
           return;
         }
 
@@ -117,32 +172,44 @@ const WypisPlotSelector = () => {
         });
 
         // 3. Extract precinct (obręb) and number from properties
-        // Common property names: "obreb", "numer", "nr_dzialki", etc.
+        // Use column names from configuration
         const properties = feature.properties;
+        const config = configResponse.data as any;
 
-        // Try different property name variations
+        // Get column names from configuration
+        const precinctColumn = config.precinctColumn || 'NAZWA_OBRE';
+        const plotNumberColumn = config.plotNumberColumn || 'NUMER_DZIA';
+
+        mapLogger.log('🗺️ Wypis: Column names from config', {
+          precinctColumn,
+          plotNumberColumn,
+          properties
+        });
+
+        // Try different property name variations (config + fallbacks)
         const precinct =
+          properties[precinctColumn] ||
           properties.obreb ||
           properties.obręb ||
           properties.precinct ||
           properties.OBREB ||
           properties.OBRĘB ||
+          properties.NAZWA_OBRE ||
           '';
 
         const number =
+          properties[plotNumberColumn] ||
           properties.numer ||
           properties.nr_dzialki ||
           properties.number ||
           properties.NUMER ||
           properties.NR_DZIALKI ||
+          properties.NUMER_DZIA ||
           '';
 
         if (!precinct || !number) {
           mapLogger.error('❌ Wypis: Missing precinct or number in properties', { properties });
-          dispatch(showError({
-            message: `Nieprawidłowe dane działki. Brak obrębu lub numeru. Właściwości: ${Object.keys(properties).join(', ')}`,
-            severity: 'error'
-          }));
+          dispatch(showError(`Nieprawidłowe dane działki. Brak obrębu lub numeru. Właściwości: ${Object.keys(properties).join(', ')}`));
           return;
         }
 
@@ -154,10 +221,7 @@ const WypisPlotSelector = () => {
         mapLogger.log('✅ Wypis: Extracted plot data', plotData);
 
         // 4. Query spatial development endpoint
-        dispatch(showSuccess({
-          message: `Pobieranie informacji o przeznaczeniu działki ${precinct}/${number}...`,
-          severity: 'info'
-        }));
+        dispatch(showSuccess(`Pobieranie informacji o przeznaczeniu działki ${precinct}/${number}...`));
 
         const result = await getPlotSpatialDevelopment({
           project: projectName,
@@ -165,10 +229,7 @@ const WypisPlotSelector = () => {
         }).unwrap();
 
         if (!result.success || !result.data || result.data.length === 0) {
-          dispatch(showError({
-            message: `Nie znaleziono informacji o przeznaczeniu działki ${precinct}/${number}`,
-            severity: 'warning'
-          }));
+          dispatch(showError(`Nie znaleziono informacji o przeznaczeniu działki ${precinct}/${number}`));
           return;
         }
 
@@ -181,29 +242,25 @@ const WypisPlotSelector = () => {
           destinationsCount: plotWithDestinations.plot_destinations.length,
         });
 
-        dispatch(showSuccess({
-          message: `Dodano działkę ${precinct}/${number} do wypisu`,
-          severity: 'success'
-        }));
+        dispatch(showSuccess(`Dodano działkę ${precinct}/${number} do wypisu`));
 
       } catch (error: any) {
         mapLogger.error('❌ Wypis: Error selecting plot', error);
-        dispatch(showError({
-          message: error?.data?.message || 'Błąd podczas pobierania informacji o działce',
-          severity: 'error'
-        }));
+        dispatch(showError(error?.data?.message || 'Błąd podczas pobierania informacji o działce'));
       }
     };
 
     // Add click listener
     map.on('click', handleMapClick);
+    mapLogger.log('🗺️ Wypis: Click listener ATTACHED successfully');
 
     // Cleanup
     return () => {
+      mapLogger.log('🗺️ Wypis: Removing click listener');
       map.off('click', handleMapClick);
       map.getCanvas().style.cursor = '';
     };
-  }, [mapRef, generateModalOpen, projectName, dispatch, configResponse, getPlotSpatialDevelopment]);
+  }, [mapRef, generateModalOpen, projectName, dispatch, configResponse, getPlotSpatialDevelopment, selectedConfigId]);
 
   // This component doesn't render anything - it's just a click handler
   return null;
