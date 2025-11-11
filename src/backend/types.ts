@@ -555,12 +555,50 @@ export interface WypisPlot {
 }
 
 /**
+ * Plot destination (planning zone) with associated documents
+ */
+export interface WypisPlotDestination {
+  plan_id: string;                  // Planning zone layer ID
+  includes: boolean;                // Whether this destination should be included
+  covering: string;                 // Percentage of plot covered by this zone (e.g. "75%")
+  destinations: Array<{
+    name: string;                   // Document type name
+    includes: boolean;              // Whether to include this document
+  }>;
+}
+
+/**
+ * Plot with spatial development data (planning zones)
+ */
+export interface WypisPlotWithDestinations {
+  plot: WypisPlot;
+  plot_destinations: WypisPlotDestination[];
+}
+
+/**
+ * Request payload for getting plot spatial development
+ */
+export interface GetPlotSpatialDevelopmentRequest {
+  project: string;                  // Project name
+  plot: WypisPlot;                  // Plot to query
+}
+
+/**
+ * Response from plot spatial development endpoint
+ */
+export interface GetPlotSpatialDevelopmentResponse {
+  data: WypisPlotWithDestinations[];
+  success: boolean;
+  message?: string;
+}
+
+/**
  * Request payload for creating wypis PDF
  */
 export interface CreateWypisRequest {
   project: string;                  // Project name
   config_id: string;                // Configuration ID to use
-  plot: WypisPlot[];                // Array of plots to include in wypis
+  plot: WypisPlotWithDestinations[];  // Array of plots with destinations to include in wypis
 }
 
 /**

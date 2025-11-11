@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import type { WypisPlot } from '@/backend/types';
+import type { WypisPlot, WypisPlotWithDestinations } from '@/backend/types';
 
 /**
  * Redux slice for Wypis i Wyrys (Print Configuration) state management
@@ -23,7 +23,7 @@ interface WypisState {
    */
   generateModalOpen: boolean;
   selectedConfigId: string | null; // Selected config for PDF generation
-  selectedPlots: WypisPlot[]; // Selected plots for PDF generation
+  selectedPlots: WypisPlotWithDestinations[]; // Selected plots with spatial development data
 
   /**
    * Visibility flag for DocumentFAB
@@ -82,21 +82,42 @@ export const wypisSlice = createSlice({
     },
 
     /**
-     * Toggle plot selection for PDF generation
+     * Add plot with destinations to selection
+     * @param plot - Plot with spatial development data
+     */
+    addPlot: (state, action: PayloadAction<WypisPlotWithDestinations>) => {
+      const exists = state.selectedPlots.find(
+        (p) => p.plot.precinct === action.payload.plot.precinct && p.plot.number === action.payload.plot.number
+      );
+      if (!exists) {
+        state.selectedPlots.push(action.payload);
+      }
+    },
+
+    /**
+     * Remove plot from selection
+     * @param plot - Plot identifier {precinct, number}
+     */
+    removePlot: (state, action: PayloadAction<WypisPlot>) => {
+      state.selectedPlots = state.selectedPlots.filter(
+        (p) => !(p.plot.precinct === action.payload.precinct && p.plot.number === action.payload.number)
+      );
+    },
+
+    /**
+     * Toggle plot selection for PDF generation (DEPRECATED - use addPlot/removePlot)
      * @param plot - Plot to toggle (add if not exists, remove if exists)
      */
     togglePlotSelection: (state, action: PayloadAction<WypisPlot>) => {
       const index = state.selectedPlots.findIndex(
-        (p) => p.precinct === action.payload.precinct && p.number === action.payload.number
+        (p) => p.plot.precinct === action.payload.precinct && p.plot.number === action.payload.number
       );
 
       if (index >= 0) {
         // Plot already selected - remove it
         state.selectedPlots.splice(index, 1);
-      } else {
-        // Plot not selected - add it
-        state.selectedPlots.push(action.payload);
       }
+      // Note: Adding without destinations is not recommended - use addPlot instead
     },
 
     /**
@@ -131,6 +152,8 @@ export const {
   closeConfigModal,
   openGenerateModal,
   closeGenerateModal,
+  addPlot,
+  removePlot,
   togglePlotSelection,
   clearPlotSelection,
   setHasConfigurations,

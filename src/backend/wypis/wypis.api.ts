@@ -9,6 +9,8 @@ import type {
   GetWypisConfigurationSingleResponse,
   GetWypisConfigurationAllResponse,
   RemoveWypisConfigurationRequest,
+  GetPlotSpatialDevelopmentRequest,
+  GetPlotSpatialDevelopmentResponse,
   CreateWypisRequest,
 } from '../types';
 
@@ -112,6 +114,53 @@ export const wypisApi = baseApi.injectEndpoints({
     }),
 
     /**
+     * Get plot spatial development (planning zones)
+     *
+     * Endpoint: POST /api/projects/wypis/plotspatialdevelopment
+     *
+     * Queries planning zones that overlap with a given plot and returns
+     * available documents for each zone.
+     *
+     * Request body:
+     * {
+     *   "project": "project_name",
+     *   "plot": { "precinct": "0001", "number": "123" }
+     * }
+     *
+     * Response:
+     * {
+     *   "success": true,
+     *   "data": [
+     *     {
+     *       "plot": { "precinct": "0001", "number": "123" },
+     *       "plot_destinations": [
+     *         {
+     *           "plan_id": "zone_1",
+     *           "includes": true,
+     *           "covering": "75%",
+     *           "destinations": [
+     *             { "name": "Ustalenia ogólne", "includes": true },
+     *             { "name": "Purpose A", "includes": false }
+     *           ]
+     *         }
+     *       ]
+     *     }
+     *   ]
+     * }
+     */
+    getPlotSpatialDevelopment: builder.mutation<
+      GetPlotSpatialDevelopmentResponse,
+      GetPlotSpatialDevelopmentRequest
+    >({
+      query: (body) => ({
+        url: '/api/projects/wypis/plotspatialdevelopment',
+        method: 'POST',
+        body,
+      }),
+      // No cache invalidation needed - read-only query
+    }),
+
+    /**
      * Generate wypis PDF for selected plots
      *
      * Endpoint: POST /api/projects/wypis/create
@@ -121,8 +170,10 @@ export const wypisApi = baseApi.injectEndpoints({
      *   "project": "project_name",
      *   "config_id": "configuration_id",
      *   "plot": [
-     *     { "precinct": "0001", "number": "123" },
-     *     { "precinct": "0001", "number": "124" }
+     *     {
+     *       "plot": { "precinct": "0001", "number": "123" },
+     *       "plot_destinations": [ ... ]
+     *     }
      *   ]
      * }
      *
@@ -147,5 +198,6 @@ export const wypisApi = baseApi.injectEndpoints({
 export const {
   useGetWypisConfigurationQuery,
   useRemoveWypisConfigurationMutation,
+  useGetPlotSpatialDevelopmentMutation,
   useCreateWypisMutation,
 } = wypisApi;
