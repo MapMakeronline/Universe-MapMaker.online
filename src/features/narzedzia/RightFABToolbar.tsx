@@ -194,7 +194,7 @@ const RightFABToolbar: React.FC<RightFABToolbarProps> = ({ mapRef }) => {
         dispatch(openGenerateModal(null));
       },
       color: 'default',
-      authRequired: true, // Hidden for guests
+      // authRequired: false - Guest users CAN access wypis (project-level configuration)
     },
 
     // RED/CORAL ICONS (Primary Color)
