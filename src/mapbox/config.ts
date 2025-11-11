@@ -19,17 +19,40 @@ export const DEFAULT_VIEW_STATE = {
   pitch: 0,
 };
 
+// Bounding box dla gminy Wyszki (Podlaskie)
+export const WYSZKI_BOUNDS = {
+  north: 52.9266860,
+  south: 52.7498989,
+  east: 23.1275568,
+  west: 22.7919079,
+  center: {
+    longitude: 22.9458179,
+    latitude: 52.8378700,
+  }
+};
+
 export const MAP_STYLES: MapStyles = {
+  enhanced3d: {
+    name: '🌲 3D Enhanced (Teren + Budynki + Drzewa)',
+    style: 'mapbox://styles/mapbox/streets-v12',
+    enable3D: false, // Wyłącz standardowe 3D
+    enableTerrain: true,
+    enableSky: true,
+    enableEnhanced3D: true, // Włącz enhanced 3D (drzewa + kolorowe budynki)
+    description: 'Zaawansowane 3D: 25+ kolorów budynków, 9 odcieni lasów, lepsze oświetlenie'
+  },
   full3d: {
     name: '3D Pełny (Teren + Budynki)',
     style: 'mapbox://styles/mapbox/streets-v12',
     enable3D: true,
     enableTerrain: true,
     enableSky: true,
+    description: 'Standardowy widok 3D z terenem i budynkami'
   },
   none: {
     name: 'Brak mapy podkładowej',
     style: 'mapbox://styles/mapbox/light-v11', // Minimalistic light style
+    description: 'Minimalistyczna mapa bez szczegółów'
   },
   satellite3d: {
     name: 'Satelita (Teren + Budynki)',
@@ -37,14 +60,17 @@ export const MAP_STYLES: MapStyles = {
     enable3D: true,
     enableTerrain: true,
     enableSky: true,
+    description: 'Zdjęcia satelitarne z 3D'
   },
   dark: {
     name: 'Ciemna',
     style: 'mapbox://styles/mapbox/dark-v11',
+    description: 'Ciemny motyw dla lepszej widoczności warstw'
   },
   navigation: {
     name: 'Nawigacja',
     style: 'mapbox://styles/mapbox/navigation-night-v1',
+    description: 'Styl nawigacyjny z nocnym motywem'
   },
 };
 

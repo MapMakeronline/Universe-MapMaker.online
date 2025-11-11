@@ -107,7 +107,7 @@ export const BasemapSelectorModal: React.FC<BasemapSelectorModalProps> = ({
                         {style.name}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
-                        Mapbox {key}
+                        {style.description || `Mapbox ${key}`}
                       </Typography>
                     </Box>
                   }

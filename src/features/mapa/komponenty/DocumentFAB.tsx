@@ -6,7 +6,7 @@ import Fab from '@mui/material/Fab'
 import Tooltip from '@mui/material/Tooltip'
 import Description from '@mui/icons-material/Description'
 
-import { useGetWypisConfigurationQuery } from '@/backend/wypis'
+import { useGetWypisConfigurationsQuery } from '@/backend/projects'
 import { useAppDispatch, useAppSelector } from '@/redux/hooks'
 import { openGenerateModal, setHasConfigurations, selectHasConfigurations } from '@/redux/slices/wypisSlice'
 
@@ -32,18 +32,18 @@ const DocumentFAB: React.FC<DocumentFABProps> = ({ projectName }) => {
   const hasConfigurations = useAppSelector(selectHasConfigurations)
 
   // Check if configurations exist
-  const { data: configurationsData, isLoading } = useGetWypisConfigurationQuery(
+  const { data: response, isLoading } = useGetWypisConfigurationsQuery(
     { project: projectName },
     { skip: !projectName }
   )
 
   // Update hasConfigurations flag
   useEffect(() => {
-    if (configurationsData && 'configurations' in configurationsData) {
-      const hasConfigs = configurationsData.configurations.length > 0
+    if (response?.success && response.data?.config_structure) {
+      const hasConfigs = response.data.config_structure.length > 0
       dispatch(setHasConfigurations(hasConfigs))
     }
-  }, [configurationsData, dispatch])
+  }, [response, dispatch])
 
   const handleClick = () => {
     // Open generate modal (auto-selects first config)

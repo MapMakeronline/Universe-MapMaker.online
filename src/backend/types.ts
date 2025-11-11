@@ -568,6 +568,7 @@ export interface CreateWypisRequest {
  */
 export interface WypisPurposeWithFile extends WypisPurpose {
   file?: File;  // UI-only: File object for upload
+  existingFileName?: string;  // UI-only: Existing file name from backend (if any)
 }
 
 /**
@@ -575,6 +576,7 @@ export interface WypisPurposeWithFile extends WypisPurpose {
  */
 export interface WypisArrangementWithFile extends WypisArrangement {
   file?: File;  // UI-only: File object for upload
+  existingFileName?: string;  // UI-only: Existing file name from backend (if any)
 }
 
 /**

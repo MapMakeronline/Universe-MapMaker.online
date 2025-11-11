@@ -20,6 +20,17 @@ export interface ViewState {
   pitch?: number;
 }
 
+export interface MapBounds {
+  north: number;
+  south: number;
+  east: number;
+  west: number;
+  center: {
+    longitude: number;
+    latitude: number;
+  };
+}
+
 export interface MapStyles {
   [key: string]: {
     name: string;
@@ -28,6 +39,10 @@ export interface MapStyles {
     enable3D?: boolean;
     enableTerrain?: boolean;
     enableSky?: boolean;
+    enableOSMBuildings?: boolean; // Włącz szczegółowe budynki z OSM
+    enableEnhanced3D?: boolean; // Włącz ulepszone 3D (drzewa + tekstury)
+    description?: string; // Opis stylu mapy
+    initialBounds?: MapBounds; // Początkowy obszar do wyświetlenia
   };
 }
 

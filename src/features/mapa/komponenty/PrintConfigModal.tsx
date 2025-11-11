@@ -30,9 +30,11 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import AddIcon from '@mui/icons-material/Add'
 import DeleteIcon from '@mui/icons-material/Delete'
 import InfoIcon from '@mui/icons-material/Info'
+import DownloadIcon from '@mui/icons-material/Download'
 import JSZip from 'jszip'
 
-import { useAddWypisConfigurationMutation, useGetWypisConfigurationQuery } from '@/backend/wypis'
+import { useAddWypisConfigurationMutation, useGetWypisConfigurationsQuery } from '@/backend/projects'
+import { useGetWypisConfigurationQuery } from '@/backend/wypis'
 import { useGetLayerAttributesQuery, useLazyGetColumnValuesQuery } from '@/backend/layers'
 import type { WypisPurposeWithFile, WypisArrangementWithFile } from '@/backend/types'
 import { useAppDispatch } from '@/redux/hooks'
@@ -59,6 +61,7 @@ interface PlanLayerState {
   name: string
   purposeColumn: string
   purposes: WypisPurposeWithFile[]
+  arrangements: WypisArrangementWithFile[]  // Arrangements per plan (backend structure)
   enabled: boolean
   position: number | null
   expanded: boolean
@@ -86,6 +89,7 @@ const WypisConfigModal: React.FC<WypisConfigModalProps> = ({
   const dispatch = useAppDispatch()
 
   // Form state (must be declared before hooks that use them)
+  const [selectedConfigId, setSelectedConfigId] = useState<string | null>(configId || null)
   const [configurationName, setConfigurationName] = useState('')
   const [plotsLayer, setPlotsLayer] = useState({
     layerId: '',
@@ -94,16 +98,22 @@ const WypisConfigModal: React.FC<WypisConfigModalProps> = ({
     plotNumberColumn: '',
   })
   const [planLayers, setPlanLayers] = useState<PlanLayerState[]>([])
-  const [generalArrangements, setGeneralArrangements] = useState<WypisArrangementWithFile[]>([])
-  const [finalArrangements, setFinalArrangements] = useState<WypisArrangementWithFile[]>([])
   const [errors, setErrors] = useState<string[]>([])
   const [layerAttributesCache, setLayerAttributesCache] = useState<Record<string, string[]>>({})
 
   // API hooks
   const [addWypisConfiguration, { isLoading: isSaving }] = useAddWypisConfigurationMutation()
-  const { data: existingConfig, isLoading: isLoadingConfig } = useGetWypisConfigurationQuery(
-    { project: projectName, config_id: configId || undefined },
-    { skip: !configId || !open }
+
+  // Fetch list of configurations
+  const { data: configurationsListResponse } = useGetWypisConfigurationsQuery(
+    { project: projectName },
+    { skip: !projectName || !open }
+  )
+
+  // Fetch specific configuration when selected
+  const { data: existingConfig, isLoading: isLoadingConfig } = useGetWypisConfigurationsQuery(
+    { project: projectName, config_id: selectedConfigId || undefined },
+    { skip: !selectedConfigId || !open }
   )
 
   // Fetch attributes for the selected plots layer
@@ -169,6 +179,7 @@ const WypisConfigModal: React.FC<WypisConfigModalProps> = ({
             name: layer.name,
             purposeColumn: '',
             purposes: [],
+            arrangements: [],  // Initialize empty arrangements array
             enabled: false,
             position: null,
             expanded: false,
@@ -179,9 +190,12 @@ const WypisConfigModal: React.FC<WypisConfigModalProps> = ({
 
   // Load existing config
   useEffect(() => {
-    if (existingConfig && 'data' in existingConfig) {
+    if (existingConfig?.success && existingConfig.data) {
       const config = existingConfig.data
-      setConfigurationName(config.configuration_name)
+      console.log('🔍 Loading existing config:', config)
+      setConfigurationName(config.configuration_name || '')
+
+      // Set plots layer WITH manual attribute fetch trigger
       setPlotsLayer({
         layerId: config.plotsLayer,
         layerName: config.plotsLayerName,
@@ -189,32 +203,96 @@ const WypisConfigModal: React.FC<WypisConfigModalProps> = ({
         plotNumberColumn: config.plotNumberColumn,
       })
 
-      // Load global arrangements
-      if (config.generalArrangements) {
-        setGeneralArrangements(config.generalArrangements.map(a => ({ ...a, file: undefined })))
-      }
-      if (config.finalArrangements) {
-        setFinalArrangements(config.finalArrangements.map(a => ({ ...a, file: undefined })))
+      // Manually trigger attribute fetch for plots layer (workaround for race condition)
+      // This ensures attributes are available before rendering the dropdowns
+      const fetchPlotsLayerAttributes = async () => {
+        if (!config.plotsLayer || !projectName) return
+
+        try {
+          const response = await fetch(
+            `https://api.universemapmaker.online/api/layer/attributes?project=${projectName}&layer_id=${config.plotsLayer}`,
+            {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Token ${localStorage.getItem('authToken')}`,
+              },
+            }
+          )
+          const data = await response.json()
+          if (data?.data?.Types) {
+            const attributeNames = Object.keys(data.data.Types)
+            setLayerAttributesCache(prev => ({
+              ...prev,
+              [config.plotsLayer]: attributeNames,
+            }))
+            console.log('✅ Loaded attributes for plots layer:', attributeNames)
+          }
+        } catch (error) {
+          console.error('Failed to fetch plots layer attributes:', error)
+        }
       }
 
-      // Load plan layers
+      fetchPlotsLayerAttributes()
+
+      // Load plan layers WITH arrangements (preserve existing file info)
       setPlanLayers(prev =>
         prev.map(layer => {
           const existingPlan = config.planLayers.find(pl => pl.id === layer.id)
           if (existingPlan) {
+            // Manually fetch attributes for this plan layer (workaround for race condition)
+            const fetchPlanLayerAttributes = async () => {
+              if (!projectName) return
+
+              try {
+                const response = await fetch(
+                  `https://api.universemapmaker.online/api/layer/attributes?project=${projectName}&layer_id=${layer.id}`,
+                  {
+                    method: 'GET',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      Authorization: `Token ${localStorage.getItem('authToken')}`,
+                    },
+                  }
+                )
+                const data = await response.json()
+                if (data?.data?.Types) {
+                  const attributeNames = Object.keys(data.data.Types)
+                  setLayerAttributesCache(prev => ({
+                    ...prev,
+                    [layer.id]: attributeNames,
+                  }))
+                  console.log(`✅ Loaded attributes for plan layer ${layer.name}:`, attributeNames)
+                }
+              } catch (error) {
+                console.error(`Failed to fetch plan layer attributes for ${layer.name}:`, error)
+              }
+            }
+
+            fetchPlanLayerAttributes()
+
             return {
               ...layer,
               enabled: true,
               position: config.planLayers.indexOf(existingPlan) + 1,
               purposeColumn: existingPlan.purposeColumn,
-              purposes: existingPlan.purposes.map(p => ({ ...p, file: undefined })),
+              purposes: existingPlan.purposes.map(p => ({
+                ...p,
+                file: undefined,
+                existingFileName: p.fileName  // Preserve fileName from backend
+              })),
+              arrangements: existingPlan.arrangements?.map(a => ({
+                ...a,
+                file: undefined,
+                existingFileName: a.fileName  // Preserve fileName from backend
+              })) || [],
             }
           }
           return layer
         })
       )
     }
-  }, [existingConfig])
+  }, [existingConfig, projectName])
 
   const getLayerColumns = useCallback((layerId: string): string[] => {
     // Check cache first (works for all layers including plots layer)
@@ -332,7 +410,8 @@ const WypisConfigModal: React.FC<WypisConfigModalProps> = ({
     )
   }, [])
 
-  const handleGeneralArrangementFileDrop = useCallback((files: File[]) => {
+  // Arrangement management handlers (per plan)
+  const handleArrangementFileDrop = useCallback((layerId: string, files: File[]) => {
     if (files.length === 0) return
 
     const newArrangements = files.map(file => ({
@@ -341,30 +420,78 @@ const WypisConfigModal: React.FC<WypisConfigModalProps> = ({
       file,
     }))
 
-    setGeneralArrangements(prev => [...prev, ...newArrangements])
-    dispatch(showSuccess(`Dodano ${files.length} ${files.length === 1 ? 'plik' : 'plików'}`))
+    setPlanLayers(prev =>
+      prev.map(layer =>
+        layer.id === layerId
+          ? { ...layer, arrangements: [...layer.arrangements, ...newArrangements] }
+          : layer
+      )
+    )
+    dispatch(showSuccess(`Dodano ${files.length} ${files.length === 1 ? 'ustalenie' : 'ustaleń'}`))
   }, [dispatch])
 
-  const handleFinalArrangementFileDrop = useCallback((files: File[]) => {
-    if (files.length === 0) return
-
-    const newArrangements = files.map(file => ({
-      name: file.name.replace(/\.(doc|docx)$/i, ''),
-      fileName: file.name,
-      file,
-    }))
-
-    setFinalArrangements(prev => [...prev, ...newArrangements])
-    dispatch(showSuccess(`Dodano ${files.length} ${files.length === 1 ? 'plik' : 'plików'}`))
-  }, [dispatch])
-
-  const removeGeneralArrangement = useCallback((fileName: string) => {
-    setGeneralArrangements(prev => prev.filter(a => a.fileName !== fileName))
+  const removeArrangement = useCallback((layerId: string, fileName: string) => {
+    setPlanLayers(prev =>
+      prev.map(layer =>
+        layer.id === layerId
+          ? { ...layer, arrangements: layer.arrangements.filter(a => a.fileName !== fileName) }
+          : layer
+      )
+    )
   }, [])
 
-  const removeFinalArrangement = useCallback((fileName: string) => {
-    setFinalArrangements(prev => prev.filter(a => a.fileName !== fileName))
+  const updateArrangementName = useCallback((layerId: string, fileName: string, newName: string) => {
+    setPlanLayers(prev =>
+      prev.map(layer =>
+        layer.id === layerId
+          ? {
+              ...layer,
+              arrangements: layer.arrangements.map(a =>
+                a.fileName === fileName ? { ...a, name: newName } : a
+              ),
+            }
+          : layer
+      )
+    )
   }, [])
+
+  // Download saved file from server
+  const downloadFile = useCallback(async (layerId: string, fileName: string) => {
+    if (!selectedConfigId) {
+      dispatch(showError('Nie wybrano konfiguracji'))
+      return
+    }
+
+    try {
+      const token = localStorage.getItem('authToken')
+      const url = `https://api.universemapmaker.online/projects/${projectName}/wypis/${selectedConfigId}/${layerId}/${fileName}`
+
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': token ? `Token ${token}` : '',
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error('Nie udało się pobrać pliku')
+      }
+
+      const blob = await response.blob()
+      const downloadUrl = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = downloadUrl
+      a.download = fileName
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(downloadUrl)
+      document.body.removeChild(a)
+
+      dispatch(showSuccess(`Pobrano: ${fileName}`))
+    } catch (error) {
+      console.error('Download error:', error)
+      dispatch(showError('Nie udało się pobrać pliku'))
+    }
+  }, [projectName, selectedConfigId, dispatch])
 
   const validateConfiguration = useCallback((): string[] => {
     const errors: string[] = []
@@ -416,25 +543,19 @@ const WypisConfigModal: React.FC<WypisConfigModalProps> = ({
         .filter(pl => pl.enabled)
         .sort((a, b) => (a.position || 0) - (b.position || 0))
 
-      // Add global arrangements first
-      for (const arrangement of generalArrangements) {
-        if (arrangement.file) {
-          const content = await arrangement.file.arrayBuffer()
-          zip.file(`generalArrangements/${arrangement.fileName}`, content)
-        }
-      }
-
-      for (const arrangement of finalArrangements) {
-        if (arrangement.file) {
-          const content = await arrangement.file.arrayBuffer()
-          zip.file(`finalArrangements/${arrangement.fileName}`, content)
-        }
-      }
-
-      // Add purposes for each layer
+      // Add arrangements and purposes for each layer
       for (const layer of enabledLayers) {
         const folderName = layer.id
 
+        // Add arrangements to ZIP (inside layer folder)
+        for (const arrangement of layer.arrangements) {
+          if (arrangement.file) {
+            const content = await arrangement.file.arrayBuffer()
+            zip.file(`${folderName}/${arrangement.fileName}`, content)
+          }
+        }
+
+        // Add purposes to ZIP
         for (const purpose of layer.purposes) {
           if (purpose.file) {
             const content = await purpose.file.arrayBuffer()
@@ -445,13 +566,6 @@ const WypisConfigModal: React.FC<WypisConfigModalProps> = ({
 
       const zipBlob = await zip.generateAsync({ type: 'blob' })
       const zipFile = new File([zipBlob], 'wypis.zip', { type: 'application/zip' })
-
-      // Backend expects 'arrangements' inside each planLayer, not at global level
-      // Merge generalArrangements and finalArrangements into the first layer's arrangements
-      const allArrangements = [
-        ...generalArrangements.map(a => ({ name: a.name, fileName: a.fileName })),
-        ...finalArrangements.map(a => ({ name: a.name, fileName: a.fileName })),
-      ]
 
       // CRITICAL: Validate all required fields before sending
       if (!plotsLayer.layerId || !plotsLayer.precinctColumn || !plotsLayer.plotNumberColumn) {
@@ -474,10 +588,22 @@ const WypisConfigModal: React.FC<WypisConfigModalProps> = ({
           dispatch(showError(`Warstwa "${pl.name}": brak przeznaczenia (pusta kolumna przeznaczenia?)`))
           return
         }
+        // CRITICAL: Backend requires at least 1 arrangement per plan
+        if (!pl.arrangements || pl.arrangements.length === 0) {
+          dispatch(showError(`Warstwa "${pl.name}": brak ustaleń (dodaj przynajmniej jedno ustalenie)`))
+          return
+        }
         // CRITICAL: Validate fileName for each purpose (backend validation requirement)
         for (const purpose of pl.purposes) {
           if (!purpose.fileName || purpose.fileName.trim() === '') {
             dispatch(showError(`Warstwa "${pl.name}", przeznaczenie "${purpose.name}": brak nazwy pliku`))
+            return
+          }
+        }
+        // Validate fileName for each arrangement
+        for (const arrangement of pl.arrangements) {
+          if (!arrangement.fileName || arrangement.fileName.trim() === '') {
+            dispatch(showError(`Warstwa "${pl.name}", ustalenie "${arrangement.name}": brak nazwy pliku`))
             return
           }
         }
@@ -489,16 +615,18 @@ const WypisConfigModal: React.FC<WypisConfigModalProps> = ({
         plotsLayerName: plotsLayer.layerName,
         precinctColumn: plotsLayer.precinctColumn,
         plotNumberColumn: plotsLayer.plotNumberColumn,
-        planLayers: enabledLayers.map((pl, index) => ({
+        planLayers: enabledLayers.map(pl => ({
           id: pl.id,
           name: pl.name,
           purposeColumn: pl.purposeColumn,
           purposes: pl.purposes.map(p => ({
             name: p.name,
-            fileName: p.fileName // CRITICAL: Must be present for backend validation
+            fileName: p.fileName
           })),
-          // Add all arrangements to the first layer only (backend expects this structure)
-          arrangements: index === 0 ? allArrangements : [],
+          arrangements: pl.arrangements.map(a => ({
+            name: a.name,
+            fileName: a.fileName
+          })),
         })),
       }
 
@@ -529,7 +657,7 @@ const WypisConfigModal: React.FC<WypisConfigModalProps> = ({
       const formData = new FormData()
       formData.append('project', projectName)
       formData.append('configuration', configurationJson) // Single stringify only!
-      formData.append('files', zipFile) // ⚠️ Try 'files' instead of 'extractFiles' to avoid path traversal detection
+      formData.append('extractFiles', zipFile) // Backend requires 'extractFiles' parameter
       if (configId) {
         formData.append('config_id', configId)
       }
@@ -606,6 +734,30 @@ const WypisConfigModal: React.FC<WypisConfigModalProps> = ({
               </Alert>
             )}
 
+            {/* Configuration Selector - Show saved configurations */}
+            {configurationsListResponse?.success && configurationsListResponse.data?.config_structure && configurationsListResponse.data.config_structure.length > 0 && (
+              <FormControl fullWidth sx={{ mb: 3 }}>
+                <InputLabel>Wybierz istniejącą konfigurację (opcjonalnie)</InputLabel>
+                <Select
+                  value={selectedConfigId || ''}
+                  onChange={(e) => {
+                    const configId = e.target.value || null
+                    setSelectedConfigId(configId)
+                  }}
+                  label="Wybierz istniejącą konfigurację (opcjonalnie)"
+                >
+                  <MenuItem value="">
+                    <em>Nowa konfiguracja</em>
+                  </MenuItem>
+                  {configurationsListResponse.data.config_structure.map((config: any) => (
+                    <MenuItem key={config.id} value={config.id}>
+                      {config.name || config.id}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
+
             <TextField
               label="Nazwa konfiguracji"
               value={configurationName}
@@ -646,7 +798,7 @@ const WypisConfigModal: React.FC<WypisConfigModalProps> = ({
                 <FormControl fullWidth sx={{ mb: 2 }}>
                   <InputLabel>Kolumna - Obręb</InputLabel>
                   <Select
-                    value={plotsLayer.precinctColumn}
+                    value={getLayerColumns(plotsLayer.layerId).includes(plotsLayer.precinctColumn) ? plotsLayer.precinctColumn : ''}
                     onChange={(e) => setPlotsLayer({ ...plotsLayer, precinctColumn: e.target.value })}
                     label="Kolumna - Obręb"
                   >
@@ -659,7 +811,7 @@ const WypisConfigModal: React.FC<WypisConfigModalProps> = ({
                 <FormControl fullWidth sx={{ mb: 2 }}>
                   <InputLabel>Kolumna - Numer działki</InputLabel>
                   <Select
-                    value={plotsLayer.plotNumberColumn}
+                    value={getLayerColumns(plotsLayer.layerId).includes(plotsLayer.plotNumberColumn) ? plotsLayer.plotNumberColumn : ''}
                     onChange={(e) => setPlotsLayer({ ...plotsLayer, plotNumberColumn: e.target.value })}
                     label="Kolumna - Numer działki"
                   >
@@ -673,93 +825,7 @@ const WypisConfigModal: React.FC<WypisConfigModalProps> = ({
 
             <Divider sx={{ my: 3 }} />
 
-            {/* SECTION 1: Ustalenia ogólne (General Arrangements) - Global */}
-            <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>Ustalenia ogólne</Typography>
-            <Alert severity="info" sx={{ mb: 2 }}>
-              Przeciągnij pliki DOC/DOCX dla ustaleń ogólnych (np. wprowadzenie, definicje)
-            </Alert>
-
-            <FileDropZone
-              file={undefined}
-              onDrop={handleGeneralArrangementFileDrop}
-              onRemove={() => {}}
-              multiple
-            />
-
-            {generalArrangements.length > 0 && (
-              <List sx={{ mt: 2, mb: 3 }}>
-                {generalArrangements.map(arr => (
-                  <ListItem
-                    key={arr.fileName}
-                    sx={{
-                      mb: 1,
-                      p: 2,
-                      border: '1px solid',
-                      borderColor: 'divider',
-                      borderRadius: 1,
-                      bgcolor: 'grey.50',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                    }}
-                  >
-                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                      {arr.fileName}
-                    </Typography>
-                    <IconButton size="small" onClick={() => removeGeneralArrangement(arr.fileName)} color="error">
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  </ListItem>
-                ))}
-              </List>
-            )}
-
-            <Divider sx={{ my: 3 }} />
-
-            {/* SECTION 2: Ustalenia końcowe (Final Arrangements) - Global */}
-            <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>Ustalenia końcowe</Typography>
-            <Alert severity="info" sx={{ mb: 2 }}>
-              Przeciągnij pliki DOC/DOCX dla ustaleń końcowych (np. załączniki, przepisy końcowe)
-            </Alert>
-
-            <FileDropZone
-              file={undefined}
-              onDrop={handleFinalArrangementFileDrop}
-              onRemove={() => {}}
-              multiple
-            />
-
-            {finalArrangements.length > 0 && (
-              <List sx={{ mt: 2, mb: 3 }}>
-                {finalArrangements.map(arr => (
-                  <ListItem
-                    key={arr.fileName}
-                    sx={{
-                      mb: 1,
-                      p: 2,
-                      border: '1px solid',
-                      borderColor: 'divider',
-                      borderRadius: 1,
-                      bgcolor: 'grey.50',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                    }}
-                  >
-                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                      {arr.fileName}
-                    </Typography>
-                    <IconButton size="small" onClick={() => removeFinalArrangement(arr.fileName)} color="error">
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  </ListItem>
-                ))}
-              </List>
-            )}
-
-            <Divider sx={{ my: 3 }} />
-
-            {/* SECTION 3: Przeznaczenia terenu (Purposes) - Per Layer */}
+            {/* Warstwy planów z przeznaczeniami i ustaleniami (per-layer) */}
             <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>Warstwy planów i przeznaczenia</Typography>
 
             <Alert severity="info" icon={<InfoIcon />} sx={{ mb: 3 }}>
@@ -785,7 +851,7 @@ const WypisConfigModal: React.FC<WypisConfigModalProps> = ({
                       <FormControl sx={{ minWidth: 200 }} size="small">
                         <InputLabel>Kolumna przeznaczenia</InputLabel>
                         <Select
-                          value={layer.purposeColumn}
+                          value={getLayerColumns(layer.id).includes(layer.purposeColumn) ? layer.purposeColumn : ''}
                           onChange={(e) => setPlanLayerPurposeColumn(layer.id, e.target.value)}
                           label="Kolumna przeznaczenia"
                         >
@@ -820,14 +886,37 @@ const WypisConfigModal: React.FC<WypisConfigModalProps> = ({
                               alignItems: 'stretch',
                               p: 2,
                               border: '1px solid',
-                              borderColor: purpose.file ? 'success.main' : 'divider',
+                              borderColor: (purpose.file || purpose.existingFileName) ? 'success.main' : 'divider',
                               borderRadius: 1,
-                              bgcolor: purpose.file ? 'success.50' : 'background.paper',
+                              bgcolor: (purpose.file || purpose.existingFileName) ? 'success.50' : 'background.paper',
                             }}
                           >
-                            <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, color: 'primary.main' }}>
-                              {purpose.name}
-                            </Typography>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                              <Typography variant="subtitle2" sx={{ fontWeight: 600, color: 'primary.main' }}>
+                                {purpose.name}
+                              </Typography>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                {purpose.existingFileName && !purpose.file && (
+                                  <>
+                                    <Typography variant="caption" color="success.main" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                      ✓ Zapisany: {purpose.existingFileName}
+                                    </Typography>
+                                    <IconButton
+                                      size="small"
+                                      onClick={() => downloadFile(layer.id, purpose.existingFileName!)}
+                                      sx={{ color: 'primary.main' }}
+                                    >
+                                      <DownloadIcon fontSize="small" />
+                                    </IconButton>
+                                  </>
+                                )}
+                                {purpose.file && (
+                                  <Typography variant="caption" color="primary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                    ⟳ Nowy plik
+                                  </Typography>
+                                )}
+                              </Box>
+                            </Box>
                             <FileDropZone
                               file={purpose.file}
                               onDrop={(files) => handlePurposeFileDrop(layer.id, purpose.name, files)}
@@ -836,6 +925,85 @@ const WypisConfigModal: React.FC<WypisConfigModalProps> = ({
                           </ListItem>
                         ))}
                       </List>
+
+                      <Divider sx={{ my: 3 }} />
+
+                      {/* Arrangements section for this layer */}
+                      <Typography variant="h6" sx={{ mb: 2 }}>Ustalenia dla tej warstwy</Typography>
+                      <Alert severity="info" sx={{ mb: 2 }}>
+                        Dodaj pliki DOC/DOCX dla ustaleń tej warstwy (np. "Ustalenia ogólne", "Ustalenia końcowe").
+                        Backend wymaga co najmniej jednego ustalenia!
+                      </Alert>
+
+                      <FileDropZone
+                        file={undefined}
+                        onDrop={(files) => handleArrangementFileDrop(layer.id, files)}
+                        onRemove={() => {}}
+                        multiple
+                      />
+
+                      {layer.arrangements.length > 0 && (
+                        <List sx={{ mt: 2 }}>
+                          {layer.arrangements.map(arrangement => (
+                            <ListItem
+                              key={arrangement.fileName}
+                              sx={{
+                                mb: 1,
+                                p: 2,
+                                border: '1px solid',
+                                borderColor: arrangement.existingFileName ? 'success.main' : 'divider',
+                                borderRadius: 1,
+                                bgcolor: arrangement.existingFileName ? 'success.50' : 'grey.50',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                              }}
+                            >
+                              <Box sx={{ flex: 1 }}>
+                                <TextField
+                                  value={arrangement.name}
+                                  onChange={(e) => updateArrangementName(layer.id, arrangement.fileName, e.target.value)}
+                                  placeholder="Nazwa ustalenia"
+                                  size="small"
+                                  fullWidth
+                                  sx={{ mb: 1 }}
+                                />
+                                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                                  Plik: {arrangement.fileName}
+                                </Typography>
+                                {arrangement.existingFileName && !arrangement.file && (
+                                  <Typography variant="caption" color="success.main" sx={{ display: 'block' }}>
+                                    ✓ Zapisany plik
+                                  </Typography>
+                                )}
+                                {arrangement.file && (
+                                  <Typography variant="caption" color="primary" sx={{ display: 'block' }}>
+                                    ⟳ Nowy plik do uploadowania
+                                  </Typography>
+                                )}
+                              </Box>
+                              <Box sx={{ display: 'flex', gap: 1, ml: 2 }}>
+                                {arrangement.existingFileName && !arrangement.file && (
+                                  <IconButton
+                                    size="small"
+                                    onClick={() => downloadFile(layer.id, arrangement.existingFileName!)}
+                                    sx={{ color: 'primary.main' }}
+                                  >
+                                    <DownloadIcon fontSize="small" />
+                                  </IconButton>
+                                )}
+                                <IconButton
+                                  size="small"
+                                  onClick={() => removeArrangement(layer.id, arrangement.fileName)}
+                                  color="error"
+                                >
+                                  <DeleteIcon fontSize="small" />
+                                </IconButton>
+                              </Box>
+                            </ListItem>
+                          ))}
+                        </List>
+                      )}
                     </AccordionDetails>
                   </Accordion>
                 )}

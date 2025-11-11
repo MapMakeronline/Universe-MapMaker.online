@@ -14,6 +14,14 @@ import {
   enableFull3DMode,
   disableFull3DMode
 } from '@/mapbox/map3d';
+import {
+  enableEnhanced3DMode,
+  disableEnhanced3DMode,
+  addEnhanced3DBuildings,
+  add3DTrees,
+  remove3DTrees,
+  cleanupAllEnhanced3DLayers
+} from '@/mapbox/map3d-enhanced';
 import { mapLogger } from '@/tools/logger';
 
 // Device detection utilities (inline to avoid extra file)
@@ -61,14 +69,24 @@ const Buildings3D = () => {
 
     // Clean up 3D features BEFORE style change
     const cleanup3DFeatures = () => {
+      mapLogger.log('🧹 Cleaning up 3D features before style change');
+
+      // CRITICAL FIX: Don't cleanup terrain/sky during basemap switch
+      // They will be re-added by onStyleLoad if needed
+      // Only remove building/tree layers (they need to be re-added with fresh style)
+
       try {
-        mapLogger.log('🧹 Cleaning up 3D features before style change');
+        // Remove standard buildings
         remove3DBuildings(map);
-        removeSkyLayer(map);
-        remove3DTerrain(map);
+
+        // Remove enhanced layers (buildings + trees)
+        // NOTE: These will be re-added by enableEnhanced3DMode if needed
+        cleanupAllEnhanced3DLayers(map);
       } catch (e) {
         // Layers might not exist yet - that's OK
       }
+
+      mapLogger.log('✅ 3D building/tree layers cleaned up (terrain/sky preserved)');
     };
 
     const onStyleLoad = () => {
@@ -86,12 +104,64 @@ const Buildings3D = () => {
         enable3D: currentStyle?.enable3D,
         enableTerrain: currentStyle?.enableTerrain,
         enableSky: currentStyle?.enableSky,
+        enableEnhanced3D: currentStyle?.enableEnhanced3D, // ADDED: Debug enhanced 3D flag
         styleName: currentStyle?.name,
         device: { ios: iosDevice, memory: deviceMemory, heightMultiplier }
       });
 
+      // CRITICAL DEBUG: Check all conditions separately
+      const hasEnhanced3D = currentStyle?.enableEnhanced3D === true;
+      const hasTerrain = currentStyle?.enableTerrain === true;
+      const hasSky = currentStyle?.enableSky === true;
+
+      mapLogger.log(`🔍 Enhanced 3D condition check:`, {
+        hasEnhanced3D,
+        hasTerrain,
+        hasSky,
+        allTrue: hasEnhanced3D && hasTerrain && hasSky
+      });
+
+      // Check if ENHANCED 3D mode (with trees and better buildings)
+      if (currentStyle?.enableEnhanced3D && currentStyle?.enableTerrain && currentStyle?.enableSky) {
+        try {
+          mapLogger.log(`🌲 ${devicePrefix} Enabling ENHANCED 3D mode (terrain + buildings + trees + textures)`);
+
+          const currentZoom = map.getZoom();
+          const basePitch = currentZoom < 10 ? 35 : 50;
+          const pitch = iosDevice ? Math.max(25, basePitch - 10) : basePitch;
+          const terrainExaggeration = iosDevice ? 0.6 : 0.8;
+
+          // Add terrain and sky FIRST (base 3D features)
+          const terrainSuccess = add3DTerrain(map, terrainExaggeration);
+          const skySuccess = addSkyLayer(map);
+
+          // Then add enhanced buildings + trees
+          const enhancedSuccess = enableEnhanced3DMode(map, {
+            pitch: pitch,
+            bearing: 0,
+            heightMultiplier
+          });
+
+          if (terrainSuccess && skySuccess && enhancedSuccess) {
+            mapLogger.log(`✅ ${devicePrefix} Enhanced 3D mode enabled with trees!`, {
+              pitch: `${pitch}°`,
+              zoom: currentZoom.toFixed(1),
+              terrainExaggeration,
+              heightMultiplier
+            });
+          } else {
+            mapLogger.error(`❌ ${devicePrefix} Failed to enable enhanced 3D mode`, {
+              terrain: terrainSuccess,
+              sky: skySuccess,
+              enhanced: enhancedSuccess
+            });
+          }
+        } catch (e) {
+          mapLogger.error(`❌ ${devicePrefix} Failed to enable enhanced 3D mode:`, e);
+        }
+      }
       // Check if full 3D mode (terrain + buildings + sky)
-      if (currentStyle?.enableTerrain && currentStyle?.enableSky) {
+      else if (currentStyle?.enableTerrain && currentStyle?.enableSky) {
         try {
           mapLogger.log(`🌄 ${devicePrefix} Enabling FULL 3D mode (terrain + buildings + sky)`);
 
@@ -179,13 +249,16 @@ const Buildings3D = () => {
       }
     };
 
-    // Clean up before style change
-    cleanup3DFeatures();
-
     // Apply 3D features when style is fully loaded
     // Use 'style.load' event which fires when style is completely loaded
     const handleStyleLoad = () => {
       mapLogger.log('🗺️ Style fully loaded, applying 3D features');
+
+      // CRITICAL FIX: Clean up OLD 3D layers AFTER new style loads
+      // This prevents race condition where cleanup happens before style is ready
+      cleanup3DFeatures();
+
+      // Now add new 3D features
       onStyleLoad();
     };
 
@@ -193,7 +266,7 @@ const Buildings3D = () => {
     if (map.loaded() && map.isStyleLoaded()) {
       mapLogger.log('🗺️ Map already loaded, applying 3D settings immediately');
       // Small delay to ensure everything is ready
-      setTimeout(() => onStyleLoad(), 100);
+      setTimeout(() => handleStyleLoad(), 100);
     } else {
       mapLogger.log('🗺️ Waiting for map style to load');
       map.once('style.load', handleStyleLoad);
@@ -264,6 +337,7 @@ const Buildings3D = () => {
       // Cleanup 3D features
       try {
         disableFull3DMode(map);
+        disableEnhanced3DMode(map);
       } catch (e) {
         // Layers already removed - that's OK
       }

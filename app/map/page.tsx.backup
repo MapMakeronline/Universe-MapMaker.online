@@ -57,18 +57,13 @@ const LayerVisibilitySync = dynamic(
 
 // IMPORTANT: Removed dynamic() lazy loading for instant display
 // AttributeTablePanel is now in main bundle for immediate rendering
-import { AttributeTablePanel } from '@/features/layers/components/AttributeTablePanel';
-
-// Wypis i Wyrys components
-import DocumentFAB from '@/features/mapa/komponenty/DocumentFAB';
-import WypisGenerateDialog from '@/features/mapa/komponenty/WypisGenerateDialog';
+// Wypis i Wyrys componentsnimport WypisGenerateDialog from '@/features/mapa/komponenty/WypisGenerateDialog';n '@/features/layers/components/AttributeTablePanel';
 
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import { setCurrentProject } from '@/redux/slices/projectsSlice';
 import { loadLayers, resetLayers } from '@/redux/slices/layersSlice';
 import { setViewState, setMapStyle } from '@/redux/slices/mapSlice';
 import { showError } from '@/redux/slices/notificationSlice';
-import { selectGenerateModalOpen, selectSelectedPlots, closeGenerateModal } from '@/redux/slices/wypisSlice';
 import { useGetProjectsQuery, useGetProjectDataQuery } from '@/backend/projects';
 import { MAP_STYLES } from '@/mapbox/config';
 import { transformExtent, transformExtentFromWebMercator, detectCRS, isValidWGS84 } from '@/mapbox/coordinates';
@@ -143,14 +138,6 @@ export default function MapPage() {
 
   // State for map instance (passed from MapContainer to AttributeTablePanel for zoom functionality)
   const [mapInstance, setMapInstance] = useState<any>(null);
-
-  // State for WypisGenerateDialog (Wypis i Wyrys)
-  const generateModalOpen = useAppSelector(selectGenerateModalOpen);
-  const selectedPlots = useAppSelector(selectSelectedPlots);
-
-  const handleCloseGenerateDialog = () => {
-    dispatch(closeGenerateModal());
-  };
 
   // Toggle handler for LayersFAB
   const handleToggleLeftPanel = () => {
@@ -370,16 +357,6 @@ export default function MapPage() {
             }}
           />
         )}
-
-        {/* WypisGenerateDialog - Dialog generowania PDF wypisu */}
-        {projectName && (
-          <WypisGenerateDialog
-            open={generateModalOpen}
-            onClose={handleCloseGenerateDialog}
-            projectName={projectName}
-            availablePlots={selectedPlots}
-          />
-        )}
       </Box>
 
       {/* LayersFAB - Toggle button for layer panel (bottom left corner) */}
@@ -389,10 +366,6 @@ export default function MapPage() {
         onToggle={handleToggleLeftPanel}
         attributeTableHeight={attributeTableHeight}
       />
-
-
-      {/* DocumentFAB - Generowanie wypisu i wyrysu (pokazuj tylko gdy konfiguracje istnieją) */}
-      {projectName && <DocumentFAB projectName={projectName} />}
 
       {/* MapLoadingIndicator - Global loading indicator (bottom right corner, above LayersFAB) */}
       <MapLoadingIndicator isLeftPanelOpen={!leftPanelCollapsed} />

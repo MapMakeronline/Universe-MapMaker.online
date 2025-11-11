@@ -25,7 +25,7 @@ import DescriptionIcon from '@mui/icons-material/Description'
 import { useGetWypisConfigurationQuery, useCreateWypisMutation } from '@/backend/wypis'
 import type { WypisPlot } from '@/backend/types'
 import { useAppDispatch, useAppSelector } from '@/redux/hooks'
-import { showNotification } from '@/redux/slices/notificationSlice'
+import { showSuccess, showError } from '@/redux/slices/notificationSlice'
 import { selectSelectedPlots, togglePlotSelection, clearPlotSelection } from '@/redux/slices/wypisSlice'
 
 interface WypisGenerateDialogProps {
@@ -98,12 +98,12 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
 
   const handleGenerate = async () => {
     if (!selectedConfigId) {
-      dispatch(showNotification({ message: 'Wybierz konfigurację', severity: 'error' }))
+      dispatch(showSuccess, showError({ message: 'Wybierz konfigurację', severity: 'error' }))
       return
     }
 
     if (selectedPlots.length === 0) {
-      dispatch(showNotification({ message: 'Wybierz przynajmniej jedną działkę', severity: 'error' }))
+      dispatch(showSuccess, showError({ message: 'Wybierz przynajmniej jedną działkę', severity: 'error' }))
       return
     }
 
@@ -124,7 +124,7 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
       document.body.removeChild(a)
       window.URL.revokeObjectURL(url)
 
-      dispatch(showNotification({
+      dispatch(showSuccess, showError({
         message: 'Wypis został wygenerowany i pobrany',
         severity: 'success',
       }))
@@ -132,7 +132,7 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
       onClose()
     } catch (error: any) {
       console.error('Error generating wypis:', error)
-      dispatch(showNotification({
+      dispatch(showSuccess, showError({
         message: error?.data?.message || 'Błąd podczas generowania wypisu',
         severity: 'error',
       }))

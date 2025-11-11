@@ -23,45 +23,8 @@ import type {
  */
 export const wypisApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    /**
-     * Add or update wypis configuration
-     *
-     * Endpoint: POST /api/projects/wypis/add/configuration
-     *
-     * Request body (multipart/form-data):
-     * - project: string (required)
-     * - config_id: string (optional)
-     * - configuration: JSON string (required)
-     * - file: ZIP file with PDFs (required - all purposes/arrangements documents)
-     *
-     * Response:
-     * {
-     *   "success": true,
-     *   "config_complete": true,
-     *   "config_id": "generated_or_provided_id"
-     * }
-     */
-    addWypisConfiguration: builder.mutation<
-      WypisConfigurationResponse,
-      FormData | AddWypisConfigurationRequest
-    >({
-      query: (body) => ({
-        url: '/api/projects/wypis/add/configuration',
-        method: 'POST',
-        body,
-      }),
-      invalidatesTags: (result, error, arg) => {
-        // Extract project name from FormData or JSON
-        const project = arg instanceof FormData
-          ? arg.get('project') as string
-          : arg.project
-
-        return [
-          { type: 'WypisConfiguration', id: 'LIST' },
-          { type: 'WypisConfiguration', id: project },
-        ]
-      },
-    }),
+    // NOTE: addWypisConfiguration moved to projects.api.ts
+    // Use: import { useAddWypisConfigurationMutation } from '@/backend/projects'
 
     /**
      * Get wypis configuration(s)
@@ -180,8 +143,8 @@ export const wypisApi = baseApi.injectEndpoints({
 });
 
 // Export hooks for use in components
+// NOTE: useAddWypisConfigurationMutation moved to @/backend/projects
 export const {
-  useAddWypisConfigurationMutation,
   useGetWypisConfigurationQuery,
   useRemoveWypisConfigurationMutation,
   useCreateWypisMutation,
