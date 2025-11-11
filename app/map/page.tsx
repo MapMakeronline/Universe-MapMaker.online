@@ -60,7 +60,6 @@ const LayerVisibilitySync = dynamic(
 import { AttributeTablePanel } from '@/features/layers/components/AttributeTablePanel';
 
 // Wypis i Wyrys components
-import DocumentFAB from '@/features/mapa/komponenty/DocumentFAB';
 import WypisGenerateDialog from '@/features/mapa/komponenty/WypisGenerateDialog';
 
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
@@ -389,10 +388,6 @@ export default function MapPage() {
         onToggle={handleToggleLeftPanel}
         attributeTableHeight={attributeTableHeight}
       />
-
-
-      {/* DocumentFAB - Generowanie wypisu i wyrysu (pokazuj tylko gdy konfiguracje istnieją) */}
-      {projectName && <DocumentFAB projectName={projectName} />}
 
       {/* MapLoadingIndicator - Global loading indicator (bottom right corner, above LayersFAB) */}
       <MapLoadingIndicator isLeftPanelOpen={!leftPanelCollapsed} />

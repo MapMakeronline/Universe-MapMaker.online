@@ -61,7 +61,7 @@ const DocumentFAB: React.FC<DocumentFABProps> = ({ projectName }) => {
         onClick={handleClick}
         sx={{
           position: 'fixed',
-          top: 226, // Position below other FABs
+          top: 86, // Position between UserFAB and red FABs (16 + 56 + 14 spacing)
           right: 16,
           zIndex: 1400,
           width: 56,

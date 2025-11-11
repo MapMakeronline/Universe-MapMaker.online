@@ -32,6 +32,7 @@ import CropIcon from '@mui/icons-material/Crop';
 import KeyboardIcon from '@mui/icons-material/Keyboard';
 import EmailIcon from '@mui/icons-material/Email';
 import SettingsIcon from '@mui/icons-material/Settings';
+import DescriptionIcon from '@mui/icons-material/Description';
 
 // User menu icons
 import AccountCircle from '@mui/icons-material/AccountCircle';
@@ -41,6 +42,7 @@ import Person from '@mui/icons-material/Person';
 import { useRouter } from "next/navigation"
 import { useAppDispatch, useAppSelector } from "@/redux/hooks"
 import { setMeasurementMode, clearAllMeasurements, setIdentifyMode } from "@/redux/slices/drawSlice"
+import { openGenerateModal, selectHasConfigurations } from "@/redux/slices/wypisSlice"
 import SearchModal from "@/features/mapa/interakcje/SearchModal"
 import MeasurementModal from "@/features/layers/modals/MeasurementModal"
 import ExportPDFModal, { type ExportConfig } from "@/features/layers/modals/ExportPDFModal"
@@ -77,6 +79,7 @@ const RightFABToolbar: React.FC<RightFABToolbarProps> = ({ mapRef }) => {
   const map = mapRef.current?.getMap();
   const { measurement, identify } = useAppSelector((state) => state.draw)
   const { user, isAuthenticated } = useAppSelector((state) => state.auth)
+  const hasConfigurations = useAppSelector(selectHasConfigurations)
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null)
@@ -181,6 +184,19 @@ const RightFABToolbar: React.FC<RightFABToolbarProps> = ({ mapRef }) => {
 
   // Define all FAB tools - in exact order from screenshot
   const allTools: FABTool[] = [
+    // DARK GRAY ICON (Wypis i Wyrys) - Only shown when configurations exist
+    {
+      id: "wypis-wyrys",
+      icon: DescriptionIcon,
+      tooltip: "Wypis i wyrys",
+      onClick: () => {
+        triggerHapticFeedback();
+        dispatch(openGenerateModal(null));
+      },
+      color: 'default',
+      authRequired: true, // Hidden for guests
+    },
+
     // RED/CORAL ICONS (Primary Color)
     {
       id: "parcel-search",
@@ -287,8 +303,13 @@ const RightFABToolbar: React.FC<RightFABToolbarProps> = ({ mapRef }) => {
     },
   ];
 
-  // Filter tools based on authentication
+  // Filter tools based on authentication and wypis configurations
   const tools = allTools.filter(tool => {
+    // Hide wypis-wyrys if no configurations exist
+    if (tool.id === 'wypis-wyrys' && !hasConfigurations) {
+      return false;
+    }
+    // Hide tools requiring authentication if not authenticated
     if (!isAuthenticated && tool.authRequired) {
       return false;
     }

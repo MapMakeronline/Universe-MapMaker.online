@@ -98,12 +98,12 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
 
   const handleGenerate = async () => {
     if (!selectedConfigId) {
-      dispatch(showSuccess, showError({ message: 'Wybierz konfigurację', severity: 'error' }))
+      dispatch(showError({ message: 'Wybierz konfigurację' }))
       return
     }
 
     if (selectedPlots.length === 0) {
-      dispatch(showSuccess, showError({ message: 'Wybierz przynajmniej jedną działkę', severity: 'error' }))
+      dispatch(showError({ message: 'Wybierz przynajmniej jedną działkę' }))
       return
     }
 
@@ -124,17 +124,15 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
       document.body.removeChild(a)
       window.URL.revokeObjectURL(url)
 
-      dispatch(showSuccess, showError({
+      dispatch(showSuccess({
         message: 'Wypis został wygenerowany i pobrany',
-        severity: 'success',
       }))
 
       onClose()
     } catch (error: any) {
       console.error('Error generating wypis:', error)
-      dispatch(showSuccess, showError({
+      dispatch(showError({
         message: error?.data?.message || 'Błąd podczas generowania wypisu',
-        severity: 'error',
       }))
     }
   }
