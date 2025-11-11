@@ -1,10 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git -C /c/Users/Bartosz/Desktop/Universe-Mapmaker-Backend push origin master)",
-      "Bash(screenshot.bat \"http://localhost:3000/map?project=Wyszki\" \"documentfab-integrated.png\")",
-      "Bash(cmd /c screenshot.bat \"http://localhost:3000/map?project=Wyszki\" documentfab-integrated.png)",
-      "Bash(git -C \"c:\\Users\\Bartosz\\Desktop\\Universe-MapMaker.online\" status)"
+      "Bash(git -C \"c:\\Users\\Bartosz\\Desktop\\Universe-MapMaker.online\" add src/features/mapa/komponenty/DocumentFAB.tsx src/features/mapa/komponenty/WypisGenerateDialog.tsx)",
+      "Bash(git -C \"c:\\Users\\Bartosz\\Desktop\\Universe-MapMaker.online\" commit -m \"$(cat <<''EOF''\nfix: correct API response parsing for wypis configurations\n\nFixed frontend to match actual backend API response format:\n- Backend returns config_structure with {id, name}\n- Frontend was expecting configurations with {config_id, configuration_name}\n\nChanges:\n- DocumentFAB.tsx: Check config_structure OR configurations\n- WypisGenerateDialog.tsx: Support both response formats\n- MenuItem: Use config.id OR config.config_id, config.name OR config.configuration_name\n\nBackend API response:\n{\n  \"data\": {\n    \"config_structure\": [\n      {\"id\": \"config_516901\", \"name\": \"testkonfiguracji\"}\n    ]\n  },\n  \"success\": true\n}\n\nThis fix enables DocumentFAB to appear when configurations exist.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(cmd /c screenshot.bat \"http://localhost:3000/map?project=Wyszki\" wypis-fab-test.png)",
+      "Bash(cmd /c screenshot.bat \"http://localhost:3000/map?project=Wyszki\" wypis-fab-in-toolbar.png)",
+      "Bash(npm view:*)",
+      "Bash(cmd /c screenshot.bat \"http://localhost:3000/map?project=Wyszki\" wypis-draggable-test.png)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []

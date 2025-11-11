@@ -580,7 +580,8 @@ export interface WypisPlotWithDestinations {
  */
 export interface GetPlotSpatialDevelopmentRequest {
   project: string;                  // Project name
-  plot: WypisPlot;                  // Plot to query
+  config_id: string;                // Configuration ID (required by backend)
+  plot: WypisPlot[];                // Plots to query (backend expects array)
 }
 
 /**

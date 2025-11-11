@@ -270,7 +270,7 @@ const MapContainer: React.FC<MapContainerProps> = ({ children, projectName, onMa
 
       {/* ===== RIGHT FAB TOOLBAR - Unified Material Icons FABs ===== */}
       {/* All tools in one vertical column with consistent styling */}
-      <RightFABToolbar mapRef={mapRef} />
+      <RightFABToolbar mapRef={mapRef} projectName={projectName} />
     </Box>
   );
 };

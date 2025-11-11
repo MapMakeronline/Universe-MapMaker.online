@@ -224,10 +224,17 @@ const WypisPlotSelector = () => {
 
         // 4. Query spatial development endpoint
         // NOTE: Backend expects plot as ARRAY, not object (Django serializer: plot = ListField)
+        // CRITICAL: Backend requires config_id to find wypis configuration file
+        if (!selectedConfigId) {
+          dispatch(showError('Wybierz konfigurację wypisu przed zaznaczaniem działek'));
+          return;
+        }
+
         dispatch(showSuccess(`Pobieranie informacji o przeznaczeniu działki ${precinct}/${number}...`));
 
         const result = await getPlotSpatialDevelopment({
           project: projectName,
+          config_id: selectedConfigId, // ✅ Backend needs this to find config file
           plot: [plotData], // ✅ Wrap in array - backend expects ListField
         }).unwrap();
 

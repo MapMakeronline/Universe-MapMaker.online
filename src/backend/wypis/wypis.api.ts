@@ -118,13 +118,14 @@ export const wypisApi = baseApi.injectEndpoints({
      *
      * Endpoint: POST /api/projects/wypis/plotspatialdevelopment
      *
-     * Queries planning zones that overlap with a given plot and returns
+     * Queries planning zones that overlap with given plots and returns
      * available documents for each zone.
      *
      * Request body:
      * {
      *   "project": "project_name",
-     *   "plot": { "precinct": "0001", "number": "123" }
+     *   "config_id": "config_123",
+     *   "plot": [{ "precinct": "0001", "number": "123" }]
      * }
      *
      * Response:

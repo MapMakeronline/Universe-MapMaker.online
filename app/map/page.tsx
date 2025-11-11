@@ -60,7 +60,6 @@ const LayerVisibilitySync = dynamic(
 import { AttributeTablePanel } from '@/features/layers/components/AttributeTablePanel';
 
 // Wypis i Wyrys components
-import DocumentFAB from '@/features/mapa/komponenty/DocumentFAB';
 import WypisGenerateDialog from '@/features/mapa/komponenty/WypisGenerateDialog';
 import WypisPlotSelector from '@/features/mapa/komponenty/WypisPlotSelector';
 
@@ -341,6 +340,8 @@ export default function MapPage() {
             )}
             {/* Sync Redux layer visibility with Mapbox layers */}
             {projectName && <LayerVisibilitySync projectName={projectName} />}
+            {/* WypisPlotSelector - Handles plot selection from map clicks (MUST be inside MapContainer for useMap() hook) */}
+            {projectName && <WypisPlotSelector />}
           </MapContainer>
         </Box>
         {/* RightToolbar removed - replaced by FAB buttons in MapContainer */}
@@ -381,13 +382,7 @@ export default function MapPage() {
             availablePlots={selectedPlots}
           />
         )}
-
-        {/* WypisPlotSelector - Handles plot selection from map clicks */}
-        {projectName && <WypisPlotSelector />}
       </Box>
-
-      {/* DocumentFAB - Wypis i Wyrys FAB (shows when configuration exists) */}
-      {projectName && <DocumentFAB projectName={projectName} />}
 
       {/* LayersFAB - Toggle button for layer panel (bottom left corner) */}
       <LayersFAB
