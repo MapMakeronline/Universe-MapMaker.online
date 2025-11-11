@@ -65,12 +65,16 @@ const WypisPlotSelector = () => {
     }
   }, [generateModalOpen, selectedConfigId, configResponse, isLoadingConfig, configError, projectName]);
 
-  // Disable Identify tool when modal is open
+  // Disable Identify tool when modal is open, re-enable when closed
   useEffect(() => {
     if (generateModalOpen) {
       // Dispatch action to disable identify mode
       dispatch(setIdentifyMode(false));
       mapLogger.log('🗺️ Wypis: Disabled Identify tool for plot selection');
+    } else {
+      // Re-enable Identify mode when modal closes
+      dispatch(setIdentifyMode(true));
+      mapLogger.log('🗺️ Wypis: Re-enabled Identify tool after modal close');
     }
   }, [generateModalOpen, dispatch]);
 
