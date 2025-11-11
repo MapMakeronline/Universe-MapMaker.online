@@ -26,7 +26,13 @@ import { useGetWypisConfigurationQuery, useCreateWypisMutation } from '@/backend
 import type { WypisPlot } from '@/backend/types'
 import { useAppDispatch, useAppSelector } from '@/redux/hooks'
 import { showSuccess, showError } from '@/redux/slices/notificationSlice'
-import { selectSelectedPlots, togglePlotSelection, clearPlotSelection } from '@/redux/slices/wypisSlice'
+import {
+  selectSelectedPlots,
+  selectSelectedConfigId,
+  removePlot,
+  clearPlotSelection,
+  setSelectedConfigId,
+} from '@/redux/slices/wypisSlice'
 
 interface WypisGenerateDialogProps {
   open: boolean
@@ -59,9 +65,7 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
 
   // Redux state
   const selectedPlots = useAppSelector(selectSelectedPlots)
-
-  // Local state
-  const [selectedConfigId, setSelectedConfigId] = useState<string>('')
+  const selectedConfigId = useAppSelector(selectSelectedConfigId)
 
   // RTK Query hooks
   const { data: configurationsData, isLoading: isLoadingConfigs } = useGetWypisConfigurationQuery(
@@ -75,25 +79,21 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
   useEffect(() => {
     if (configurationsData && 'configurations' in configurationsData && configurationsData.configurations.length > 0) {
       if (!selectedConfigId) {
-        setSelectedConfigId(configurationsData.configurations[0].config_id)
+        dispatch(setSelectedConfigId(configurationsData.configurations[0].config_id))
       }
     }
-  }, [configurationsData, selectedConfigId])
+  }, [configurationsData, selectedConfigId, dispatch])
 
   // Clear selection on close
   useEffect(() => {
     if (!open) {
       dispatch(clearPlotSelection())
-      setSelectedConfigId('')
+      dispatch(setSelectedConfigId(null))
     }
   }, [open, dispatch])
 
-  const handleTogglePlot = (plot: WypisPlot) => {
-    dispatch(togglePlotSelection(plot))
-  }
-
-  const isPlotSelected = (plot: WypisPlot) => {
-    return selectedPlots.some(p => p.precinct === plot.precinct && p.number === plot.number)
+  const handleRemovePlot = (plot: WypisPlot) => {
+    dispatch(removePlot(plot))
   }
 
   const handleGenerate = async () => {
@@ -118,7 +118,7 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
       const url = window.URL.createObjectURL(pdfBlob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `wypis_${selectedPlots[0].number}_${Date.now()}.pdf`
+      a.download = `wypis_${selectedPlots[0].plot.number}_${Date.now()}.pdf`
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
@@ -203,8 +203,8 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
             <FormControl fullWidth sx={{ mb: 3 }}>
               <InputLabel>Wybierz konfigurację</InputLabel>
               <Select
-                value={selectedConfigId}
-                onChange={(e) => setSelectedConfigId(e.target.value)}
+                value={selectedConfigId || ''}
+                onChange={(e) => dispatch(setSelectedConfigId(e.target.value))}
                 label="Wybierz konfigurację"
               >
                 {configurations.map(config => (
@@ -215,15 +215,15 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
               </Select>
             </FormControl>
 
-            {/* Plot selection */}
+            {/* Selected plots display */}
             <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-              Wybierz działki:
+              Wybrane działki:
             </Typography>
 
-            {availablePlots.length === 0 ? (
+            {selectedPlots.length === 0 ? (
               <Alert severity="info" sx={{ mb: 2 }}>
                 <Typography variant="body2">
-                  Brak dostępnych działek. Kliknij na mapę, aby wybrać działkę z warstwy.
+                  Brak wybranych działek. Kliknij na mapę, aby wybrać działkę z warstwy.
                 </Typography>
               </Alert>
             ) : (
@@ -236,31 +236,45 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
                   p: 1,
                 }}
               >
-                {availablePlots.map((plot, index) => (
-                  <FormControlLabel
-                    key={`${plot.precinct}-${plot.number}-${index}`}
-                    control={
-                      <Checkbox
-                        checked={isPlotSelected(plot)}
-                        onChange={() => handleTogglePlot(plot)}
-                      />
-                    }
-                    label={
-                      <Typography variant="body2">
-                        Obręb: <strong>{plot.precinct}</strong>, Działka: <strong>{plot.number}</strong>
-                      </Typography>
-                    }
+                {selectedPlots.map((plotWithDest, index) => (
+                  <Box
+                    key={`${plotWithDest.plot.precinct}-${plotWithDest.plot.number}-${index}`}
                     sx={{
                       width: '100%',
                       m: 0,
-                      py: 0.5,
-                      px: 1,
+                      py: 1,
+                      px: 1.5,
+                      mb: 1,
                       borderRadius: 1,
-                      '&:hover': {
-                        bgcolor: '#f5f5f5',
-                      },
+                      border: '1px solid #e0e0e0',
+                      bgcolor: '#f9f9f9',
                     }}
-                  />
+                  >
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                        Obręb: {plotWithDest.plot.precinct}, Działka: {plotWithDest.plot.number}
+                      </Typography>
+                      <Button
+                        size="small"
+                        color="error"
+                        onClick={() => handleRemovePlot(plotWithDest.plot)}
+                      >
+                        Usuń
+                      </Button>
+                    </Box>
+                    {plotWithDest.plot_destinations.length > 0 && (
+                      <Box sx={{ pl: 1, borderLeft: '2px solid #2c3e50' }}>
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                          Przeznaczenie:
+                        </Typography>
+                        {plotWithDest.plot_destinations.map((dest, idx) => (
+                          <Typography key={idx} variant="caption" sx={{ display: 'block', pl: 1 }}>
+                            • {dest.plan_id} (pokrycie: {dest.covering})
+                          </Typography>
+                        ))}
+                      </Box>
+                    )}
+                  </Box>
                 ))}
               </Box>
             )}
