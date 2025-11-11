@@ -124,13 +124,15 @@ const WypisPlotSelector = () => {
         // 1. Get parcel layer name from configuration
         let parcelLayerName: string | undefined;
 
-        // Backend returns: { data: { plotsLayer: "...", plotsLayerName: "..." }, success: true }
-        // We need plotsLayer (internal ID), not plotsLayerName (display name)
+        // Backend returns: { data: { plotsLayer: "tmp_name_...", plotsLayerName: "Działki 29_10_25" }, success: true }
+        // We need plotsLayerName (QGIS layer name), NOT plotsLayer (database internal ID)
         if ('data' in configResponse && configResponse.data) {
           const config = configResponse.data as any;
-          parcelLayerName = config.plotsLayer || config.parcel_layer_name;
+          parcelLayerName = config.plotsLayerName || config.parcel_layer_name;
           mapLogger.log('🗺️ Wypis: Using parcel layer from config', {
             parcelLayerName,
+            plotsLayer: config.plotsLayer,
+            plotsLayerName: config.plotsLayerName,
             fullConfig: config
           });
         }
