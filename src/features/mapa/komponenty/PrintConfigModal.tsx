@@ -654,26 +654,20 @@ const WypisConfigModal: React.FC<WypisConfigModalProps> = ({
       console.log('\n=== DEBUG: Configuration JSON (length: ' + configurationJson.length + ' chars) ===')
       console.log(configurationJson)
 
-      const formData = new FormData()
-      formData.append('project', projectName)
-      formData.append('configuration', configurationJson) // Single stringify only!
-      formData.append('extractFiles', zipFile) // Backend requires 'extractFiles' parameter
-      if (configId) {
-        formData.append('config_id', configId)
-      }
-
-      // DEBUG: Log FormData contents
-      console.log('\n=== DEBUG: FormData Contents ===')
-      for (const [key, value] of formData.entries()) {
-        if (value instanceof File) {
-          console.log(`${key}:`, `[File: ${value.name}, ${value.size} bytes]`)
-        } else {
-          console.log(`${key}:`, value)
-        }
-      }
+      // DEBUG: Log request parameters
+      console.log('\n=== DEBUG: Request Parameters ===')
+      console.log('project:', projectName)
+      console.log('configuration length:', configurationJson.length)
+      console.log('extractFiles:', `[File: ${zipFile.name}, ${zipFile.size} bytes]`)
+      console.log('config_id:', configId || '(new configuration)')
 
       console.log('\n=== DEBUG: Sending request to backend ===')
-      const result = await addWypisConfiguration(formData).unwrap()
+      const result = await addWypisConfiguration({
+        project: projectName,
+        configuration: configurationJson,
+        extractFiles: zipFile,
+        config_id: configId
+      }).unwrap()
       console.log('=== DEBUG: Backend response ===', result)
 
       dispatch(showSuccess(configId ? 'Zaktualizowano konfigurację' : 'Zapisano konfigurację'))
