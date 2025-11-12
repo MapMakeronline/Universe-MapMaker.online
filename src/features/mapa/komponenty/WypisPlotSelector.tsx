@@ -236,10 +236,19 @@ const WypisPlotSelector = () => {
 
         dispatch(showSuccess(`Pobieranie informacji o przeznaczeniu działki ${precinct}/${number}...`));
 
+        // Transform to backend format: {key_column_name, key_column_value}
+        // Backend expects database column names, not API format
+        const plotDataForBackend = {
+          key_column_name: plotNumberColumn,
+          key_column_value: String(number),
+          precinct: String(precinct), // Keep for response mapping
+          number: String(number),     // Keep for response mapping
+        };
+
         const result = await getPlotSpatialDevelopment({
           project: projectName,
           config_id: selectedConfigId, // ✅ Backend needs this to find config file
-          plot: [plotData], // ✅ Wrap in array - backend expects ListField
+          plot: [plotDataForBackend], // ✅ Backend format with column names
         }).unwrap();
 
         if (!result.success || !result.data || result.data.length === 0) {
