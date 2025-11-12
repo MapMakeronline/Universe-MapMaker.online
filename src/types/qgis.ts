@@ -2,7 +2,7 @@
  * QGIS Project Layer Types
  *
  * Types for QGIS project tree.json structure from backend
- * Endpoint: GET /api/projects/new/json?project={project_name}
+ * Endpoint: GET /api/projects/?project={project_name}
  */
 
 /** Vector layer type from QGIS */
