@@ -25,8 +25,40 @@ import type {
  */
 export const wypisApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    // NOTE: addWypisConfiguration moved to projects.api.ts
-    // Use: import { useAddWypisConfigurationMutation } from '@/backend/projects'
+    /**
+     * Add or update wypis configuration
+     *
+     * Endpoint: POST /api/projects/wypis/add/configuration
+     *
+     * Request body:
+     * {
+     *   "project": "project_name",
+     *   "config_id": "config_123" (optional - generates new if omitted),
+     *   "configuration_name": "MPZP",
+     *   "data": { ... configuration data ... }
+     * }
+     *
+     * Response:
+     * {
+     *   "success": true,
+     *   "config_id": "config_123"
+     * }
+     */
+    addWypisConfiguration: builder.mutation<
+      { success: boolean; config_id: string },
+      AddWypisConfigurationRequest
+    >({
+      query: (body) => ({
+        url: '/api/projects/wypis/add/configuration',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: (result, error, { project }) => [
+        { type: 'WypisConfiguration', id: 'LIST' },
+        { type: 'WypisConfiguration', id: project },
+        ...(result?.config_id ? [{ type: 'WypisConfiguration' as const, id: result.config_id }] : []),
+      ],
+    }),
 
     /**
      * Get wypis configuration(s)
@@ -231,6 +263,7 @@ export const wypisApi = baseApi.injectEndpoints({
 
 // Export hooks for use in components
 export const {
+  useAddWypisConfigurationMutation,
   useGetWypisConfigurationQuery,
   useRemoveWypisConfigurationMutation,
   useGetPrecinctAndNumberMutation,
