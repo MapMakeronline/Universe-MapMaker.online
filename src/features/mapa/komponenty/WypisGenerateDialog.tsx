@@ -24,7 +24,6 @@ import CloseIcon from '@mui/icons-material/Close'
 import DescriptionIcon from '@mui/icons-material/Description'
 
 import { useGetWypisConfigurationQuery, useCreateWypisMutation } from '@/backend/wypis'
-import { useGetWypisConfigurationsQuery } from '@/backend/projects'
 import type { WypisPlot } from '@/backend/types'
 import { useAppDispatch, useAppSelector } from '@/redux/hooks'
 import { showSuccess, showError } from '@/redux/slices/notificationSlice'
@@ -142,7 +141,7 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
   const selectedConfigId = useAppSelector(selectSelectedConfigId)
 
   // RTK Query hooks
-  const { data: configurationsData, isLoading: isLoadingConfigs } = useGetWypisConfigurationsQuery(
+  const { data: configurationsData, isLoading: isLoadingConfigs } = useGetWypisConfigurationQuery(
     { project: projectName },
     { skip: !projectName || !open }
   )

@@ -731,70 +731,8 @@ export const projectsApi = baseApi.injectEndpoints({
       ],
     }),
 
-    /**
-     * GET /api/projects/wypis/get/configuration
-     * Get saved wypis configurations (list or specific config)
-     *
-     * Without config_id: Returns list of all configurations
-     * With config_id: Returns specific configuration details
-     *
-     * Request: { project: string, config_id?: string }
-     * Response (list): { data: { config_structure: [{ id, name }] }, success, message }
-     * Response (single): { data: { configuration_name, plotsLayer, ... }, success, message }
-     */
-    getWypisConfigurations: builder.query<
-      { data: any; success: boolean; message: string },
-      { project: string; config_id?: string }
-    >({
-      query: ({ project, config_id }) => {
-        console.log('🔍 RTK Query getWypisConfigurations REQUEST:', { project, config_id });
-        return {
-          url: '/api/projects/wypis/get/configuration',
-          params: config_id ? { project, config_id } : { project },
-        };
-      },
-      transformResponse: (response: any) => {
-        console.log('🔍 RTK Query getWypisConfigurations RAW RESPONSE:', response);
-        console.log('  - data:', response?.data);
-        console.log('  - config_structure:', response?.data?.config_structure);
-        console.log('  - config_structure length:', response?.data?.config_structure?.length);
-        return response;
-      },
-      providesTags: (result, error, { project, config_id }) =>
-        config_id
-          ? [{ type: 'WypisConfiguration', id: `${project}-${config_id}` }]
-          : [{ type: 'WypisConfiguration', id: `${project}-LIST` }],
-    }),
-
-    /**
-     * POST /api/projects/wypis/add/configuration
-     * Save wypis configuration with layers and document templates
-     *
-     * Request: FormData with { project, configuration (JSON), extractFiles (ZIP), config_id? }
-     * Response: { data, success, message }
-     */
-    addWypisConfiguration: builder.mutation<
-      { data: any; success: boolean; message: string },
-      { project: string; configuration: string; extractFiles: File; config_id?: string }
-    >({
-      query: ({ project, configuration, extractFiles, config_id }) => {
-        const formData = new FormData();
-        formData.append('project', project);
-        formData.append('configuration', configuration);
-        formData.append('extractFiles', extractFiles);
-        if (config_id) {
-          formData.append('config_id', config_id);
-        }
-        return {
-          url: '/api/projects/wypis/add/configuration',
-          method: 'POST',
-          body: formData,
-        };
-      },
-      invalidatesTags: (result, error, { project }) => [
-        { type: 'WypisConfiguration', id: `${project}-LIST` },
-      ],
-    }),
+    // NOTE: All wypis endpoints moved to wypis.api.ts for better organization
+    // Use: import { useGetWypisConfigurationQuery, useAddWypisConfigurationMutation, useGetPrecinctAndNumberMutation, useGetPlotSpatialDevelopmentMutation } from '@/backend/wypis'
   }),
 });
 
@@ -830,6 +768,4 @@ export const {
   usePublishWMSWFSMutation,
   useUnpublishWMSWFSMutation,
   useDownloadAppSetMutation,
-  useGetWypisConfigurationsQuery,
-  useAddWypisConfigurationMutation,
 } = projectsApi;

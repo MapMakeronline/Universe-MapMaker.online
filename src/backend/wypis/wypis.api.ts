@@ -114,6 +114,41 @@ export const wypisApi = baseApi.injectEndpoints({
     }),
 
     /**
+     * Get precinct and plot number from map coordinates
+     *
+     * Endpoint: POST /api/projects/wypis/precinct_and_number
+     *
+     * Identifies land plot (działka) by clicking on map coordinates.
+     *
+     * Request body:
+     * {
+     *   "project": "project_name",
+     *   "config_id": "config_123",
+     *   "point": [2557123.45, 6952345.67]  // [x, y] coordinates
+     * }
+     *
+     * Response:
+     * {
+     *   "success": true,
+     *   "data": {
+     *     "precinct": "WYSZKI",
+     *     "number": "15"
+     *   }
+     * }
+     */
+    getPrecinctAndNumber: builder.mutation<
+      { data: { precinct: string; number: string }; success: boolean; message: string },
+      { project: string; config_id: string; point: [number, number] }
+    >({
+      query: (body) => ({
+        url: '/api/projects/wypis/precinct_and_number',
+        method: 'POST',
+        body,
+      }),
+      // No cache invalidation needed - read-only query
+    }),
+
+    /**
      * Get plot spatial development (planning zones)
      *
      * Endpoint: POST /api/projects/wypis/plotspatialdevelopment
@@ -195,10 +230,10 @@ export const wypisApi = baseApi.injectEndpoints({
 });
 
 // Export hooks for use in components
-// NOTE: useAddWypisConfigurationMutation moved to @/backend/projects
 export const {
   useGetWypisConfigurationQuery,
   useRemoveWypisConfigurationMutation,
+  useGetPrecinctAndNumberMutation,
   useGetPlotSpatialDevelopmentMutation,
   useCreateWypisMutation,
 } = wypisApi;

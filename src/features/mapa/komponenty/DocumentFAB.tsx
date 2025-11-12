@@ -6,7 +6,7 @@ import Fab from '@mui/material/Fab'
 import Tooltip from '@mui/material/Tooltip'
 import Description from '@mui/icons-material/Description'
 
-import { useGetWypisConfigurationsQuery } from '@/backend/projects'
+import { useGetWypisConfigurationQuery } from '@/backend/wypis'
 import { useAppDispatch, useAppSelector } from '@/redux/hooks'
 import { openGenerateModal, setHasConfigurations, selectHasConfigurations } from '@/redux/slices/wypisSlice'
 
@@ -32,7 +32,7 @@ const DocumentFAB: React.FC<DocumentFABProps> = ({ projectName }) => {
   const hasConfigurations = useAppSelector(selectHasConfigurations)
 
   // Check if configurations exist
-  const { data: response, isLoading } = useGetWypisConfigurationsQuery(
+  const { data: response, isLoading } = useGetWypisConfigurationQuery(
     { project: projectName },
     { skip: !projectName }
   )

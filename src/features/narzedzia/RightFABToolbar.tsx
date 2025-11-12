@@ -44,7 +44,7 @@ import { useEffect } from "react"
 import { useAppDispatch, useAppSelector } from "@/redux/hooks"
 import { setMeasurementMode, clearAllMeasurements, setIdentifyMode } from "@/redux/slices/drawSlice"
 import { openGenerateModal, selectHasConfigurations, setHasConfigurations } from "@/redux/slices/wypisSlice"
-import { useGetWypisConfigurationsQuery } from "@/backend/projects"
+import { useGetWypisConfigurationQuery } from "@/backend/wypis"
 import SearchModal from "@/features/mapa/interakcje/SearchModal"
 import MeasurementModal from "@/features/layers/modals/MeasurementModal"
 import ExportPDFModal, { type ExportConfig } from "@/features/layers/modals/ExportPDFModal"
@@ -86,7 +86,7 @@ const RightFABToolbar: React.FC<RightFABToolbarProps> = ({ mapRef, projectName }
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   // Query wypis configurations to determine if FAB should be shown
-  const { data: wypisConfigResponse } = useGetWypisConfigurationsQuery(
+  const { data: wypisConfigResponse } = useGetWypisConfigurationQuery(
     { project: projectName || '' },
     { skip: !projectName }
   )

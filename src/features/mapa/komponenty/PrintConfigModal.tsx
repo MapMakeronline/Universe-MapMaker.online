@@ -33,7 +33,7 @@ import InfoIcon from '@mui/icons-material/Info'
 import DownloadIcon from '@mui/icons-material/Download'
 import JSZip from 'jszip'
 
-import { useAddWypisConfigurationMutation, useGetWypisConfigurationsQuery } from '@/backend/projects'
+import { useAddWypisConfigurationMutation } from '@/backend/projects'
 import { useGetWypisConfigurationQuery } from '@/backend/wypis'
 import { useGetLayerAttributesQuery, useLazyGetColumnValuesQuery } from '@/backend/layers'
 import type { WypisPurposeWithFile, WypisArrangementWithFile } from '@/backend/types'
