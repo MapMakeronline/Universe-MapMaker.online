@@ -144,7 +144,7 @@ export function addWMSLayer(
       `FORMAT=image/png&` +
       `TRANSPARENT=true&` +
       `DPI=96&` +
-      `MAP=/projects/${encodeURIComponent(projectName)}/${encodeURIComponent(projectName)}.qgs`; // Absolute path to QGS file
+      `MAP=/projects/${encodeURIComponent(projectName)}/${encodeURIComponent(projectName)}.qgs`;
 
     // Add raster source
     map.addSource(sourceId, {
@@ -801,10 +801,23 @@ export function addProjectLayers(
 
   mapLogger.log(`📦 Collecting layers for: ${projectName}`);
   collectLayers(items);
-  mapLogger.log(`🔍 Found ${layersToAdd.length} layers to load`);
+
+  // CRITICAL FIX: Deduplicate layers by ID (backend bug workaround)
+  // Backend sometimes returns duplicate layers in tree.json
+  const seenIds = new Set<string>();
+  const uniqueLayers = layersToAdd.filter((item) => {
+    if (seenIds.has(item.id)) {
+      mapLogger.log(`⚠️ Skipping duplicate layer: ${item.name} (ID: ${item.id})`);
+      return false;
+    }
+    seenIds.add(item.id);
+    return true;
+  });
+
+  mapLogger.log(`🔍 Found ${uniqueLayers.length} unique layers to load (${layersToAdd.length - uniqueLayers.length} duplicates removed)`);
 
   // Add all layers (skips if already exist)
-  layersToAdd.forEach((item) => {
+  uniqueLayers.forEach((item) => {
     const result = addWMSLayer(map, {
       layerName: item.name, // CRITICAL: Use item.name (layer name), NOT item.id (UUID)!
       projectName,

@@ -115,9 +115,18 @@ export function QGISProjectLayersLoader({ projectName, projectData }: QGISProjec
       };
 
       // Wait 500ms for 3D features to potentially trigger style rebuild
-      setTimeout(() => {
-        reAddLayersAfter3D();
-      }, 500);
+      // IMPORTANT: Don't wait if style is already loaded (prevents duplicate adds)
+      if (map.isStyleLoaded()) {
+        // Style already stable - check immediately (no 500ms delay)
+        setTimeout(() => {
+          reAddLayersAfter3D();
+        }, 100); // Short delay to ensure 3D features finished
+      } else {
+        // Style might rebuild - wait longer
+        setTimeout(() => {
+          reAddLayersAfter3D();
+        }, 500);
+      }
     };
 
     // CRITICAL: Wait for map style to load before adding WMS layers

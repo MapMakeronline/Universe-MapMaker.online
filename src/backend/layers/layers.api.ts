@@ -267,7 +267,11 @@ export const layersApi = baseApi.injectEndpoints({
         body: params,
       }),
       // Invalidate QGIS tag to trigger tree.json refetch
-      invalidatesTags: ['Layers', 'Project', 'QGIS'],
+      invalidatesTags: (result, error, arg) => [
+        'Layers',
+        { type: 'Project', id: arg.project },
+        { type: 'QGIS', id: arg.project },
+      ],
     }),
 
     /**
@@ -303,7 +307,11 @@ export const layersApi = baseApi.injectEndpoints({
         };
       },
       // Invalidate QGIS tag to trigger tree.json refetch
-      invalidatesTags: ['Layers', 'Project', 'QGIS'],
+      invalidatesTags: (result, error, arg) => [
+        'Layers',
+        { type: 'Project', id: arg.params.project },
+        { type: 'QGIS', id: arg.params.project },
+      ],
     }),
 
     /**
@@ -326,7 +334,11 @@ export const layersApi = baseApi.injectEndpoints({
         };
       },
       // Invalidate QGIS tag to trigger tree.json refetch
-      invalidatesTags: ['Layers', 'Project', 'QGIS'],
+      invalidatesTags: (result, error, arg) => [
+        'Layers',
+        { type: 'Project', id: arg.params.project },
+        { type: 'QGIS', id: arg.params.project },
+      ],
     }),
 
     /**
@@ -350,7 +362,11 @@ export const layersApi = baseApi.injectEndpoints({
         };
       },
       // Invalidate QGIS tag to trigger tree.json refetch
-      invalidatesTags: ['Layers', 'Project', 'QGIS'],
+      invalidatesTags: (result, error, arg) => [
+        'Layers',
+        { type: 'Project', id: arg.params.project },
+        { type: 'QGIS', id: arg.params.project },
+      ],
     }),
 
     /**
@@ -374,7 +390,11 @@ export const layersApi = baseApi.injectEndpoints({
         };
       },
       // Invalidate QGIS tag to trigger tree.json refetch
-      invalidatesTags: ['Layers', 'Project', 'QGIS'],
+      invalidatesTags: (result, error, arg) => [
+        'Layers',
+        { type: 'Project', id: arg.params.project },
+        { type: 'QGIS', id: arg.params.project },
+      ],
     }),
 
     /**
@@ -458,8 +478,12 @@ export const layersApi = baseApi.injectEndpoints({
         method: 'POST',
         body: params,
       }),
-      // Invalidate cache after deletion
-      invalidatesTags: ['Layers', 'Project', 'QGIS'],
+      // Invalidate cache after deletion - include project ID for QGIS tag
+      invalidatesTags: (result, error, arg) => [
+        'Layers',
+        { type: 'Project', id: arg.project },
+        { type: 'QGIS', id: arg.project }, // ✅ Match getProjectData tag format
+      ],
     }),
 
     /**
