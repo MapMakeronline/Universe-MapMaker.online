@@ -104,13 +104,13 @@ const WypisConfigModal: React.FC<WypisConfigModalProps> = ({
   const [addWypisConfiguration, { isLoading: isSaving }] = useAddWypisConfigurationMutation()
 
   // Fetch list of configurations
-  const { data: configurationsListResponse } = useGetWypisConfigurationsQuery(
+  const { data: configurationsListResponse } = useGetWypisConfigurationQuery(
     { project: projectName },
     { skip: !projectName || !open }
   )
 
   // Fetch specific configuration when selected
-  const { data: existingConfig, isLoading: isLoadingConfig } = useGetWypisConfigurationsQuery(
+  const { data: existingConfig, isLoading: isLoadingConfig } = useGetWypisConfigurationQuery(
     { project: projectName, config_id: selectedConfigId || undefined },
     { skip: !selectedConfigId || !open }
   )
