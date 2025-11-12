@@ -398,65 +398,43 @@ export const projectsApi = baseApi.injectEndpoints({
     /**
      * GET /api/projects/new/json
      * Get project tree.json (layer hierarchy)
-     *
-     * ✅ OPTIMIZATION: Uses localStorage cache with 10-minute TTL
-     * - First load: fetches from server (may take 1-3s for large projects)
-     * - Subsequent loads: instant from localStorage cache
-     * - Cache expires after 10 minutes to ensure fresh data
      */
     getProjectData: builder.query<
       QGISProjectTree,
       { project: string; published?: boolean; save?: boolean }
     >({
-      async queryFn(arg, _queryApi, _extraOptions, fetchWithBQ) {
-        const { project, published = false, save = false } = arg;
+      query: ({ project, published = false, save = false }) => ({
+        url: '/api/projects/new/json',
+        params: { project, published, save },
+      }),
+      transformResponse: (response: QGISProjectTree) => {
+        // CRITICAL FIX: Deduplicate layers by ID (backend bug workaround)
+        // Backend sometimes returns duplicate layers in tree.json with same IDs
+        // This causes React duplicate key warnings in LayerTree component
+        if (!response.children) return response;
 
-        // Check localStorage cache first (10 minute TTL)
-        const cacheKey = `tree_cache_${project}_${published}`;
-        const cached = localStorage.getItem(cacheKey);
-
-        if (cached) {
-          try {
-            const { data, timestamp } = JSON.parse(cached);
-            const age = Date.now() - timestamp;
-            const maxAge = 10 * 60 * 1000; // 10 minutes
-
-            if (age < maxAge) {
-              console.log(`✅ Using cached tree.json (age: ${(age / 1000).toFixed(0)}s)`);
-              return { data };
-            } else {
-              console.log(`⏰ Cache expired (age: ${(age / 1000).toFixed(0)}s), fetching fresh tree.json`);
-              localStorage.removeItem(cacheKey);
+        const deduplicateChildren = (items: any[]): any[] => {
+          const seenIds = new Set<string>();
+          return items.filter((item) => {
+            if (seenIds.has(item.id)) {
+              console.warn(`⚠️ [RTK Query] Skipping duplicate layer from backend: ${item.name} (ID: ${item.id})`);
+              return false;
             }
-          } catch (e) {
-            console.warn('⚠️ Failed to parse tree.json cache, fetching fresh data');
-            localStorage.removeItem(cacheKey);
-          }
-        }
+            seenIds.add(item.id);
 
-        // Fetch from server
-        console.log(`🌐 Fetching fresh tree.json for project: ${project}`);
-        const result = await fetchWithBQ({
-          url: '/api/projects/new/json',
-          params: { project, published, save },
-        });
+            // Recursively deduplicate nested children
+            if (item.children && Array.isArray(item.children)) {
+              item.children = deduplicateChildren(item.children);
+            }
 
-        if (result.error) {
-          return { error: result.error };
-        }
+            return true;
+          });
+        };
 
-        // Cache successful response in localStorage
-        try {
-          localStorage.setItem(cacheKey, JSON.stringify({
-            data: result.data,
-            timestamp: Date.now(),
-          }));
-          console.log(`💾 Cached tree.json for ${project} (10 minute TTL)`);
-        } catch (e) {
-          console.warn('⚠️ Failed to cache tree.json (localStorage full?)', e);
-        }
-
-        return { data: result.data as QGISProjectTree };
+        return {
+          ...response,
+          children: deduplicateChildren(response.children),
+        };
       },
       providesTags: (result, error, arg) => [
         { type: 'QGIS', id: arg.project },
