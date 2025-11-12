@@ -833,6 +833,104 @@ curl -X PUT "https://api.universemapmaker.online/dashboard/settings/profile/" \
 
 ---
 
+## 🚨 CRITICAL BACKEND BUG - Wypis API (2025-11-12)
+
+**Status:** ❌ **BLOCKED - Requires Backend Repo Fix**
+
+**Problem:** Endpoint `/api/projects/wypis/plotspatialdevelopment` returns 400 error due to data format mismatch.
+
+**Root Cause:**
+Backend function `get_plots_geometry()` in `geocraft_api/dao.py` expects OLD format:
+```python
+plots = [{
+  "key_column_name": "NUMER_DZIA",
+  "key_column_value": "15"
+}]
+```
+
+But API documentation (projects_api_docs.md:1224-1234) specifies NEW format:
+```json
+{
+  "plot": [{
+    "precinct": "WYSZKI",
+    "number": "15"
+  }]
+}
+```
+
+**Frontend is CORRECT** - it follows API documentation.
+**Backend is BROKEN** - it expects undocumented format.
+
+**Fix Required in Backend Repo:**
+
+File: `geocraft_api/projects/service.py`
+Function: `plot_spatial_development()` (around line 2424)
+
+Add transformation AFTER loading wypis_config (after line ~2440):
+
+```python
+# Load configuration
+with open(wypis_config_path) as config:
+    wypis_config = json.load(config)
+
+# ✅ ADD THIS BLOCK:
+# Transform plots from API format {precinct, number} to DB query format
+precinct_column = wypis_config.get("precinctColumn", "NAZWA_OBRE")
+plot_number_column = wypis_config.get("plotNumberColumn", "NUMER_DZIA")
+
+for plot in plots:
+    plot["key_column_name"] = plot_number_column
+    plot["key_column_value"] = plot["number"]
+# END BLOCK
+
+plots_layer = wypis_config.get("plotsLayer")
+```
+
+**Why This Fix Works:**
+1. Wypis configuration contains column names: `precinctColumn`, `plotNumberColumn`
+2. Backend reads these from config JSON
+3. Transforms frontend API format → database query format
+4. Existing `get_plots_geometry()` function continues to work unchanged
+
+**Alternative (Comprehensive Fix):**
+Rewrite `get_plots_geometry()` to accept `{precinct, number}` format and use both columns in SQL query:
+```sql
+WHERE "{precinct_column}" = 'WYSZKI' AND "{plot_number_column}" = '15'
+```
+
+**Testing:**
+After fix, test with:
+```bash
+curl -X POST "https://api.universemapmaker.online/api/projects/wypis/plotspatialdevelopment" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Token YOUR_TOKEN" \
+  -d '{
+    "project": "Wyszki",
+    "config_id": "config_252516",
+    "plot": [{"precinct": "WYSZKI", "number": "15"}]
+  }'
+```
+
+Expected: HTTP 200 with plot destinations data
+Currently: HTTP 400 with "get_plots_geometry error: 'key_column_name'"
+
+**Impact:**
+- ❌ Wypis z rejestru gruntów (land registry extract) is completely broken
+- ❌ Users cannot generate wypis PDF documents
+- ❌ Cannot query plot spatial development data
+
+**Priority:** 🔴 **HIGH** - Core feature completely non-functional
+
+**Related Files (Frontend - Already Correct):**
+- `src/backend/wypis/wypis.api.ts` - API definition (follows docs)
+- `src/features/mapa/komponenty/WypisPlotSelector.tsx` - Sends correct format
+- `docs/backend/projects_api_docs.md:1206-1267` - API documentation
+
+**Date Reported:** 2025-11-12
+**Deployment Status:** Production backend broken, requires local IDE fix + deploy
+
+---
+
 ## 💡 Tips for Claude Code
 
 ### DO's ✅

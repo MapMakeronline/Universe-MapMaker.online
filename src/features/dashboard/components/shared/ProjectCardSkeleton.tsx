@@ -81,7 +81,7 @@ export const ProjectsGridSkeleton: React.FC<{ count?: number }> = ({
   return (
     <Grid container spacing={3}>
       {[...Array(count)].map((_, index) => (
-        <Grid item xs={12} sm={6} md={4} key={index}>
+        <Grid size={{ xs: 12, sm: 6, md: 4 }} key={index}>
           <ProjectCardSkeleton />
         </Grid>
       ))}
@@ -161,7 +161,7 @@ export const DashboardStatsSkeleton: React.FC = () => {
   return (
     <Grid container spacing={3} sx={{ mb: 4 }}>
       {[...Array(4)].map((_, index) => (
-        <Grid item xs={12} sm={6} md={3} key={index}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }} key={index}>
           <Card>
             <CardContent>
               <Skeleton variant="text" width="60%" animation="wave" />
