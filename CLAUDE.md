@@ -488,6 +488,138 @@ Screenshots are saved to `screenshots/` folder (gitignored by default).
    - Local development: `http://localhost:3000` (MUST use port 3000 for CORS)
    - React 19 + Next.js 15 + Redux Toolkit
 
+### Wypis (Land Registry Report) Workflow
+
+**Purpose:** Generate land plot spatial development reports based on zoning plans.
+
+**Complete 4-Step Flow:**
+
+1. **GET Configuration List** - Pobierz listę dostępnych konfiguracji wypisu
+   ```
+   GET /api/projects/wypis/get/configuration?project={project_name}
+   ```
+   **Response:**
+   ```json
+   {
+     "data": {
+       "config_structure": [
+         { "id": "config_252516", "name": "Daszenka" },
+         { "id": "config_260014", "name": "Daszenka2" }
+       ]
+     },
+     "success": true
+   }
+   ```
+
+2. **GET Configuration Details** - Pobierz szczegóły wybranej konfiguracji
+   ```
+   GET /api/projects/wypis/get/configuration?project={project_name}&config_id=config_252516
+   ```
+   **Response:**
+   ```json
+   {
+     "data": {
+       "configuration_name": "Daszenka",
+       "plotsLayer": "tmp_name_...",
+       "plotsLayerName": "Działki 29_10_25",
+       "precinctColumn": "NAZWA_OBRE",
+       "plotNumberColumn": "NUMER_DZIA",
+       "planLayers": [
+         {
+           "id": "tmp_name_...",
+           "name": "Strefy planistyczne",
+           "purposeColumn": "symbol",
+           "purposes": [{ "name": "SC", "fileName": "SC.docx" }],
+           "arrangements": [{ "name": "ogólne", "fileName": "ogólne.docx" }]
+         }
+       ]
+     }
+   }
+   ```
+
+3. **POST Precinct and Number** *(Optional - when user clicks on map)*
+   ```
+   POST /api/projects/wypis/precinct_and_number
+   ```
+   **Request:**
+   ```json
+   {
+     "project": "Wyszki",
+     "config_id": "config_252516",
+     "point": [2557123.45, 6952345.67]  // Map click coordinates
+   }
+   ```
+   **Response:**
+   ```json
+   {
+     "data": {
+       "precinct": "WYSZKI",
+       "number": "15"
+     }
+   }
+   ```
+
+4. **POST Plot Spatial Development** - Generuj raport przeznaczenia działki
+   ```
+   POST /api/projects/wypis/plotspatialdevelopment
+   ```
+   **Request:**
+   ```json
+   {
+     "project": "Wyszki",
+     "config_id": "config_252516",
+     "plot": [
+       {
+         "key_column_name": "NUMER_DZIA",
+         "key_column_value": "15",
+         "precinct": "WYSZKI",
+         "number": "15"
+       }
+     ]
+   }
+   ```
+   **Response:**
+   ```json
+   {
+     "status": 200,
+     "data": [
+       {
+         "plot": {
+           "key_column_name": "NUMER_DZIA",
+           "key_column_value": "15",
+           "precinct": "WYSZKI",
+           "number": "15",
+           "bounding_box": [2557000, 6952000, 2558000, 6953000]
+         },
+         "plot_destinations": [
+           {
+             "plan_name": "Strefy planistyczne",
+             "plan_id": "tmp_name_...",
+             "covering": "100.0%",
+             "includes": true,
+             "destinations": [
+               { "name": "Ustalenia ogólne", "covering": "", "includes": true },
+               { "name": "SC", "covering": "75.5%", "includes": true },
+               { "name": "SG", "covering": "0.0%", "includes": false }
+             ]
+           }
+         ]
+       }
+     ]
+   }
+   ```
+
+**Frontend Implementation:**
+- Configuration selection: [WypisConfigSelector.tsx](src/features/mapa/komponenty/WypisConfigSelector.tsx)
+- Plot selection: [WypisPlotSelector.tsx](src/features/mapa/komponenty/WypisPlotSelector.tsx)
+- Report generation: [WypisGenerateDialog.tsx](src/features/mapa/komponenty/WypisGenerateDialog.tsx)
+- RTK Query: `@/backend/projects` (wypis endpoints)
+
+**CRITICAL Data Format:**
+- Backend expects: `{ key_column_name: "NUMER_DZIA", key_column_value: "15" }`
+- Frontend must transform from: `{ precinct: "WYSZKI", number: "15" }`
+- Use `plotNumberColumn` from config to determine correct column name
+
 ### GCP SDK & CLI Access
 
 **Access Level:** Full access to Google Cloud Platform via SDK and CLI
@@ -1450,6 +1582,133 @@ print(f"Duplicates: {duplicates}")
 **Last Updated:** 2025-10-23
 **Fix Status:** ✅ Applied to production (Django container restarted with fixed code)
 **Database Status:** ✅ Cleaned (16 duplicates removed from `testshp` project)
+
+---
+
+## 🚨 CRITICAL: QGIS Server MAP Parameter Path Bug (Backend)
+
+**Status:** ✅ Fixed and deployed (2025-11-12)
+
+**IMPORTANT:** QGIS Server and Django Backend use different paths for the same project files.
+
+### Problem History (2025-11-12)
+
+**Issue:** QGIS Server GetMap requests returned errors: "Project '/projects/Wyszki/Wyszki.qgs' not found"
+
+**URL Example:**
+```
+https://api.universemapmaker.online/ows?SERVICE=WMS&REQUEST=GetMap&MAP=/projects/Wyszki/Wyszki.qgs...
+```
+
+**Root Cause:**
+Django Backend generated `MAP=qgs/...` instead of `MAP=/projects/...` in WMS requests, but QGIS Server requires absolute paths.
+
+### System Architecture (Docker Bind Mounts)
+
+```
+Host VM: /mnt/qgis-projects/
+├── Wyszki/
+│   ├── Wyszki.qgs
+│   └── tree.json
+└── test_ernest/
+    └── test_ernest.qgs
+
+Docker Containers:
+┌─────────────────────────────────────┐
+│ QGIS Server Container               │
+│ Mount: /mnt/qgis-projects → /projects (read-only) │
+│ Needs: MAP=/projects/Wyszki/Wyszki.qgs            │
+└─────────────────────────────────────┘
+
+┌─────────────────────────────────────┐
+│ Django Backend Container            │
+│ Mount: /mnt/qgis-projects → /app/qgs (read-write) │
+│ Uses: /app/qgs/Wyszki/Wyszki.qgs                  │
+└─────────────────────────────────────┘
+```
+
+**Key Insight:**
+- Django reads/writes QGS files: `/app/qgs/Wyszki/Wyszki.qgs`
+- QGIS Server reads QGS files: `/projects/Wyszki/Wyszki.qgs`
+- **Same file, different container paths!**
+
+### Solution Applied (2025-11-12)
+
+**Step 1: Add Helper Function**
+```python
+# geocraft_api/projects/service.py (line 65)
+
+# Helper function to get QGIS Server path (maps /app/qgs to /projects)
+def get_qgis_server_path(project_name):
+    return f"/projects/{project_name}/{project_name}.qgs"
+```
+
+**Step 2: Replace Path Generation**
+```python
+# OLD (BROKEN):
+projects = "qgs/" + project_name + "/" + project_name + ".qgs"
+
+# NEW (FIXED):
+projects = get_qgis_server_path(project_name)
+# Returns: "/projects/Wyszki/Wyszki.qgs"
+```
+
+**Step 3: Fix Hardcoded MAP Parameters**
+```python
+# Line 3824: Background template
+# OLD: MAP=qgs/template/background.qgs
+# NEW: MAP=/projects/template/background.qgs
+
+# Line 4592: Project map
+# OLD: MAP=qgs/{project_name}/{project_name}.qgs
+# NEW: MAP=/projects/{project_name}/{project_name}.qgs
+```
+
+**Step 4: Restart Containers**
+```bash
+# Restart QGIS Server (refresh bind mount)
+sudo docker restart universe-mapmaker-backend_qgis-server_1
+
+# Restart Django (reload Python code)
+sudo docker restart universe-mapmaker-backend_django_1
+```
+
+### Verification
+
+**Test GetCapabilities:**
+```bash
+curl "https://api.universemapmaker.online/ows?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetCapabilities&MAP=/projects/Wyszki/Wyszki.qgs"
+# Returns: <?xml version="1.0"?><WMS_Capabilities...> ✅
+```
+
+**Test GetMap:**
+```bash
+curl "https://api.universemapmaker.online/ows?SERVICE=WMS&REQUEST=GetMap&MAP=/projects/Wyszki/Wyszki.qgs&LAYERS=..."
+# Returns: HTTP 200, 1117 bytes (PNG image) ✅
+```
+
+### Files Modified
+
+**Backend:**
+- `geocraft_api/projects/service.py`:
+  - Line 65: Added `get_qgis_server_path()` helper function
+  - Lines 3353, 3813: Replaced `projects = "qgs/..."` with `get_qgis_server_path()`
+  - Line 3824: Fixed background.qgs path
+  - Line 4592: Fixed dynamic MAP parameter
+
+### Lessons Learned
+
+1. **Container path isolation** - Different containers see same files at different paths
+2. **Bind mounts need absolute paths** - QGIS Server requires full `/projects/...` paths
+3. **Helper functions prevent errors** - Centralized path mapping ensures consistency
+4. **Test QGIS directly** - Use curl to test WMS endpoints before debugging frontend
+5. **Container restart needed** - Bind mount changes require QGIS Server restart
+
+---
+
+**Last Updated:** 2025-11-12
+**Fix Status:** ✅ Applied to production (Django + QGIS Server containers restarted)
+**Map Status:** ✅ Working (Wyszki project loads successfully)
 
 ---
 
