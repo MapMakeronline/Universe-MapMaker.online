@@ -965,9 +965,11 @@ curl -X PUT "https://api.universemapmaker.online/dashboard/settings/profile/" \
 
 ---
 
-## 🚨 CRITICAL BACKEND BUG - Wypis API (2025-11-12)
+## 🚨 CRITICAL BACKEND BUG - Wypis API (2025-11-12 & 2025-11-13)
 
-**Status:** ❌ **BLOCKED - Requires Backend Repo Fix**
+**Status:** ❌ **BLOCKED - Requires Backend Repo Fix** (2 critical bugs)
+
+### Bug #1: Plot Spatial Development Data Format Mismatch
 
 **Problem:** Endpoint `/api/projects/wypis/plotspatialdevelopment` returns 400 error due to data format mismatch.
 
@@ -1060,6 +1062,85 @@ Currently: HTTP 400 with "get_plots_geometry error: 'key_column_name'"
 
 **Date Reported:** 2025-11-12
 **Deployment Status:** Production backend broken, requires local IDE fix + deploy
+
+---
+
+### Bug #2: Wypis Configuration Upload - Relative Path Error
+
+**Problem:** Endpoint `/api/projects/wypis/add/configuration` returns 400 error:
+```
+ERROR:geocraft_api.projects.service:Upload configuration for wypis error: [Errno 2] No such file or directory: 'qgs/Wyszki/wypis/config_575095'
+```
+
+**Root Cause:** Backend uses **relative paths** instead of absolute paths (like SHP/GML imports do).
+
+**Broken Files:**
+1. `geocraft_api/projects/utils.py` - `get_wypis_files_and_configuration_paths()`
+2. `geocraft_api/projects/service.py` - `add_configuration_for_wypis()` line 1854
+
+**Current Broken Code:**
+```python
+# ❌ utils.py (relative path - depends on CWD):
+def get_wypis_files_and_configuration_paths(project_name, config_id='mpzp'):
+    wypis_files_path = f'qgs/{project_name}/wypis/{config_id}'
+    configuration_path = f'{wypis_files_path}/configuration'
+    return wypis_files_path, configuration_path
+
+# ❌ service.py line 1854 (relative path):
+extract_files_path = f'qgs/{project_name}/wypis/extractFiles'
+```
+
+**Required Fix:**
+```python
+# ✅ utils.py (absolute path using settings.MEDIA_ROOT):
+from django.conf import settings
+import os
+
+def get_wypis_files_and_configuration_paths(project_name, config_id='mpzp'):
+    wypis_files_path = os.path.join(settings.MEDIA_ROOT, project_name, 'wypis', config_id)
+    configuration_path = os.path.join(wypis_files_path, 'configuration')
+    return wypis_files_path, configuration_path
+
+# ✅ service.py line 1854 (absolute path):
+extract_files_path = os.path.join(settings.MEDIA_ROOT, project_name, 'wypis', 'extractFiles')
+```
+
+**Why This Works:**
+- `settings.MEDIA_ROOT = /app/qgs` (Django container path)
+- `/app/qgs/` bind mount → `/mnt/qgis-projects/` (VM host)
+- Same pattern as working SHP/GML imports (which use `FileSystemStorage(location=settings.MEDIA_ROOT)`)
+
+**Comparison with Working Code:**
+```python
+# ✅ SHP/GML imports (layers/models.py) - WORKS:
+document_storage = FileSystemStorage(location=settings.MEDIA_ROOT)
+
+class ShpFiles(models.Model):
+    shp = models.FileField(storage=document_storage, ...)
+    # Result: /app/qgs/project_name/uploaded_layer.shp
+```
+
+**Testing After Fix:**
+```bash
+# 1. Verify folder structure exists:
+sudo docker exec universe-mapmaker-backend_django_1 ls -la /app/qgs/Wyszki/wypis/
+
+# 2. Test configuration upload via frontend
+
+# 3. Check backend logs:
+sudo docker logs universe-mapmaker-backend_django_1 | tail -50
+```
+
+**Impact:**
+- ❌ Cannot save wypis configuration
+- ❌ Cannot upload DOCX template files
+- ❌ Entire wypis workflow blocked
+
+**Priority:** 🔴 **CRITICAL** - Blocks entire wypis feature
+
+**Date Reported:** 2025-11-13
+**Workaround Applied:** Created folder structure manually: `/mnt/qgis-projects/Wyszki/wypis/` with 777 permissions
+**Permanent Fix Status:** Requires backend code changes (utils.py + service.py)
 
 ---
 
