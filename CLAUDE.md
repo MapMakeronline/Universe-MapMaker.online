@@ -1234,6 +1234,10 @@ plots_id = reduce(lambda x, y: ", ".join([str(x), str(y)]),
 **Date Fixed:** 2025-11-14 12:54 UTC
 **Deployment Status:** ✅ Production backend FIXED and running
 
+**Backend Commit:** `c595992` - "fix: wypis plotspatialdevelopment - fix PostgreSQL connection and SQL query"
+**Repository:** https://github.com/MapMakeronline/Universe-Mapmaker-Backend.git
+**Changes:** `geocraft_api/dao.py` (2 lines changed: line 604, line 612)
+
 ---
 
 ## 💡 Tips for Claude Code
