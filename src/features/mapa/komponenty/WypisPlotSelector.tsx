@@ -10,6 +10,7 @@ import { setIdentifyMode } from '@/redux/slices/drawSlice';
 import { useGetWypisConfigurationQuery, useGetPrecinctAndNumberMutation, useGetPlotSpatialDevelopmentMutation } from '@/backend/wypis';
 import { mapLogger } from '@/tools/logger';
 import { showError, showSuccess } from '@/redux/slices/notificationSlice';
+import proj4 from 'proj4';
 
 /**
  * WypisPlotSelector - Component for selecting plots (parcels) from map for wypis generation
@@ -17,20 +18,22 @@ import { showError, showSuccess } from '@/redux/slices/notificationSlice';
  * Workflow:
  * 1. User clicks "Wypis i Wyrys" FAB → Generate modal opens
  * 2. User selects wypis configuration from dropdown
- * 3. User clicks on map → This component captures click coordinates
- * 4. Query backend: POST /api/projects/wypis/precinct_and_number → {precinct, number}
- * 5. Transform to backend format: {key_column_name, key_column_value} using config column names
- * 6. Query backend: POST /api/projects/wypis/plotspatialdevelopment → planning zones with % coverage
- * 7. Add plot with destinations to Redux
- * 8. WypisGenerateDialog displays selected plots with checkboxes for planning zones
- * 9. User selects which zones/documents to include (all selected by default)
- * 10. User clicks "Generuj" → POST /api/projects/wypis/create (generate PDF)
+ * 3. User clicks on map → Component captures click coordinates (WGS84)
+ * 4. Transform coordinates: WGS84 (lng/lat) → EPSG:3857 (meters) for backend
+ * 5. Query backend: POST /api/projects/wypis/precinct_and_number → {precinct, number}
+ * 6. Transform to backend format: {key_column_name, key_column_value} using config column names
+ * 7. Query backend: POST /api/projects/wypis/plotspatialdevelopment → planning zones with % coverage
+ * 8. Add plot with destinations to Redux
+ * 9. WypisGenerateDialog displays selected plots with checkboxes for planning zones
+ * 10. User selects which zones/documents to include (all selected by default)
+ * 11. User clicks "Generuj" → POST /api/projects/wypis/create (generate PDF)
  *
  * Features:
  * - Active only when generate modal is open AND config is selected
  * - Visual feedback on click (cursor change, toast notifications)
  * - Automatic deduplication (same plot can't be added twice)
  * - Shows planning zone coverage percentage (e.g., "SN (100.0%)")
+ * - Coordinate transformation: WGS84 → EPSG:3857 (backend uses PostGIS ST_Contains with SRID 3857)
  * - Backend format transformation: {precinct, number} → {key_column_name, key_column_value}
  * - Error handling for invalid plots or API failures
  */
@@ -135,11 +138,20 @@ const WypisPlotSelector = () => {
           return;
         }
 
-        // 2. Query backend for precinct and plot number from map coordinates
-        // Endpoint: POST /api/projects/wypis/precinct_and_number
+        // 2. Transform coordinates from WGS84 (Mapbox) to EPSG:3857 (backend)
+        // Mapbox returns WGS84 (lng/lat), but backend expects EPSG:3857 (meters)
         const lngLat = [e.lngLat.lng, e.lngLat.lat];
+        const [x, y] = proj4('EPSG:4326', 'EPSG:3857', lngLat);
+
+        mapLogger.log('🗺️ Wypis: Transformed coordinates', {
+          wgs84: lngLat,
+          epsg3857: [x, y],
+        });
+
+        // 3. Query backend for precinct and plot number
+        // Endpoint: POST /api/projects/wypis/precinct_and_number
         mapLogger.log('🗺️ Wypis: Querying backend for precinct and number', {
-          point: lngLat,
+          point: [x, y],
           project: projectName,
           config_id: selectedConfigId,
         });
@@ -149,7 +161,7 @@ const WypisPlotSelector = () => {
         const precinctResult = await getPrecinctAndNumber({
           project: projectName,
           config_id: selectedConfigId,
-          point: [lngLat[0], lngLat[1]], // [x, y] coordinates
+          point: [x, y], // EPSG:3857 coordinates (meters)
         }).unwrap();
 
         if (!precinctResult.success || !precinctResult.data) {
@@ -161,7 +173,7 @@ const WypisPlotSelector = () => {
         const { precinct, number } = precinctResult.data;
         mapLogger.log('✅ Wypis: Got precinct and number from backend', { precinct, number });
 
-        // 3. Transform to backend format using column names from wypis config
+        // 4. Transform to backend format using column names from wypis config
         // Backend expects: {key_column_name, key_column_value, precinct, number}
         const config = (configResponse as any).data;
         const precinctColumn = config?.precinctColumn || 'NAZWA_OBRE';
@@ -172,7 +184,7 @@ const WypisPlotSelector = () => {
           plotNumberColumn,
         });
 
-        // 4. Query spatial development endpoint to get planning zones with coverage %
+        // 5. Query spatial development endpoint to get planning zones with coverage %
         // Endpoint: POST /api/projects/wypis/plotspatialdevelopment
         dispatch(showSuccess(`Pobieranie informacji o przeznaczeniu działki ${precinct}/${number}...`));
 
@@ -195,7 +207,7 @@ const WypisPlotSelector = () => {
           return;
         }
 
-        // 5. Add plot with destinations to Redux
+        // 6. Add plot with destinations to Redux
         const plotWithDestinations = spatialResult.data[0];
         dispatch(addPlot(plotWithDestinations));
 
