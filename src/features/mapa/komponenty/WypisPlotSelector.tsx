@@ -7,8 +7,7 @@ import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import { selectGenerateModalOpen, selectSelectedConfigId } from '@/redux/slices/wypisSlice';
 import { addPlot } from '@/redux/slices/wypisSlice';
 import { setIdentifyMode } from '@/redux/slices/drawSlice';
-import { useGetPlotSpatialDevelopmentMutation, useGetWypisConfigurationQuery } from '@/backend/wypis';
-import { getQGISFeatureInfoMultiLayer } from '@/lib/qgis/getFeatureInfo';
+import { useGetWypisConfigurationQuery, useGetPrecinctAndNumberMutation, useGetPlotSpatialDevelopmentMutation } from '@/backend/wypis';
 import { mapLogger } from '@/tools/logger';
 import { showError, showSuccess } from '@/redux/slices/notificationSlice';
 
@@ -17,17 +16,20 @@ import { showError, showSuccess } from '@/redux/slices/notificationSlice';
  *
  * Workflow:
  * 1. User clicks "Wypis i Wyrys" FAB → Generate modal opens
- * 2. User clicks on map → This component captures click
- * 3. Identify feature via QGIS OWS GetFeatureInfo
- * 4. Extract precinct + number from feature properties
- * 5. Query backend for planning zones: POST /api/projects/wypis/plotspatialdevelopment
+ * 2. User selects wypis configuration from dropdown
+ * 3. User clicks on map → This component captures click coordinates
+ * 4. Query backend: POST /api/projects/wypis/precinct_and_number (identify plot)
+ * 5. Query backend: POST /api/projects/wypis/plotspatialdevelopment (get planning zones with % coverage)
  * 6. Add plot with destinations to Redux
- * 7. WypisGenerateDialog displays selected plots
+ * 7. WypisGenerateDialog displays selected plots with checkboxes for planning zones
+ * 8. User selects which zones/documents to include (all selected by default)
+ * 9. User clicks "Generuj" → POST /api/projects/wypis/create (generate PDF)
  *
  * Features:
- * - Active only when generate modal is open
+ * - Active only when generate modal is open AND config is selected
  * - Visual feedback on click (cursor change, toast notifications)
  * - Automatic deduplication (same plot can't be added twice)
+ * - Shows planning zone coverage percentage (e.g., "SN (100.0%)")
  * - Error handling for invalid plots or API failures
  */
 const WypisPlotSelector = () => {
@@ -41,8 +43,8 @@ const WypisPlotSelector = () => {
   const selectedConfigId = useAppSelector(selectSelectedConfigId);
 
   // RTK Query mutations
-  const [getPlotSpatialDevelopment, { isLoading: isLoadingSpatialData }] =
-    useGetPlotSpatialDevelopmentMutation();
+  const [getPrecinctAndNumber] = useGetPrecinctAndNumberMutation();
+  const [getPlotSpatialDevelopment] = useGetPlotSpatialDevelopmentMutation();
 
   // Get wypis configuration to identify parcel layer
   const { data: configResponse, isLoading: isLoadingConfig, error: configError } = useGetWypisConfigurationQuery(
@@ -125,144 +127,61 @@ const WypisPlotSelector = () => {
       });
 
       try {
-        // 1. Get parcel layer name from configuration
-        let parcelLayerName: string | undefined;
-
-        // Backend returns: { data: { plotsLayer: "tmp_name_...", plotsLayerName: "Działki 29_10_25" }, success: true }
-        // We need plotsLayerName (QGIS layer name), NOT plotsLayer (database internal ID)
-        if ('data' in configResponse && configResponse.data) {
-          const config = configResponse.data as any;
-          parcelLayerName = config.plotsLayerName || config.parcel_layer_name;
-          mapLogger.log('🗺️ Wypis: Using parcel layer from config', {
-            parcelLayerName,
-            plotsLayer: config.plotsLayer,
-            plotsLayerName: config.plotsLayerName,
-            fullConfig: config
-          });
-        }
-
-        if (!parcelLayerName) {
-          dispatch(showError('Brak warstwy działek w konfiguracji. Wybierz konfigurację.'));
-          return;
-        }
-
-        // 2. Query QGIS OWS GetFeatureInfo at click point
-        const canvas = map.getCanvas();
-
-        mapLogger.log('🗺️ Wypis: Querying QGIS Server for parcel', {
-          layer: parcelLayerName,
-          point: [e.lngLat.lng, e.lngLat.lat],
-        });
-
-        const qgisResult = await getQGISFeatureInfoMultiLayer(
-          {
-            project: projectName,
-            clickPoint: e.lngLat,
-            bounds: map.getBounds(),
-            width: canvas.width,
-            height: canvas.height,
-            featureCount: 1, // Only get first feature
-          },
-          [parcelLayerName]
-        );
-
-        if (qgisResult.features.length === 0) {
-          dispatch(showError('Nie znaleziono działki w tym miejscu. Kliknij na działkę.'));
-          return;
-        }
-
-        const feature = qgisResult.features[0];
-        mapLogger.log('✅ Wypis: Found parcel feature', {
-          id: feature.id,
-          properties: feature.properties,
-        });
-
-        // 3. Extract precinct (obręb) and number from properties
-        // Use column names from configuration
-        const properties = feature.properties;
-        const config = configResponse.data as any;
-
-        // Get column names from configuration
-        const precinctColumn = config.precinctColumn || 'NAZWA_OBRE';
-        const plotNumberColumn = config.plotNumberColumn || 'NUMER_DZIA';
-
-        mapLogger.log('🗺️ Wypis: Column names from config', {
-          precinctColumn,
-          plotNumberColumn,
-          properties
-        });
-
-        // Try different property name variations (config + fallbacks)
-        const precinct =
-          properties[precinctColumn] ||
-          properties.obreb ||
-          properties.obręb ||
-          properties.precinct ||
-          properties.OBREB ||
-          properties.OBRĘB ||
-          properties.NAZWA_OBRE ||
-          '';
-
-        const number =
-          properties[plotNumberColumn] ||
-          properties.numer ||
-          properties.nr_dzialki ||
-          properties.number ||
-          properties.NUMER ||
-          properties.NR_DZIALKI ||
-          properties.NUMER_DZIA ||
-          '';
-
-        if (!precinct || !number) {
-          mapLogger.error('❌ Wypis: Missing precinct or number in properties', { properties });
-          dispatch(showError(`Nieprawidłowe dane działki. Brak obrębu lub numeru. Właściwości: ${Object.keys(properties).join(', ')}`));
-          return;
-        }
-
-        const plotData = {
-          precinct: String(precinct),
-          number: String(number),
-        };
-
-        mapLogger.log('✅ Wypis: Extracted plot data', plotData);
-
-        // 4. Query spatial development endpoint
-        // NOTE: Backend expects plot as ARRAY, not object (Django serializer: plot = ListField)
-        // CRITICAL: Backend requires config_id to find wypis configuration file
+        // 1. Check if we have config_id before querying
         if (!selectedConfigId) {
           dispatch(showError('Wybierz konfigurację wypisu przed zaznaczaniem działek'));
           return;
         }
 
-        dispatch(showSuccess(`Pobieranie informacji o przeznaczeniu działki ${precinct}/${number}...`));
-
-        // Transform to backend format: {key_column_name, key_column_value}
-        // Backend expects database column names, not API format
-        const plotDataForBackend = {
-          key_column_name: plotNumberColumn,
-          key_column_value: String(number),
-          precinct: String(precinct), // Keep for response mapping
-          number: String(number),     // Keep for response mapping
-        };
-
-        const result = await getPlotSpatialDevelopment({
+        // 2. Query backend for precinct and plot number from map coordinates
+        // Endpoint: POST /api/projects/wypis/precinct_and_number
+        const lngLat = [e.lngLat.lng, e.lngLat.lat];
+        mapLogger.log('🗺️ Wypis: Querying backend for precinct and number', {
+          point: lngLat,
           project: projectName,
-          config_id: selectedConfigId, // ✅ Backend needs this to find config file
-          plot: [plotDataForBackend], // ✅ Backend format with column names
+          config_id: selectedConfigId,
+        });
+
+        dispatch(showSuccess('Identyfikowanie działki...'));
+
+        const precinctResult = await getPrecinctAndNumber({
+          project: projectName,
+          config_id: selectedConfigId,
+          point: [lngLat[0], lngLat[1]], // [x, y] coordinates
         }).unwrap();
 
-        if (!result.success || !result.data || result.data.length === 0) {
+        if (!precinctResult.success || !precinctResult.data) {
+          mapLogger.error('❌ Wypis: Failed to get precinct and number', precinctResult);
+          dispatch(showError('Nie znaleziono działki w tym miejscu. Kliknij na działkę.'));
+          return;
+        }
+
+        const { precinct, number } = precinctResult.data;
+        mapLogger.log('✅ Wypis: Got precinct and number from backend', { precinct, number });
+
+        // 3. Query spatial development endpoint to get planning zones with coverage %
+        // Endpoint: POST /api/projects/wypis/plotspatialdevelopment
+        dispatch(showSuccess(`Pobieranie informacji o przeznaczeniu działki ${precinct}/${number}...`));
+
+        const spatialResult = await getPlotSpatialDevelopment({
+          project: projectName,
+          config_id: selectedConfigId,
+          plot: [{ precinct: String(precinct), number: String(number) }],
+        }).unwrap();
+
+        if (!spatialResult.success || !spatialResult.data || spatialResult.data.length === 0) {
+          mapLogger.error('❌ Wypis: Failed to get spatial development', spatialResult);
           dispatch(showError(`Nie znaleziono informacji o przeznaczeniu działki ${precinct}/${number}`));
           return;
         }
 
-        // 5. Dispatch addPlot() with full data
-        const plotWithDestinations = result.data[0];
+        // 4. Add plot with destinations to Redux
+        const plotWithDestinations = spatialResult.data[0];
         dispatch(addPlot(plotWithDestinations));
 
         mapLogger.log('✅ Wypis: Added plot to selection', {
-          plot: plotData,
-          destinationsCount: plotWithDestinations.plot_destinations.length,
+          plot: plotWithDestinations.plot,
+          destinationsCount: plotWithDestinations.plot_destinations?.length || 0,
         });
 
         dispatch(showSuccess(`Dodano działkę ${precinct}/${number} do wypisu`));
@@ -283,7 +202,7 @@ const WypisPlotSelector = () => {
       map.off('click', handleMapClick);
       map.getCanvas().style.cursor = '';
     };
-  }, [mapRef, generateModalOpen, projectName, dispatch, configResponse, getPlotSpatialDevelopment, selectedConfigId]);
+  }, [mapRef, generateModalOpen, projectName, dispatch, configResponse, getPrecinctAndNumber, getPlotSpatialDevelopment, selectedConfigId]);
 
   // This component doesn't render anything - it's just a click handler
   return null;
