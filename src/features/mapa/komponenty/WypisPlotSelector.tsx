@@ -18,18 +18,20 @@ import { showError, showSuccess } from '@/redux/slices/notificationSlice';
  * 1. User clicks "Wypis i Wyrys" FAB → Generate modal opens
  * 2. User selects wypis configuration from dropdown
  * 3. User clicks on map → This component captures click coordinates
- * 4. Query backend: POST /api/projects/wypis/precinct_and_number (identify plot)
- * 5. Query backend: POST /api/projects/wypis/plotspatialdevelopment (get planning zones with % coverage)
- * 6. Add plot with destinations to Redux
- * 7. WypisGenerateDialog displays selected plots with checkboxes for planning zones
- * 8. User selects which zones/documents to include (all selected by default)
- * 9. User clicks "Generuj" → POST /api/projects/wypis/create (generate PDF)
+ * 4. Query backend: POST /api/projects/wypis/precinct_and_number → {precinct, number}
+ * 5. Transform to backend format: {key_column_name, key_column_value} using config column names
+ * 6. Query backend: POST /api/projects/wypis/plotspatialdevelopment → planning zones with % coverage
+ * 7. Add plot with destinations to Redux
+ * 8. WypisGenerateDialog displays selected plots with checkboxes for planning zones
+ * 9. User selects which zones/documents to include (all selected by default)
+ * 10. User clicks "Generuj" → POST /api/projects/wypis/create (generate PDF)
  *
  * Features:
  * - Active only when generate modal is open AND config is selected
  * - Visual feedback on click (cursor change, toast notifications)
  * - Automatic deduplication (same plot can't be added twice)
  * - Shows planning zone coverage percentage (e.g., "SN (100.0%)")
+ * - Backend format transformation: {precinct, number} → {key_column_name, key_column_value}
  * - Error handling for invalid plots or API failures
  */
 const WypisPlotSelector = () => {
@@ -159,14 +161,32 @@ const WypisPlotSelector = () => {
         const { precinct, number } = precinctResult.data;
         mapLogger.log('✅ Wypis: Got precinct and number from backend', { precinct, number });
 
-        // 3. Query spatial development endpoint to get planning zones with coverage %
+        // 3. Transform to backend format using column names from wypis config
+        // Backend expects: {key_column_name, key_column_value, precinct, number}
+        const config = (configResponse as any).data;
+        const precinctColumn = config?.precinctColumn || 'NAZWA_OBRE';
+        const plotNumberColumn = config?.plotNumberColumn || 'NUMER_DZIA';
+
+        mapLogger.log('🗺️ Wypis: Column names from config', {
+          precinctColumn,
+          plotNumberColumn,
+        });
+
+        // 4. Query spatial development endpoint to get planning zones with coverage %
         // Endpoint: POST /api/projects/wypis/plotspatialdevelopment
         dispatch(showSuccess(`Pobieranie informacji o przeznaczeniu działki ${precinct}/${number}...`));
 
         const spatialResult = await getPlotSpatialDevelopment({
           project: projectName,
           config_id: selectedConfigId,
-          plot: [{ precinct: String(precinct), number: String(number) }],
+          plot: [
+            {
+              key_column_name: plotNumberColumn,      // Backend format (DB column name)
+              key_column_value: String(number),       // Plot number value
+              precinct: String(precinct),             // Keep for response mapping
+              number: String(number),                 // Keep for response mapping
+            }
+          ],
         }).unwrap();
 
         if (!spatialResult.success || !spatialResult.data || spatialResult.data.length === 0) {
@@ -175,7 +195,7 @@ const WypisPlotSelector = () => {
           return;
         }
 
-        // 4. Add plot with destinations to Redux
+        // 5. Add plot with destinations to Redux
         const plotWithDestinations = spatialResult.data[0];
         dispatch(addPlot(plotWithDestinations));
 
