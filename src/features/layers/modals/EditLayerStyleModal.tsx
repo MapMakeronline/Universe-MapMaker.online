@@ -170,8 +170,8 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
   // Tab 5: Widoczność wg skali - state
   const [layerScaleConfig, setLayerScaleConfig] = useState({
     enabled: false,
-    minScale: 1,
-    maxScale: 10000,
+    minScale: 1000,     // Default: 1:1,000 (practical zoom in)
+    maxScale: 50000,    // Default: 1:50,000 (practical zoom out)
   });
 
   // RTK Query hooks
@@ -1323,18 +1323,13 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
                     })}
                     label="Minimalna skala (zbliżenie)"
                   >
-                    <MenuItem value={1}>1:1</MenuItem>
-                    <MenuItem value={100}>1:100</MenuItem>
-                    <MenuItem value={500}>1:500</MenuItem>
                     <MenuItem value={1000}>1:1,000</MenuItem>
                     <MenuItem value={2500}>1:2,500</MenuItem>
                     <MenuItem value={5000}>1:5,000</MenuItem>
                     <MenuItem value={10000}>1:10,000</MenuItem>
-                    <MenuItem value={25000}>1:25,000</MenuItem>
-                    <MenuItem value={50000}>1:50,000</MenuItem>
                   </Select>
                   <FormHelperText>
-                    Warstwa będzie widoczna przy zbliżeniu większym niż ta skala
+                    Warstwa będzie widoczna od skali bliższej niż 1:{layerScaleConfig.minScale} (zoom in)
                   </FormHelperText>
                 </FormControl>
 
@@ -1356,11 +1351,9 @@ export default function EditLayerStyleModal({ open, onClose, layerName, layerId,
                     <MenuItem value={250000}>1:250,000</MenuItem>
                     <MenuItem value={500000}>1:500,000</MenuItem>
                     <MenuItem value={1000000}>1:1,000,000</MenuItem>
-                    <MenuItem value={2500000}>1:2,500,000</MenuItem>
-                    <MenuItem value={10000000}>1:10,000,000</MenuItem>
                   </Select>
                   <FormHelperText>
-                    Warstwa będzie widoczna przy oddaleniu mniejszym niż ta skala
+                    Warstwa będzie widoczna do skali dalszej niż 1:{layerScaleConfig.maxScale} (zoom out)
                   </FormHelperText>
                 </FormControl>
 

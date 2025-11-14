@@ -493,11 +493,18 @@ export interface WypisConfiguration {
 
 /**
  * Request payload for adding/updating wypis configuration
+ *
+ * NOTE: Backend expects multipart/form-data with:
+ * - project: string
+ * - config_id: string (optional)
+ * - configuration: JSON string (not object!)
+ * - file: ZIP file with DOCX templates
  */
 export interface AddWypisConfigurationRequest {
   project: string;                  // Project name (regex: ^[a-zA-Z0-9ąćęłńóśźżĄĘŁŃÓŚŹŻ_]*$)
   config_id?: string;               // Optional config ID (auto-generated if not provided)
-  configuration: WypisConfiguration; // Full configuration object
+  configuration: string;            // JSON string (NOT object!) - must be stringified
+  extractFiles: File;               // ZIP file with DOCX templates (backend expects 'file' key in FormData)
 }
 
 /**

@@ -342,12 +342,12 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
 
   // Fetch precincts for authenticated users (Django API)
   useEffect(() => {
-    if (!projectName || !parcelLayerId || !precinctColumn) {
-      return;
-    }
-    if (!isAuthenticated) {
-      return; // Only for authenticated users
-    }
+    if (!projectName || !parcelLayerId || !precinctColumn) return;
+    if (!isAuthenticated) return; // Only for authenticated users
+
+    // NOTE: This may return 400 errors if the layer has no data in PostgreSQL database.
+    // This is expected behavior for layers that exist in tree.json but have no geometry table.
+    // The error is safely handled by RTK Query and doesn't affect functionality.
     fetchPrecincts({
       project: projectName,
       layer_id: parcelLayerId,
@@ -360,6 +360,9 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
     if (!projectName || !parcelLayerId || !plotNumberColumn) return;
     if (!isAuthenticated) return; // Only for authenticated users
 
+    // NOTE: This may return 400 errors if the layer has no data in PostgreSQL database.
+    // This is expected behavior for layers that exist in tree.json but have no geometry table.
+    // The error is safely handled by RTK Query and doesn't affect functionality.
     if (selectedPrecinct && precinctColumn) {
       // Search by precinct to get filtered plot numbers
       triggerSearch({

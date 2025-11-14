@@ -30,29 +30,42 @@ export const wypisApi = baseApi.injectEndpoints({
      *
      * Endpoint: POST /api/projects/wypis/add/configuration
      *
-     * Request body:
-     * {
-     *   "project": "project_name",
-     *   "config_id": "config_123" (optional - generates new if omitted),
-     *   "configuration_name": "MPZP",
-     *   "data": { ... configuration data ... }
-     * }
+     * Backend expects multipart/form-data with:
+     * - project: string
+     * - config_id: string (optional)
+     * - configuration: JSON string (must be stringified!)
+     * - file: ZIP file with DOCX templates
      *
      * Response:
      * {
      *   "success": true,
-     *   "config_id": "config_123"
+     *   "config_id": "config_123",
+     *   "data": { "config_complete": true }
      * }
      */
     addWypisConfiguration: builder.mutation<
-      { success: boolean; config_id: string },
+      { success: boolean; config_id: string; data: { config_complete: boolean } },
       AddWypisConfigurationRequest
     >({
-      query: (body) => ({
-        url: '/api/projects/wypis/add/configuration',
-        method: 'POST',
-        body,
-      }),
+      query: ({ project, config_id, configuration, extractFiles }) => {
+        // Backend expects multipart/form-data
+        const formData = new FormData();
+        formData.append('project', project);
+        if (config_id) {
+          formData.append('config_id', config_id);
+        }
+        // CRITICAL: Backend expects 'configuration' as JSON string, NOT object
+        formData.append('configuration', configuration);
+        // CRITICAL: Backend form field name is 'extractFiles' (from UploadWypisForm)
+        formData.append('extractFiles', extractFiles, 'wypis.zip');
+
+        return {
+          url: '/api/projects/wypis/add/configuration',
+          method: 'POST',
+          body: formData,
+          // Don't set Content-Type header - browser will set it automatically with boundary
+        };
+      },
       invalidatesTags: (result, error, { project }) => [
         { type: 'WypisConfiguration', id: 'LIST' },
         { type: 'WypisConfiguration', id: project },
