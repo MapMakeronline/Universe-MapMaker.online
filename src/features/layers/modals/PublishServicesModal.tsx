@@ -29,6 +29,8 @@ import { useTheme } from '@mui/material/styles';
 import CloseIcon from '@mui/icons-material/Close';
 import LayersIcon from '@mui/icons-material/Layers';
 import FolderIcon from '@mui/icons-material/Folder';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { LayerNode } from '@/types-app/layers';
 
 interface PublishServicesModalProps {
@@ -40,6 +42,18 @@ interface PublishServicesModalProps {
   isLoading?: boolean;
 }
 
+// Helper to count total layers (including nested ones)
+const countAllLayers = (nodes: LayerNode[]): number => {
+  let count = 0;
+  for (const node of nodes) {
+    count++;
+    if (node.children) {
+      count += countAllLayers(node.children);
+    }
+  }
+  return count;
+};
+
 export function PublishServicesModal({
   open,
   projectName,
@@ -49,54 +63,187 @@ export function PublishServicesModal({
   isLoading = false,
 }: PublishServicesModalProps) {
   const theme = useTheme();
-  const [selectedLayers, setSelectedLayers] = useState<string[]>([]);
+  const [selectedLayers, setSelectedLayers] = useState<Set<string>>(new Set());
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   // Reset selection when modal opens
   useEffect(() => {
     if (open) {
-      setSelectedLayers([]);
+      setSelectedLayers(new Set());
+      // Auto-expand all groups
+      const allGroupIds = new Set<string>();
+      const collectGroupIds = (nodes: LayerNode[]) => {
+        nodes.forEach(node => {
+          if (node.type === 'group' && node.children) {
+            allGroupIds.add(node.id);
+            collectGroupIds(node.children);
+          }
+        });
+      };
+      collectGroupIds(layers);
+      setExpandedGroups(allGroupIds);
     }
-  }, [open]);
+  }, [open, layers]);
 
-  // Flatten layer tree to get all individual layers (not groups)
+  // Flatten layer tree to get all individual layers AND groups
   const flattenLayers = (nodes: LayerNode[]): LayerNode[] => {
     let result: LayerNode[] = [];
     for (const node of nodes) {
-      if (node.type === 'group' && node.children) {
+      result.push(node); // Include the node itself (even if it's a group)
+      if (node.children) {
         result = result.concat(flattenLayers(node.children));
-      } else if (node.type !== 'group') {
-        result.push(node);
       }
     }
     return result;
   };
 
   const availableLayers = flattenLayers(layers);
+  const totalLayerCount = countAllLayers(layers);
 
   const handleToggleLayer = (layerId: string) => {
-    setSelectedLayers((prev) =>
-      prev.includes(layerId)
-        ? prev.filter((id) => id !== layerId)
-        : [...prev, layerId]
-    );
+    setSelectedLayers((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(layerId)) {
+        newSet.delete(layerId);
+      } else {
+        newSet.add(layerId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleToggleGroup = (groupId: string) => {
+    setExpandedGroups((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(groupId)) {
+        newSet.delete(groupId);
+      } else {
+        newSet.add(groupId);
+      }
+      return newSet;
+    });
   };
 
   const handleSelectAll = () => {
-    if (selectedLayers.length === availableLayers.length) {
-      setSelectedLayers([]);
+    if (selectedLayers.size === totalLayerCount) {
+      setSelectedLayers(new Set());
     } else {
-      setSelectedLayers(availableLayers.map((layer) => layer.id));
+      const allIds = new Set<string>();
+      const collectIds = (nodes: LayerNode[]) => {
+        nodes.forEach(node => {
+          allIds.add(node.id);
+          if (node.children) {
+            collectIds(node.children);
+          }
+        });
+      };
+      collectIds(layers);
+      setSelectedLayers(allIds);
     }
   };
 
   const handlePublish = () => {
-    if (selectedLayers.length > 0) {
-      onPublish(selectedLayers);
+    if (selectedLayers.size > 0) {
+      onPublish(Array.from(selectedLayers));
     }
   };
 
-  const isAllSelected = selectedLayers.length === availableLayers.length && availableLayers.length > 0;
-  const isSomeSelected = selectedLayers.length > 0 && selectedLayers.length < availableLayers.length;
+  const isAllSelected = selectedLayers.size === totalLayerCount && totalLayerCount > 0;
+  const isSomeSelected = selectedLayers.size > 0 && selectedLayers.size < totalLayerCount;
+
+  // Recursive function to render layer tree with indentation
+  const renderLayerTree = (nodes: LayerNode[], level: number = 0): React.ReactNode => {
+    return nodes.map((node) => {
+      const isGroup = node.type === 'group';
+      const isExpanded = expandedGroups.has(node.id);
+      const isChecked = selectedLayers.has(node.id);
+
+      return (
+        <Box key={node.id}>
+          <ListItem
+            dense
+            button
+            onClick={() => !isLoading && handleToggleLayer(node.id)}
+            disabled={isLoading}
+            sx={{
+              pl: level * 3 + 2,
+              pr: 2,
+              '&:hover': {
+                bgcolor: !isLoading ? 'rgba(0, 0, 0, 0.04)' : 'transparent',
+              },
+            }}
+          >
+            <ListItemIcon sx={{ minWidth: 40 }}>
+              <Checkbox
+                edge="start"
+                checked={isChecked}
+                indeterminate={isGroup && !isChecked && node.children?.some(child => selectedLayers.has(child.id))}
+                tabIndex={-1}
+                disableRipple
+                disabled={isLoading}
+                sx={{
+                  color: theme.palette.primary.main,
+                  '&.Mui-checked': {
+                    color: theme.palette.primary.main,
+                  },
+                }}
+              />
+            </ListItemIcon>
+
+            {/* Expand/Collapse icon for groups */}
+            {isGroup && (
+              <IconButton
+                size="small"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleToggleGroup(node.id);
+                }}
+                sx={{
+                  minWidth: 24,
+                  width: 24,
+                  height: 24,
+                  mr: 0.5,
+                  p: 0
+                }}
+              >
+                {isExpanded ? <ExpandMoreIcon sx={{ fontSize: 18 }} /> : <ChevronRightIcon sx={{ fontSize: 18 }} />}
+              </IconButton>
+            )}
+
+            <ListItemIcon sx={{ minWidth: 36 }}>
+              {isGroup ? (
+                <FolderIcon sx={{ fontSize: '20px', color: '#FFB74D' }} />
+              ) : (
+                <LayersIcon sx={{ fontSize: '20px', color: '#81c784' }} />
+              )}
+            </ListItemIcon>
+
+            <ListItemText
+              primary={node.name}
+              secondary={isGroup ? `Grupa` : node.type}
+              primaryTypographyProps={{
+                sx: {
+                  fontSize: '14px',
+                  fontWeight: isGroup ? 600 : 500,
+                }
+              }}
+              secondaryTypographyProps={{
+                sx: {
+                  fontSize: '11px',
+                  color: 'text.secondary'
+                }
+              }}
+            />
+          </ListItem>
+
+          {/* Render children if group is expanded */}
+          {isGroup && isExpanded && node.children && (
+            <Box>{renderLayerTree(node.children, level + 1)}</Box>
+          )}
+        </Box>
+      );
+    });
+  };
 
   return (
     <Dialog
@@ -163,7 +310,7 @@ export function PublishServicesModal({
             {/* Select All Button */}
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
               <Typography variant="caption" color="text.secondary">
-                {selectedLayers.length} / {availableLayers.length} zaznaczonych
+                {selectedLayers.size} / {totalLayerCount} zaznaczonych
               </Typography>
               <Button
                 size="small"
@@ -175,13 +322,13 @@ export function PublishServicesModal({
               </Button>
             </Box>
 
-            {/* Layer List */}
-            <List
+            {/* Layer Tree List */}
+            <Box
               sx={{
                 bgcolor: 'white',
                 borderRadius: '4px',
                 border: `1px solid ${theme.palette.modal.border}`,
-                maxHeight: '300px',
+                maxHeight: '400px',
                 overflow: 'auto',
                 '&::-webkit-scrollbar': {
                   width: '8px',
@@ -199,49 +346,8 @@ export function PublishServicesModal({
                 },
               }}
             >
-              {availableLayers.map((layer) => (
-                <ListItem
-                  key={layer.id}
-                  dense
-                  button
-                  onClick={() => !isLoading && handleToggleLayer(layer.id)}
-                  disabled={isLoading}
-                  sx={{
-                    '&:hover': {
-                      bgcolor: !isLoading ? 'rgba(0, 0, 0, 0.04)' : 'transparent',
-                    },
-                  }}
-                >
-                  <ListItemIcon sx={{ minWidth: 40 }}>
-                    <Checkbox
-                      edge="start"
-                      checked={selectedLayers.includes(layer.id)}
-                      tabIndex={-1}
-                      disableRipple
-                      disabled={isLoading}
-                      sx={{
-                        color: theme.palette.primary.main,
-                        '&.Mui-checked': {
-                          color: theme.palette.primary.main,
-                        },
-                      }}
-                    />
-                  </ListItemIcon>
-                  <ListItemIcon sx={{ minWidth: 36 }}>
-                    <LayersIcon sx={{ fontSize: '20px', color: '#81c784' }} />
-                  </ListItemIcon>
-                  <ListItemText
-                    primary={layer.name}
-                    primaryTypographyProps={{
-                      sx: {
-                        fontSize: '14px',
-                        fontWeight: 500,
-                      }
-                    }}
-                  />
-                </ListItem>
-              ))}
-            </List>
+              {renderLayerTree(layers, 0)}
+            </Box>
 
             {/* Info Box */}
             <Alert severity="info" sx={{ mt: 2, fontSize: '12px' }}>
@@ -281,7 +387,7 @@ export function PublishServicesModal({
         <Button
           onClick={handlePublish}
           variant="contained"
-          disabled={selectedLayers.length === 0 || isLoading}
+          disabled={selectedLayers.size === 0 || isLoading}
           startIcon={isLoading ? <CircularProgress size={16} color="inherit" /> : null}
           sx={{
             bgcolor: theme.palette.primary.main,

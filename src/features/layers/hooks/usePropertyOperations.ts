@@ -103,14 +103,29 @@ export function usePropertyOperations(projectName: string, warstwy: Warstwa[]) {
           if (layer.typ === 'raster') layerType = 'RasterLayer';
           else if (layer.typ === 'grupa') layerType = 'group';
 
-          children.push({
+          // Build layer object for backend
+          const layerData: any = {
             type: layerType,
             id: layer.id,
             name: layer.nazwa,
             visible: layer.widoczna,
-            // Add geometry for vector layers (backend needs this)
-            geometry: layer.typ === 'wektor' ? 'MultiPolygon' : undefined
-          });
+          };
+
+          // Add geometry ONLY for vector layers (backend filters by geometry != 'NoGeometry')
+          // For rasters and groups, don't include geometry field at all
+          if (layer.typ === 'wektor') {
+            // Try to get real geometry type from layer data, fallback to MultiPolygon
+            layerData.geometry = (layer as any).geometry_type || 'MultiPolygon';
+          }
+
+          // For groups, recursively add children if they exist
+          if (layer.typ === 'grupa' && layer.dzieci && layer.dzieci.length > 0) {
+            // Recursively build children for groups
+            const childIds = layer.dzieci.map(child => child.id);
+            layerData.children = buildLayerTree(childIds, allLayers);
+          }
+
+          children.push(layerData);
         }
       }
 
@@ -118,17 +133,32 @@ export function usePropertyOperations(projectName: string, warstwy: Warstwa[]) {
     };
 
     const children = buildLayerTree(selectedLayerIds, warstwy);
+
+    // Detailed logging for debugging
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('🚀 WMS/WFS PUBLICATION REQUEST');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('📁 Project:', projectName);
+    console.log('📊 Selected Layer IDs:', selectedLayerIds);
     console.log('🌳 Built layer tree for publication:', children);
-    console.log('🌳 Layer tree JSON:', JSON.stringify(children, null, 2));
+    console.log('📦 Full request body:');
+    console.log(JSON.stringify({
+      project_name: projectName,
+      children: children
+    }, null, 2));
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
     // Show loading notification
     dispatch(showInfo(`Publikowanie ${selectedLayerIds.length} warstw jako WMS/WFS...`, 10000));
 
     try {
-      const result = await publishWMSWFS({
+      const requestBody = {
         project_name: projectName, // Backend expects project_name, not project!
         children: children,        // Backend expects children array, not layers array!
-      }).unwrap();
+      };
+
+      console.log('🔄 Sending request to backend...');
+      const result = await publishWMSWFS(requestBody).unwrap();
 
       console.log('✅ WMS/WFS Publication successful:', result);
 
