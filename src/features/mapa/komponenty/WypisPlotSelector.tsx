@@ -220,6 +220,12 @@ const WypisPlotSelector = () => {
 
       } catch (error: any) {
         mapLogger.error('❌ Wypis: Error selecting plot', error);
+        mapLogger.error('❌ Wypis: Error details', {
+          status: error?.status,
+          data: error?.data,
+          message: error?.data?.message,
+          fullError: JSON.stringify(error, null, 2),
+        });
         dispatch(showError(error?.data?.message || 'Błąd podczas pobierania informacji o działce'));
       }
     };

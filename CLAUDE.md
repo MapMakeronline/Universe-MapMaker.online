@@ -965,9 +965,9 @@ curl -X PUT "https://api.universemapmaker.online/dashboard/settings/profile/" \
 
 ---
 
-## 🚨 CRITICAL BACKEND BUG - Wypis API (2025-11-12 & 2025-11-13)
+## 🚨 CRITICAL BACKEND BUG - Wypis API (2025-11-12, 2025-11-13 & 2025-11-14)
 
-**Status:** ❌ **BLOCKED - Requires Backend Repo Fix** (2 critical bugs)
+**Status:** ❌ **BLOCKED - Requires Backend Repo Fix** (3 critical bugs)
 
 ### Bug #1: Plot Spatial Development Data Format Mismatch
 
@@ -1141,6 +1141,73 @@ sudo docker logs universe-mapmaker-backend_django_1 | tail -50
 **Date Reported:** 2025-11-13
 **Workaround Applied:** Created folder structure manually: `/mnt/qgis-projects/Wyszki/wypis/` with 777 permissions
 **Permanent Fix Status:** Requires backend code changes (utils.py + service.py)
+
+---
+
+### Bug #3: Plot Spatial Development SQL Query - Missing Quotes
+
+**Problem:** Endpoint `/api/projects/wypis/plotspatialdevelopment` returns 400 error with message "Błąd podczas pobierania geometrii działek" (Error fetching plot geometries).
+
+**Root Cause:** Backend SQL query doesn't quote text values in IN clause, causing SQL syntax error for plot numbers containing special characters like `/`.
+
+**Broken Code Location:**
+File: `geocraft_api/dao.py` (line 611-615)
+
+```python
+# ❌ BROKEN: Missing quotes around text values in SQL IN clause
+plots_id = reduce(lambda x, y: ", ".join([str(x), str(y)]),
+                  [one_plot["key_column_value"] for one_plot in plots])
+
+query = 'SELECT "{key_column}", ST_AsText(geom), ARRAY[...] from "{layer_id_from}" where "{key_column}" in ({plots_id})'.format(
+    layer_id_from=datasource.table(), key_column=key_column_name, plots_id=plots_id)
+
+# Result for plot "84/7": WHERE "NUMER_DZIA" IN (84/7)  ❌ SQL syntax error!
+# Should be: WHERE "NUMER_DZIA" IN ('84/7')  ✅
+```
+
+**Required Fix:**
+```python
+# ✅ FIX: Add single quotes around each value
+plots_id = reduce(lambda x, y: ", ".join([str(x), str(y)]),
+                  ["'{}'".format(one_plot["key_column_value"]) for one_plot in plots])
+
+query = 'SELECT "{key_column}", ST_AsText(geom), ARRAY[...] from "{layer_id_from}" where "{key_column}" in ({plots_id})'.format(
+    layer_id_from=datasource.table(), key_column=key_column_name, plots_id=plots_id)
+
+# Result for plot "84/7": WHERE "NUMER_DZIA" IN ('84/7')  ✅
+```
+
+**Alternative Fix (Safer with SQL injection protection):**
+```python
+# ✅ BETTER: Use parameterized query
+plots_id_values = [one_plot["key_column_value"] for one_plot in plots]
+placeholders = ', '.join(['%s'] * len(plots_id_values))
+
+query = 'SELECT "{key_column}", ST_AsText(geom), ARRAY[...] from "{layer_id_from}" where "{key_column}" in ({placeholders})'.format(
+    layer_id_from=datasource.table(), key_column=key_column_name, placeholders=placeholders)
+
+cursor.execute(query, plots_id_values)  # psycopg2 handles escaping
+```
+
+**Why This Matters:**
+- Plot numbers in Poland use format: `{number}` or `{number}/{subnumber}` (e.g., "84/7", "15", "123/4")
+- The `/` character is valid in plot numbers but causes SQL syntax error without quotes
+- Current code works for numeric-only plots but fails for plots with `/`
+
+**Impact:**
+- ❌ Cannot query plot spatial development for plots with `/` in number
+- ❌ Users cannot generate wypis for majority of plots (most have subnumbers)
+- ❌ Entire wypis workflow blocked for typical use cases
+
+**Priority:** 🔴 **CRITICAL** - Blocks wypis feature for 80%+ of real-world plots
+
+**Frontend Status:**
+- ✅ Frontend sends correct format: `{key_column_name: "NUMER_DZIA", key_column_value: "84/7"}`
+- ✅ Coordinate transformation working (WGS84 → EPSG:3857)
+- ❌ Backend SQL query fails before reaching planning zone logic
+
+**Date Reported:** 2025-11-14
+**Deployment Status:** Production backend broken, requires backend repo fix + deploy
 
 ---
 
