@@ -14,7 +14,7 @@ import ImportLayerModal from '../modals/ImportLayerModal';
 import AddGroupModal from '../modals/AddGroupModal';
 import CreateConsultationModal from '../modals/CreateConsultationModal';
 import LayerManagerModal from '../modals/LayerManagerModal';
-import PrintConfigModal from '../../mapa/komponenty/PrintConfigModal-new';
+import PrintConfigModal from '../../mapa/komponenty/PrintConfigModal';
 import EditLayerStyleModal from '../modals/EditLayerStyleModal';
 import DeleteLayerConfirmModal from '../modals/DeleteLayerConfirmModal';
 import { AttributeTableModal } from '../modals';
