@@ -54,7 +54,14 @@
       "Bash(node import-missing-layers.mjs:*)",
       "Bash(timeout 20 powershell:*)",
       "Bash(npm install:*)",
-      "Bash(gcloud compute instances list:*)"
+      "Bash(gcloud compute instances list:*)",
+      "Bash(gcloud compute instances stop:*)",
+      "Bash(gcloud compute instances start:*)",
+      "Bash(gh run list:*)",
+      "Bash(timeout 120 sleep:*)",
+      "Bash(timeout 30 bash -c 'until gcloud compute ssh universe-backend --zone=europe-central2-a -- \"\"echo connected\"\" 2>/dev/null; do sleep 1; done')",
+      "Bash(timeout 60 bash -c 'while true; do gcloud compute ssh universe-backend --zone=europe-central2-a -- \"\"sudo docker ps -a | grep qgis\"\" 2>&1 && break || sleep 2; done')",
+      "Bash(timeout 3 powershell:*)"
     ],
     "deny": [],
     "ask": []
