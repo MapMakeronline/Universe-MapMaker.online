@@ -396,12 +396,16 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
         const existingPlanDest = plotWithDest.plot_destinations?.find(pd => pd.plan_id === planLayer.id)
         const planCoverage = existingPlanDest?.covering || '0.0%'
 
-        // Build destinations array
+        // Build destinations array with correct order:
+        // 1. "ogólne" (general provisions) - FIRST
+        // 2. Purposes (SC, SG, SI, etc.) - MIDDLE
+        // 3. "końcowe" (final provisions) - LAST
         const destinations = []
 
-        // Add selected arrangements
+        // 1. Add "ogólne" arrangement (case-insensitive)
         planLayer.arrangements?.forEach((arrangement, arrIdx) => {
-          if (selections.has(`plan-${planIdx}-arr-${arrIdx}`)) {
+          if (selections.has(`plan-${planIdx}-arr-${arrIdx}`) &&
+              arrangement.name.toLowerCase().includes('ogólne')) {
             destinations.push({
               name: arrangement.name,
               covering: '', // Arrangements don't have coverage %
@@ -410,13 +414,25 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
           }
         })
 
-        // Add selected purposes
+        // 2. Add selected purposes (SC, SG, SI, etc.)
         planLayer.purposes?.forEach((purpose, purposeIdx) => {
           if (selections.has(`plan-${planIdx}-purpose-${purposeIdx}`)) {
             const coverage = getCoverage(selectedPlots.indexOf(plotWithDest), planLayer.id, purpose.name) || '0.0%'
             destinations.push({
               name: purpose.name,
               covering: coverage,
+              includes: true,
+            })
+          }
+        })
+
+        // 3. Add "końcowe" arrangement (case-insensitive)
+        planLayer.arrangements?.forEach((arrangement, arrIdx) => {
+          if (selections.has(`plan-${planIdx}-arr-${arrIdx}`) &&
+              arrangement.name.toLowerCase().includes('końcowe')) {
+            destinations.push({
+              name: arrangement.name,
+              covering: '', // Arrangements don't have coverage %
               includes: true,
             })
           }
