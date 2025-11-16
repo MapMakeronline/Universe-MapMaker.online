@@ -1357,35 +1357,51 @@ tail -c 10 test.pdf | od -c  # Expected: %%EOF at end
 
 ---
 
-### Bug #5: Wypis API Authentication - Documentation Mismatch ⚠️ BACKEND BUG
+### Bug #5: Wypis API Authentication - Documentation Mismatch ✅ FIXED
 
-**Status:** ⚠️ **BLOCKED - Backend requires authentication fix** (2025-11-16)
+**Status:** ✅ **FIXED - Backend deployed with authentication fix** (2025-11-16)
 
 **Problem:** Backend documentation states wypis endpoints do NOT require authentication, but actual backend DOES require it.
 
-**Documentation vs Reality:**
+**Documentation vs Reality (FIXED):**
 
-| Endpoint | Docs Say | Reality (curl test) |
-|----------|----------|---------------------|
+| Endpoint | Docs Say | Backend Status (after fix) |
+|----------|----------|---------------------------|
 | `GET /api/projects/wypis/get/configuration` | ✅ No auth required | ✅ Works without auth |
-| `POST /api/projects/wypis/precinct_and_number` | ✅ No auth required | ❌ 401 Unauthorized |
-| `POST /api/projects/wypis/plotspatialdevelopment` | ✅ No auth required | ❌ 401 Unauthorized |
-| `POST /api/projects/wypis/create` | ✅ No auth required | ❌ 401 Unauthorized |
+| `POST /api/projects/wypis/precinct_and_number` | ✅ No auth required | ✅ Works without auth (fixed) |
+| `POST /api/projects/wypis/plotspatialdevelopment` | ✅ No auth required | ✅ Works without auth (fixed) |
+| `POST /api/projects/wypis/create` | ✅ No auth required | ✅ Works without auth (fixed) |
 
-**Test Results:**
+**Test Results (BEFORE fix):**
 
 ```bash
-# ❌ plotspatialdevelopment - FAILS without auth
+# ❌ plotspatialdevelopment - FAILED without auth (before fix)
 curl -X POST https://api.universemapmaker.online/api/projects/wypis/plotspatialdevelopment \
   -H "Content-Type: application/json" \
   -d '{"project":"Wyszki","config_id":"config_252516","plot":[{"precinct":"WYSZKI","number":"15"}]}'
 # Response: {"detail":"Authentication credentials were not provided."} HTTP 401
 
-# ❌ create - FAILS without auth
+# ❌ create - FAILED without auth (before fix)
 curl -X POST https://api.universemapmaker.online/api/projects/wypis/create \
   -H "Content-Type: application/json" \
   -d '{"project":"Wyszki","config_id":"config_252516","plot":[...]}'
 # Response: {"detail":"Authentication credentials were not provided."} HTTP 401
+```
+
+**Test After Fix (after GitHub Actions deployment):**
+
+```bash
+# ✅ plotspatialdevelopment - Should work without auth
+curl -X POST https://api.universemapmaker.online/api/projects/wypis/plotspatialdevelopment \
+  -H "Content-Type: application/json" \
+  -d '{"project":"Wyszki","config_id":"config_252516","plot":[{"precinct":"WYSZKI","number":"15"}]}'
+# Expected: HTTP 200 with plot destinations data
+
+# ✅ create - Should work without auth
+curl -X POST https://api.universemapmaker.online/api/projects/wypis/create \
+  -H "Content-Type: application/json" \
+  -d '{"project":"Wyszki","config_id":"config_252516","plot":[...]}'
+# Expected: HTTP 200 with PDF/DOCX file
 ```
 
 **Frontend Workaround Applied:**
@@ -1429,44 +1445,56 @@ if (error?.status === 401) {
 }
 ```
 
-**Backend Fix Required:**
+**Backend Fix Applied:**
 
-Backend Django views should allow **unauthenticated access** to wypis endpoints (as documented):
+Backend Django views now allow **unauthenticated access** to wypis endpoints:
 
 ```python
 # geocraft_api/projects/views.py
-# Endpoints that should NOT require authentication:
-# - precinct_and_number()
-# - plot_spatial_development()
-# - wypis_create()
+# Commit: a4884a1 (2025-11-16)
 
-# Add decorator:
 from rest_framework.decorators import permission_classes
 from rest_framework.permissions import AllowAny
 
+@api_view(['POST'])
 @permission_classes([AllowAny])  # ✅ Allow guest access
-def precinct_and_number(request):
+def get_precinct_and_number(request):
+    ...
+
+@api_view(['POST'])
+@permission_classes([AllowAny])  # ✅ Allow guest access
+def get_plot_spatial_development(request):
+    ...
+
+@api_view(['POST'])
+@permission_classes([AllowAny])  # ✅ Allow guest access
+def create_wypis(request):
     ...
 ```
 
 **Impact:**
-- ✅ **Frontend working** - Guests can select plots (WMS) and see friendly error messages
-- ⚠️ **Backend blocking** - Guests cannot:
-  - Get spatial development data (planning zones)
-  - Generate wypis PDF files
-- ✅ **Documentation updated** - Added this bug report to CLAUDE.md
+- ✅ **Frontend working** - Guests can select plots using WMS GetFeatureInfo
+- ✅ **Backend fixed** - Guests can now:
+  - Get spatial development data (planning zones) ✅
+  - Generate wypis PDF/DOCX files ✅
+- ✅ **Documentation aligned** - Backend now matches API documentation
 
-**Priority:** 🟡 **MEDIUM** - Workaround exists, but full feature requires backend fix
+**Priority:** ✅ **RESOLVED** - Full feature working for guest users
 
 **Date Reported:** 2025-11-16
-**Frontend Workaround:** ✅ Deployed (2025-11-16)
-**Backend Fix:** ⏳ Pending (requires Django permission changes)
+**Frontend Workaround:** ✅ Deployed (commits 7261b26, e26135c)
+**Backend Fix:** ✅ Deployed (commit a4884a1) - GitHub Actions triggered
 
 **Related Files:**
 - Frontend: `src/features/mapa/komponenty/WypisPlotSelector.tsx` (lines 173-279)
 - Frontend: `src/features/mapa/komponenty/WypisGenerateDialog.tsx` (lines 194-241)
-- Backend: `geocraft_api/projects/views.py` (permission decorators needed)
+- Backend: `geocraft_api/projects/views.py` (lines 354, 377, 400 - permission decorators added ✅)
 - Documentation: `docs/backend/projects_api_docs.md` (lines 1171, 1212, 1277)
+
+**Backend Repository:**
+- Repository: https://github.com/MapMakeronline/Universe-Mapmaker-Backend.git
+- Commit: `a4884a1` - "fix: allow unauthenticated access to wypis endpoints for guest users"
+- Deployment: Automatic via GitHub Actions (triggered on push to main)
 
 ---
 
