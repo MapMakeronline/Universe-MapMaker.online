@@ -182,12 +182,12 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
 
   const handleGenerate = async () => {
     if (!selectedConfigId) {
-      dispatch(showError({ message: 'Wybierz konfigurację' }))
+      dispatch(showError('Wybierz konfigurację'))
       return
     }
 
     if (selectedPlots.length === 0) {
-      dispatch(showError({ message: 'Wybierz przynajmniej jedną działkę' }))
+      dispatch(showError('Wybierz przynajmniej jedną działkę'))
       return
     }
 
@@ -220,9 +220,7 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
       document.body.removeChild(a)
       window.URL.revokeObjectURL(url)
 
-      dispatch(showSuccess({
-        message: `Wypis został wygenerowany i pobrany (${extension.toUpperCase()})`,
-      }))
+      dispatch(showSuccess(`Wypis został wygenerowany i pobrany (${extension.toUpperCase()})`))
 
       onClose()
     } catch (error: any) {
@@ -230,13 +228,9 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
 
       // Special handling for 401 (guest users)
       if (error?.status === 401) {
-        dispatch(showError({
-          message: 'Generowanie wypisu wymaga zalogowania. Zaloguj się aby pobrać plik PDF.',
-        }))
+        dispatch(showError('Generowanie wypisu wymaga zalogowania. Zaloguj się aby pobrać plik PDF.'))
       } else {
-        dispatch(showError({
-          message: error?.data?.message || 'Błąd podczas generowania wypisu',
-        }))
+        dispatch(showError(error?.data?.message || 'Błąd podczas generowania wypisu'))
       }
     }
   }
