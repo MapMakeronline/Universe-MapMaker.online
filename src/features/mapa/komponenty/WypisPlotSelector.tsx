@@ -158,20 +158,74 @@ const WypisPlotSelector = () => {
 
         dispatch(showSuccess('Identyfikowanie działki...'));
 
-        const precinctResult = await getPrecinctAndNumber({
-          project: projectName,
-          config_id: selectedConfigId,
-          point: [x, y], // EPSG:3857 coordinates (meters)
-        }).unwrap();
+        let precinct: string;
+        let number: string;
 
-        if (!precinctResult.success || !precinctResult.data) {
-          mapLogger.error('❌ Wypis: Failed to get precinct and number', precinctResult);
-          dispatch(showError('Nie znaleziono działki w tym miejscu. Kliknij na działkę.'));
-          return;
+        try {
+          // Try backend endpoint first (requires auth)
+          const precinctResult = await getPrecinctAndNumber({
+            project: projectName,
+            config_id: selectedConfigId,
+            point: [x, y], // EPSG:3857 coordinates (meters)
+          }).unwrap();
+
+          if (!precinctResult.success || !precinctResult.data) {
+            mapLogger.error('❌ Wypis: Failed to get precinct and number', precinctResult);
+            dispatch(showError('Nie znaleziono działki w tym miejscu. Kliknij na działkę.'));
+            return;
+          }
+
+          precinct = precinctResult.data.precinct;
+          number = precinctResult.data.number;
+          mapLogger.log('✅ Wypis: Got precinct and number from backend', { precinct, number });
+        } catch (error: any) {
+          // If 401 (guest user), fallback to WFS GetFeature query
+          if (error?.status === 401) {
+            mapLogger.log('🔄 Wypis: Guest user detected, using WFS fallback', error);
+
+            const config = (configResponse as any).data;
+            const plotsLayer = config?.plotsLayer;
+            const precinctColumn = config?.precinctColumn || 'NAZWA_OBRE';
+            const plotNumberColumn = config?.plotNumberColumn || 'NUMER_DZIA';
+
+            if (!plotsLayer) {
+              dispatch(showError('Brak konfiguracji warstwy działek'));
+              return;
+            }
+
+            // WFS GetFeature request to identify plot at coordinates
+            const wfsUrl = `https://api.universemapmaker.online/ows?` +
+              `SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature&` +
+              `TYPENAME=${plotsLayer}&` +
+              `OUTPUTFORMAT=application/json&` +
+              `SRSNAME=EPSG:3857&` +
+              `FILTER=<Filter><Intersects><PropertyName>geometry</PropertyName>` +
+              `<Point srsName="EPSG:3857"><coordinates>${x},${y}</coordinates></Point>` +
+              `</Intersects></Filter>`;
+
+            const wfsResponse = await fetch(wfsUrl);
+            const wfsData = await wfsResponse.json();
+
+            if (!wfsData.features || wfsData.features.length === 0) {
+              dispatch(showError('Nie znaleziono działki w tym miejscu. Kliknij na działkę.'));
+              return;
+            }
+
+            const feature = wfsData.features[0];
+            precinct = feature.properties[precinctColumn];
+            number = feature.properties[plotNumberColumn];
+
+            if (!precinct || !number) {
+              dispatch(showError('Nie udało się odczytać numeru działki'));
+              return;
+            }
+
+            mapLogger.log('✅ Wypis: Got precinct and number from WFS (guest)', { precinct, number });
+          } else {
+            // Other error - rethrow
+            throw error;
+          }
         }
-
-        const { precinct, number } = precinctResult.data;
-        mapLogger.log('✅ Wypis: Got precinct and number from backend', { precinct, number });
 
         // 4. Transform to backend format using column names from wypis config
         // Backend expects: {key_column_name, key_column_value, precinct, number}

@@ -37,10 +37,12 @@ export const makeStore = () => {
             'map/setViewState',
             'layersApi/executeQuery/fulfilled', // exportStyle Blob response
             'layersApi/executeMutation/fulfilled', // exportLayer Blob response
+            'api/executeMutation/fulfilled', // baseApi Blob responses (createWypis)
           ],
           ignoredPaths: [
             'map.mapInstance',
             'layersApi.queries', // Ignore all layersApi query cache (Blob responses)
+            'api.mutations', // Ignore all baseApi mutation cache (Blob responses like createWypis)
           ],
         },
       })
