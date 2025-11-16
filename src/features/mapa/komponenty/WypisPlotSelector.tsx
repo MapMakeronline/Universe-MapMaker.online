@@ -194,16 +194,21 @@ const WypisPlotSelector = () => {
             }
 
             // WFS GetFeature request to identify plot at coordinates
-            const wfsUrl = `https://api.universemapmaker.online/ows?` +
-              `SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature&` +
-              `TYPENAME=${plotsLayer}&` +
-              `OUTPUTFORMAT=application/json&` +
-              `SRSNAME=EPSG:3857&` +
-              `FILTER=<Filter><Intersects><PropertyName>geometry</PropertyName>` +
-              `<Point srsName="EPSG:3857"><coordinates>${x},${y}</coordinates></Point>` +
-              `</Intersects></Filter>`;
+            // Use WMS GetFeatureInfo instead (simpler than WFS with XML filters)
+            const bbox = `${x - 10},${y - 10},${x + 10},${y + 10}`; // 20m buffer around click
+            const wmsUrl = `https://api.universemapmaker.online/ows?` +
+              `SERVICE=WMS&VERSION=1.3.0&REQUEST=GetFeatureInfo&` +
+              `MAP=/projects/${projectName}/${projectName}.qgs&` +
+              `LAYERS=${plotsLayer}&` +
+              `QUERY_LAYERS=${plotsLayer}&` +
+              `INFO_FORMAT=application/json&` +
+              `I=0&J=0&WIDTH=1&HEIGHT=1&` +
+              `CRS=EPSG:3857&` +
+              `BBOX=${bbox}`;
 
-            const wfsResponse = await fetch(wfsUrl);
+            mapLogger.log('🔄 Wypis: WMS GetFeatureInfo request (guest fallback)', { wmsUrl, bbox, plotsLayer });
+
+            const wfsResponse = await fetch(wmsUrl);
             const wfsData = await wfsResponse.json();
 
             if (!wfsData.features || wfsData.features.length === 0) {
