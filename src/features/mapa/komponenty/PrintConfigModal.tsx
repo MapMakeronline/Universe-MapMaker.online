@@ -39,6 +39,7 @@ import type { WypisPurposeWithFile, WypisArrangementWithFile } from '@/backend/t
 import { useAppDispatch } from '@/redux/hooks'
 import { showSuccess, showError } from '@/redux/slices/notificationSlice'
 import FileDropZone from './FileDropZone'
+import WypisBulkUploadModal from '@/features/wypis/components/WypisBulkUploadModal'
 
 interface Layer {
   id: string
@@ -99,6 +100,8 @@ const WypisConfigModal: React.FC<WypisConfigModalProps> = ({
   const [planLayers, setPlanLayers] = useState<PlanLayerState[]>([])
   const [errors, setErrors] = useState<string[]>([])
   const [layerAttributesCache, setLayerAttributesCache] = useState<Record<string, string[]>>({})
+  const [bulkUploadModalOpen, setBulkUploadModalOpen] = useState(false)
+  const [currentBulkUploadLayerId, setCurrentBulkUploadLayerId] = useState<string | null>(null)
 
   // API hooks
   const [addWypisConfiguration, { isLoading: isSaving }] = useAddWypisConfigurationMutation()
@@ -865,9 +868,33 @@ const WypisConfigModal: React.FC<WypisConfigModalProps> = ({
                       </Typography>
                     </AccordionSummary>
                     <AccordionDetails>
-                      <Typography variant="h6" sx={{ mb: 2 }}>Przeznaczenia terenu</Typography>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                        <Typography variant="h6">Przeznaczenia terenu</Typography>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          startIcon={<AddIcon />}
+                          onClick={() => {
+                            setCurrentBulkUploadLayerId(layer.id)
+                            setBulkUploadModalOpen(true)
+                          }}
+                          sx={{
+                            borderColor: '#27ae60',
+                            color: '#27ae60',
+                            '&:hover': {
+                              borderColor: '#229954',
+                              bgcolor: 'rgba(39, 174, 96, 0.1)',
+                            },
+                          }}
+                        >
+                          Importuj folder
+                        </Button>
+                      </Box>
                       <Alert severity="info" sx={{ mb: 2 }}>
                         Przeciągnij pliki DOC/DOCX dla każdego przeznaczenia (wykryte z kolumny: {layer.purposeColumn})
+                        <Typography variant="caption" sx={{ display: 'block', mt: 1 }}>
+                          <strong>Tip:</strong> Użyj przycisku "Importuj folder", aby zaimportować wszystkie pliki naraz!
+                        </Typography>
                       </Alert>
 
                       <List sx={{ display: 'grid', gap: 2 }}>
@@ -1017,6 +1044,31 @@ const WypisConfigModal: React.FC<WypisConfigModalProps> = ({
           {isSaving ? 'Zapisywanie...' : configId ? 'Zaktualizuj' : 'Zapisz'}
         </Button>
       </DialogActions>
+
+      {/* Bulk Upload Modal */}
+      {currentBulkUploadLayerId && (
+        <WypisBulkUploadModal
+          open={bulkUploadModalOpen}
+          onClose={() => {
+            setBulkUploadModalOpen(false)
+            setCurrentBulkUploadLayerId(null)
+          }}
+          planLayers={planLayers
+            .filter(l => l.id === currentBulkUploadLayerId && l.enabled)
+            .map(l => ({
+              id: l.id,
+              name: l.name,
+              arrangements: l.arrangements,
+              purposes: l.purposes,
+            }))}
+          projectName={projectName}
+          configId={configId || ''}
+          onUploadComplete={() => {
+            // Refresh configuration or update local state
+            dispatch(showSuccess('Pliki zostały zaimportowane'))
+          }}
+        />
+      )}
     </Dialog>
   )
 }

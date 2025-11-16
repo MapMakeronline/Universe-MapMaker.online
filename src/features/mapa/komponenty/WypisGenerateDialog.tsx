@@ -22,9 +22,11 @@ import CircularProgress from '@mui/material/CircularProgress'
 import Paper from '@mui/material/Paper'
 import CloseIcon from '@mui/icons-material/Close'
 import DescriptionIcon from '@mui/icons-material/Description'
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
+import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 
 import { useGetWypisConfigurationQuery, useCreateWypisMutation } from '@/backend/wypis'
-import type { WypisPlot } from '@/backend/types'
+import type { WypisPlot, WypisPlotWithDestinations, WypisPlanLayer } from '@/backend/types'
 import { useAppDispatch, useAppSelector } from '@/redux/hooks'
 import { showSuccess, showError } from '@/redux/slices/notificationSlice'
 import {
@@ -117,12 +119,12 @@ function DraggablePaper(props: any) {
 }
 
 /**
- * WypisGenerateDialog - Draggable dialog for generating wypis PDF
+ * WypisGenerateDialog - Multi-step draggable dialog for generating wypis PDF
  *
  * Features:
  * - Draggable window (non-blocking, can interact with map)
- * - Select configuration from list
- * - Select plots (parcels) by clicking on map
+ * - Step 1: Select configuration + plots (parcels) by clicking on map
+ * - Step 2: Select destinations (for logged users with spatial data)
  * - Generate PDF via backend
  * - Auto-download PDF file
  */
@@ -146,7 +148,18 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
     { skip: !projectName || !open }
   )
 
+  // Fetch full configuration details (for step 2 - destination selection)
+  const { data: configDetailsData, isLoading: isLoadingConfigDetails } = useGetWypisConfigurationQuery(
+    { project: projectName, config_id: selectedConfigId || '' },
+    { skip: !open || !projectName || !selectedConfigId }
+  )
+
   const [createWypis, { isLoading: isGenerating }] = useCreateWypisMutation()
+
+  // Multi-step state
+  const [currentStep, setCurrentStep] = useState<1 | 2>(1)
+  const [currentPlotIndex, setCurrentPlotIndex] = useState(0)
+  const [plotSelections, setPlotSelections] = useState<Map<string, Set<string>>>(new Map())
 
   // Auto-select first config when loaded
   useEffect(() => {
@@ -173,14 +186,68 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
     if (!open) {
       dispatch(clearPlotSelection())
       dispatch(setSelectedConfigId(null))
+      setCurrentStep(1) // Reset to step 1
+      setCurrentPlotIndex(0)
+      setPlotSelections(new Map())
     }
   }, [open, dispatch])
+
+  // Get plan layers from configuration details (for step 2)
+  const planLayers: WypisPlanLayer[] = configDetailsData?.data?.planLayers || []
+
+  // Initialize destination selections when entering step 2
+  useEffect(() => {
+    if (currentStep !== 2 || selectedPlots.length === 0 || planLayers.length === 0) return
+
+    const newSelections = new Map<string, Set<string>>()
+
+    selectedPlots.forEach((plotWithDest) => {
+      const plotKey = `${plotWithDest.plot.precinct}-${plotWithDest.plot.number}`
+      const selectedDestinations = new Set<string>()
+
+      // Auto-select ONLY destinations that are on the plot (have coverage > 0%)
+      planLayers.forEach((planLayer, planIdx) => {
+        const existingPlanDest = plotWithDest.plot_destinations?.find(pd => pd.plan_id === planLayer.id)
+
+        if (!existingPlanDest) return // Skip if plan layer not on plot
+
+        let hasAnySelected = false
+
+        // Check arrangements (always include ALL if plan exists - arrangements don't have coverage)
+        planLayer.arrangements?.forEach((arrangement, arrIdx) => {
+          selectedDestinations.add(`plan-${planIdx}-arr-${arrIdx}`)
+          hasAnySelected = true
+        })
+
+        // Check purposes (only if coverage > 0%)
+        planLayer.purposes?.forEach((purpose, purposeIdx) => {
+          const existingPurpose = existingPlanDest.destinations?.find(d => d.name === purpose.name && d.includes)
+          if (existingPurpose) {
+            const coverage = parseFloat(existingPurpose.covering || '0')
+            if (coverage > 0) {
+              selectedDestinations.add(`plan-${planIdx}-purpose-${purposeIdx}`)
+              hasAnySelected = true
+            }
+          }
+        })
+
+        // Add plan header checkbox if any destination is selected
+        if (hasAnySelected) {
+          selectedDestinations.add(`plan-${planIdx}`)
+        }
+      })
+
+      newSelections.set(plotKey, selectedDestinations)
+    })
+
+    setPlotSelections(newSelections)
+  }, [currentStep, selectedPlots, planLayers])
 
   const handleRemovePlot = (plot: WypisPlot) => {
     dispatch(removePlot(plot))
   }
 
-  const handleGenerate = async () => {
+  const handleNext = () => {
     if (!selectedConfigId) {
       dispatch(showError('Wybierz konfigurację'))
       return
@@ -191,11 +258,194 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
       return
     }
 
+    // Check if any plot has destinations (for logged users)
+    const hasDestinations = selectedPlots.some(plot => plot.plot_destinations && plot.plot_destinations.length > 0)
+
+    if (hasDestinations) {
+      // Go to step 2 (destination selection)
+      setCurrentStep(2)
+    } else {
+      // For guests (no destinations), generate directly
+      handleGenerateWypis()
+    }
+  }
+
+  const handleBack = () => {
+    setCurrentStep(1)
+  }
+
+  const handlePrevPlot = () => {
+    setCurrentPlotIndex((prev) => Math.max(0, prev - 1))
+  }
+
+  const handleNextPlot = () => {
+    setCurrentPlotIndex((prev) => Math.min(selectedPlots.length - 1, prev + 1))
+  }
+
+  const handleToggleDestination = (key: string) => {
+    const currentPlot = selectedPlots[currentPlotIndex]
+    if (!currentPlot) return
+
+    const currentPlotKey = `${currentPlot.plot.precinct}-${currentPlot.plot.number}`
+    const newSelections = new Map(plotSelections)
+    const plotSelectionsSet = new Set(plotSelections.get(currentPlotKey) || new Set())
+
+    if (plotSelectionsSet.has(key)) {
+      plotSelectionsSet.delete(key)
+    } else {
+      plotSelectionsSet.add(key)
+    }
+
+    newSelections.set(currentPlotKey, plotSelectionsSet)
+    setPlotSelections(newSelections)
+  }
+
+  const handleTogglePlan = (planIdx: number, planLayer: WypisPlanLayer) => {
+    const currentPlot = selectedPlots[currentPlotIndex]
+    if (!currentPlot) return
+
+    const currentPlotKey = `${currentPlot.plot.precinct}-${currentPlot.plot.number}`
+    const planKey = `plan-${planIdx}`
+    const newSelections = new Map(plotSelections)
+    const plotSelectionsSet = new Set(plotSelections.get(currentPlotKey) || new Set())
+
+    // Check if all destinations in this plan are selected
+    const arrangementKeys = planLayer.arrangements?.map((_: any, arrIdx: number) =>
+      `plan-${planIdx}-arr-${arrIdx}`
+    ) || []
+    const purposeKeys = planLayer.purposes?.map((_: any, purposeIdx: number) =>
+      `plan-${planIdx}-purpose-${purposeIdx}`
+    ) || []
+    const allDestKeys = [...arrangementKeys, ...purposeKeys]
+
+    const allSelected = allDestKeys.every(key => plotSelectionsSet.has(key))
+
+    if (allSelected) {
+      // Uncheck plan and all destinations
+      plotSelectionsSet.delete(planKey)
+      allDestKeys.forEach(key => plotSelectionsSet.delete(key))
+    } else {
+      // Check plan and all destinations
+      plotSelectionsSet.add(planKey)
+      allDestKeys.forEach(key => plotSelectionsSet.add(key))
+    }
+
+    newSelections.set(currentPlotKey, plotSelectionsSet)
+    setPlotSelections(newSelections)
+  }
+
+  const handleToggleAll = () => {
+    const currentPlot = selectedPlots[currentPlotIndex]
+    if (!currentPlot) return
+
+    const currentPlotKey = `${currentPlot.plot.precinct}-${currentPlot.plot.number}`
+    const newSelections = new Map(plotSelections)
+    const currentSelections = plotSelections.get(currentPlotKey) || new Set()
+    const plotSelectionsSet = new Set<string>()
+
+    // Check if currently all selected
+    const allKeys: string[] = []
+    planLayers.forEach((planLayer, planIdx) => {
+      allKeys.push(`plan-${planIdx}`)
+      planLayer.arrangements?.forEach((_: any, arrIdx: number) => {
+        allKeys.push(`plan-${planIdx}-arr-${arrIdx}`)
+      })
+      planLayer.purposes?.forEach((_: any, purposeIdx: number) => {
+        allKeys.push(`plan-${planIdx}-purpose-${purposeIdx}`)
+      })
+    })
+
+    const allSelected = allKeys.every(key => currentSelections.has(key))
+
+    if (!allSelected) {
+      // Select all
+      allKeys.forEach(key => plotSelectionsSet.add(key))
+    }
+    // If all selected, leave plotSelectionsSet empty (uncheck all)
+
+    newSelections.set(currentPlotKey, plotSelectionsSet)
+    setPlotSelections(newSelections)
+  }
+
+  // Helper to get coverage % from plot_destinations (if exists)
+  const getCoverage = (plotIndex: number, planLayerId: string, destinationName: string): string | null => {
+    const plot = selectedPlots[plotIndex]
+    if (!plot?.plot_destinations) return null
+
+    const planDest = plot.plot_destinations.find(pd => pd.plan_id === planLayerId)
+    if (!planDest) return null
+
+    const dest = planDest.destinations?.find(d => d.name === destinationName)
+    return dest?.covering || null
+  }
+
+  const handleGenerateWypis = async () => {
+    // Build plots with selected destinations from step 2
+    const plotsWithSelectedDestinations = selectedPlots.map((plotWithDest) => {
+      const plotKey = `${plotWithDest.plot.precinct}-${plotWithDest.plot.number}`
+      const selections = plotSelections.get(plotKey) || new Set<string>()
+
+      // Build plot_destinations based on selections and configuration
+      const plot_destinations = planLayers.map((planLayer, planIdx) => {
+        // Only include plan if plan checkbox is selected
+        if (!selections.has(`plan-${planIdx}`)) {
+          return null
+        }
+
+        // Get coverage for this plan layer (if exists in plot_destinations)
+        const existingPlanDest = plotWithDest.plot_destinations?.find(pd => pd.plan_id === planLayer.id)
+        const planCoverage = existingPlanDest?.covering || '0.0%'
+
+        // Build destinations array
+        const destinations = []
+
+        // Add selected arrangements
+        planLayer.arrangements?.forEach((arrangement, arrIdx) => {
+          if (selections.has(`plan-${planIdx}-arr-${arrIdx}`)) {
+            destinations.push({
+              name: arrangement.name,
+              covering: '', // Arrangements don't have coverage %
+              includes: true,
+            })
+          }
+        })
+
+        // Add selected purposes
+        planLayer.purposes?.forEach((purpose, purposeIdx) => {
+          if (selections.has(`plan-${planIdx}-purpose-${purposeIdx}`)) {
+            const coverage = getCoverage(selectedPlots.indexOf(plotWithDest), planLayer.id, purpose.name) || '0.0%'
+            destinations.push({
+              name: purpose.name,
+              covering: coverage,
+              includes: true,
+            })
+          }
+        })
+
+        if (destinations.length === 0) {
+          return null // Don't include plan if no destinations selected
+        }
+
+        return {
+          plan_name: planLayer.name,
+          plan_id: planLayer.id,
+          covering: planCoverage,
+          includes: true,
+          destinations,
+        }
+      }).filter(plan => plan !== null) // Remove null plans
+
+      return {
+        ...plotWithDest,
+        plot_destinations,
+      }
+    })
+
     try {
       const fileBlob = await createWypis({
         project: projectName,
         config_id: selectedConfigId,
-        plot: selectedPlots,
+        plot: plotsWithSelectedDestinations,
       }).unwrap()
 
       // Detect file type from Blob MIME type
@@ -214,7 +464,7 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
       const url = window.URL.createObjectURL(fileBlob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `wypis_${selectedPlots[0].plot.number}_${Date.now()}${extension}`
+      a.download = `wypis_${plotsWithSelectedDestinations[0].plot.number}_${Date.now()}${extension}`
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
@@ -245,6 +495,24 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
     }
     onClose()
   }
+
+  // Get current plot for step 2
+  const currentPlot = selectedPlots[currentPlotIndex]
+  const currentPlotKey = currentPlot ? `${currentPlot.plot.precinct}-${currentPlot.plot.number}` : ''
+  const currentSelections = plotSelections.get(currentPlotKey) || new Set<string>()
+
+  // Check if all destinations are selected (for "Zaznacz wszystkie" button text)
+  const allKeys: string[] = []
+  planLayers.forEach((planLayer, planIdx) => {
+    allKeys.push(`plan-${planIdx}`)
+    planLayer.arrangements?.forEach((_: any, arrIdx: number) => {
+      allKeys.push(`plan-${planIdx}-arr-${arrIdx}`)
+    })
+    planLayer.purposes?.forEach((_: any, purposeIdx: number) => {
+      allKeys.push(`plan-${planIdx}-purpose-${purposeIdx}`)
+    })
+  })
+  const allSelected = allKeys.length > 0 && allKeys.every(key => currentSelections.has(key))
 
   return (
     <Dialog
@@ -306,7 +574,7 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <DescriptionIcon />
           <Typography variant="h6" sx={{ fontWeight: 600 }}>
-            Generuj wypis i wyrys
+            {currentStep === 1 ? 'Generuj wypis i wyrys' : 'Wypis i wyrys'}
           </Typography>
         </Box>
         <IconButton
@@ -322,130 +590,354 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
       </DialogTitle>
 
       {/* Content */}
-      <DialogContent sx={{ px: 3, py: 3 }}>
-        {isLoadingConfigs ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-            <CircularProgress />
-          </Box>
-        ) : configurations.length === 0 ? (
-          <Alert severity="warning">
-            <Typography variant="body2">
-              Brak konfiguracji wypisu. Utwórz konfigurację przed generowaniem wypisu.
-            </Typography>
-          </Alert>
-        ) : (
+      <DialogContent sx={{ px: 3, py: 3, bgcolor: currentStep === 2 ? '#f5f5f5' : 'inherit' }}>
+        {/* STEP 1: Configuration + Plot Selection */}
+        {currentStep === 1 && (
           <>
-            {/* Configuration selector */}
-            <FormControl fullWidth sx={{ mb: 3 }}>
-              <InputLabel>Wybierz konfigurację</InputLabel>
-              <Select
-                value={selectedConfigId || ''}
-                onChange={(e) => dispatch(setSelectedConfigId(e.target.value))}
-                label="Wybierz konfigurację"
-              >
-                {configurations.map(config => (
-                  <MenuItem key={config.id || config.config_id} value={config.id || config.config_id}>
-                    {config.name || config.configuration_name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-
-            {/* Selected plots display */}
-            <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-              Wybrane działki:
-            </Typography>
-
-            {selectedPlots.length === 0 ? (
-              <Alert severity="info" sx={{ mb: 2 }}>
+            {isLoadingConfigs ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                <CircularProgress />
+              </Box>
+            ) : configurations.length === 0 ? (
+              <Alert severity="warning">
                 <Typography variant="body2">
-                  Brak wybranych działek. Kliknij na mapę, aby wybrać działkę z warstwy.
+                  Brak konfiguracji wypisu. Utwórz konfigurację przed generowaniem wypisu.
                 </Typography>
               </Alert>
             ) : (
-              <Box
-                sx={{
-                  maxHeight: '300px',
-                  overflowY: 'auto',
-                  border: '1px solid #e0e0e0',
-                  borderRadius: 1,
-                  p: 1,
-                }}
-              >
-                {selectedPlots.map((plotWithDest, index) => (
+              <>
+                {/* Configuration selector */}
+                <FormControl fullWidth sx={{ mb: 3 }}>
+                  <InputLabel>Wybierz konfigurację</InputLabel>
+                  <Select
+                    value={selectedConfigId || ''}
+                    onChange={(e) => dispatch(setSelectedConfigId(e.target.value))}
+                    label="Wybierz konfigurację"
+                  >
+                    {configurations.map(config => (
+                      <MenuItem key={config.id || config.config_id} value={config.id || config.config_id}>
+                        {config.name || config.configuration_name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+
+                {/* Selected plots display */}
+                <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+                  Wybrane działki:
+                </Typography>
+
+                {selectedPlots.length === 0 ? (
+                  <Alert severity="info" sx={{ mb: 2 }}>
+                    <Typography variant="body2">
+                      Brak wybranych działek. Kliknij na mapę, aby wybrać działkę z warstwy.
+                    </Typography>
+                  </Alert>
+                ) : (
                   <Box
-                    key={`${plotWithDest.plot.precinct}-${plotWithDest.plot.number}-${index}`}
                     sx={{
-                      width: '100%',
-                      m: 0,
-                      py: 1,
-                      px: 1.5,
-                      mb: 1,
-                      borderRadius: 1,
+                      maxHeight: '300px',
+                      overflowY: 'auto',
                       border: '1px solid #e0e0e0',
-                      bgcolor: '#f9f9f9',
+                      borderRadius: 1,
+                      p: 1,
                     }}
                   >
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                        Obręb: {plotWithDest.plot.precinct}, Działka: {plotWithDest.plot.number}
-                      </Typography>
-                      <Button
-                        size="small"
-                        color="error"
-                        onClick={() => handleRemovePlot(plotWithDest.plot)}
+                    {selectedPlots.map((plotWithDest, index) => (
+                      <Box
+                        key={`${plotWithDest.plot.precinct}-${plotWithDest.plot.number}-${index}`}
+                        sx={{
+                          width: '100%',
+                          m: 0,
+                          py: 1,
+                          px: 1.5,
+                          mb: 1,
+                          borderRadius: 1,
+                          border: '1px solid #e0e0e0',
+                          bgcolor: '#f9f9f9',
+                        }}
                       >
-                        Usuń
-                      </Button>
-                    </Box>
-                    {plotWithDest.plot_destinations.length > 0 && (
-                      <Box sx={{ pl: 1, borderLeft: '2px solid #2c3e50' }}>
-                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
-                          Przeznaczenie:
-                        </Typography>
-                        {plotWithDest.plot_destinations.map((dest, idx) => (
-                          <Typography key={idx} variant="caption" sx={{ display: 'block', pl: 1 }}>
-                            • {dest.plan_id} (pokrycie: {dest.covering})
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                            Obręb: {plotWithDest.plot.precinct}, Działka: {plotWithDest.plot.number}
                           </Typography>
-                        ))}
+                          <Button
+                            size="small"
+                            color="error"
+                            onClick={() => handleRemovePlot(plotWithDest.plot)}
+                          >
+                            Usuń
+                          </Button>
+                        </Box>
+                        {plotWithDest.plot_destinations.length > 0 && (
+                          <Box sx={{ pl: 1, borderLeft: '2px solid #2c3e50' }}>
+                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                              Przeznaczenie:
+                            </Typography>
+                            {plotWithDest.plot_destinations.map((dest, idx) => (
+                              <Typography key={idx} variant="caption" sx={{ display: 'block', pl: 1 }}>
+                                • {dest.plan_id} (pokrycie: {dest.covering})
+                              </Typography>
+                            ))}
+                          </Box>
+                        )}
                       </Box>
-                    )}
+                    ))}
                   </Box>
-                ))}
-              </Box>
-            )}
+                )}
 
-            {/* Selected count */}
-            {selectedPlots.length > 0 && (
-              <Alert severity="success" sx={{ mt: 2 }}>
-                <Typography variant="body2">
-                  Wybrano <strong>{selectedPlots.length}</strong> {selectedPlots.length === 1 ? 'działkę' : 'działek'}
+                {/* Selected count */}
+                {selectedPlots.length > 0 && (
+                  <Alert severity="success" sx={{ mt: 2 }}>
+                    <Typography variant="body2">
+                      Wybrano <strong>{selectedPlots.length}</strong> {selectedPlots.length === 1 ? 'działkę' : 'działek'}
+                    </Typography>
+                  </Alert>
+                )}
+              </>
+            )}
+          </>
+        )}
+
+        {/* STEP 2: Destination Selection */}
+        {currentStep === 2 && currentPlot && (
+          <>
+            {isLoadingConfigDetails ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                <CircularProgress />
+              </Box>
+            ) : (
+              <>
+                {/* Instructions */}
+                <Typography variant="body2" sx={{ mb: 3, color: 'text.secondary' }}>
+                  Wybierz z listy dostępnych przeznaczeń te, na podstawie których ma zostać wygenerowany wypis
                 </Typography>
-              </Alert>
+
+                {/* Plot navigation */}
+                {selectedPlots.length > 1 && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2 }}>
+                    <IconButton
+                      onClick={handlePrevPlot}
+                      disabled={currentPlotIndex === 0}
+                      sx={{ color: '#2c3e50' }}
+                    >
+                      <ChevronLeftIcon />
+                    </IconButton>
+                    <Box sx={{ mx: 2, textAlign: 'center' }}>
+                      <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                        Numer działki: {currentPlot.plot.number}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Obręb działki: {currentPlot.plot.precinct}
+                      </Typography>
+                    </Box>
+                    <IconButton
+                      onClick={handleNextPlot}
+                      disabled={currentPlotIndex === selectedPlots.length - 1}
+                      sx={{ color: '#2c3e50' }}
+                    >
+                      <ChevronRightIcon />
+                    </IconButton>
+                  </Box>
+                )}
+
+                {selectedPlots.length === 1 && (
+                  <Box sx={{ mb: 2, textAlign: 'center' }}>
+                    <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                      Numer działki: {currentPlot.plot.number}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Obręb działki: {currentPlot.plot.precinct}
+                    </Typography>
+                  </Box>
+                )}
+
+                {/* "Zaznacz wszystkie" button */}
+                <Box sx={{ mb: 2, textAlign: 'right' }}>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={handleToggleAll}
+                    sx={{
+                      borderColor: '#2c3e50',
+                      color: '#2c3e50',
+                      '&:hover': {
+                        borderColor: '#27ae60',
+                        bgcolor: 'rgba(39, 174, 96, 0.1)',
+                      },
+                    }}
+                  >
+                    {allSelected ? 'Odznacz wszystkie' : 'Zaznacz wszystkie'}
+                  </Button>
+                </Box>
+
+                {/* Destinations list - ALL from configuration */}
+                <Box sx={{
+                  bgcolor: 'white',
+                  borderRadius: 1,
+                  p: 2,
+                  maxHeight: '400px',
+                  overflowY: 'auto',
+                }}>
+                  {planLayers.length === 0 && (
+                    <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
+                      Brak dostępnych warstw planistycznych w konfiguracji
+                    </Typography>
+                  )}
+
+                  {planLayers.map((planLayer, planIdx) => {
+                    const planKey = `plan-${planIdx}`
+                    const isPlanChecked = currentSelections.has(planKey)
+
+                    // Get coverage for this plan (if exists in plot_destinations)
+                    const existingPlanDest = currentPlot.plot_destinations?.find(pd => pd.plan_id === planLayer.id)
+                    const planCoverage = existingPlanDest?.covering || '0.0%'
+
+                    return (
+                      <Box key={planIdx} sx={{ mb: 2 }}>
+                        {/* Plan header checkbox */}
+                        <FormControlLabel
+                          control={
+                            <Checkbox
+                              checked={isPlanChecked}
+                              onChange={() => handleTogglePlan(planIdx, planLayer)}
+                              sx={{
+                                color: '#2c3e50',
+                                '&.Mui-checked': { color: '#27ae60' }
+                              }}
+                            />
+                          }
+                          label={
+                            <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                              {planLayer.name} - przeznaczenie terenu ({planCoverage})
+                            </Typography>
+                          }
+                          sx={{
+                            width: '100%',
+                            bgcolor: '#e3f2fd',
+                            borderRadius: 1,
+                            px: 1,
+                            py: 0.5,
+                            mb: 1,
+                          }}
+                        />
+
+                        {/* Destinations (arrangements + purposes) */}
+                        <Box sx={{ pl: 4 }}>
+                          {/* Arrangements (Ustalenia ogólne, etc.) */}
+                          {planLayer.arrangements?.map((arrangement, arrIdx) => {
+                            const arrKey = `plan-${planIdx}-arr-${arrIdx}`
+                            const isArrChecked = currentSelections.has(arrKey)
+
+                            return (
+                              <FormControlLabel
+                                key={`arr-${arrIdx}`}
+                                control={
+                                  <Checkbox
+                                    checked={isArrChecked}
+                                    onChange={() => handleToggleDestination(arrKey)}
+                                    sx={{
+                                      color: '#2c3e50',
+                                      '&.Mui-checked': { color: '#27ae60' }
+                                    }}
+                                  />
+                                }
+                                label={
+                                  <Typography variant="body2">
+                                    {arrangement.name}
+                                  </Typography>
+                                }
+                                sx={{ width: '100%', py: 0.5 }}
+                              />
+                            )
+                          })}
+
+                          {/* Purposes (ZL, SO, etc.) */}
+                          {planLayer.purposes?.map((purpose, purposeIdx) => {
+                            const purposeKey = `plan-${planIdx}-purpose-${purposeIdx}`
+                            const isPurposeChecked = currentSelections.has(purposeKey)
+                            const coverage = getCoverage(currentPlotIndex, planLayer.id, purpose.name)
+
+                            return (
+                              <FormControlLabel
+                                key={`purpose-${purposeIdx}`}
+                                control={
+                                  <Checkbox
+                                    checked={isPurposeChecked}
+                                    onChange={() => handleToggleDestination(purposeKey)}
+                                    sx={{
+                                      color: '#2c3e50',
+                                      '&.Mui-checked': { color: '#27ae60' }
+                                    }}
+                                  />
+                                }
+                                label={
+                                  <Typography variant="body2">
+                                    {purpose.name} {coverage && `(${coverage})`}
+                                  </Typography>
+                                }
+                                sx={{ width: '100%', py: 0.5 }}
+                              />
+                            )
+                          })}
+                        </Box>
+                      </Box>
+                    )
+                  })}
+                </Box>
+              </>
             )}
           </>
         )}
       </DialogContent>
 
       {/* Footer */}
-      <DialogActions sx={{ px: 3, pb: 3, gap: 2 }}>
-        <Button onClick={onClose} variant="outlined">
-          Anuluj
-        </Button>
-        <Button
-          onClick={handleGenerate}
-          variant="contained"
-          disabled={isGenerating || !selectedConfigId || selectedPlots.length === 0 || configurations.length === 0}
-          startIcon={isGenerating ? <CircularProgress size={20} /> : <DescriptionIcon />}
-          sx={{
-            bgcolor: '#27ae60',
-            '&:hover': {
-              bgcolor: '#229954',
-            },
-          }}
-        >
-          {isGenerating ? 'Generowanie...' : 'Generuj wypis'}
-        </Button>
+      <DialogActions sx={{ px: 3, pb: 3, gap: 2, bgcolor: currentStep === 2 ? '#f5f5f5' : 'inherit' }}>
+        {/* STEP 1 Buttons */}
+        {currentStep === 1 && (
+          <>
+            <Button onClick={onClose} variant="outlined">
+              Anuluj
+            </Button>
+            <Button
+              onClick={handleNext}
+              variant="contained"
+              disabled={isGenerating || !selectedConfigId || selectedPlots.length === 0 || configurations.length === 0}
+              startIcon={isGenerating ? <CircularProgress size={20} /> : <DescriptionIcon />}
+              sx={{
+                bgcolor: '#27ae60',
+                '&:hover': {
+                  bgcolor: '#229954',
+                },
+              }}
+            >
+              {isGenerating ? 'Generowanie...' : 'Dalej'}
+            </Button>
+          </>
+        )}
+
+        {/* STEP 2 Buttons */}
+        {currentStep === 2 && (
+          <>
+            <Button onClick={handleBack} variant="outlined">
+              Wstecz
+            </Button>
+            <Button
+              onClick={handleGenerateWypis}
+              variant="contained"
+              disabled={isGenerating || isLoadingConfigDetails}
+              startIcon={isGenerating ? <CircularProgress size={20} /> : <DescriptionIcon />}
+              sx={{
+                bgcolor: '#27ae60',
+                '&:hover': {
+                  bgcolor: '#229954',
+                },
+              }}
+            >
+              {isGenerating ? 'Generowanie...' : 'Generuj'}
+            </Button>
+          </>
+        )}
       </DialogActions>
     </Dialog>
   )
