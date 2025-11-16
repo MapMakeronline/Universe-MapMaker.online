@@ -158,116 +158,115 @@ const WypisPlotSelector = () => {
 
         dispatch(showSuccess('Identyfikowanie działki...'));
 
-        let precinct: string;
-        let number: string;
-
-        try {
-          // Try backend endpoint first (requires auth)
-          const precinctResult = await getPrecinctAndNumber({
-            project: projectName,
-            config_id: selectedConfigId,
-            point: [x, y], // EPSG:3857 coordinates (meters)
-          }).unwrap();
-
-          if (!precinctResult.success || !precinctResult.data) {
-            mapLogger.error('❌ Wypis: Failed to get precinct and number', precinctResult);
-            dispatch(showError('Nie znaleziono działki w tym miejscu. Kliknij na działkę.'));
-            return;
-          }
-
-          precinct = precinctResult.data.precinct;
-          number = precinctResult.data.number;
-          mapLogger.log('✅ Wypis: Got precinct and number from backend', { precinct, number });
-        } catch (error: any) {
-          // If 401 (guest user), fallback to WFS GetFeature query
-          if (error?.status === 401) {
-            mapLogger.log('🔄 Wypis: Guest user detected, using WFS fallback', error);
-
-            const config = (configResponse as any).data;
-            const plotsLayer = config?.plotsLayer;
-            const precinctColumn = config?.precinctColumn || 'NAZWA_OBRE';
-            const plotNumberColumn = config?.plotNumberColumn || 'NUMER_DZIA';
-
-            if (!plotsLayer) {
-              dispatch(showError('Brak konfiguracji warstwy działek'));
-              return;
-            }
-
-            // WFS GetFeature request to identify plot at coordinates
-            // Use WMS GetFeatureInfo instead (simpler than WFS with XML filters)
-            const bbox = `${x - 10},${y - 10},${x + 10},${y + 10}`; // 20m buffer around click
-            const wmsUrl = `https://api.universemapmaker.online/ows?` +
-              `SERVICE=WMS&VERSION=1.3.0&REQUEST=GetFeatureInfo&` +
-              `MAP=/projects/${projectName}/${projectName}.qgs&` +
-              `LAYERS=${plotsLayer}&` +
-              `QUERY_LAYERS=${plotsLayer}&` +
-              `INFO_FORMAT=application/json&` +
-              `I=0&J=0&WIDTH=1&HEIGHT=1&` +
-              `CRS=EPSG:3857&` +
-              `BBOX=${bbox}`;
-
-            mapLogger.log('🔄 Wypis: WMS GetFeatureInfo request (guest fallback)', { wmsUrl, bbox, plotsLayer });
-
-            const wfsResponse = await fetch(wmsUrl);
-            const wfsData = await wfsResponse.json();
-
-            if (!wfsData.features || wfsData.features.length === 0) {
-              dispatch(showError('Nie znaleziono działki w tym miejscu. Kliknij na działkę.'));
-              return;
-            }
-
-            const feature = wfsData.features[0];
-            precinct = feature.properties[precinctColumn];
-            number = feature.properties[plotNumberColumn];
-
-            if (!precinct || !number) {
-              dispatch(showError('Nie udało się odczytać numeru działki'));
-              return;
-            }
-
-            mapLogger.log('✅ Wypis: Got precinct and number from WFS (guest)', { precinct, number });
-          } else {
-            // Other error - rethrow
-            throw error;
-          }
-        }
-
-        // 4. Transform to backend format using column names from wypis config
-        // Backend expects: {key_column_name, key_column_value, precinct, number}
+        // Get layer and column config
         const config = (configResponse as any).data;
+        const plotsLayerName = config?.plotsLayerName; // WMS display name
         const precinctColumn = config?.precinctColumn || 'NAZWA_OBRE';
         const plotNumberColumn = config?.plotNumberColumn || 'NUMER_DZIA';
 
-        mapLogger.log('🗺️ Wypis: Column names from config', {
-          precinctColumn,
-          plotNumberColumn,
-        });
-
-        // 5. Query spatial development endpoint to get planning zones with coverage %
-        // Endpoint: POST /api/projects/wypis/plotspatialdevelopment
-        dispatch(showSuccess(`Pobieranie informacji o przeznaczeniu działki ${precinct}/${number}...`));
-
-        const spatialResult = await getPlotSpatialDevelopment({
-          project: projectName,
-          config_id: selectedConfigId,
-          plot: [
-            {
-              key_column_name: plotNumberColumn,      // Backend format (DB column name)
-              key_column_value: String(number),       // Plot number value
-              precinct: String(precinct),             // Keep for response mapping
-              number: String(number),                 // Keep for response mapping
-            }
-          ],
-        }).unwrap();
-
-        if (!spatialResult.success || !spatialResult.data || spatialResult.data.length === 0) {
-          mapLogger.error('❌ Wypis: Failed to get spatial development', spatialResult);
-          dispatch(showError(`Nie znaleziono informacji o przeznaczeniu działki ${precinct}/${number}`));
+        if (!plotsLayerName) {
+          dispatch(showError('Brak konfiguracji warstwy działek'));
           return;
         }
 
+        // Use WMS GetFeatureInfo - works for both logged and guest users
+        const bbox = `${x - 1},${y - 1},${x + 1},${y + 1}`; // 2m buffer
+        const wmsUrl = `https://api.universemapmaker.online/ows?` +
+          `SERVICE=WMS&VERSION=1.3.0&REQUEST=GetFeatureInfo&` +
+          `MAP=/projects/${projectName}/${projectName}.qgs&` +
+          `LAYERS=${encodeURIComponent(plotsLayerName)}&` +
+          `QUERY_LAYERS=${encodeURIComponent(plotsLayerName)}&` +
+          `INFO_FORMAT=application/json&` +
+          `I=0&J=0&WIDTH=1&HEIGHT=1&` +
+          `CRS=EPSG:3857&` +
+          `BBOX=${bbox}`;
+
+        mapLogger.log('🔄 Wypis: WMS GetFeatureInfo request', { wmsUrl, plotsLayerName });
+
+        const wmsResponse = await fetch(wmsUrl);
+
+        if (!wmsResponse.ok) {
+          const errorText = await wmsResponse.text();
+          mapLogger.error('❌ Wypis: WMS GetFeatureInfo failed', {
+            status: wmsResponse.status,
+            error: errorText.substring(0, 500)
+          });
+          dispatch(showError('Błąd identyfikacji działki. Spróbuj ponownie.'));
+          return;
+        }
+
+        const wmsData = await wmsResponse.json();
+        mapLogger.log('🔄 Wypis: WMS response', { features: wmsData.features?.length || 0 });
+
+        if (!wmsData.features || wmsData.features.length === 0) {
+          dispatch(showError('Nie znaleziono działki w tym miejscu. Kliknij na działkę.'));
+          return;
+        }
+
+        const feature = wmsData.features[0];
+        const precinct = feature.properties[precinctColumn];
+        const number = feature.properties[plotNumberColumn];
+
+        if (!precinct || !number) {
+          mapLogger.error('❌ Wypis: Missing precinct/number in WMS response', feature.properties);
+          dispatch(showError('Nie udało się odczytać numeru działki'));
+          return;
+        }
+
+        mapLogger.log('✅ Wypis: Got precinct and number from WMS', { precinct, number });
+
+        // 5. Query spatial development endpoint to get planning zones with coverage %
+        // Endpoint: POST /api/projects/wypis/plotspatialdevelopment
+        // NOTE: This endpoint requires authentication - for guest users, we'll use fallback (no spatial data)
+        dispatch(showSuccess(`Pobieranie informacji o przeznaczeniu działki ${precinct}/${number}...`));
+
+        let plotWithDestinations;
+
+        try {
+          const spatialResult = await getPlotSpatialDevelopment({
+            project: projectName,
+            config_id: selectedConfigId,
+            plot: [
+              {
+                key_column_name: plotNumberColumn,      // Backend format (DB column name)
+                key_column_value: String(number),       // Plot number value
+                precinct: String(precinct),             // Keep for response mapping
+                number: String(number),                 // Keep for response mapping
+              }
+            ],
+          }).unwrap();
+
+          if (!spatialResult.success || !spatialResult.data || spatialResult.data.length === 0) {
+            mapLogger.error('❌ Wypis: Failed to get spatial development', spatialResult);
+            dispatch(showError(`Nie znaleziono informacji o przeznaczeniu działki ${precinct}/${number}`));
+            return;
+          }
+
+          plotWithDestinations = spatialResult.data[0];
+        } catch (spatialError: any) {
+          // Handle 401 for guest users - create minimal plot data without spatial development
+          if (spatialError?.status === 401) {
+            mapLogger.log('⚠️ Wypis: Guest user - skipping spatial development query', { precinct, number });
+
+            // Create minimal plot structure for guests
+            plotWithDestinations = {
+              plot: {
+                key_column_name: plotNumberColumn,
+                key_column_value: String(number),
+                precinct: String(precinct),
+                number: String(number),
+              },
+              plot_destinations: [], // Empty - no spatial data for guests
+            };
+
+            dispatch(showSuccess(`Dodano działkę ${precinct}/${number} (tryb gościa - bez przeznaczenia planistycznego)`));
+          } else {
+            // Other error - propagate
+            throw spatialError;
+          }
+        }
+
         // 6. Add plot with destinations to Redux
-        const plotWithDestinations = spatialResult.data[0];
         dispatch(addPlot(plotWithDestinations));
 
         mapLogger.log('✅ Wypis: Added plot to selection', {
@@ -275,7 +274,9 @@ const WypisPlotSelector = () => {
           destinationsCount: plotWithDestinations.plot_destinations?.length || 0,
         });
 
-        dispatch(showSuccess(`Dodano działkę ${precinct}/${number} do wypisu`));
+        if (plotWithDestinations.plot_destinations?.length > 0) {
+          dispatch(showSuccess(`Dodano działkę ${precinct}/${number} do wypisu`));
+        }
 
       } catch (error: any) {
         mapLogger.error('❌ Wypis: Error selecting plot', error);

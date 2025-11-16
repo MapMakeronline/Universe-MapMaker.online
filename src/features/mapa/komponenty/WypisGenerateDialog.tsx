@@ -227,9 +227,17 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
       onClose()
     } catch (error: any) {
       console.error('Error generating wypis:', error)
-      dispatch(showError({
-        message: error?.data?.message || 'Błąd podczas generowania wypisu',
-      }))
+
+      // Special handling for 401 (guest users)
+      if (error?.status === 401) {
+        dispatch(showError({
+          message: 'Generowanie wypisu wymaga zalogowania. Zaloguj się aby pobrać plik PDF.',
+        }))
+      } else {
+        dispatch(showError({
+          message: error?.data?.message || 'Błąd podczas generowania wypisu',
+        }))
+      }
     }
   }
 

@@ -1357,6 +1357,119 @@ tail -c 10 test.pdf | od -c  # Expected: %%EOF at end
 
 ---
 
+### Bug #5: Wypis API Authentication - Documentation Mismatch ⚠️ BACKEND BUG
+
+**Status:** ⚠️ **BLOCKED - Backend requires authentication fix** (2025-11-16)
+
+**Problem:** Backend documentation states wypis endpoints do NOT require authentication, but actual backend DOES require it.
+
+**Documentation vs Reality:**
+
+| Endpoint | Docs Say | Reality (curl test) |
+|----------|----------|---------------------|
+| `GET /api/projects/wypis/get/configuration` | ✅ No auth required | ✅ Works without auth |
+| `POST /api/projects/wypis/precinct_and_number` | ✅ No auth required | ❌ 401 Unauthorized |
+| `POST /api/projects/wypis/plotspatialdevelopment` | ✅ No auth required | ❌ 401 Unauthorized |
+| `POST /api/projects/wypis/create` | ✅ No auth required | ❌ 401 Unauthorized |
+
+**Test Results:**
+
+```bash
+# ❌ plotspatialdevelopment - FAILS without auth
+curl -X POST https://api.universemapmaker.online/api/projects/wypis/plotspatialdevelopment \
+  -H "Content-Type: application/json" \
+  -d '{"project":"Wyszki","config_id":"config_252516","plot":[{"precinct":"WYSZKI","number":"15"}]}'
+# Response: {"detail":"Authentication credentials were not provided."} HTTP 401
+
+# ❌ create - FAILS without auth
+curl -X POST https://api.universemapmaker.online/api/projects/wypis/create \
+  -H "Content-Type: application/json" \
+  -d '{"project":"Wyszki","config_id":"config_252516","plot":[...]}'
+# Response: {"detail":"Authentication credentials were not provided."} HTTP 401
+```
+
+**Frontend Workaround Applied:**
+
+1. **Plot Selection (WypisPlotSelector.tsx):**
+   - ✅ Uses WMS GetFeatureInfo for plot identification (works for guests)
+   - ✅ Catches 401 error from `plotspatialdevelopment` endpoint
+   - ✅ Creates minimal plot data without spatial development for guests
+   - ✅ Shows message: "Dodano działkę (tryb gościa - bez przeznaczenia planistycznego)"
+
+2. **File Generation (WypisGenerateDialog.tsx):**
+   - ✅ Catches 401 error from `create` endpoint
+   - ✅ Shows user-friendly message: "Generowanie wypisu wymaga zalogowania. Zaloguj się aby pobrać plik PDF."
+
+**Frontend Changes:**
+
+File: `src/features/mapa/komponenty/WypisPlotSelector.tsx` (lines 225-267)
+```typescript
+// Wrapped plotspatialdevelopment in try-catch
+try {
+  const spatialResult = await getPlotSpatialDevelopment(...).unwrap();
+  plotWithDestinations = spatialResult.data[0];
+} catch (spatialError: any) {
+  if (spatialError?.status === 401) {
+    // Guest user - create minimal plot without spatial data
+    plotWithDestinations = {
+      plot: { precinct, number, ... },
+      plot_destinations: [], // Empty for guests
+    };
+  }
+}
+```
+
+File: `src/features/mapa/komponenty/WypisGenerateDialog.tsx` (lines 231-236)
+```typescript
+// Better error message for 401
+if (error?.status === 401) {
+  dispatch(showError({
+    message: 'Generowanie wypisu wymaga zalogowania. Zaloguj się aby pobrać plik PDF.',
+  }))
+}
+```
+
+**Backend Fix Required:**
+
+Backend Django views should allow **unauthenticated access** to wypis endpoints (as documented):
+
+```python
+# geocraft_api/projects/views.py
+# Endpoints that should NOT require authentication:
+# - precinct_and_number()
+# - plot_spatial_development()
+# - wypis_create()
+
+# Add decorator:
+from rest_framework.decorators import permission_classes
+from rest_framework.permissions import AllowAny
+
+@permission_classes([AllowAny])  # ✅ Allow guest access
+def precinct_and_number(request):
+    ...
+```
+
+**Impact:**
+- ✅ **Frontend working** - Guests can select plots (WMS) and see friendly error messages
+- ⚠️ **Backend blocking** - Guests cannot:
+  - Get spatial development data (planning zones)
+  - Generate wypis PDF files
+- ✅ **Documentation updated** - Added this bug report to CLAUDE.md
+
+**Priority:** 🟡 **MEDIUM** - Workaround exists, but full feature requires backend fix
+
+**Date Reported:** 2025-11-16
+**Frontend Workaround:** ✅ Deployed (2025-11-16)
+**Backend Fix:** ⏳ Pending (requires Django permission changes)
+
+**Related Files:**
+- Frontend: `src/features/mapa/komponenty/WypisPlotSelector.tsx` (lines 173-279)
+- Frontend: `src/features/mapa/komponenty/WypisGenerateDialog.tsx` (lines 194-241)
+- Backend: `geocraft_api/projects/views.py` (permission decorators needed)
+- Documentation: `docs/backend/projects_api_docs.md` (lines 1171, 1212, 1277)
+
+---
+
 ## 💡 Tips for Claude Code
 
 ### DO's ✅
