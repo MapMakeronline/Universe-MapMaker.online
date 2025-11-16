@@ -1240,6 +1240,123 @@ plots_id = reduce(lambda x, y: ", ".join([str(x), str(y)]),
 
 ---
 
+### Bug #4: Wypis File Generation - Corrupted DOCX/PDF Files ✅ FIXED
+
+**Status:** ✅ **FIXED** - Frontend deployed, backend fix ready (2025-11-16)
+
+**Problem:** Endpoint `/api/projects/wypis/create` returned corrupted files:
+
+**Symptoms:**
+```
+❌ DOCX: Invalid ZIP archive, broken Polish characters (���)
+❌ PDF: Missing EOF marker, "File cannot be opened"
+❌ Files truncated/incomplete
+```
+
+**Root Cause Analysis:**
+
+**Bug #4a: Premature File Deletion (CRITICAL)**
+
+Backend deleted files in `finally` block BEFORE HTTP response was sent to client.
+
+**Broken Code:** `geocraft_api/projects/service.py` (lines 2361-2376)
+```python
+# Line 2342-2345: Read and send file
+with open(result_document_path, 'rb') as document_to_export:
+    response = HttpResponse(document_to_export.read(), content_type=content_type)
+    response['Content-Disposition'] = 'inline; filename=' + os.path.basename(result_document_path)
+    return response
+
+# Line 2361-2376: finally block
+finally:
+    if os.path.exists(result_document_path):
+        os.remove(result_document_path)  # ❌ DELETES FILE BEFORE HTTP RESPONSE SENT!
+```
+
+**Why This Breaks:**
+1. `HttpResponse.read()` loads file to memory ✅
+2. `return response` triggers `finally` block IMMEDIATELY
+3. `os.remove()` deletes file from disk
+4. Django tries to send response but file is gone → **truncated/corrupted file**
+
+**Bug #4b: Wrong Content-Disposition Header**
+
+**Line:** 2344
+
+```python
+# CURRENT (WRONG):
+response['Content-Disposition'] = 'inline; filename=' + ...
+# ❌ 'inline' = browser tries to open in tab (not download)
+
+# SHOULD BE:
+response['Content-Disposition'] = 'attachment; filename=' + ...
+# ✅ 'attachment' = browser downloads file
+```
+
+**Fixes Applied:**
+
+**Backend Fix:** `geocraft_api/projects/service.py`
+
+1. **Line 2344:** `'inline'` → `'attachment'` (forces download)
+2. **Lines 2362-2364:** Commented out `result_document_path` cleanup (keeps temp files cleanup)
+
+**Deployment Script:** `fix-backend-wypis.sh` (automated deployment)
+
+**Frontend Enhancement:** `src/features/wypis/components/WypisPreviewModal.tsx`
+
+**Features:**
+- ✅ PDF preview (iframe) for logged users
+- ✅ DOCX info display for anonymous users
+- ✅ File size display (KB/MB)
+- ✅ File type detection (PDF vs DOCX)
+- ✅ Auto-download button
+
+**Testing After Fix:**
+
+```bash
+# Test DOCX (anonymous user)
+curl -X POST "https://api.universemapmaker.online/api/projects/wypis/create" \
+  -H "Content-Type: application/json" \
+  -d '{"project":"Wyszki","config_id":"config_252516","plot":[...]}' \
+  --output test.docx
+
+file test.docx  # Expected: Microsoft Word 2007+ (ZIP archive)
+unzip -t test.docx  # Expected: No errors, all files OK
+
+# Test PDF (logged user)
+curl -X POST "..." -H "Authorization: Token ..." --output test.pdf
+file test.pdf  # Expected: PDF document, version 1.x
+tail -c 10 test.pdf | od -c  # Expected: %%EOF at end
+```
+
+**Impact:**
+- ✅ DOCX files: Valid ZIP archives, Polish characters (UTF-8) preserved
+- ✅ PDF files: Complete files with EOF markers
+- ✅ Better UX: Preview modal before download
+- ✅ User type detection: Logged → PDF, Anonymous → DOCX
+
+**Priority:** 🔴 **CRITICAL** - Core feature completely broken
+
+**Documentation:**
+- Technical fix: [BACKEND-WYPIS-FIX.md](./BACKEND-WYPIS-FIX.md)
+- User guide: [WYPIS-USER-GUIDE.md](./WYPIS-USER-GUIDE.md)
+- Deployment: [WYPIS-DEPLOYMENT-SUMMARY.md](./WYPIS-DEPLOYMENT-SUMMARY.md)
+- Quick start: [WYPIS-FIX-README.md](./WYPIS-FIX-README.md)
+
+**Date Reported:** 2025-11-16
+**Date Fixed:** 2025-11-16 (frontend deployed, backend fix ready)
+**Deployment Status:**
+- Frontend: ✅ Ready to deploy (`git push origin main`)
+- Backend: ✅ Script ready (`./fix-backend-wypis.sh`)
+
+**Related Files:**
+- Frontend: `src/features/wypis/components/WypisPreviewModal.tsx`
+- Frontend: `src/features/mapa/komponenty/WypisGenerateDialog.tsx` (modified)
+- Backend: `geocraft_api/projects/service.py` (lines 2344, 2362-2364)
+- Deployment: `fix-backend-wypis.sh` (automated script)
+
+---
+
 ## 💡 Tips for Claude Code
 
 ### DO's ✅

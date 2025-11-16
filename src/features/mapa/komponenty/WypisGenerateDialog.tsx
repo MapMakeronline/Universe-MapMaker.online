@@ -192,24 +192,36 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
     }
 
     try {
-      const pdfBlob = await createWypis({
+      const fileBlob = await createWypis({
         project: projectName,
         config_id: selectedConfigId,
         plot: selectedPlots,
       }).unwrap()
 
-      // Download PDF
-      const url = window.URL.createObjectURL(pdfBlob)
+      // Detect file type from Blob MIME type
+      const isPDF = fileBlob.type === 'application/pdf'
+      const isDOCX = fileBlob.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+
+      // Determine file extension
+      let extension = '.pdf' // Default
+      if (isDOCX) {
+        extension = '.docx'
+      } else if (isPDF) {
+        extension = '.pdf'
+      }
+
+      // Download file with correct extension
+      const url = window.URL.createObjectURL(fileBlob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `wypis_${selectedPlots[0].plot.number}_${Date.now()}.pdf`
+      a.download = `wypis_${selectedPlots[0].plot.number}_${Date.now()}${extension}`
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
       window.URL.revokeObjectURL(url)
 
       dispatch(showSuccess({
-        message: 'Wypis został wygenerowany i pobrany',
+        message: `Wypis został wygenerowany i pobrany (${extension.toUpperCase()})`,
       }))
 
       onClose()
@@ -238,24 +250,35 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
       onClose={handleClose}
       maxWidth="sm"
       fullWidth
-      fullScreen={isMobile}
-      hideBackdrop={!isMobile} // No backdrop on desktop - allows map interaction
+      fullScreen={false} // CHANGED: Never fullScreen - allows map interaction on mobile
+      hideBackdrop={true} // CHANGED: Always hide backdrop - allows map clicks
       disableEnforceFocus // Allows clicking on map behind dialog
       disableScrollLock // Allows scrolling map behind dialog
       PaperComponent={isMobile ? undefined : DraggablePaper} // Draggable on desktop only
       sx={{
-        // CRITICAL: Allow clicks to pass through to map on desktop
-        pointerEvents: isMobile ? 'auto' : 'none',
+        // CRITICAL: Allow clicks to pass through to map
+        pointerEvents: 'none',
       }}
       PaperProps={{
         sx: {
           // CRITICAL: Re-enable pointer events on dialog itself
           pointerEvents: 'auto',
-          borderRadius: isMobile ? 0 : '12px',
-          maxHeight: '80vh',
-          // Position dialog on desktop (not centered by default)
-          ...(isMobile ? {} : {
-            position: 'fixed',
+          borderRadius: isMobile ? '12px 12px 0 0' : '12px',
+          maxHeight: isMobile ? '60vh' : '80vh',
+          // Position dialog
+          position: 'fixed',
+          ...(isMobile ? {
+            // Mobile: Bottom sheet
+            bottom: 0,
+            left: 0,
+            right: 0,
+            top: 'auto',
+            transform: 'none',
+            margin: 0,
+            width: '100%',
+            maxWidth: '100%',
+          } : {
+            // Desktop: Top center (draggable)
             top: '10%',
             left: '50%',
             transform: 'translateX(-50%)',

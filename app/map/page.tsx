@@ -123,7 +123,7 @@ export default function MapPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const dispatch = useAppDispatch();
-  const { isAuthenticated, user } = useAppSelector((state) => state.auth);
+  const { isAuthenticated, user, isLoading: isAuthLoading } = useAppSelector((state) => state.auth);
   const currentProject = useAppSelector((state) => state.projects.currentProject);
   const layers = useAppSelector((state) => state.layers.layers);
   const projectName = searchParams.get('project');
@@ -181,8 +181,9 @@ export default function MapPage() {
   const layersCount = countLayers(layers);
 
   // Fetch all user projects to get owner info
+  // IMPORTANT: Skip if auth is loading OR user is not authenticated (prevents 401 errors for guests)
   const { data: projectsData, isLoading: isLoadingProjects } = useGetProjectsQuery(undefined, {
-    skip: !isAuthenticated || !projectName,
+    skip: isAuthLoading || !isAuthenticated || !projectName,
   });
 
   // Fetch project data using RTK Query (non-blocking - UI renders immediately)
