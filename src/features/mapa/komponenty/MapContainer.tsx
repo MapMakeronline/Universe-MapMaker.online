@@ -15,6 +15,8 @@ import Buildings3D from './Buildings3D';
 import FeatureAttributesModal from '@/features/layers/modals/FeatureAttributesModal';
 import RightFABToolbar from '@/features/narzedzia/RightFABToolbar';
 import ZoomToSelectedControl from './ZoomToSelectedControl';
+import WypisPlotSelector from './WypisPlotSelector';
+import WypisPlotHighlighter from './WypisPlotHighlighter';
 
 // Import CSS dla Mapbox GL
 import 'mapbox-gl/dist/mapbox-gl.css';
@@ -256,6 +258,12 @@ const MapContainer: React.FC<MapContainerProps> = ({ children, projectName, onMa
 
         {/* 3D Buildings */}
         <Buildings3D />
+
+        {/* Wypis Plot Selector - Captures map clicks to select plots for wypis generation */}
+        <WypisPlotSelector />
+
+        {/* Wypis Plot Highlighter - Highlights selected plots on the map with yellow outline */}
+        <WypisPlotHighlighter />
 
         {/* Dodatkowe komponenty (Markers, Popup) */}
         {children}
