@@ -601,12 +601,13 @@ export interface GetPlotSpatialDevelopmentResponse {
 }
 
 /**
- * Request payload for creating wypis PDF
+ * Request payload for creating wypis PDF/DOCX
  */
 export interface CreateWypisRequest {
   project: string;                  // Project name
   config_id: string;                // Configuration ID to use
   plot: WypisPlotWithDestinations[];  // Array of plots with destinations to include in wypis
+  format?: 'pdf' | 'docx';          // Optional: Force specific format (default: auto based on user role)
 }
 
 /**

@@ -20,15 +20,20 @@ import Checkbox from '@mui/material/Checkbox'
 import Alert from '@mui/material/Alert'
 import CircularProgress from '@mui/material/CircularProgress'
 import Paper from '@mui/material/Paper'
+import Radio from '@mui/material/Radio'
+import RadioGroup from '@mui/material/RadioGroup'
 import CloseIcon from '@mui/icons-material/Close'
 import DescriptionIcon from '@mui/icons-material/Description'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf'
+import ArticleIcon from '@mui/icons-material/Article'
 
 import { useGetWypisConfigurationQuery, useCreateWypisMutation } from '@/backend/wypis'
 import type { WypisPlot, WypisPlotWithDestinations, WypisPlanLayer } from '@/backend/types'
 import { useAppDispatch, useAppSelector } from '@/redux/hooks'
 import { showSuccess, showError } from '@/redux/slices/notificationSlice'
+import { selectIsAuthenticated } from '@/redux/slices/authSlice'
 import {
   selectSelectedPlots,
   selectSelectedConfigId,
@@ -141,6 +146,10 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
   // Redux state
   const selectedPlots = useAppSelector(selectSelectedPlots)
   const selectedConfigId = useAppSelector(selectSelectedConfigId)
+  const isAuthenticated = useAppSelector(selectIsAuthenticated)
+
+  // File format selection (PDF/DOCX)
+  const [fileFormat, setFileFormat] = useState<'pdf' | 'docx'>('pdf')
 
   // RTK Query hooks
   const { data: configurationsData, isLoading: isLoadingConfigs } = useGetWypisConfigurationQuery(
@@ -189,8 +198,17 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
       setCurrentStep(1) // Reset to step 1
       setCurrentPlotIndex(0)
       setPlotSelections(new Map())
+      setFileFormat('pdf') // Reset format to PDF
     }
   }, [open, dispatch])
+
+  // Auto-set file format based on user authentication
+  useEffect(() => {
+    if (open) {
+      // Guests always get PDF, logged users can choose
+      setFileFormat(isAuthenticated ? 'docx' : 'pdf')
+    }
+  }, [open, isAuthenticated])
 
   // Get plan layers from configuration details (for step 2)
   const planLayers: WypisPlanLayer[] = configDetailsData?.data?.planLayers || []
@@ -468,6 +486,8 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
         project: projectName,
         config_id: selectedConfigId,
         plot: plotsWithSelectedDestinations,
+        // Send selected format to backend (optional - backend auto-selects if not provided)
+        format: fileFormat,
       }
 
       console.log('🔥 Wypis Dialog: SENDING REQUEST TO BACKEND', {
@@ -475,6 +495,8 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
         payload: requestPayload,
         config_id: selectedConfigId,
         plotsCount: plotsWithSelectedDestinations.length,
+        selectedFormat: fileFormat,
+        isAuthenticated,
         configurationName: (configDetailsData as any)?.data?.configuration_name,
       })
 
@@ -499,13 +521,18 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
       const url = window.URL.createObjectURL(fileBlob)
       const a = document.createElement('a')
       a.href = url
+      const formatLabel = extension === '.pdf' ? 'PDF' : 'DOCX'
       a.download = `wypis_${plotsWithSelectedDestinations[0].plot.number}_${Date.now()}${extension}`
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
       window.URL.revokeObjectURL(url)
 
-      dispatch(showSuccess(`Wypis został wygenerowany i pobrany (${extension.toUpperCase()})`))
+      const successMessage = isAuthenticated
+        ? `Wypis został wygenerowany i pobrany w formacie ${formatLabel}`
+        : 'Wypis został wygenerowany i pobrany (PDF - podgląd dla mieszkańca)'
+
+      dispatch(showSuccess(successMessage))
 
       onClose()
     } catch (error: any) {
@@ -742,6 +769,68 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
                   <Alert severity="success" sx={{ mt: 2 }}>
                     <Typography variant="body2">
                       Wybrano <strong>{selectedPlots.length}</strong> {selectedPlots.length === 1 ? 'działkę' : 'działek'}
+                    </Typography>
+                  </Alert>
+                )}
+
+                {/* File format selector (only for logged users) */}
+                {isAuthenticated && selectedPlots.length > 0 && (
+                  <Box sx={{ mt: 3, pt: 3, borderTop: '1px solid #e0e0e0' }}>
+                    <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+                      Format pliku:
+                    </Typography>
+                    <FormControl component="fieldset">
+                      <RadioGroup
+                        value={fileFormat}
+                        onChange={(e) => setFileFormat(e.target.value as 'pdf' | 'docx')}
+                      >
+                        <FormControlLabel
+                          value="docx"
+                          control={<Radio sx={{ color: '#2c3e50', '&.Mui-checked': { color: '#27ae60' } }} />}
+                          label={
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <ArticleIcon sx={{ color: '#2c5aa0' }} />
+                              <Box>
+                                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                  DOCX (edytowalna wersja)
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  Do edycji w Microsoft Word / LibreOffice
+                                </Typography>
+                              </Box>
+                            </Box>
+                          }
+                        />
+                        <FormControlLabel
+                          value="pdf"
+                          control={<Radio sx={{ color: '#2c3e50', '&.Mui-checked': { color: '#27ae60' } }} />}
+                          label={
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <PictureAsPdfIcon sx={{ color: '#d32f2f' }} />
+                              <Box>
+                                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                  PDF (podgląd dla mieszkańca)
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  Gotowy dokument do wydruku
+                                </Typography>
+                              </Box>
+                            </Box>
+                          }
+                        />
+                      </RadioGroup>
+                    </FormControl>
+                  </Box>
+                )}
+
+                {/* Guest user info (PDF only) */}
+                {!isAuthenticated && selectedPlots.length > 0 && (
+                  <Alert severity="info" sx={{ mt: 3 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                      Tryb gościa - plik PDF
+                    </Typography>
+                    <Typography variant="caption">
+                      Zaloguj się, aby pobrać edytowalną wersję DOCX
                     </Typography>
                   </Alert>
                 )}
