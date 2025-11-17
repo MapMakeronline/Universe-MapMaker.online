@@ -380,6 +380,12 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
   }
 
   const handleGenerateWypis = async () => {
+    console.log('🗺️ Wypis Dialog: Generating wypis with config', {
+      selectedConfigId,
+      projectName,
+      plotsCount: selectedPlots.length,
+    })
+
     // Build plots with selected destinations from step 2
     const plotsWithSelectedDestinations = selectedPlots.map((plotWithDest) => {
       const plotKey = `${plotWithDest.plot.precinct}-${plotWithDest.plot.number}`
@@ -631,7 +637,17 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
                       console.log('🗺️ Wypis Dialog: Config changed', {
                         oldConfigId: selectedConfigId,
                         newConfigId: e.target.value,
+                        clearingPlots: selectedPlots.length > 0,
                       })
+
+                      // CRITICAL: Clear selected plots when changing config
+                      // because plots were fetched with old config's layer/column names
+                      if (selectedPlots.length > 0) {
+                        dispatch(clearPlotSelection())
+                        dispatch(showSuccess('Zmieniono konfigurację - wybierz działki ponownie'))
+                        console.log('🗺️ Wypis Dialog: Cleared plots due to config change')
+                      }
+
                       dispatch(setSelectedConfigId(e.target.value))
                     }}
                     label="Wybierz konfigurację"
