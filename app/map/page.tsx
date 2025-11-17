@@ -68,7 +68,7 @@ import { setCurrentProject } from '@/redux/slices/projectsSlice';
 import { loadLayers, resetLayers } from '@/redux/slices/layersSlice';
 import { setViewState, setMapStyle } from '@/redux/slices/mapSlice';
 import { showError } from '@/redux/slices/notificationSlice';
-import { selectGenerateModalOpen, selectSelectedPlots, closeGenerateModal } from '@/redux/slices/wypisSlice';
+import { selectGenerateModalOpen, closeGenerateModal } from '@/redux/slices/wypisSlice';
 import { useGetProjectsQuery, useGetProjectDataQuery } from '@/backend/projects';
 import { MAP_STYLES } from '@/mapbox/config';
 import { transformExtent, transformExtentFromWebMercator, detectCRS, isValidWGS84 } from '@/mapbox/coordinates';
@@ -146,7 +146,6 @@ export default function MapPage() {
 
   // State for WypisGenerateDialog (Wypis i Wyrys)
   const generateModalOpen = useAppSelector(selectGenerateModalOpen);
-  const selectedPlots = useAppSelector(selectSelectedPlots);
 
   const handleCloseGenerateDialog = () => {
     dispatch(closeGenerateModal());
@@ -380,7 +379,6 @@ export default function MapPage() {
             open={generateModalOpen}
             onClose={handleCloseGenerateDialog}
             projectName={projectName}
-            availablePlots={selectedPlots}
           />
         )}
       </Box>
