@@ -17,12 +17,14 @@ import Settings from '@mui/icons-material/Settings'
 import Logout from '@mui/icons-material/Logout'
 import Person from '@mui/icons-material/Person'
 import { useRouter } from "next/navigation"
-import { useAppSelector } from "@/redux/hooks"
+import { useAppSelector, useAppDispatch } from "@/redux/hooks"
+import { clearAuth } from '@/redux/slices/authSlice'
 import UserAvatar from '@/common/components/UserAvatar'
 
 const UserFAB: React.FC = () => {
   const theme = useTheme()
   const router = useRouter()
+  const dispatch = useAppDispatch()
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
 
   const { user, isAuthenticated } = useAppSelector((state) => state.auth)
@@ -42,9 +44,9 @@ const UserFAB: React.FC = () => {
   }
 
   const handleLogout = () => {
-    console.log("Logout")
-    router.push('/auth?tab=0')
     handleUserMenuClose()
+    dispatch(clearAuth()) // Clear Redux state and localStorage
+    router.push('/auth?tab=0')
   }
 
   const handleLogin = () => {
