@@ -464,11 +464,24 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
     })
 
     try {
-      const fileBlob = await createWypis({
+      const requestPayload = {
         project: projectName,
         config_id: selectedConfigId,
         plot: plotsWithSelectedDestinations,
-      }).unwrap()
+      }
+
+      console.log('🔥 Wypis Dialog: SENDING REQUEST TO BACKEND', {
+        url: '/api/projects/wypis/create',
+        payload: requestPayload,
+        config_id: selectedConfigId,
+        plotsCount: plotsWithSelectedDestinations.length,
+        configurationName: (configDetailsData as any)?.data?.configuration_name,
+      })
+
+      // Log full payload for debugging
+      console.log('🔥 Full request payload:', JSON.stringify(requestPayload, null, 2))
+
+      const fileBlob = await createWypis(requestPayload).unwrap()
 
       // Detect file type from Blob MIME type
       const isPDF = fileBlob.type === 'application/pdf'
