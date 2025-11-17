@@ -14,7 +14,7 @@ import ImportLayerModal from '../modals/ImportLayerModal';
 import AddGroupModal from '../modals/AddGroupModal';
 import CreateConsultationModal from '../modals/CreateConsultationModal';
 import LayerManagerModal from '../modals/LayerManagerModal';
-import PrintConfigModal from '../../mapa/komponenty/PrintConfigModal-new';
+import { WypisConfigManager } from '@/features/wypis/components/config';
 import EditLayerStyleModal from '../modals/EditLayerStyleModal';
 import DeleteLayerConfirmModal from '../modals/DeleteLayerConfirmModal';
 import { AttributeTableModal } from '../modals';
@@ -658,8 +658,8 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
         existingGroups={layers}
       />
 
-      {/* Wypis Config Modal */}
-      <PrintConfigModal
+      {/* Wypis Config Manager (NEW REFACTORED VERSION) */}
+      <WypisConfigManager
         open={modals.printConfig}
         onClose={() => closeModal('printConfig')}
         projectName={projectName}
@@ -667,8 +667,12 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
           id: l.id,
           name: l.name,
           type: l.type === 'raster' ? 'raster' : 'vector',
-          attributes: [] // TODO: Fetch from layer attributes API
         }))}
+        selectedConfigId={null} // TODO: Get from wypis state
+        onSelectConfig={(configId) => {
+          // TODO: Set selected config in wypis state
+          console.log('Selected wypis config:', configId)
+        }}
       />
 
       {/* Edit Layer Style Modal */}

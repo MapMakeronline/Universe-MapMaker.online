@@ -492,6 +492,29 @@ export interface WypisConfiguration {
 }
 
 /**
+ * Request payload for adding DOCX documents to existing wypis configuration
+ *
+ * NOTE: Backend expects multipart/form-data with:
+ * - project: string
+ * - config_id: string (optional, default: "mpzp")
+ * - wypis: ZIP file with DOCX documents
+ *
+ * ZIP structure:
+ * wypis.zip
+ * ├── plan_id_1/
+ * │   ├── dokument_formalny.docx
+ * │   ├── ustalenia_ogolne.docx
+ * │   └── przeznaczenie_A.docx
+ * └── plan_id_2/
+ *     └── ...
+ */
+export interface AddWypisDocumentsRequest {
+  project: string;                  // Project name
+  config_id?: string;               // Optional config ID (default: "mpzp")
+  wypis: File;                      // ZIP file with DOCX documents
+}
+
+/**
  * Request payload for adding/updating wypis configuration
  *
  * NOTE: Backend expects multipart/form-data with:

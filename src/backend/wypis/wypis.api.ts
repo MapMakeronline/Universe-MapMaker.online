@@ -3,6 +3,7 @@
 
 import { baseApi } from '../client/base-api';
 import type {
+  AddWypisDocumentsRequest,
   AddWypisConfigurationRequest,
   WypisConfigurationResponse,
   GetWypisConfigurationRequest,
@@ -18,13 +19,70 @@ import type {
  * Wypis/Wyrys API endpoints
  *
  * Backend endpoints:
+ * - POST /api/projects/wypis/add/documents - Add DOCX documents to existing config
  * - POST /api/projects/wypis/add/configuration - Add/update configuration
  * - GET /api/projects/wypis/get/configuration - Get configuration(s)
  * - POST /api/projects/wypis/remove - Remove configuration
- * - POST /api/projects/wypis/create - Generate wypis PDF
+ * - POST /api/projects/wypis/precinct_and_number - Get plot from coordinates
+ * - POST /api/projects/wypis/plotspatialdevelopment - Get plot planning zones
+ * - POST /api/projects/wypis/create - Generate wypis PDF/DOCX
  */
 export const wypisApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
+    /**
+     * Add DOCX documents to existing wypis configuration
+     *
+     * Endpoint: POST /api/projects/wypis/add/documents
+     *
+     * Backend expects multipart/form-data with:
+     * - project: string
+     * - config_id: string (optional, default: "mpzp")
+     * - wypis: ZIP file with DOCX documents
+     *
+     * ZIP structure:
+     * wypis.zip
+     * ├── plan_id_1/
+     * │   ├── dokument_formalny.docx
+     * │   ├── ustalenia_ogolne.docx
+     * │   └── przeznaczenie_A.docx
+     * └── plan_id_2/
+     *     └── ...
+     *
+     * Response:
+     * {
+     *   "success": true,
+     *   "message": "",
+     *   "data": ""
+     * }
+     */
+    addWypisDocuments: builder.mutation<
+      { success: boolean; message?: string; data?: string },
+      AddWypisDocumentsRequest
+    >({
+      query: ({ project, config_id, wypis }) => {
+        // Backend expects multipart/form-data
+        const formData = new FormData();
+        formData.append('project', project);
+        if (config_id) {
+          formData.append('config_id', config_id);
+        }
+        // CRITICAL: Backend form field name is 'wypis'
+        formData.append('wypis', wypis, 'wypis.zip');
+
+        return {
+          url: '/api/projects/wypis/add/documents',
+          method: 'POST',
+          body: formData,
+          // Don't set Content-Type header - browser will set it automatically with boundary
+        };
+      },
+      invalidatesTags: (result, error, { project, config_id }) => [
+        { type: 'WypisConfiguration', id: 'LIST' },
+        { type: 'WypisConfiguration', id: project },
+        ...(config_id ? [{ type: 'WypisConfiguration' as const, id: config_id }] : []),
+      ],
+    }),
+
     /**
      * Add or update wypis configuration
      *
@@ -303,6 +361,7 @@ export const wypisApi = baseApi.injectEndpoints({
 
 // Export hooks for use in components
 export const {
+  useAddWypisDocumentsMutation,
   useAddWypisConfigurationMutation,
   useGetWypisConfigurationQuery,
   useRemoveWypisConfigurationMutation,
@@ -311,3 +370,6 @@ export const {
   useCreateWypisMutation,
   useCreateWypisAsPdfMutation, // TEMPORARY: Force PDF download for logged users
 } = wypisApi;
+
+// Alias for consistency (useDeleteXMutation pattern)
+export const useDeleteWypisConfigurationMutation = useRemoveWypisConfigurationMutation;
