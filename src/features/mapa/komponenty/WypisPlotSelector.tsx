@@ -164,6 +164,13 @@ const WypisPlotSelector = () => {
         const precinctColumn = config?.precinctColumn || 'NAZWA_OBRE';
         const plotNumberColumn = config?.plotNumberColumn || 'NUMER_DZIA';
 
+        console.log('🗺️ Wypis: Using configuration', {
+          config_id: selectedConfigId,
+          plotsLayerName,
+          precinctColumn,
+          plotNumberColumn,
+        });
+
         if (!plotsLayerName) {
           dispatch(showError('Brak konfiguracji warstwy działek'));
           return;

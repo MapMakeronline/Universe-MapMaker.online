@@ -161,22 +161,22 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
   const [currentPlotIndex, setCurrentPlotIndex] = useState(0)
   const [plotSelections, setPlotSelections] = useState<Map<string, Set<string>>>(new Map())
 
-  // Auto-select first config when loaded
+  // Auto-select LAST config when loaded (newest configuration)
   useEffect(() => {
     const configs = configurationsData?.data?.config_structure || configurationsData?.data?.configurations || []
     console.log('🗺️ Wypis Dialog: Auto-select effect', {
       hasConfigs: configs.length > 0,
       configsCount: configs.length,
       selectedConfigId,
-      firstConfigId: configs[0]?.id || configs[0]?.config_id,
+      lastConfigId: configs[configs.length - 1]?.id || configs[configs.length - 1]?.config_id,
       willAutoSelect: configs.length > 0 && !selectedConfigId,
     })
 
     if (configs.length > 0 && !selectedConfigId) {
-      // Backend returns {id, name} not {config_id, configuration_name}
-      const firstConfig = configs[0]
-      const configIdToSet = firstConfig.id || firstConfig.config_id
-      console.log('🗺️ Wypis Dialog: Auto-selecting config', configIdToSet)
+      // Select LAST config (newest) instead of first
+      const lastConfig = configs[configs.length - 1]
+      const configIdToSet = lastConfig.id || lastConfig.config_id
+      console.log('🗺️ Wypis Dialog: Auto-selecting LAST config (newest)', configIdToSet)
       dispatch(setSelectedConfigId(configIdToSet))
     }
   }, [configurationsData, selectedConfigId, dispatch])
@@ -627,7 +627,13 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
                   <InputLabel>Wybierz konfigurację</InputLabel>
                   <Select
                     value={selectedConfigId || ''}
-                    onChange={(e) => dispatch(setSelectedConfigId(e.target.value))}
+                    onChange={(e) => {
+                      console.log('🗺️ Wypis Dialog: Config changed', {
+                        oldConfigId: selectedConfigId,
+                        newConfigId: e.target.value,
+                      })
+                      dispatch(setSelectedConfigId(e.target.value))
+                    }}
                     label="Wybierz konfigurację"
                   >
                     {configurations.map(config => (
