@@ -41,10 +41,6 @@ interface WypisGenerateDialogProps {
   open: boolean
   onClose: () => void
   projectName: string
-  availablePlots: Array<{
-    precinct: string
-    number: string
-  }>
 }
 
 /**
@@ -132,7 +128,6 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
   open,
   onClose,
   projectName,
-  availablePlots,
 }) => {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
@@ -164,19 +159,11 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
   // Auto-select first config when loaded
   useEffect(() => {
     const configs = configurationsData?.data?.config_structure || configurationsData?.data?.configurations || []
-    console.log('🗺️ Wypis Dialog: Auto-select effect', {
-      hasConfigs: configs.length > 0,
-      configsCount: configs.length,
-      selectedConfigId,
-      firstConfigId: configs[0]?.id || configs[0]?.config_id,
-      willAutoSelect: configs.length > 0 && !selectedConfigId,
-    })
 
     if (configs.length > 0 && !selectedConfigId) {
       // Backend returns {id, name} not {config_id, configuration_name}
       const firstConfig = configs[0]
       const configIdToSet = firstConfig.id || firstConfig.config_id
-      console.log('🗺️ Wypis Dialog: Auto-selecting config', configIdToSet)
       dispatch(setSelectedConfigId(configIdToSet))
     }
   }, [configurationsData, selectedConfigId, dispatch])
@@ -344,17 +331,7 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
     const plotSelectionsSet = new Set<string>()
 
     // Check if currently all selected
-    const allKeys: string[] = []
-    planLayers.forEach((planLayer, planIdx) => {
-      allKeys.push(`plan-${planIdx}`)
-      planLayer.arrangements?.forEach((_: any, arrIdx: number) => {
-        allKeys.push(`plan-${planIdx}-arr-${arrIdx}`)
-      })
-      planLayer.purposes?.forEach((_: any, purposeIdx: number) => {
-        allKeys.push(`plan-${planIdx}-purpose-${purposeIdx}`)
-      })
-    })
-
+    const allKeys = getAllDestinationKeys(planLayers)
     const allSelected = allKeys.every(key => currentSelections.has(key))
 
     if (!allSelected) {
@@ -365,6 +342,21 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
 
     newSelections.set(currentPlotKey, plotSelectionsSet)
     setPlotSelections(newSelections)
+  }
+
+  // Helper to get all destination keys for a plot
+  const getAllDestinationKeys = (planLayers: WypisPlanLayer[]): string[] => {
+    const allKeys: string[] = []
+    planLayers.forEach((planLayer, planIdx) => {
+      allKeys.push(`plan-${planIdx}`)
+      planLayer.arrangements?.forEach((_: any, arrIdx: number) => {
+        allKeys.push(`plan-${planIdx}-arr-${arrIdx}`)
+      })
+      planLayer.purposes?.forEach((_: any, purposeIdx: number) => {
+        allKeys.push(`plan-${planIdx}-purpose-${purposeIdx}`)
+      })
+    })
+    return allKeys
   }
 
   // Helper to get coverage % from plot_destinations (if exists)
@@ -518,16 +510,7 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
   const currentSelections = plotSelections.get(currentPlotKey) || new Set<string>()
 
   // Check if all destinations are selected (for "Zaznacz wszystkie" button text)
-  const allKeys: string[] = []
-  planLayers.forEach((planLayer, planIdx) => {
-    allKeys.push(`plan-${planIdx}`)
-    planLayer.arrangements?.forEach((_: any, arrIdx: number) => {
-      allKeys.push(`plan-${planIdx}-arr-${arrIdx}`)
-    })
-    planLayer.purposes?.forEach((_: any, purposeIdx: number) => {
-      allKeys.push(`plan-${planIdx}-purpose-${purposeIdx}`)
-    })
-  })
+  const allKeys = getAllDestinationKeys(planLayers)
   const allSelected = allKeys.length > 0 && allKeys.every(key => currentSelections.has(key))
 
   return (

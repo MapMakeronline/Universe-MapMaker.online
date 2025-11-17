@@ -559,6 +559,8 @@ export interface RemoveWypisConfigurationRequest {
 export interface WypisPlot {
   precinct: string;                 // Precinct name (obręb)
   number: string;                   // Plot number
+  key_column_name?: string;         // Database column name for plot number (backend format)
+  key_column_value?: string;        // Plot number value (backend format)
 }
 
 /**

@@ -7,8 +7,7 @@ import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import { selectGenerateModalOpen, selectSelectedConfigId } from '@/redux/slices/wypisSlice';
 import { addPlot } from '@/redux/slices/wypisSlice';
 import { setIdentifyMode } from '@/redux/slices/drawSlice';
-import { useGetWypisConfigurationQuery, useGetPrecinctAndNumberMutation, useGetPlotSpatialDevelopmentMutation } from '@/backend/wypis';
-import { mapLogger } from '@/tools/logger';
+import { useGetWypisConfigurationQuery, useGetPlotSpatialDevelopmentMutation } from '@/backend/wypis';
 import { showError, showSuccess } from '@/redux/slices/notificationSlice';
 import proj4 from 'proj4';
 
@@ -48,7 +47,6 @@ const WypisPlotSelector = () => {
   const selectedConfigId = useAppSelector(selectSelectedConfigId);
 
   // RTK Query mutations
-  const [getPrecinctAndNumber] = useGetPrecinctAndNumberMutation();
   const [getPlotSpatialDevelopment] = useGetPlotSpatialDevelopmentMutation();
 
   // Get wypis configuration to identify parcel layer
@@ -57,80 +55,38 @@ const WypisPlotSelector = () => {
     { skip: !projectName || !selectedConfigId }
   );
 
-  // Debug logging
-  useEffect(() => {
-    if (generateModalOpen) {
-      mapLogger.log('🗺️ Wypis: Modal opened', {
-        generateModalOpen,
-        selectedConfigId,
-        projectName,
-        hasConfigResponse: !!configResponse,
-        isLoadingConfig,
-        configError,
-        configResponseData: configResponse,
-      });
-    }
-  }, [generateModalOpen, selectedConfigId, configResponse, isLoadingConfig, configError, projectName]);
-
   // Disable Identify tool when modal is open, re-enable when closed
   useEffect(() => {
     if (generateModalOpen) {
-      // Dispatch action to disable identify mode
       dispatch(setIdentifyMode(false));
-      mapLogger.log('🗺️ Wypis: Disabled Identify tool for plot selection');
     } else {
-      // Re-enable Identify mode when modal closes
       dispatch(setIdentifyMode(true));
-      mapLogger.log('🗺️ Wypis: Re-enabled Identify tool after modal close');
     }
   }, [generateModalOpen, dispatch]);
 
   useEffect(() => {
     if (!mapRef || !generateModalOpen) {
-      mapLogger.log('🗺️ Wypis: Click handler NOT attached - missing mapRef or modal closed', {
-        hasMapRef: !!mapRef,
-        generateModalOpen,
-      });
       return;
     }
 
     const map = mapRef.getMap();
     if (!map) {
-      mapLogger.log('🗺️ Wypis: Click handler NOT attached - map instance not ready');
       return;
     }
 
     // CRITICAL: Check if we have config data before attaching listener
     if (!selectedConfigId) {
-      mapLogger.log('🗺️ Wypis: Click handler NOT attached - no config selected', {
-        selectedConfigId,
-      });
       return;
     }
 
     if (!configResponse) {
-      mapLogger.log('🗺️ Wypis: Click handler NOT attached - config not loaded yet', {
-        hasConfigResponse: !!configResponse,
-      });
       return;
     }
 
-    mapLogger.log('🗺️ Wypis: Attaching click handler', {
-      hasMap: !!map,
-      generateModalOpen,
-      selectedConfigId,
-      hasConfigResponse: !!configResponse,
-    });
-
     // Change cursor to crosshair when selection mode is active
     map.getCanvas().style.cursor = 'crosshair';
-    mapLogger.log('🗺️ Wypis: Cursor changed to crosshair');
 
     const handleMapClick = async (e: any) => {
-      mapLogger.log('🗺️ Wypis: Plot selection click FIRED!!!', {
-        lngLat: [e.lngLat.lng, e.lngLat.lat],
-      });
-
       try {
         // 1. Check if we have config_id before querying
         if (!selectedConfigId) {
@@ -142,19 +98,6 @@ const WypisPlotSelector = () => {
         // Mapbox returns WGS84 (lng/lat), but backend expects EPSG:3857 (meters)
         const lngLat = [e.lngLat.lng, e.lngLat.lat];
         const [x, y] = proj4('EPSG:4326', 'EPSG:3857', lngLat);
-
-        mapLogger.log('🗺️ Wypis: Transformed coordinates', {
-          wgs84: lngLat,
-          epsg3857: [x, y],
-        });
-
-        // 3. Query backend for precinct and plot number
-        // Endpoint: POST /api/projects/wypis/precinct_and_number
-        mapLogger.log('🗺️ Wypis: Querying backend for precinct and number', {
-          point: [x, y],
-          project: projectName,
-          config_id: selectedConfigId,
-        });
 
         dispatch(showSuccess('Identyfikowanie działki...'));
 
@@ -181,22 +124,14 @@ const WypisPlotSelector = () => {
           `CRS=EPSG:3857&` +
           `BBOX=${bbox}`;
 
-        mapLogger.log('🔄 Wypis: WMS GetFeatureInfo request', { wmsUrl, plotsLayerName });
-
         const wmsResponse = await fetch(wmsUrl);
 
         if (!wmsResponse.ok) {
-          const errorText = await wmsResponse.text();
-          mapLogger.error('❌ Wypis: WMS GetFeatureInfo failed', {
-            status: wmsResponse.status,
-            error: errorText.substring(0, 500)
-          });
           dispatch(showError('Błąd identyfikacji działki. Spróbuj ponownie.'));
           return;
         }
 
         const wmsData = await wmsResponse.json();
-        mapLogger.log('🔄 Wypis: WMS response', { features: wmsData.features?.length || 0 });
 
         if (!wmsData.features || wmsData.features.length === 0) {
           dispatch(showError('Nie znaleziono działki w tym miejscu. Kliknij na działkę.'));
@@ -208,12 +143,9 @@ const WypisPlotSelector = () => {
         const number = feature.properties[plotNumberColumn];
 
         if (!precinct || !number) {
-          mapLogger.error('❌ Wypis: Missing precinct/number in WMS response', feature.properties);
           dispatch(showError('Nie udało się odczytać numeru działki'));
           return;
         }
-
-        mapLogger.log('✅ Wypis: Got precinct and number from WMS', { precinct, number });
 
         // 5. Query spatial development endpoint to get planning zones with coverage %
         // Endpoint: POST /api/projects/wypis/plotspatialdevelopment
@@ -237,7 +169,6 @@ const WypisPlotSelector = () => {
           }).unwrap();
 
           if (!spatialResult.success || !spatialResult.data || spatialResult.data.length === 0) {
-            mapLogger.error('❌ Wypis: Failed to get spatial development', spatialResult);
             dispatch(showError(`Nie znaleziono informacji o przeznaczeniu działki ${precinct}/${number}`));
             return;
           }
@@ -246,7 +177,6 @@ const WypisPlotSelector = () => {
         } catch (spatialError: any) {
           // Handle 401 for guest users - create minimal plot data without spatial development
           if (spatialError?.status === 401) {
-            mapLogger.log('⚠️ Wypis: Guest user - skipping spatial development query', { precinct, number });
 
             // Create minimal plot structure for guests
             plotWithDestinations = {
@@ -269,38 +199,24 @@ const WypisPlotSelector = () => {
         // 6. Add plot with destinations to Redux
         dispatch(addPlot(plotWithDestinations));
 
-        mapLogger.log('✅ Wypis: Added plot to selection', {
-          plot: plotWithDestinations.plot,
-          destinationsCount: plotWithDestinations.plot_destinations?.length || 0,
-        });
-
         if (plotWithDestinations.plot_destinations?.length > 0) {
           dispatch(showSuccess(`Dodano działkę ${precinct}/${number} do wypisu`));
         }
 
       } catch (error: any) {
-        mapLogger.error('❌ Wypis: Error selecting plot', error);
-        mapLogger.error('❌ Wypis: Error details', {
-          status: error?.status,
-          data: error?.data,
-          message: error?.data?.message,
-          fullError: JSON.stringify(error, null, 2),
-        });
         dispatch(showError(error?.data?.message || 'Błąd podczas pobierania informacji o działce'));
       }
     };
 
     // Add click listener
     map.on('click', handleMapClick);
-    mapLogger.log('🗺️ Wypis: Click listener ATTACHED successfully');
 
     // Cleanup
     return () => {
-      mapLogger.log('🗺️ Wypis: Removing click listener');
       map.off('click', handleMapClick);
       map.getCanvas().style.cursor = '';
     };
-  }, [mapRef, generateModalOpen, projectName, dispatch, configResponse, getPrecinctAndNumber, getPlotSpatialDevelopment, selectedConfigId]);
+  }, [mapRef, generateModalOpen, projectName, configResponse, selectedConfigId]);
 
   // This component doesn't render anything - it's just a click handler
   return null;
