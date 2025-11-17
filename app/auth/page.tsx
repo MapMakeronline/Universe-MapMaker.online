@@ -27,7 +27,7 @@ import { useTheme } from '@mui/material/styles';
 import { GoogleLogin } from '@react-oauth/google';
 import { useLoginMutation, useRegisterMutation, useGoogleAuthMutation } from '@/backend/auth';
 import { useAppDispatch } from '@/redux/hooks';
-import { setAuth, setLoading } from '@/redux/slices/authSlice';
+import { setAuth, setLoading, clearAuth } from '@/redux/slices/authSlice';
 import { AuthLayout } from '@/components/auth';
 
 // Force dynamic rendering for this page (uses useSearchParams)
@@ -269,7 +269,11 @@ function AuthPageContent() {
           <Box sx={{ textAlign: 'center', px: 4, py: 2 }}>
             <Button
               variant="text"
-              onClick={() => router.push('/dashboard?tab=1')}
+              onClick={() => {
+                // CRITICAL: Clear auth state before browsing as guest
+                dispatch(clearAuth());
+                router.push('/dashboard?tab=1');
+              }}
               sx={{
                 color: 'text.secondary',
                 textTransform: 'none',
