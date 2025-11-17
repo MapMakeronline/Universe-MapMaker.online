@@ -242,25 +242,15 @@ export const wypisApi = baseApi.injectEndpoints({
     }),
 
     /**
-     * Generate wypis PDF for selected plots
+     * Generate wypis PDF/DOCX for selected plots (WITH authentication)
      *
      * Endpoint: POST /api/projects/wypis/create
      *
-     * Request body:
-     * {
-     *   "project": "project_name",
-     *   "config_id": "configuration_id",
-     *   "plot": [
-     *     {
-     *       "plot": { "precinct": "0001", "number": "123" },
-     *       "plot_destinations": [ ... ]
-     *     }
-     *   ]
-     * }
+     * Backend behavior:
+     * - Authenticated user → DOCX (editable version)
+     * - Guest user → PDF (read-only version)
      *
-     * Response: PDF file (application/pdf)
-     *
-     * Note: This endpoint returns a Blob, not JSON
+     * Response: DOCX or PDF file (Blob)
      */
     createWypis: builder.mutation<Blob, CreateWypisRequest>({
       query: (body) => ({
@@ -270,6 +260,43 @@ export const wypisApi = baseApi.injectEndpoints({
         responseHandler: (response) => response.blob(),
       }),
       // No cache invalidation needed - PDF generation doesn't modify data
+    }),
+
+    /**
+     * TEMPORARY WORKAROUND: Generate wypis as PDF (force guest mode)
+     *
+     * This is a HACK to allow logged users to download PDF instead of DOCX.
+     * Backend auto-selects format based on authentication, so we bypass
+     * the token by calling fetch() directly instead of baseApi.
+     *
+     * TODO: Remove this when backend accepts 'format' parameter!
+     */
+    createWypisAsPdf: builder.mutation<Blob, CreateWypisRequest>({
+      queryFn: async (body) => {
+        try {
+          // HACK: Call API directly WITHOUT Authorization header
+          // This makes backend think we're a guest → returns PDF
+          const response = await fetch('https://api.universemapmaker.online/api/projects/wypis/create', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              // NO Authorization header - fake guest mode
+            },
+            body: JSON.stringify(body),
+          })
+
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}))
+            return { error: { status: response.status, data: errorData } }
+          }
+
+          const blob = await response.blob()
+          return { data: blob }
+        } catch (error: any) {
+          return { error: { status: 'FETCH_ERROR', data: error.message } }
+        }
+      },
+      // No cache invalidation needed
     }),
   }),
 });
@@ -282,4 +309,5 @@ export const {
   useGetPrecinctAndNumberMutation,
   useGetPlotSpatialDevelopmentMutation,
   useCreateWypisMutation,
+  useCreateWypisAsPdfMutation, // TEMPORARY: Force PDF download for logged users
 } = wypisApi;

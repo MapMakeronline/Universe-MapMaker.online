@@ -29,7 +29,7 @@ import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf'
 import ArticleIcon from '@mui/icons-material/Article'
 
-import { useGetWypisConfigurationQuery, useCreateWypisMutation } from '@/backend/wypis'
+import { useGetWypisConfigurationQuery, useCreateWypisMutation, useCreateWypisAsPdfMutation } from '@/backend/wypis'
 import type { WypisPlot, WypisPlotWithDestinations, WypisPlanLayer } from '@/backend/types'
 import { useAppDispatch, useAppSelector } from '@/redux/hooks'
 import { showSuccess, showError } from '@/redux/slices/notificationSlice'
@@ -159,6 +159,7 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
   )
 
   const [createWypis, { isLoading: isGenerating }] = useCreateWypisMutation()
+  const [createWypisAsPdf, { isLoading: isGeneratingPdf }] = useCreateWypisAsPdfMutation() // TEMPORARY: Force PDF
 
   // Multi-step state
   const [currentStep, setCurrentStep] = useState<1 | 2>(1)
@@ -503,7 +504,19 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
       // Log full payload for debugging
       console.log('🔥 Full request payload:', JSON.stringify(requestPayload, null, 2))
 
-      const fileBlob = await createWypis(requestPayload).unwrap()
+      // TEMPORARY WORKAROUND: Use different endpoint based on selected format
+      // - PDF: Use createWypisAsPdf (no auth header) to force PDF for logged users
+      // - DOCX: Use createWypis (with auth) to get editable version
+      // TODO: Remove when backend accepts 'format' parameter!
+      let fileBlob: Blob
+      if (isAuthenticated && fileFormat === 'pdf') {
+        // HACK: Logged user wants PDF → call without auth to fake guest mode
+        console.log('🔧 WORKAROUND: Using createWypisAsPdf (no auth) to force PDF')
+        fileBlob = await createWypisAsPdf(requestPayload).unwrap()
+      } else {
+        // Normal flow: DOCX for logged users, PDF for guests
+        fileBlob = await createWypis(requestPayload).unwrap()
+      }
 
       // Detect file type from Blob MIME type
       const isPDF = fileBlob.type === 'application/pdf'
@@ -1033,8 +1046,8 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
             <Button
               onClick={handleNext}
               variant="contained"
-              disabled={isGenerating || !selectedConfigId || selectedPlots.length === 0 || configurations.length === 0}
-              startIcon={isGenerating ? <CircularProgress size={20} /> : <DescriptionIcon />}
+              disabled={isGenerating || isGeneratingPdf || !selectedConfigId || selectedPlots.length === 0 || configurations.length === 0}
+              startIcon={isGenerating || isGeneratingPdf ? <CircularProgress size={20} /> : <DescriptionIcon />}
               sx={{
                 bgcolor: '#27ae60',
                 '&:hover': {
@@ -1042,7 +1055,7 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
                 },
               }}
             >
-              {isGenerating ? 'Generowanie...' : 'Dalej'}
+              {isGenerating || isGeneratingPdf ? 'Generowanie...' : 'Dalej'}
             </Button>
           </>
         )}
@@ -1056,8 +1069,8 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
             <Button
               onClick={handleGenerateWypis}
               variant="contained"
-              disabled={isGenerating || isLoadingConfigDetails}
-              startIcon={isGenerating ? <CircularProgress size={20} /> : <DescriptionIcon />}
+              disabled={isGenerating || isGeneratingPdf || isLoadingConfigDetails}
+              startIcon={isGenerating || isGeneratingPdf ? <CircularProgress size={20} /> : <DescriptionIcon />}
               sx={{
                 bgcolor: '#27ae60',
                 '&:hover': {
@@ -1065,7 +1078,7 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
                 },
               }}
             >
-              {isGenerating ? 'Generowanie...' : 'Generuj'}
+              {isGenerating || isGeneratingPdf ? 'Generowanie...' : 'Generuj'}
             </Button>
           </>
         )}
