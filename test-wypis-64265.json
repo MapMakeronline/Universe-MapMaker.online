@@ -1,0 +1,27 @@
+{
+  "project": "Miedzno",
+  "config_id": "config_64265",
+  "plot": [
+    {
+      "plot": {
+        "key_column_name": "NUMER_DZIA",
+        "key_column_value": "949",
+        "precinct": "6",
+        "number": "949"
+      },
+      "plot_destinations": [
+        {
+          "plan_name": "StrefaPlanistyczna",
+          "plan_id": "StrefaPlanistyczna_4626fc83_2285_480e_8271_fd4dc9cc9401",
+          "covering": "100.0%",
+          "includes": true,
+          "destinations": [
+            {"name": "ogólne", "covering": "", "includes": true},
+            {"name": "SO", "covering": "100.0%", "includes": true},
+            {"name": "końcowe", "covering": "", "includes": true}
+          ]
+        }
+      ]
+    }
+  ]
+}

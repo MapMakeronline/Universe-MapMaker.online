@@ -18,6 +18,11 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import ErrorIcon from '@mui/icons-material/Error'
 import WarningIcon from '@mui/icons-material/Warning'
 import FolderOpenIcon from '@mui/icons-material/FolderOpen'
+import JSZip from 'jszip'
+
+import { useAddWypisDocumentsMutation } from '@/backend/wypis'
+import { useAppDispatch } from '@/redux/hooks'
+import { showSuccess, showError } from '@/redux/slices/notificationSlice'
 
 interface FileMapping {
   destinationType: 'arrangement' | 'purpose'
@@ -67,6 +72,9 @@ const WypisBulkUploadModal: React.FC<WypisBulkUploadModalProps> = ({
   const [isUploading, setIsUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
+
+  const dispatch = useAppDispatch()
+  const [addWypisDocuments] = useAddWypisDocumentsMutation()
 
   // Build list of all destinations (arrangements + purposes) from configuration
   const allDestinations = planLayers.flatMap((planLayer, planIdx) => {
@@ -164,61 +172,117 @@ const WypisBulkUploadModal: React.FC<WypisBulkUploadModalProps> = ({
     setFileMappings(newMappings)
   }
 
-  // Upload all mapped files
+  /**
+   * Upload all mapped files
+   *
+   * Backend expects ZIP archive with structure:
+   * wypis.zip
+   * ├── plan_id_1/
+   * │   ├── arrangement1.docx
+   * │   ├── purpose1.docx
+   * └── plan_id_2/
+   *     └── ...
+   *
+   * Plan layer ID = plan layer's ID from config
+   * File name = destinationName + ".docx"
+   */
   const handleUploadAll = async () => {
     setIsUploading(true)
-    setUploadProgress(0)
+    setUploadProgress(10)
 
-    const mappingsWithFiles = fileMappings.filter(m => m.file !== null)
-    let uploadedCount = 0
+    try {
+      const mappingsWithFiles = fileMappings.filter(m => m.file !== null)
 
-    for (let i = 0; i < mappingsWithFiles.length; i++) {
-      const mapping = mappingsWithFiles[i]
+      if (mappingsWithFiles.length === 0) {
+        dispatch(showError({ message: 'Nie wybrano żadnych plików do uploadu' }))
+        setIsUploading(false)
+        return
+      }
 
-      try {
-        // TODO: Replace with actual RTK Query mutation
-        // await uploadWypisFile({
-        //   project: projectName,
-        //   config_id: configId,
-        //   plan_layer_index: mapping.planLayerIndex,
-        //   destination_type: mapping.destinationType,
-        //   destination_index: mapping.destinationIndex,
-        //   file: mapping.file,
-        // }).unwrap()
+      // Step 1: Create ZIP archive with JSZip
+      setUploadProgress(20)
+      const zip = new JSZip()
 
-        // Simulate upload delay
-        await new Promise(resolve => setTimeout(resolve, 500))
+      // Group files by plan layer ID
+      const filesByPlanLayer = new Map<string, FileMapping[]>()
 
-        // Mark as uploaded
-        const newMappings = [...fileMappings]
-        const originalIndex = fileMappings.findIndex(
-          m => m.destinationName === mapping.destinationName &&
-               m.planLayerIndex === mapping.planLayerIndex
-        )
-        if (originalIndex !== -1) {
-          newMappings[originalIndex].uploaded = true
-          newMappings[originalIndex].error = null
-          setFileMappings(newMappings)
+      mappingsWithFiles.forEach(mapping => {
+        const planLayer = planLayers[mapping.planLayerIndex]
+        if (!planLayer) return
+
+        const planLayerId = planLayer.id
+
+        if (!filesByPlanLayer.has(planLayerId)) {
+          filesByPlanLayer.set(planLayerId, [])
+        }
+        filesByPlanLayer.get(planLayerId)!.push(mapping)
+      })
+
+      // Add files to ZIP grouped by plan_id folders
+      for (const [planLayerId, mappings] of filesByPlanLayer.entries()) {
+        const folder = zip.folder(planLayerId)
+
+        if (!folder) {
+          throw new Error(`Failed to create folder for plan layer ${planLayerId}`)
         }
 
-        uploadedCount++
-        setUploadProgress((uploadedCount / mappingsWithFiles.length) * 100)
-      } catch (error: any) {
-        // Mark error
-        const newMappings = [...fileMappings]
-        const originalIndex = fileMappings.findIndex(
-          m => m.destinationName === mapping.destinationName &&
-               m.planLayerIndex === mapping.planLayerIndex
-        )
-        if (originalIndex !== -1) {
-          newMappings[originalIndex].error = error?.data?.message || 'Upload failed'
-          setFileMappings(newMappings)
+        for (const mapping of mappings) {
+          if (!mapping.file) continue
+
+          // File name = destinationName + ".docx"
+          const fileName = `${mapping.destinationName}.docx`
+          folder.file(fileName, mapping.file)
         }
       }
-    }
 
-    setIsUploading(false)
-    onUploadComplete()
+      setUploadProgress(50)
+
+      // Step 2: Generate ZIP blob
+      const zipBlob = await zip.generateAsync({
+        type: 'blob',
+        compression: 'DEFLATE',
+        compressionOptions: { level: 6 },
+      })
+
+      setUploadProgress(70)
+
+      // Step 3: Upload ZIP to backend
+      await addWypisDocuments({
+        project: projectName,
+        config_id: configId,
+        wypis: zipBlob,
+      }).unwrap()
+
+      setUploadProgress(100)
+
+      // Step 4: Mark all files as uploaded
+      const newMappings = fileMappings.map(mapping => {
+        if (mapping.file) {
+          return { ...mapping, uploaded: true, error: null }
+        }
+        return mapping
+      })
+      setFileMappings(newMappings)
+
+      dispatch(showSuccess({ message: `Przesłano ${mappingsWithFiles.length} plików DOCX` }))
+      onUploadComplete()
+    } catch (error: any) {
+      console.error('Upload error:', error)
+      dispatch(showError({
+        message: error?.data?.message || 'Błąd podczas uploadu plików DOCX'
+      }))
+
+      // Mark all files as failed
+      const newMappings = fileMappings.map(mapping => {
+        if (mapping.file && !mapping.uploaded) {
+          return { ...mapping, error: 'Upload failed' }
+        }
+        return mapping
+      })
+      setFileMappings(newMappings)
+    } finally {
+      setIsUploading(false)
+    }
   }
 
   // Reset state on close

@@ -61,7 +61,10 @@
       "Bash(timeout 120 sleep:*)",
       "Bash(timeout 30 bash -c 'until gcloud compute ssh universe-backend --zone=europe-central2-a -- \"\"echo connected\"\" 2>/dev/null; do sleep 1; done')",
       "Bash(timeout 60 bash -c 'while true; do gcloud compute ssh universe-backend --zone=europe-central2-a -- \"\"sudo docker ps -a | grep qgis\"\" 2>&1 && break || sleep 2; done')",
-      "Bash(timeout 3 powershell:*)"
+      "Bash(timeout 3 powershell:*)",
+      "Bash(npx tsc --noEmit)",
+      "Bash(npx tsc:*)",
+      "Bash(timeout 30 powershell:*)"
     ],
     "deny": [],
     "ask": []
