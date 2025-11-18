@@ -67,22 +67,21 @@ const Step2PlanLayers: React.FC<Step2PlanLayersProps> = ({
   // Cache for layer attributes (to avoid multiple RTK Query calls)
   const [attributesCache, setAttributesCache] = useState<Record<string, string[]>>({})
 
-  // Fetch attributes for ALL enabled plan layers
-  const enabledLayers = planLayers.filter(l => l.enabled)
-
-  // Use RTK Query hooks for each enabled layer (conditional rendering)
-  const attributeQueries = enabledLayers.map(layer =>
+  // Fetch attributes for ALL plan layers (skip disabled ones)
+  // IMPORTANT: We MUST call hooks unconditionally (Rules of Hooks)
+  // So we query all layers, but skip disabled ones
+  const attributeQueries = planLayers.map(layer =>
     // eslint-disable-next-line react-hooks/rules-of-hooks
     useGetLayerAttributesQuery(
       { project: projectName, layer_id: layer.id },
-      { skip: !layer.id || !projectName }
+      { skip: !layer.id || !projectName || !layer.enabled }  // Skip if disabled
     )
   )
 
   // Update cache when attributes are loaded
   useEffect(() => {
     attributeQueries.forEach((query, idx) => {
-      const layer = enabledLayers[idx]
+      const layer = planLayers[idx]  // Use planLayers, not enabledLayers
       if (query.data?.data?.feature_names && !attributesCache[layer.id]) {
         setAttributesCache(prev => ({
           ...prev,
@@ -90,7 +89,10 @@ const Step2PlanLayers: React.FC<Step2PlanLayersProps> = ({
         }))
       }
     })
-  }, [attributeQueries, enabledLayers, attributesCache])
+  }, [attributeQueries, planLayers, attributesCache])
+
+  // Filter enabled layers (for stats display only)
+  const enabledLayers = planLayers.filter(l => l.enabled)
 
   // Handle layer configuration change
   const handleLayerChange = (layerId: string, updates: Partial<PlanLayerConfig>) => {
