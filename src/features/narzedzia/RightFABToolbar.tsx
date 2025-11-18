@@ -23,6 +23,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import ArchitectureIcon from '@mui/icons-material/Architecture';
 import StraightenIcon from '@mui/icons-material/Straighten';
 import SearchIcon from '@mui/icons-material/Search';
+import RouteIcon from '@mui/icons-material/Route';
 
 // White Icons (Always visible)
 import InfoIcon from '@mui/icons-material/Info';
@@ -48,6 +49,7 @@ import { useGetWypisConfigurationQuery } from "@/backend/wypis"
 import SearchModal from "@/features/mapa/interakcje/SearchModal"
 import MeasurementModal from "@/features/layers/modals/MeasurementModal"
 import ExportPDFModal, { type ExportConfig } from "@/features/layers/modals/ExportPDFModal"
+import { TrailsModal } from "@/features/trails"
 
 const FAB_SIZE = 56; // Standard FAB size
 const FAB_SIZE_MOBILE = 44; // Smaller on mobile (was 48, now 44)
@@ -105,6 +107,7 @@ const RightFABToolbar: React.FC<RightFABToolbarProps> = ({ mapRef, projectName }
   const [searchModalOpen, setSearchModalOpen] = useState(false)
   const [measurementModalOpen, setMeasurementModalOpen] = useState(false)
   const [pdfModalOpen, setPdfModalOpen] = useState(false)
+  const [trailsModalOpen, setTrailsModalOpen] = useState(false)
 
   // Haptic feedback for mobile
   const triggerHapticFeedback = () => {
@@ -257,6 +260,17 @@ const RightFABToolbar: React.FC<RightFABToolbarProps> = ({ mapRef, projectName }
       onClick: () => setSearchModalOpen(true),
       color: 'primary',
       // authRequired: false - Visible for guests
+    },
+    {
+      id: "trails",
+      icon: RouteIcon,
+      tooltip: "Trasy turystyczne",
+      onClick: () => {
+        triggerHapticFeedback();
+        setTrailsModalOpen(true);
+      },
+      color: 'primary',
+      // authRequired: false - Visible for guests (can import their own trails)
     },
 
     // WHITE ICONS (Default Color)
@@ -622,6 +636,14 @@ const RightFABToolbar: React.FC<RightFABToolbarProps> = ({ mapRef, projectName }
         open={pdfModalOpen}
         onClose={() => setPdfModalOpen(false)}
         onExport={handleExportPDF}
+      />
+
+      {/* Trails Modal */}
+      <TrailsModal
+        open={trailsModalOpen}
+        onClose={() => setTrailsModalOpen(false)}
+        mapRef={mapRef}
+        projectName={projectName}
       />
     </>
   )
