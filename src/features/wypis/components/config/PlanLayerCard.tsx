@@ -154,9 +154,9 @@ const PlanLayerCard: React.FC<PlanLayerCardProps> = ({
         </Typography>
 
         {/* Configured badge */}
-        {layer.purposeColumn && (layer.purposes.length > 0 || (layer.arrangements && layer.arrangements.length > 0)) && (
+        {layer.purposeColumn && (layer.purposes.length > 0 || (layer.arrangements?.length ?? 0) > 0) && (
           <Chip
-            label={`✓ Skonfigurowano (${layer.purposes.length} przeznaczeo${layer.arrangements && layer.arrangements.length > 0 ? ` + ${layer.arrangements.length} ustaleń` : ''})`}
+            label={`✓ Skonfigurowano (${layer.purposes.length} przeznaczeo${(layer.arrangements?.length ?? 0) > 0 ? ` + ${layer.arrangements.length} ustaleń` : ''})`}
             size="small"
             color="success"
           />
@@ -261,9 +261,9 @@ const PlanLayerCard: React.FC<PlanLayerCardProps> = ({
             </Box>
 
             {/* List of arrangements */}
-            {layer.arrangements && layer.arrangements.length > 0 && (
+            {(layer.arrangements?.length ?? 0) > 0 && (
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                {layer.arrangements.map((arrangement, idx) => (
+                {layer.arrangements!.map((arrangement, idx) => (
                   <Box
                     key={idx}
                     sx={{
@@ -293,7 +293,7 @@ const PlanLayerCard: React.FC<PlanLayerCardProps> = ({
               </Box>
             )}
 
-            {layer.arrangements && layer.arrangements.length === 0 && (
+            {(layer.arrangements?.length ?? 0) === 0 && (
               <Typography variant="caption" color="text.secondary">
                 Brak dodanych ustaleń. Dodaj "Postanowienia ogólne" i "Postanowienia końcowe" jeśli są wymagane.
               </Typography>
