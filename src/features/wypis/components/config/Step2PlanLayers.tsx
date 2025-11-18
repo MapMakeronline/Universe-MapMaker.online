@@ -103,6 +103,18 @@ const Step2PlanLayers: React.FC<Step2PlanLayersProps> = ({
   const totalLayers = planLayers.length
   const configuredCount = planLayers.filter(l => l.purposeColumn).length
 
+  // DEBUG: Log plan layers state
+  console.log('📊 Step2PlanLayers - Stats:', {
+    totalLayers,
+    configuredCount,
+    planLayersCount: planLayers.length,
+  })
+  planLayers.forEach((layer, idx) => {
+    console.log(`  Layer ${idx + 1}: ${layer.name}`)
+    console.log(`    purposeColumn: "${layer.purposeColumn}"`)
+    console.log(`    purposes: ${layer.purposes?.length || 0}`, layer.purposes)
+  })
+
   return (
     <Box sx={{ py: 2 }}>
       {/* Header */}

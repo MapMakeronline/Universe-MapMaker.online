@@ -120,6 +120,14 @@ const Step3Documents: React.FC<Step3DocumentsProps> = ({
       purposes: layer.purposes,
     }))
 
+  // DEBUG: Log transformed plan layers
+  console.log('🔧 Step3Documents - bulkUploadPlanLayers:', bulkUploadPlanLayers)
+  bulkUploadPlanLayers.forEach((layer, idx) => {
+    console.log(`  Layer ${idx + 1}: ${layer.name}`)
+    console.log(`    Purposes: ${layer.purposes?.length || 0}`, layer.purposes)
+    console.log(`    Arrangements: ${layer.arrangements?.length || 0}`, layer.arrangements)
+  })
+
   return (
     <Box sx={{ py: 2 }}>
       {/* Header */}

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import Dialog from '@mui/material/Dialog'
 import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
@@ -96,6 +96,15 @@ const WypisBulkUploadModal: React.FC<WypisBulkUploadModalProps> = ({
 
     return [...arrangements, ...purposes]
   })
+
+  // DEBUG: Log destinations count
+  useEffect(() => {
+    console.log('📋 WypisBulkUploadModal - allDestinations:', allDestinations.length)
+    console.log('📋 planLayers:', planLayers)
+    allDestinations.forEach((dest, idx) => {
+      console.log(`  ${idx + 1}. ${dest.destinationName} (${dest.destinationType})`)
+    })
+  }, [allDestinations, planLayers])
 
   // Auto-match files to destinations based on filename
   const autoMatchFiles = useCallback((files: File[]) => {

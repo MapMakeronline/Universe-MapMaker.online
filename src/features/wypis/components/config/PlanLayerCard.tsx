@@ -74,9 +74,9 @@ const PlanLayerCard: React.FC<PlanLayerCardProps> = ({
 
   // Update purposes when column values are loaded
   useEffect(() => {
-    if (columnValuesData?.data?.unique_values && layer.purposes.length === 0) {
-      const uniqueValues = columnValuesData.data.unique_values
-      console.log(`✅ Loaded ${uniqueValues.length} unique purposes for layer ${layer.name}`)
+    if (columnValuesData?.data && layer.purposes.length === 0) {
+      const uniqueValues = columnValuesData.data  // Backend returns { data: [...] }
+      console.log(`✅ Loaded ${uniqueValues.length} unique purposes for layer ${layer.name}`, uniqueValues)
 
       const purposes: PurposeConfig[] = uniqueValues.map(value => ({
         name: String(value).trim(),
