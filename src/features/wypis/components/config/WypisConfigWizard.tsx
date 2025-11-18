@@ -27,6 +27,8 @@ import Stepper from '@mui/material/Stepper'
 import Step from '@mui/material/Step'
 import StepLabel from '@mui/material/StepLabel'
 import CircularProgress from '@mui/material/CircularProgress'
+import Alert from '@mui/material/Alert'
+import AlertTitle from '@mui/material/AlertTitle'
 import CloseIcon from '@mui/icons-material/Close'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
@@ -90,10 +92,23 @@ const WypisConfigWizard: React.FC<WypisConfigWizardProps> = ({
   })
 
   // Fetch existing configuration (if editing)
-  const { data: existingConfigData, isLoading: isLoadingConfig } = useGetWypisConfigurationQuery(
+  const { data: existingConfigData, isLoading: isLoadingConfig, error: configLoadError } = useGetWypisConfigurationQuery(
     { project: projectName, config_id: configId || '' },
     { skip: !configId || !open }
   )
+
+  // Log error details for debugging
+  useEffect(() => {
+    if (configLoadError) {
+      console.error('❌ Error loading wypis configuration:', {
+        project: projectName,
+        config_id: configId,
+        error: configLoadError,
+        errorData: 'data' in configLoadError ? configLoadError.data : null,
+        errorStatus: 'status' in configLoadError ? configLoadError.status : null,
+      })
+    }
+  }, [configLoadError, projectName, configId])
 
   // Load existing configuration into state (if editing)
   useEffect(() => {
@@ -275,6 +290,36 @@ const WypisConfigWizard: React.FC<WypisConfigWizardProps> = ({
             <Typography variant="body2" color="text.secondary" sx={{ ml: 2 }}>
               Wczytuję konfigurację...
             </Typography>
+          </Box>
+        )}
+
+        {/* Error state when loading config fails */}
+        {configLoadError && configId && !isLoadingConfig && (
+          <Box sx={{ py: 4 }}>
+            <Alert severity="error" sx={{ mb: 2 }}>
+              <AlertTitle>Błąd wczytywania konfiguracji</AlertTitle>
+              Nie udało się wczytać konfiguracji <strong>{configId}</strong> dla projektu <strong>{projectName}</strong>.
+              <br />
+              <br />
+              <Typography variant="caption" component="div">
+                Szczegóły błędu (dla developera):
+                <br />
+                Status: {'status' in configLoadError ? configLoadError.status : 'unknown'}
+                <br />
+                {('data' in configLoadError && configLoadError.data) ? (
+                  <>
+                    Wiadomość: {JSON.stringify(configLoadError.data)}
+                  </>
+                ) : null}
+              </Typography>
+            </Alert>
+            <Button
+              variant="contained"
+              onClick={handleClose}
+              fullWidth
+            >
+              Zamknij
+            </Button>
           </Box>
         )}
 
