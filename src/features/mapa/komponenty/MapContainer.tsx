@@ -17,6 +17,8 @@ import RightFABToolbar from '@/features/narzedzia/RightFABToolbar';
 import ZoomToSelectedControl from './ZoomToSelectedControl';
 import WypisPlotSelector from './WypisPlotSelector';
 import WypisPlotHighlighter from './WypisPlotHighlighter';
+import { TrailLayer } from '@/features/trails/components/TrailLayer';
+import { selectActiveTrail } from '@/redux/slices/trailsSlice';
 
 // Import CSS dla Mapbox GL
 import 'mapbox-gl/dist/mapbox-gl.css';
@@ -33,6 +35,7 @@ const MapContainer: React.FC<MapContainerProps> = ({ children, projectName, onMa
   const [tokenError, setTokenError] = useState<string>('');
 
   const { viewState, mapStyle, isFullscreen, isMapLoaded } = useAppSelector((state) => state.map);
+  const activeTrail = useAppSelector(selectActiveTrail);
 
   // Check token on mount
   useEffect(() => {
@@ -264,6 +267,17 @@ const MapContainer: React.FC<MapContainerProps> = ({ children, projectName, onMa
 
         {/* Wypis Plot Highlighter - Highlights selected plots on the map with yellow outline */}
         <WypisPlotHighlighter />
+
+        {/* Trail Layer - Renders imported trail on map (FAZA 2) */}
+        {activeTrail && (
+          <TrailLayer
+            trail={activeTrail.feature}
+            mapRef={mapRef}
+            color={activeTrail.feature.properties.color || '#FF5722'}
+            width={4}
+            fitBounds={true}
+          />
+        )}
 
         {/* Dodatkowe komponenty (Markers, Popup) */}
         {children}

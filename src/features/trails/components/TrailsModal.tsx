@@ -17,6 +17,10 @@ import UploadFileIcon from '@mui/icons-material/UploadFile';
 import DrawIcon from '@mui/icons-material/Draw';
 import CloseIcon from '@mui/icons-material/Close';
 import { MapRef } from 'react-map-gl';
+import { useFileImport, validateTrailFile } from '../hooks/useFileImport';
+import { useAppDispatch } from '@/redux/hooks';
+import { setActiveTrail } from '@/redux/slices/trailsSlice';
+import type { Trail } from '../types';
 
 interface TrailsModalProps {
   open: boolean;
@@ -32,8 +36,8 @@ const TrailsModal: React.FC<TrailsModalProps> = ({
   projectName,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
+  const dispatch = useAppDispatch();
+  const { importFile, isLoading, error, result } = useFileImport();
 
   const handleImportClick = () => {
     fileInputRef.current?.click();
@@ -43,25 +47,60 @@ const TrailsModal: React.FC<TrailsModalProps> = ({
     const file = event.target.files?.[0];
     if (!file) return;
 
-    setIsUploading(true);
-    setUploadError(null);
+    // Validate file before import
+    const validationError = validateTrailFile(file);
+    if (validationError) {
+      alert(`❌ ${validationError}`);
+      return;
+    }
 
     try {
-      // TODO (FAZA 2): Parse KML/GeoJSON file
-      console.log('📁 Importing file:', file.name);
-      console.log('📍 File type:', file.type);
-      console.log('📏 File size:', file.size, 'bytes');
+      // Import file using hook
+      const parsed = await importFile(file);
 
-      // Symulacja uploadu (do usunięcia w FAZIE 2)
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      if (!parsed) {
+        // Error already handled by hook
+        return;
+      }
 
-      alert(`✅ Plik "${file.name}" został załadowany!\n\n⏳ Przetwarzanie pliku zostanie dodane w FAZIE 2.`);
+      if (parsed.errors.length > 0) {
+        alert(`❌ Błąd importu:\n\n${parsed.errors.join('\n')}`);
+        return;
+      }
+
+      if (parsed.trails.length === 0) {
+        alert('❌ Nie znaleziono żadnych tras w pliku');
+        return;
+      }
+
+      // Create Trail object
+      const trail: Trail = {
+        id: Date.now().toString(),
+        feature: parsed.trails[0], // First trail
+        metadata: {
+          createdAt: new Date(),
+          source: 'upload',
+          fileName: file.name,
+          fileType: file.name.split('.').pop() as 'kml' | 'geojson',
+        },
+      };
+
+      // Save to Redux (and localStorage via middleware)
+      dispatch(setActiveTrail(trail));
+
+      // Show success message with warnings
+      const warnings = parsed.warnings.length > 0
+        ? `\n\n⚠️ Ostrzeżenia:\n${parsed.warnings.join('\n')}`
+        : '';
+
+      alert(`✅ Trasa "${trail.feature.properties.name}" została załadowana!\n\n📏 Długość: ${(trail.feature.properties.distance! / 1000).toFixed(2)} km\n⏱️ Czas: ${trail.feature.properties.duration} min${warnings}`);
+
+      // Close modal
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ File import error:', error);
-      setUploadError('Nie udało się wczytać pliku. Sprawdź format (KML/GeoJSON).');
+      alert(`❌ Błąd podczas importu pliku:\n\n${error.message}`);
     } finally {
-      setIsUploading(false);
       // Reset input value
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
@@ -115,14 +154,14 @@ const TrailsModal: React.FC<TrailsModalProps> = ({
               borderColor: 'primary.main',
               borderRadius: 2,
               p: 3,
-              cursor: isUploading ? 'wait' : 'pointer',
+              cursor: isLoading ? 'wait' : 'pointer',
               transition: 'all 0.2s',
               '&:hover': {
                 bgcolor: 'action.hover',
                 transform: 'scale(1.02)',
               },
             }}
-            onClick={!isUploading ? handleImportClick : undefined}
+            onClick={!isLoading ? handleImportClick : undefined}
           >
             <Stack spacing={2} alignItems="center">
               <UploadFileIcon sx={{ fontSize: 48, color: 'primary.main' }} />
@@ -134,11 +173,11 @@ const TrailsModal: React.FC<TrailsModalProps> = ({
               </Typography>
               <Button
                 variant="contained"
-                startIcon={isUploading ? <CircularProgress size={20} color="inherit" /> : <UploadFileIcon />}
-                disabled={isUploading}
+                startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : <UploadFileIcon />}
+                disabled={isLoading}
                 onClick={handleImportClick}
               >
-                {isUploading ? 'Wczytywanie...' : 'Wybierz plik'}
+                {isLoading ? 'Wczytywanie...' : 'Wybierz plik'}
               </Button>
               <Typography variant="caption" color="text.disabled">
                 Obsługiwane formaty: .kml, .geojson, .json
@@ -203,9 +242,9 @@ const TrailsModal: React.FC<TrailsModalProps> = ({
           </Box>
 
           {/* Error message */}
-          {uploadError && (
-            <Alert severity="error" onClose={() => setUploadError(null)}>
-              {uploadError}
+          {error && (
+            <Alert severity="error">
+              {error}
             </Alert>
           )}
         </Stack>
