@@ -272,10 +272,19 @@ export function useWypisConfig(
 
       const allErrors = [...step1Errors, ...step2Errors, ...step3Errors]
 
+      console.log('💾 Validation results:', {
+        step1Errors,
+        step2Errors,
+        step3Errors,
+        allErrors,
+        config,
+      })
+
       if (allErrors.length > 0) {
         const errorMessage = `Błędy walidacji:\n${allErrors.join('\n')}`
+        console.error('❌ Validation failed:', errorMessage)
         setCustomError(errorMessage)
-        dispatch(showError(errorMessage))
+        dispatch(showError({ message: errorMessage }))
         return { success: false, config_id: '', message: errorMessage }
       }
 
