@@ -123,7 +123,7 @@ const PlanLayerCard: React.FC<PlanLayerCardProps> = ({
 
   // Handle removing arrangement
   const handleRemoveArrangement = (index: number) => {
-    const updatedArrangements = layer.arrangements.filter((_, idx) => idx !== index)
+    const updatedArrangements = (layer.arrangements || []).filter((_, idx) => idx !== index)
     onChange({ arrangements: updatedArrangements })
   }
 
