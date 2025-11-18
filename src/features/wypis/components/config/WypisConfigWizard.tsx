@@ -135,8 +135,8 @@ const WypisConfigWizard: React.FC<WypisConfigWizardProps> = ({
           purposeColumn: '',
           purposes: [],
           arrangements: [],
-          enabled: false,
-          position: null,
+          enabled: true, // Always enabled (no checkbox)
+          position: null, // Not used (no position field)
           expanded: false,
         }))
 

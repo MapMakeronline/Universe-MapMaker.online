@@ -77,22 +77,12 @@ export function useWypisConfig(
   const validateStep2 = (config: WypisConfigState): string[] => {
     const errors: string[] = []
 
-    const enabledLayers = config.planLayers.filter(l => l.enabled)
+    // Filter layers with purposeColumn configured
+    const configuredLayers = config.planLayers.filter(l => l.purposeColumn && l.purposes.length > 0)
 
-    if (enabledLayers.length === 0) {
+    if (configuredLayers.length === 0) {
       errors.push('Wybierz przynajmniej jedną warstwę planistyczną')
     }
-
-    enabledLayers.forEach((layer, idx) => {
-      if (!layer.purposeColumn) {
-        errors.push(`Warstwa "${layer.name}": wybierz kolumnę z symbolami przeznaczenia`)
-      }
-
-      // Check if purposes are loaded (should be auto-loaded from column values)
-      if (layer.purposes.length === 0 && layer.purposeColumn) {
-        errors.push(`Warstwa "${layer.name}": brak wartości w kolumnie "${layer.purposeColumn}"`)
-      }
-    })
 
     return errors
   }

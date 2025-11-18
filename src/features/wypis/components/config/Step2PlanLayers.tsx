@@ -91,9 +91,6 @@ const Step2PlanLayers: React.FC<Step2PlanLayersProps> = ({
     })
   }, [attributeQueries, planLayers, attributesCache])
 
-  // Filter enabled layers (for stats display only)
-  const enabledLayers = planLayers.filter(l => l.enabled)
-
   // Handle layer configuration change
   const handleLayerChange = (layerId: string, updates: Partial<PlanLayerConfig>) => {
     const updatedLayers = planLayers.map(layer =>
@@ -102,38 +99,9 @@ const Step2PlanLayers: React.FC<Step2PlanLayersProps> = ({
     onChange(updatedLayers)
   }
 
-  // Auto-assign positions when layer is enabled
-  const handleLayerToggle = (layerId: string, enabled: boolean) => {
-    const updatedLayers = planLayers.map(layer => {
-      if (layer.id === layerId) {
-        // If enabling and no position set, assign next available position
-        if (enabled && layer.position === null) {
-          const maxPosition = Math.max(
-            0,
-            ...planLayers.filter(l => l.enabled && l.position !== null).map(l => l.position!)
-          )
-          return { ...layer, enabled, position: maxPosition + 1 }
-        }
-        return { ...layer, enabled }
-      }
-      return layer
-    })
-    onChange(updatedLayers)
-  }
-
-  // Sort layers: enabled first (by position), then disabled (alphabetically)
-  const sortedLayers = [...planLayers].sort((a, b) => {
-    if (a.enabled && !b.enabled) return -1
-    if (!a.enabled && b.enabled) return 1
-    if (a.enabled && b.enabled) {
-      return (a.position || 999) - (b.position || 999)
-    }
-    return a.name.localeCompare(b.name)
-  })
-
-  // Stats
-  const enabledCount = enabledLayers.length
-  const configuredCount = enabledLayers.filter(
+  // Stats - count layers with purposeColumn configured
+  const totalLayers = planLayers.length
+  const configuredCount = planLayers.filter(
     l => l.purposeColumn && l.purposes.length > 0
   ).length
 
@@ -150,23 +118,16 @@ const Step2PlanLayers: React.FC<Step2PlanLayersProps> = ({
       </Box>
 
       {/* Summary Stats */}
-      {enabledCount > 0 && (
+      {configuredCount > 0 && (
         <Alert
-          severity={configuredCount === enabledCount ? 'success' : 'warning'}
-          icon={configuredCount === enabledCount ? <CheckCircleIcon /> : <WarningIcon />}
+          severity={configuredCount >= 1 ? 'success' : 'warning'}
+          icon={configuredCount >= 1 ? <CheckCircleIcon /> : <WarningIcon />}
           sx={{ mb: 3 }}
         >
           <Typography variant="body2">
-            {configuredCount === enabledCount ? (
-              <>
-                ✓ Skonfigurowano <strong>{configuredCount}</strong> z <strong>{enabledCount}</strong>{' '}
-                włączonych warstw
-              </>
-            ) : (
-              <>
-                Skonfigurowano <strong>{configuredCount}</strong> z <strong>{enabledCount}</strong>{' '}
-                włączonych warstw. Dokończ konfigurację pozostałych.
-              </>
+            ✓ Skonfigurowano <strong>{configuredCount}</strong> warstw planistycznych.
+            {totalLayers - configuredCount > 0 && (
+              <> Pozostało: <strong>{totalLayers - configuredCount}</strong></>
             )}
           </Typography>
         </Alert>
@@ -174,11 +135,9 @@ const Step2PlanLayers: React.FC<Step2PlanLayersProps> = ({
 
       {/* Plan Layers List */}
       <Box sx={{ mb: 3 }}>
-        {sortedLayers.map(layer => {
+        {planLayers.map((layer, idx) => {
           const attributes = attributesCache[layer.id] || []
-          const isLoadingAttrs = enabledLayers.some(
-            l => l.id === layer.id && attributeQueries.find(q => q.isLoading)
-          )
+          const isLoadingAttrs = attributeQueries[idx]?.isLoading || false
 
           return (
             <PlanLayerCard
