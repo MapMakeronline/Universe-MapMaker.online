@@ -101,7 +101,7 @@ export function useWypisConfig(
     const totalDestinations = config.planLayers
       .filter(l => l.enabled)
       .reduce((sum, layer) => {
-        return sum + (layer.purposes.length || 0) + (layer.arrangements.length || 0)
+        return sum + (layer.purposes.length || 0) + (layer.arrangements?.length || 0)
       }, 0)
 
     const documentsUploaded = config.documents.size
@@ -158,7 +158,7 @@ export function useWypisConfig(
       .filter(layer => layer.enabled)
       .forEach(layer => {
         // Add arrangements (general/final provisions)
-        layer.arrangements.forEach(arrangement => {
+        ;(layer.arrangements || []).forEach(arrangement => {
           if (arrangement.file) {
             zip.file(`${layer.id}/${arrangement.name}.docx`, arrangement.file)
           }
@@ -200,7 +200,7 @@ export function useWypisConfig(
       // Find which plan layer this destination belongs to
       const planLayer = planLayers.find(layer =>
         layer.purposes.some(p => p.name === destinationName) ||
-        layer.arrangements.some(a => a.name === destinationName)
+        (layer.arrangements || []).some(a => a.name === destinationName)
       )
 
       if (planLayer) {
@@ -239,7 +239,7 @@ export function useWypisConfig(
             name: p.name,
             fileName: p.fileName || `${p.name}.docx`,
           })),
-          arrangements: layer.arrangements.map(a => ({
+          arrangements: (layer.arrangements || []).map(a => ({
             name: a.name,
             fileName: a.fileName || `${a.name}.docx`,
           })),
