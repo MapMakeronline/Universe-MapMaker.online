@@ -169,11 +169,11 @@ const Step2PlanLayers: React.FC<Step2PlanLayersProps> = ({
         </Alert>
       )}
 
-      {/* No layers enabled warning */}
-      {vectorLayers.length > 0 && enabledCount === 0 && (
+      {/* No layers configured warning */}
+      {vectorLayers.length > 0 && configuredCount === 0 && (
         <Alert severity="info" icon={<InfoIcon />}>
           <Typography variant="body2">
-            Zaznacz przynajmniej jedną warstwę planistyczną, aby kontynuować.
+            Skonfiguruj przynajmniej jedną warstwę planistyczną (wybierz kolumnę z symbolami przeznaczenia), aby kontynuować.
           </Typography>
         </Alert>
       )}
