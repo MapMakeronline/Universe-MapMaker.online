@@ -99,11 +99,9 @@ const Step2PlanLayers: React.FC<Step2PlanLayersProps> = ({
     onChange(updatedLayers)
   }
 
-  // Stats - count layers with purposeColumn configured
+  // Stats - count layers with purposeColumn selected
   const totalLayers = planLayers.length
-  const configuredCount = planLayers.filter(
-    l => l.purposeColumn && l.purposes.length > 0
-  ).length
+  const configuredCount = planLayers.filter(l => l.purposeColumn).length
 
   return (
     <Box sx={{ py: 2 }}>
@@ -146,14 +144,7 @@ const Step2PlanLayers: React.FC<Step2PlanLayersProps> = ({
               layer={layer}
               attributes={attributes}
               isLoadingAttributes={isLoadingAttrs}
-              onChange={(updates) => {
-                // Handle enabled toggle separately for auto-position
-                if ('enabled' in updates) {
-                  handleLayerToggle(layer.id, updates.enabled!)
-                } else {
-                  handleLayerChange(layer.id, updates)
-                }
-              }}
+              onChange={(updates) => handleLayerChange(layer.id, updates)}
             />
           )
         })}

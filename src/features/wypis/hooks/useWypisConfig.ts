@@ -72,16 +72,17 @@ export function useWypisConfig(
 
   /**
    * Validate Step 2: Plan Layers
-   * Required: at least one enabled plan layer with purpose column
+   * Required: at least one plan layer with purpose column selected
+   * (purposes array can be empty - it's loaded from backend after purposeColumn selection)
    */
   const validateStep2 = (config: WypisConfigState): string[] => {
     const errors: string[] = []
 
-    // Filter layers with purposeColumn configured
-    const configuredLayers = config.planLayers.filter(l => l.purposeColumn && l.purposes.length > 0)
+    // Filter layers with purposeColumn configured (purposes can be empty!)
+    const configuredLayers = config.planLayers.filter(l => l.purposeColumn)
 
     if (configuredLayers.length === 0) {
-      errors.push('Wybierz przynajmniej jedną warstwę planistyczną')
+      errors.push('Wybierz przynajmniej jedną warstwę planistyczną (kolumnę z symbolami przeznaczenia)')
     }
 
     return errors

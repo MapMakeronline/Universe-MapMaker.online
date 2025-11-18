@@ -176,22 +176,9 @@ const WypisConfigManager: React.FC<WypisConfigManagerProps> = ({
               <Typography variant="body1" color="text.secondary" sx={{ mb: 1 }}>
                 Brak konfiguracji wypisu
               </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+              <Typography variant="body2" color="text.secondary">
                 Utwórz pierwszą konfigurację, aby móc generować wypisy z rejestru gruntów.
               </Typography>
-              <Button
-                variant="contained"
-                startIcon={<AddIcon />}
-                onClick={handleCreateNew}
-                sx={{
-                  bgcolor: '#27ae60',
-                  '&:hover': {
-                    bgcolor: '#229954',
-                  },
-                }}
-              >
-                Utwórz konfigurację
-              </Button>
             </Box>
           )}
 
