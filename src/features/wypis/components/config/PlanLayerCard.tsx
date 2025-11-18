@@ -10,7 +10,7 @@
  * Reusable component for Step2PlanLayers
  */
 
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import FormControl from '@mui/material/FormControl'
@@ -20,11 +20,17 @@ import MenuItem from '@mui/material/MenuItem'
 import Paper from '@mui/material/Paper'
 import Chip from '@mui/material/Chip'
 import CircularProgress from '@mui/material/CircularProgress'
+import TextField from '@mui/material/TextField'
+import Button from '@mui/material/Button'
+import IconButton from '@mui/material/IconButton'
 import LayersIcon from '@mui/icons-material/Layers'
 import AbcIcon from '@mui/icons-material/Abc'
+import AddIcon from '@mui/icons-material/Add'
+import DeleteIcon from '@mui/icons-material/Delete'
+import DescriptionIcon from '@mui/icons-material/Description'
 
 import { useLazyGetColumnValuesQuery } from '@/backend/layers'
-import type { PlanLayerConfig, PurposeConfig } from '../../types'
+import type { PlanLayerConfig, PurposeConfig, ArrangementConfig } from '../../types'
 
 interface PlanLayerCardProps {
   /** Project name */
@@ -55,6 +61,8 @@ const PlanLayerCard: React.FC<PlanLayerCardProps> = ({
   isLoadingAttributes,
   onChange,
 }) => {
+  const [newArrangementName, setNewArrangementName] = useState('')
+
   // Lazy query for fetching unique column values
   const [fetchColumnValues, { data: columnValuesData, isLoading: isLoadingColumnValues }] =
     useLazyGetColumnValuesQuery()
@@ -96,6 +104,29 @@ const PlanLayerCard: React.FC<PlanLayerCardProps> = ({
     })
   }
 
+  // Handle adding new arrangement
+  const handleAddArrangement = () => {
+    if (!newArrangementName.trim()) return
+
+    const newArrangement: ArrangementConfig = {
+      name: newArrangementName.trim(),
+      file: null,
+      fileName: undefined,
+    }
+
+    onChange({
+      arrangements: [...(layer.arrangements || []), newArrangement],
+    })
+
+    setNewArrangementName('')
+  }
+
+  // Handle removing arrangement
+  const handleRemoveArrangement = (index: number) => {
+    const updatedArrangements = layer.arrangements.filter((_, idx) => idx !== index)
+    onChange({ arrangements: updatedArrangements })
+  }
+
   return (
     <Paper
       elevation={2}
@@ -123,9 +154,9 @@ const PlanLayerCard: React.FC<PlanLayerCardProps> = ({
         </Typography>
 
         {/* Configured badge */}
-        {layer.purposeColumn && layer.purposes.length > 0 && (
+        {layer.purposeColumn && (layer.purposes.length > 0 || (layer.arrangements && layer.arrangements.length > 0)) && (
           <Chip
-            label={`✓ Skonfigurowano (${layer.purposes.length} przeznaczeo)`}
+            label={`✓ Skonfigurowano (${layer.purposes.length} przeznaczeo${layer.arrangements && layer.arrangements.length > 0 ? ` + ${layer.arrangements.length} ustaleń` : ''})`}
             size="small"
             color="success"
           />
@@ -190,6 +221,84 @@ const PlanLayerCard: React.FC<PlanLayerCardProps> = ({
           <Typography variant="caption" color="warning.main">
             ⚠ Wybierz kolumnę z symbolami przeznaczenia
           </Typography>
+        )}
+
+        {/* Arrangements (Ustalenia ogólne/końcowe) */}
+        {layer.purposeColumn && (
+          <Box sx={{ mt: 3 }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, color: 'text.primary' }}>
+              Ustalenia ogólne / końcowe (opcjonalnie)
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+              Np. "Postanowienia ogólne", "Postanowienia końcowe", "Dokument formalny"
+            </Typography>
+
+            {/* Add arrangement input */}
+            <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+              <TextField
+                size="small"
+                fullWidth
+                placeholder="Nazwa ustalenia..."
+                value={newArrangementName}
+                onChange={(e) => setNewArrangementName(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    handleAddArrangement()
+                  }
+                }}
+              />
+              <Button
+                variant="contained"
+                size="small"
+                startIcon={<AddIcon />}
+                onClick={handleAddArrangement}
+                disabled={!newArrangementName.trim()}
+                sx={{ whiteSpace: 'nowrap' }}
+              >
+                Dodaj
+              </Button>
+            </Box>
+
+            {/* List of arrangements */}
+            {layer.arrangements && layer.arrangements.length > 0 && (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                {layer.arrangements.map((arrangement, idx) => (
+                  <Box
+                    key={idx}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1,
+                      p: 1,
+                      border: '1px solid',
+                      borderColor: 'grey.300',
+                      borderRadius: 1,
+                      bgcolor: 'background.paper',
+                    }}
+                  >
+                    <DescriptionIcon sx={{ color: 'primary.main' }} />
+                    <Typography variant="body2" sx={{ flex: 1 }}>
+                      {arrangement.name}
+                    </Typography>
+                    <IconButton
+                      size="small"
+                      onClick={() => handleRemoveArrangement(idx)}
+                      sx={{ color: 'error.main' }}
+                    >
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </Box>
+                ))}
+              </Box>
+            )}
+
+            {layer.arrangements && layer.arrangements.length === 0 && (
+              <Typography variant="caption" color="text.secondary">
+                Brak dodanych ustaleń. Dodaj "Postanowienia ogólne" i "Postanowienia końcowe" jeśli są wymagane.
+              </Typography>
+            )}
+          </Box>
         )}
       </Box>
     </Paper>
