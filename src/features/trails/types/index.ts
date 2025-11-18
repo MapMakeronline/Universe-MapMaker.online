@@ -34,7 +34,7 @@ export interface Trail {
   id: string;
   feature: TrailFeature;
   metadata: {
-    createdAt: Date;
+    createdAt: string; // ISO string instead of Date object (for Redux serialization)
     source: 'upload' | 'manual' | 'import';
     fileName?: string;
     fileType?: 'kml' | 'geojson' | 'gpx';

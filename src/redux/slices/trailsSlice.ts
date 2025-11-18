@@ -38,21 +38,7 @@ function loadFromLocalStorage(): TrailsState {
     const saved = localStorage.getItem('trails');
     if (saved) {
       const parsed = JSON.parse(saved);
-      // Restore Date objects
-      if (parsed.trails) {
-        parsed.trails = parsed.trails.map((trail: any) => ({
-          ...trail,
-          metadata: {
-            ...trail.metadata,
-            createdAt: new Date(trail.metadata.createdAt),
-          },
-        }));
-      }
-      if (parsed.activeTrail) {
-        parsed.activeTrail.metadata.createdAt = new Date(
-          parsed.activeTrail.metadata.createdAt
-        );
-      }
+      // No need to restore Date objects - createdAt is now ISO string
       console.log('📦 Trails loaded from localStorage:', parsed.trails.length);
       return parsed;
     }

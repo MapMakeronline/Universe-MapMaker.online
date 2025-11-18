@@ -79,7 +79,7 @@ const TrailsModal: React.FC<TrailsModalProps> = ({
         id: Date.now().toString(),
         feature: parsed.trails[0], // First trail
         metadata: {
-          createdAt: new Date(),
+          createdAt: new Date().toISOString(), // ISO string for Redux serialization
           source: 'upload',
           fileName: file.name,
           fileType: file.name.split('.').pop() as 'kml' | 'geojson',
@@ -165,7 +165,6 @@ const TrailsModal: React.FC<TrailsModalProps> = ({
                 borderColor: 'success.main',
                 borderRadius: 2,
                 p: 2,
-                bgcolor: 'success.light',
                 bgcolor: (theme) => theme.palette.mode === 'dark' ? 'success.dark' : 'success.light',
               }}
             >
