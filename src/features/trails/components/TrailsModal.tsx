@@ -18,8 +18,8 @@ import DrawIcon from '@mui/icons-material/Draw';
 import CloseIcon from '@mui/icons-material/Close';
 import { MapRef } from 'react-map-gl';
 import { useFileImport, validateTrailFile } from '../hooks/useFileImport';
-import { useAppDispatch } from '@/redux/hooks';
-import { setActiveTrail } from '@/redux/slices/trailsSlice';
+import { useAppDispatch, useAppSelector } from '@/redux/hooks';
+import { setActiveTrail, clearActiveTrail, selectActiveTrail } from '@/redux/slices/trailsSlice';
 import type { Trail } from '../types';
 
 interface TrailsModalProps {
@@ -37,6 +37,7 @@ const TrailsModal: React.FC<TrailsModalProps> = ({
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dispatch = useAppDispatch();
+  const activeTrail = useAppSelector(selectActiveTrail);
   const { importFile, isLoading, error, result } = useFileImport();
 
   const handleImportClick = () => {
@@ -115,6 +116,20 @@ const TrailsModal: React.FC<TrailsModalProps> = ({
     // onClose(); // Zostaw modal otwarty dopóki nie ma funkcjonalności
   };
 
+  const handleRemoveTrail = () => {
+    if (activeTrail) {
+      const confirmed = window.confirm(
+        `Czy na pewno chcesz usunąć trasę "${activeTrail.feature.properties.name}"?\n\nTrasa zostanie usunięta z mapy.`
+      );
+
+      if (confirmed) {
+        dispatch(clearActiveTrail());
+        alert('✅ Trasa została usunięta!');
+        onClose();
+      }
+    }
+  };
+
   return (
     <Dialog
       open={open}
@@ -142,9 +157,47 @@ const TrailsModal: React.FC<TrailsModalProps> = ({
 
       <DialogContent>
         <Stack spacing={3} sx={{ py: 2 }}>
+          {/* Aktualna trasa - pokaż jeśli jest załadowana */}
+          {activeTrail && (
+            <Box
+              sx={{
+                border: 2,
+                borderColor: 'success.main',
+                borderRadius: 2,
+                p: 2,
+                bgcolor: 'success.light',
+                bgcolor: (theme) => theme.palette.mode === 'dark' ? 'success.dark' : 'success.light',
+              }}
+            >
+              <Stack spacing={1}>
+                <Typography variant="h6" color="success.dark">
+                  ✅ Aktywna trasa: {activeTrail.feature.properties.name}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  📏 Długość: {(activeTrail.feature.properties.distance! / 1000).toFixed(2)} km
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  ⏱️ Czas: {activeTrail.feature.properties.duration} min
+                </Typography>
+                <Typography variant="caption" color="text.disabled">
+                  📁 Źródło: {activeTrail.metadata.fileName}
+                </Typography>
+                <Button
+                  variant="outlined"
+                  color="error"
+                  size="small"
+                  onClick={handleRemoveTrail}
+                  sx={{ mt: 1 }}
+                >
+                  🗑️ Usuń trasę
+                </Button>
+              </Stack>
+            </Box>
+          )}
+
           {/* Opis */}
           <Typography variant="body2" color="text.secondary">
-            Wybierz sposób dodania trasy do mapy:
+            {activeTrail ? 'Możesz dodać nową trasę (poprzednia zostanie zastąpiona):' : 'Wybierz sposób dodania trasy do mapy:'}
           </Typography>
 
           {/* Opcja A: Import pliku */}

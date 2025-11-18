@@ -26,9 +26,14 @@ const initialState: TrailsState = {
 };
 
 /**
- * Load trails from localStorage
+ * Load trails from localStorage (browser only)
  */
 function loadFromLocalStorage(): TrailsState {
+  // Check if we're in browser environment (not SSR)
+  if (typeof window === 'undefined') {
+    return initialState;
+  }
+
   try {
     const saved = localStorage.getItem('trails');
     if (saved) {
@@ -58,9 +63,14 @@ function loadFromLocalStorage(): TrailsState {
 }
 
 /**
- * Save trails to localStorage
+ * Save trails to localStorage (browser only)
  */
 function saveToLocalStorage(state: TrailsState) {
+  // Check if we're in browser environment (not SSR)
+  if (typeof window === 'undefined') {
+    return;
+  }
+
   try {
     localStorage.setItem('trails', JSON.stringify(state));
     console.log('💾 Trails saved to localStorage');
