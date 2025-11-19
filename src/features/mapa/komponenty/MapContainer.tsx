@@ -39,7 +39,11 @@ const MapContainer: React.FC<MapContainerProps> = ({ children, projectName, onMa
 
   // Debug: Log activeTrail changes
   useEffect(() => {
-    console.log('🔍 MapContainer: activeTrail changed:', activeTrail ? activeTrail.feature.properties.name : 'null');
+    console.log('🔍 MapContainer: activeTrail changed:', {
+      name: activeTrail ? activeTrail.feature.properties.name : 'null',
+      id: activeTrail?.id,
+      timestamp: new Date().toISOString(),
+    });
   }, [activeTrail]);
 
   // Check token on mount
@@ -276,6 +280,7 @@ const MapContainer: React.FC<MapContainerProps> = ({ children, projectName, onMa
         {/* Trail Layer - Renders imported trail on map (FAZA 2) */}
         {activeTrail && (
           <TrailLayer
+            key={activeTrail.id} // Prevent unmount/remount on re-render
             trail={activeTrail.feature}
             mapRef={mapRef}
             color={activeTrail.feature.properties.color || '#FF5722'}

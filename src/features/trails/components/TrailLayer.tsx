@@ -145,7 +145,8 @@ export function TrailLayer({
         console.error('Error removing trail layer:', error);
       }
     };
-  }, [trail.geometry, trail.properties.name, mapRef, color, width, fitBounds, sourceId, layerId]); // Use stable properties instead of whole object
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run only once on mount - key prop in MapContainer prevents remount on trail change
 
   // This component renders nothing (it only adds layers to map)
   return null;
