@@ -278,9 +278,8 @@ const MapContainer: React.FC<MapContainerProps> = ({ children, projectName, onMa
         <WypisPlotHighlighter />
 
         {/* Trail Layer - Renders imported trail on map (FAZA 2) */}
-        {activeTrail && (
+        {activeTrail && activeTrail.feature && (
           <TrailLayer
-            key={activeTrail.id} // Prevent unmount/remount on re-render
             trail={activeTrail.feature}
             mapRef={mapRef}
             color={activeTrail.feature.properties.color || '#FF5722'}

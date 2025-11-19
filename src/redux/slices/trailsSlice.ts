@@ -73,6 +73,17 @@ const trailsSlice = createSlice({
      * Set active trail (displayed on map)
      */
     setActiveTrail: (state, action: PayloadAction<Trail>) => {
+      console.log('🔄 trailsSlice: setActiveTrail', {
+        oldTrail: state.activeTrail ? {
+          name: state.activeTrail.feature.properties.name,
+          id: state.activeTrail.id
+        } : null,
+        newTrail: {
+          name: action.payload.feature.properties.name,
+          id: action.payload.id
+        }
+      });
+
       state.activeTrail = action.payload;
 
       // Add to trails array if not already present
@@ -88,6 +99,13 @@ const trailsSlice = createSlice({
      * Clear active trail (remove from map)
      */
     clearActiveTrail: (state) => {
+      console.log('🗑️ trailsSlice: clearActiveTrail', {
+        oldTrail: state.activeTrail ? {
+          name: state.activeTrail.feature.properties.name,
+          id: state.activeTrail.id
+        } : null
+      });
+
       state.activeTrail = null;
       state.animation = null;
       saveToLocalStorage(state);

@@ -96,6 +96,9 @@ const TrailsModal: React.FC<TrailsModalProps> = ({
 
       alert(`✅ Trasa "${trail.feature.properties.name}" została załadowana!\n\n📏 Długość: ${(trail.feature.properties.distance! / 1000).toFixed(2)} km\n⏱️ Czas: ${trail.feature.properties.duration} min${warnings}`);
 
+      // Show refresh instruction in separate alert
+      alert('🔄 Odśwież stronę (F5), aby zobaczyć trasę na mapie.');
+
       // Close modal
       onClose();
     } catch (error: any) {
