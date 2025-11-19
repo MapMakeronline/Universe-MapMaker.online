@@ -205,37 +205,52 @@ const WypisPlotSelector = () => {
               const highlightFillLayerId = 'wypis-plot-highlight-fill';
               const highlightLineLayerId = 'wypis-plot-highlight-line';
 
-              // Remove existing highlight
-              if (map.getLayer(highlightFillLayerId)) map.removeLayer(highlightFillLayerId);
-              if (map.getLayer(highlightLineLayerId)) map.removeLayer(highlightLineLayerId);
-              if (map.getSource(highlightSourceId)) map.removeSource(highlightSourceId);
+              // Wait for map to be fully loaded before adding layers
+              const addHighlight = () => {
+                // Remove existing highlight
+                if (map.getLayer(highlightFillLayerId)) map.removeLayer(highlightFillLayerId);
+                if (map.getLayer(highlightLineLayerId)) map.removeLayer(highlightLineLayerId);
+                if (map.getSource(highlightSourceId)) map.removeSource(highlightSourceId);
 
-              // Add highlight source
-              map.addSource(highlightSourceId, {
-                type: 'geojson',
-                data: geoJsonData as any,
-              });
+                // Add highlight source
+                map.addSource(highlightSourceId, {
+                  type: 'geojson',
+                  data: geoJsonData as any,
+                });
 
-              // Add highlight layers (fill + outline)
-              map.addLayer({
-                id: highlightFillLayerId,
-                type: 'fill',
-                source: highlightSourceId,
-                paint: {
-                  'fill-color': '#FFD700', // Gold color
-                  'fill-opacity': 0.3,
-                },
-              });
+                // Add highlight layers (fill + outline) - GREEN color like Mapbox example
+                map.addLayer({
+                  id: highlightFillLayerId,
+                  type: 'fill',
+                  source: highlightSourceId,
+                  layout: {},
+                  paint: {
+                    'fill-color': '#00FF00', // Bright green color
+                    'fill-opacity': 0.5, // More visible
+                  },
+                });
 
-              map.addLayer({
-                id: highlightLineLayerId,
-                type: 'line',
-                source: highlightSourceId,
-                paint: {
-                  'line-color': '#FFD700',
-                  'line-width': 3,
-                },
-              });
+                map.addLayer({
+                  id: highlightLineLayerId,
+                  type: 'line',
+                  source: highlightSourceId,
+                  layout: {},
+                  paint: {
+                    'line-color': '#00FF00', // Bright green outline
+                    'line-width': 4, // Thicker for visibility
+                  },
+                });
+
+                console.log('✅ Wypis: Plot highlight layers added');
+              };
+
+              // Check if map is already loaded
+              if (map.isStyleLoaded()) {
+                addHighlight();
+              } else {
+                // Wait for map to load
+                map.once('idle', addHighlight);
+              }
 
               // Zoom to bbox (EPSG:3857 → WGS84)
               const [minX, minY, maxX, maxY] = geometryResult.data.bbox;
