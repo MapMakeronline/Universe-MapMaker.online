@@ -601,6 +601,8 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
           pointerEvents: 'auto',
           borderRadius: isMobile ? '12px 12px 0 0' : '12px',
           maxHeight: isMobile ? '60vh' : '80vh',
+          // CRITICAL: Ensure dialog appears above snackbar notifications (z-index: 1200)
+          zIndex: 1400,
           // Position dialog
           position: 'fixed',
           ...(isMobile ? {

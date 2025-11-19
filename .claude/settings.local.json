@@ -67,7 +67,10 @@
       "Bash(timeout 30 powershell:*)",
       "Bash(sed:*)",
       "Bash(sort:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(gcloud builds:*)",
+      "Bash(netstat:*)",
+      "Bash(screenshot.bat http://localhost:3000/map?project=Miedzno)"
     ],
     "deny": [],
     "ask": []

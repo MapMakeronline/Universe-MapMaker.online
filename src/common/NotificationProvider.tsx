@@ -43,10 +43,15 @@ export const NotificationProvider: React.FC = () => {
   return (
     <Snackbar
       open={!!currentNotification}
-      autoHideDuration={currentNotification?.duration || 6000}
+      autoHideDuration={currentNotification?.duration || 3000}
       onClose={handleClose}
       anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-      sx={{ mb: 2, mr: 2 }}
+      sx={{
+        mb: 2,
+        mr: 2,
+        // Lower z-index so it doesn't overlap dialogs (MUI Dialog default: 1300)
+        zIndex: 1200,
+      }}
     >
       {currentNotification ? (
         <Alert
