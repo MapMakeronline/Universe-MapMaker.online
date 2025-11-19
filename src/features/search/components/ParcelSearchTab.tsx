@@ -32,10 +32,10 @@ import SearchIcon from '@mui/icons-material/Search';
 import SettingsIcon from '@mui/icons-material/Settings';
 import { useTheme } from '@mui/material/styles';
 import { MapRef } from 'react-map-gl';
-import { useLazyGetPlotLayerAttributesQuery, useSearchPlotByIdsMutation, useLazyGetPlotConfigQuery } from '@/backend/plot';
+import { useLazyGetPlotLayerAttributesQuery, useLazyGetPlotConfigQuery, useSearchPlotByIdsMutation } from '@/backend/plot';
 import type { PlotConfig } from '@/backend/plot';
 import { useAppSelector } from '@/redux/hooks';
-import { convertFeaturesToWGS84, convertBboxToWGS84, getUniqueValues } from '../utils/mapUtils';
+import { getUniqueValues } from '../utils/mapUtils';
 import SearchConfigurator from './SearchConfigurator';
 import proj4 from 'proj4';
 
@@ -70,31 +70,39 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
   const [configModalOpen, setConfigModalOpen] = useState(false);
 
   // RTK Query
-  const [fetchPlotConfig, { data: configData }] = useLazyGetPlotConfigQuery();
-  const [fetchAttributes, { isLoading: attributesLoading }] = useLazyGetPlotLayerAttributesQuery();
+  const [fetchPlotConfig, { data: configData, error: configError }] = useLazyGetPlotConfigQuery();
+  const [fetchAttributes, { isLoading: attributesLoading, error: attributesError }] = useLazyGetPlotLayerAttributesQuery();
   const [searchPlotByIds, { isLoading: isSearching }] = useSearchPlotByIdsMutation();
 
   // Load configuration from backend on mount
   // Backend should allow public access to GET /api/projects/plot (no auth required for reading)
   useEffect(() => {
+    console.log('📡 ParcelSearchTab mounted, projectName:', projectName);
     if (!projectName) return;
 
     // Try to fetch config for all users (guests + authenticated)
     // If backend returns 401, guest users will see "configuration required" message
+    console.log('📡 Fetching plot config for project:', projectName);
     fetchPlotConfig({ project: projectName });
   }, [projectName, fetchPlotConfig]);
 
   // Update plotConfig when configData changes
   useEffect(() => {
+    if (configError) {
+      console.error('❌ Plot config error:', configError);
+      console.log('ℹ️ This is expected for guest users if backend requires auth');
+    }
+
     if (configData?.data) {
       console.log('🔧 Plot config loaded:', configData.data);
       setPlotConfig(configData.data);
     } else if (configData) {
       console.warn('⚠️ Config response has no data:', configData);
     }
-  }, [configData]);
+  }, [configData, configError]);
 
   // Load all layer attributes when config is available
+  // Backend endpoint /api/layer/attributes now works for guests (AllowAny permission)
   useEffect(() => {
     if (!projectName || !plotConfig?.plot_layer) {
       console.log('⏸️ Skipping attribute load:', { projectName, plotConfig: plotConfig?.plot_layer });
@@ -139,16 +147,24 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
         setPlotNumberOptions(uniquePlotNumbers);
       } catch (error: any) {
         console.error('❌ Failed to load layer attributes:', error);
-
-        // If 401 Unauthorized, show user-friendly message
-        if (error?.status === 401) {
-          alert('Wyszukiwarka wymaga zalogowania. Endpoint /api/layer/attributes nie jest publiczny - backend musi dodać @permission_classes([AllowAny])');
-        }
+        console.log('ℹ️ Error details:', {
+          status: error?.status,
+          message: error?.data?.message,
+          full: error
+        });
+        alert('Błąd podczas ładowania danych działek. Sprawdź konfigurację lub spróbuj ponownie.');
       }
     };
 
     loadData();
   }, [projectName, plotConfig, fetchAttributes]);
+
+  // Log attributes error
+  useEffect(() => {
+    if (attributesError) {
+      console.error('❌ Attributes error:', attributesError);
+    }
+  }, [attributesError]);
 
   // Update plot numbers when precinct changes
   useEffect(() => {
@@ -200,113 +216,73 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
     };
   };
 
-  // Handle search
+  // Handle search using ogc_fid (same as SearchToolbox.tsx)
   const handleSearch = async () => {
     if (!projectName || !plotConfig) {
       alert('Brak konfiguracji wyszukiwania');
       return;
     }
 
-    if (!selectedPrecinct && !selectedPlotNumber) {
-      alert('Wybierz obręb lub numer działki');
+    if (!selectedPrecinct || !selectedPlotNumber) {
+      alert('Proszę wybrać obręb i numer działki');
       return;
     }
 
     try {
       console.log('🔍 Starting search:', { selectedPrecinct, selectedPlotNumber });
 
-      // Get layer from tree.json - use layer.id (QGIS internal name) not layer.name (display name)
-      const layer = flattenLayers(layers).find(l => l.id === plotConfig.plot_layer);
-
-      // IMPORTANT: Use layer.id (QGIS internal name) for WFS requests, NOT layer.name (display name with spaces)
-      // WFS requires the actual layer table name from QGIS, not the pretty display name
-      const layerName = plotConfig.plot_layer; // This is already the layer ID
-
-      console.log('📦 Layer info:', {
-        layer_id: plotConfig.plot_layer,
-        layer_name: layerName,
-        layer_object: layer
+      // Filter matching features from allAttributes (client-side)
+      const matchingFeatures = allAttributes.filter((attr: any) => {
+        return attr[plotConfig.plot_precinct_column] === selectedPrecinct &&
+               attr[plotConfig.plot_number_column] === selectedPlotNumber;
       });
 
-      // Build WFS GetFeature request using precinct/plot number filters
-      const filters: string[] = [];
+      console.log('✅ Matching features found:', matchingFeatures.length, matchingFeatures);
 
-      if (selectedPrecinct) {
-        filters.push(`
-          <PropertyIsEqualTo>
-            <PropertyName>${plotConfig.plot_precinct_column}</PropertyName>
-            <Literal>${selectedPrecinct}</Literal>
-          </PropertyIsEqualTo>
-        `);
-      }
-
-      if (selectedPlotNumber) {
-        filters.push(`
-          <PropertyIsEqualTo>
-            <PropertyName>${plotConfig.plot_number_column}</PropertyName>
-            <Literal>${selectedPlotNumber}</Literal>
-          </PropertyIsEqualTo>
-        `);
-      }
-
-      const filterXml = filters.length > 1
-        ? `<Filter><And>${filters.join('')}</And></Filter>`
-        : `<Filter>${filters[0]}</Filter>`;
-
-      const wfsUrl = `https://api.universemapmaker.online/ows?` +
-        `SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature&` +
-        `TYPENAME=${encodeURIComponent(layerName)}&` +
-        `MAP=/projects/${projectName}/${projectName}.qgs&` +
-        `OUTPUTFORMAT=application/json&` +
-        `FILTER=${encodeURIComponent(filterXml)}`;
-
-      console.log('🌐 WFS Request:', wfsUrl);
-
-      const response = await fetch(wfsUrl);
-
-      if (!response.ok) {
-        throw new Error(`WFS request failed: ${response.status} ${response.statusText}`);
-      }
-
-      const geojson = await response.json();
-
-      console.log('✅ WFS Response:', geojson);
-
-      if (!geojson.features || geojson.features.length === 0) {
+      if (matchingFeatures.length === 0) {
         alert('Nie znaleziono działki');
         return;
       }
 
-      // Transform geometries from EPSG:3857 to EPSG:4326
-      const wgs84Features = geojson.features.map((feature: any) => ({
-        ...feature,
-        geometry: transformGeometry(feature.geometry),
-      }));
+      // Extract feature IDs (ogc_fid, id, or fid)
+      const featureIds = matchingFeatures.map((attr: any) => attr.ogc_fid || attr.id || attr.fid);
+      console.log('📋 Feature IDs:', featureIds);
 
-      // Calculate bounds from transformed features
-      let minLng = Infinity, minLat = Infinity, maxLng = -Infinity, maxLat = -Infinity;
+      // Call backend endpoint /api/layer/features/selected
+      const result = await searchPlotByIds({
+        project: projectName,
+        layer_id: plotConfig.plot_layer,
+        label: featureIds,
+      }).unwrap();
 
-      wgs84Features.forEach((feature: any) => {
-        const extractCoords = (coords: any) => {
-          if (typeof coords[0] === 'number') {
-            const [lng, lat] = coords;
-            minLng = Math.min(minLng, lng);
-            minLat = Math.min(minLat, lat);
-            maxLng = Math.max(maxLng, lng);
-            maxLat = Math.max(maxLat, lat);
-          } else {
-            coords.forEach(extractCoords);
-          }
-        };
-        extractCoords(feature.geometry.coordinates);
-      });
+      console.log('✅ Search result:', result);
+
+      if (!result.data || !result.data.bbox || !result.data.features || result.data.features.length === 0) {
+        alert('Nie znaleziono działki');
+        return;
+      }
+
+      // Backend returns bbox in EPSG:3857 (Web Mercator)
+      const bbox = result.data.bbox; // [minX, minY, maxX, maxY]
+      const features = result.data.features;
+
+      // Transform bbox from EPSG:3857 to EPSG:4326 (WGS84)
+      const [minX, minY, maxX, maxY] = bbox;
+      const [minLng, minLat] = proj4('EPSG:3857', 'EPSG:4326', [minX, minY]);
+      const [maxLng, maxLat] = proj4('EPSG:3857', 'EPSG:4326', [maxX, maxY]);
 
       const bounds: [[number, number], [number, number]] = [
         [minLng, minLat],
         [maxLng, maxLat],
       ];
 
-      console.log('📍 Calculated bounds:', bounds);
+      console.log('📍 Bounds (WGS84):', bounds);
+
+      // Transform feature geometries from EPSG:3857 to EPSG:4326
+      const wgs84Features = features.map((feature: any) => ({
+        ...feature,
+        geometry: transformGeometry(feature.geometry),
+      }));
 
       // Get map instance
       const map = mapRef.current?.getMap();
@@ -332,7 +308,7 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
         map.removeSource(highlightSourceId);
       }
 
-      // Add GeoJSON source
+      // Add GeoJSON source with transformed features
       map.addSource(highlightSourceId, {
         type: 'geojson',
         data: {
@@ -341,14 +317,14 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
         },
       });
 
-      // Add fill layer (purple, opaque)
+      // Add fill layer (purple, semi-transparent)
       map.addLayer({
         id: highlightFillLayerId,
         type: 'fill',
         source: highlightSourceId,
         paint: {
           'fill-color': '#DDA0DD', // Plum (fioletowy)
-          'fill-opacity': 1.0,
+          'fill-opacity': 0.6,
         },
       });
 
@@ -369,10 +345,12 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
         duration: 1000,
       });
 
+      console.log('✅ Map zoomed and highlighted');
+
       // Close search modal
       onClose?.();
-    } catch (error) {
-      console.error('Search error:', error);
+    } catch (error: any) {
+      console.error('❌ Search error:', error);
       alert('Błąd podczas wyszukiwania działki');
     }
   };

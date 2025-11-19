@@ -194,7 +194,7 @@ export const plotApi = baseApi.injectEndpoints({
      */
     getPlotConfig: builder.query<GetPlotConfigResponse, { project: string }>({
       query: ({ project }) => ({
-        url: '/api/projects/plot',
+        url: '/api/projects/plot/config',  // ✅ FIXED: Added /config
         params: { project },
       }),
       providesTags: (result, error, { project }) => [
