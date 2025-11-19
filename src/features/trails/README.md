@@ -21,6 +21,7 @@ Moduł do importowania, wyświetlania i animowania tras turystycznych na mapie.
 - [x] Redux state management - `trailsSlice.ts`
 - [x] localStorage persistence
 - [x] Funkcja usuwania trasy
+- [x] Eleganckie powiadomienia Material-UI - `TrailNotification.tsx`
 
 ### ⏳ FAZA 3: Timeline & Animacja (TODO)
 - [ ] Timeline.tsx (pasek postępu)
@@ -46,6 +47,7 @@ Moduł do importowania, wyświetlania i animowania tras turystycznych na mapie.
 src/features/trails/
 ├── components/
 │   ├── TrailsModal.tsx          # ✅ Modal wyboru (Import/Rysuj) + info o aktywnej trasie
+│   ├── TrailNotification.tsx    # ✅ Eleganckie powiadomienia (sukces/usunięcie/refresh)
 │   ├── TrailLayer.tsx           # ✅ Warstwa trasy na mapie (Mapbox GL JS)
 │   ├── Timeline.tsx             # ⏳ Pasek postępu (FAZA 3)
 │   └── Sidebar.tsx              # ⏳ Panel informacji (FAZA 4)
@@ -108,9 +110,55 @@ FAB "Trasy turystyczne" znajduje się w prawym panelu mapy (po FAB "Wyszukiwanie
 // 1. Otwórz modal "Trasy turystyczne"
 // 2. Jeśli trasa jest aktywna → pokazuje się sekcja z info
 // 3. Kliknij "🗑️ Usuń trasę"
-// 4. Potwierdź usunięcie
-// 5. Trasa znika z mapy + localStorage
+// 4. Elegancki dialog potwierdzenia (Material-UI):
+//    - Ciemnoszare tło (#4A5568)
+//    - Ikona kosza
+//    - Pytanie: "Czy na pewno chcesz usunąć trasę [nazwa]?"
+//    - Przyciski: "Anuluj" (outlined) / "Usuń" (czerwony)
+// 5. Po potwierdzeniu:
+//    - Trasa znika z mapy + localStorage
+//    - Czerwone powiadomienie sukcesu: "Trasa została usunięta!"
 ```
+
+### Powiadomienia (FAZA 2 - GOTOWE ✅)
+
+**Wszystkie powiadomienia używają komponentu `TrailNotification.tsx` z Material-UI Dialog:**
+
+1. **Powiadomienie sukcesu importu:**
+   - Ciemnoszare tło (#4A5568) górnej części
+   - Jasne tło (rgb(247, 249, 252)) dolnej części (przyciski)
+   - Ikona: CheckCircle (✓)
+   - Tytuł: "Trasa została załadowana!"
+   - Info: Nazwa trasy, długość (km), czas (min), ostrzeżenia
+   - Przycisk: "Zamknij"
+
+2. **Powiadomienie odświeżenia strony:**
+   - To samo ciemnoszare tło
+   - Ikona: Refresh (🔄)
+   - Tytuł: "Odśwież stronę"
+   - Info: "Naciśnij F5, aby zobaczyć trasę na mapie"
+   - Przycisk: "OK"
+
+3. **Dialog potwierdzenia usunięcia:**
+   - Ciemnoszare tło (#4A5568)
+   - Ikona: Delete (🗑️)
+   - Tytuł: "Potwierdź usunięcie trasy"
+   - Pytanie o potwierdzenie z nazwą trasy
+   - Dwa przyciski: "Anuluj" / "Usuń" (czerwony)
+
+4. **Powiadomienie po usunięciu:**
+   - Ciemnoszare tło (#4A5568)
+   - Ikona: Delete (🗑️)
+   - Tytuł: "Trasa została usunięta!"
+   - Info: 'Trasa "[nazwa]" została pomyślnie usunięta z mapy.'
+   - Przycisk: "OK"
+
+**Two-tone design:**
+- Górna część (DialogContent): Kolorowe tło + białe ikony/tekst
+- Dolna część (DialogActions): Jasne tło + kolorowe przyciski
+- Zaokrąglone rogi (borderRadius: 3)
+- Centrowane wyświetlanie
+- Responsywne (maxWidth: "sm")
 
 ### Ręczne rysowanie (FAZA 5 - TODO)
 
@@ -224,6 +272,14 @@ Moduł bazuje na projekcie tras turystycznych Wałbrzycha:
 - Pokazuje aktywną trasę (nazwa, długość, czas, źródło)
 - Przycisk "Usuń trasę" (error color)
 
+### Notifications:
+- Komponent `TrailNotification.tsx` - uniwersalny dialog dla wszystkich powiadomień
+- Props: `showRefreshMessage`, `showDeleteMessage` dla różnych typów
+- Two-tone color scheme (górna/dolna część)
+- Material-UI icons: CheckCircle, Refresh, Delete
+- Responsywne i centrowane wyświetlanie
+- **Zastąpiono wszystkie natywne `alert()` i `window.confirm()`**
+
 ### Redux serialization:
 - `createdAt` zapisany jako ISO string (nie Date object)
 - Wszystkie dane w state są JSON-serializowalne
@@ -250,6 +306,15 @@ Moduł bazuje na projekcie tras turystycznych Wałbrzycha:
 **Problem:** TypeScript warning o duplikacie `bgcolor` w TrailsModal
 **Rozwiązanie:** Usunięcie `bgcolor: 'success.light'`, zostawienie tylko theme function
 
+### 4. Natywne alert() i confirm() dialogi
+**Problem:** Brzydkie natywne przeglądarki dialogi (window.alert, window.confirm)
+**Rozwiązanie:**
+- Utworzono `TrailNotification.tsx` - uniwersalny Material-UI Dialog
+- Props dla różnych typów: `showRefreshMessage`, `showDeleteMessage`
+- Two-tone color scheme (górna/dolna część)
+- Elegancki design: zaokrąglone rogi, ikony, odpowiednie kolory
+- Zastąpiono wszystkie alert() i confirm() w TrailsModal.tsx
+
 ---
 
 ## 🚀 Następne kroki (FAZA 3)
@@ -271,5 +336,10 @@ Moduł bazuje na projekcie tras turystycznych Wałbrzycha:
 **Data utworzenia:** 2025-01-18
 **Data aktualizacji:** 2025-11-19
 **Branch:** `ola/fab-trasa`
-**Status:** FAZA 1 ✅ | FAZA 2 ✅ (z funkcją usuwania)
-**Commits:** `7b0c9fe` (FAZA 1), `69223b3` (FAZA 2), `c2cce3d` (usuwanie), `3a8fb4c` (fix serialization)
+**Status:** FAZA 1 ✅ | FAZA 2 ✅ (z funkcją usuwania + eleganckie powiadomienia)
+**Commits:**
+- `7b0c9fe` (FAZA 1 - podstawowa struktura)
+- `69223b3` (FAZA 2 - import plików)
+- `c2cce3d` (usuwanie tras)
+- `3a8fb4c` (fix serialization)
+- Najnowszy: Eleganckie powiadomienia Material-UI (TrailNotification.tsx)

@@ -16,11 +16,13 @@ import {
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import DrawIcon from '@mui/icons-material/Draw';
 import CloseIcon from '@mui/icons-material/Close';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { MapRef } from 'react-map-gl';
 import { useFileImport, validateTrailFile } from '../hooks/useFileImport';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import { setActiveTrail, clearActiveTrail, selectActiveTrail } from '@/redux/slices/trailsSlice';
 import type { Trail } from '../types';
+import { TrailNotification } from './TrailNotification';
 
 interface TrailsModalProps {
   open: boolean;
@@ -39,6 +41,18 @@ const TrailsModal: React.FC<TrailsModalProps> = ({
   const dispatch = useAppDispatch();
   const activeTrail = useAppSelector(selectActiveTrail);
   const { importFile, isLoading, error, result } = useFileImport();
+
+  // Notification states
+  const [showSuccessNotification, setShowSuccessNotification] = useState(false);
+  const [showRefreshNotification, setShowRefreshNotification] = useState(false);
+  const [showDeleteNotification, setShowDeleteNotification] = useState(false);
+  const [showConfirmDeleteDialog, setShowConfirmDeleteDialog] = useState(false);
+  const [notificationData, setNotificationData] = useState<{
+    trailName: string;
+    distance: number;
+    duration: number;
+    warnings: string[];
+  } | null>(null);
 
   const handleImportClick = () => {
     fileInputRef.current?.click();
@@ -89,18 +103,19 @@ const TrailsModal: React.FC<TrailsModalProps> = ({
       // Save to Redux (and localStorage via middleware)
       dispatch(setActiveTrail(trail));
 
-      // Show success message with warnings
-      const warnings = parsed.warnings.length > 0
-        ? `\n\n⚠️ Ostrzeżenia:\n${parsed.warnings.join('\n')}`
-        : '';
+      // Prepare notification data
+      setNotificationData({
+        trailName: trail.feature.properties.name,
+        distance: trail.feature.properties.distance!,
+        duration: trail.feature.properties.duration!,
+        warnings: parsed.warnings,
+      });
 
-      alert(`✅ Trasa "${trail.feature.properties.name}" została załadowana!\n\n📏 Długość: ${(trail.feature.properties.distance! / 1000).toFixed(2)} km\n⏱️ Czas: ${trail.feature.properties.duration} min${warnings}`);
-
-      // Show refresh instruction in separate alert
-      alert('🔄 Odśwież stronę (F5), aby zobaczyć trasę na mapie.');
-
-      // Close modal
+      // Close modal first
       onClose();
+
+      // Show success notification
+      setShowSuccessNotification(true);
     } catch (error: any) {
       console.error('❌ File import error:', error);
       alert(`❌ Błąd podczas importu pliku:\n\n${error.message}`);
@@ -121,30 +136,69 @@ const TrailsModal: React.FC<TrailsModalProps> = ({
 
   const handleRemoveTrail = () => {
     if (activeTrail) {
-      const confirmed = window.confirm(
-        `Czy na pewno chcesz usunąć trasę "${activeTrail.feature.properties.name}"?\n\nTrasa zostanie usunięta z mapy.`
-      );
+      // Save trail data for confirm dialog
+      setNotificationData({
+        trailName: activeTrail.feature.properties.name,
+        distance: activeTrail.feature.properties.distance || 0,
+        duration: activeTrail.feature.properties.duration || 0,
+        warnings: [],
+      });
 
-      if (confirmed) {
-        dispatch(clearActiveTrail());
-        alert('✅ Trasa została usunięta!');
-        onClose();
-      }
+      // Show confirmation dialog
+      setShowConfirmDeleteDialog(true);
     }
   };
 
+  const handleConfirmDelete = () => {
+    // User confirmed deletion
+    setShowConfirmDeleteDialog(false);
+    dispatch(clearActiveTrail());
+    onClose();
+
+    // Show delete notification
+    setShowDeleteNotification(true);
+  };
+
+  const handleCancelDelete = () => {
+    // User canceled deletion
+    setShowConfirmDeleteDialog(false);
+    setNotificationData(null);
+  };
+
+  // Handle success notification close
+  const handleSuccessNotificationClose = () => {
+    setShowSuccessNotification(false);
+    // Show refresh notification after success notification closes
+    setTimeout(() => {
+      setShowRefreshNotification(true);
+    }, 300); // Small delay for smooth transition
+  };
+
+  // Handle refresh notification close
+  const handleRefreshNotificationClose = () => {
+    setShowRefreshNotification(false);
+    setNotificationData(null); // Clean up data
+  };
+
+  // Handle delete notification close
+  const handleDeleteNotificationClose = () => {
+    setShowDeleteNotification(false);
+    setNotificationData(null); // Clean up data
+  };
+
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      maxWidth="sm"
-      fullWidth
-      PaperProps={{
-        sx: {
-          borderRadius: 2,
-        }
-      }}
-    >
+    <>
+      <Dialog
+        open={open}
+        onClose={onClose}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 2,
+          }
+        }}
+      >
       <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Typography variant="h6" component="div">
           Trasy turystyczne
@@ -310,6 +364,111 @@ const TrailsModal: React.FC<TrailsModalProps> = ({
         </Button>
       </DialogActions>
     </Dialog>
+
+    {/* Confirmation dialog for deletion */}
+    {showConfirmDeleteDialog && notificationData && (
+      <Dialog
+        open={showConfirmDeleteDialog}
+        onClose={handleCancelDelete}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            backgroundImage: 'none',
+          }
+        }}
+      >
+        <DialogContent sx={{ py: 4, px: 4, backgroundColor: '#4A5568', color: 'white' }}>
+          <Stack spacing={2} alignItems="center">
+            <DeleteIcon sx={{ fontSize: 64, color: 'white' }} />
+            <Typography variant="h5" align="center" fontWeight="bold">
+              Potwierdź usunięcie trasy
+            </Typography>
+            <Typography variant="body1" align="center" sx={{ fontSize: '1.1rem' }}>
+              Czy na pewno chcesz usunąć trasę <strong>"{notificationData.trailName}"</strong>?
+            </Typography>
+            <Typography variant="body2" align="center" sx={{ color: 'rgba(255,255,255,0.7)' }}>
+              Trasa zostanie usunięta z mapy.
+            </Typography>
+          </Stack>
+        </DialogContent>
+
+        <DialogActions sx={{ px: 4, pb: 3, justifyContent: 'center', backgroundColor: 'rgb(247, 249, 252)' }}>
+          <Button
+            onClick={handleCancelDelete}
+            variant="outlined"
+            size="large"
+            sx={{
+              borderColor: '#4A5568',
+              color: '#4A5568',
+              fontWeight: 'bold',
+              minWidth: 120,
+              '&:hover': {
+                borderColor: '#4A5568',
+                bgcolor: 'rgba(74, 85, 104, 0.1)',
+              }
+            }}
+          >
+            Anuluj
+          </Button>
+          <Button
+            onClick={handleConfirmDelete}
+            variant="contained"
+            size="large"
+            sx={{
+              bgcolor: 'rgb(211, 47, 47)',
+              color: 'white',
+              fontWeight: 'bold',
+              minWidth: 120,
+              '&:hover': {
+                bgcolor: 'rgb(183, 28, 28)',
+              }
+            }}
+          >
+            Usuń
+          </Button>
+        </DialogActions>
+      </Dialog>
+    )}
+
+    {notificationData && (
+      <>
+        <TrailNotification
+          open={showSuccessNotification}
+          onClose={handleSuccessNotificationClose}
+          trailName={notificationData.trailName}
+          distance={notificationData.distance}
+          duration={notificationData.duration}
+          warnings={notificationData.warnings}
+          showRefreshMessage={false}
+          showDeleteMessage={false}
+        />
+
+        <TrailNotification
+          open={showRefreshNotification}
+          onClose={handleRefreshNotificationClose}
+          trailName={notificationData.trailName}
+          distance={notificationData.distance}
+          duration={notificationData.duration}
+          warnings={[]}
+          showRefreshMessage={true}
+          showDeleteMessage={false}
+        />
+
+        <TrailNotification
+          open={showDeleteNotification}
+          onClose={handleDeleteNotificationClose}
+          trailName={notificationData.trailName}
+          distance={notificationData.distance}
+          duration={notificationData.duration}
+          warnings={[]}
+          showRefreshMessage={false}
+          showDeleteMessage={true}
+        />
+      </>
+    )}
+  </>
   );
 };
 
