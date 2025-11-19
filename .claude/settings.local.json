@@ -64,7 +64,10 @@
       "Bash(timeout 3 powershell:*)",
       "Bash(npx tsc --noEmit)",
       "Bash(npx tsc:*)",
-      "Bash(timeout 30 powershell:*)"
+      "Bash(timeout 30 powershell:*)",
+      "Bash(sed:*)",
+      "Bash(sort:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []
