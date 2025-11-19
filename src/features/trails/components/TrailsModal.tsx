@@ -227,7 +227,6 @@ const TrailsModal: React.FC<TrailsModalProps> = ({
                 variant="contained"
                 startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : <UploadFileIcon />}
                 disabled={isLoading}
-                onClick={handleImportClick}
               >
                 {isLoading ? 'Wczytywanie...' : 'Wybierz plik'}
               </Button>

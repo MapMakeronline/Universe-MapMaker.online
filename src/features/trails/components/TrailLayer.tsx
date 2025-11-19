@@ -145,7 +145,7 @@ export function TrailLayer({
         console.error('Error removing trail layer:', error);
       }
     };
-  }, [trail, mapRef, color, width, fitBounds, sourceId, layerId]);
+  }, [trail.geometry, trail.properties.name, mapRef, color, width, fitBounds, sourceId, layerId]); // Use stable properties instead of whole object
 
   // This component renders nothing (it only adds layers to map)
   return null;

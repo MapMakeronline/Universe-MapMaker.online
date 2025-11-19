@@ -37,6 +37,11 @@ const MapContainer: React.FC<MapContainerProps> = ({ children, projectName, onMa
   const { viewState, mapStyle, isFullscreen, isMapLoaded } = useAppSelector((state) => state.map);
   const activeTrail = useAppSelector(selectActiveTrail);
 
+  // Debug: Log activeTrail changes
+  useEffect(() => {
+    console.log('🔍 MapContainer: activeTrail changed:', activeTrail ? activeTrail.feature.properties.name : 'null');
+  }, [activeTrail]);
+
   // Check token on mount
   useEffect(() => {
     if (!MAPBOX_TOKEN) {
