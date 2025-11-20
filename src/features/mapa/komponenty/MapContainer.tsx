@@ -18,7 +18,7 @@ import ZoomToSelectedControl from './ZoomToSelectedControl';
 import WypisPlotSelector from './WypisPlotSelector';
 import WypisPlotHighlighter from './WypisPlotHighlighter';
 import { TrailLayer } from '@/features/trails/components/TrailLayer';
-import { TimelineButton, Timeline } from '@/features/trails';
+import { TimelineButton, Timeline, TrailMarker } from '@/features/trails';
 import { selectActiveTrail } from '@/redux/slices/trailsSlice';
 
 // Import CSS dla Mapbox GL

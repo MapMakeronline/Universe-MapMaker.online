@@ -13,6 +13,7 @@
 export { default as TrailsModal } from './components/TrailsModal';
 export { default as TimelineButton } from './components/TimelineButton';
 export { default as Timeline } from './components/Timeline';
+export { default as TrailMarker } from './components/TrailMarker';
 
 // Types
 export * from './types';

@@ -31,6 +31,7 @@ import { MapRef } from 'react-map-gl';
 import type { TrailFeature } from '../types';
 import { useTrailProgress } from '../hooks/useTrailProgress';
 import { useTrailAnimation } from '../hooks/useTrailAnimation';
+import TrailMarker from './TrailMarker';
 
 interface TimelineProps {
   open: boolean;
@@ -254,6 +255,14 @@ export function Timeline({ open, onClose, trail, mapRef }: TimelineProps) {
           </Typography>
         </Box>
       </Box>
+
+      {/* Trail Marker - shows current position and direction */}
+      <TrailMarker
+        mapRef={mapRef}
+        currentPoint={currentPoint}
+        currentBearing={currentBearing}
+        visible={open} // Show marker when Timeline is open
+      />
     </Drawer>
   );
 }
