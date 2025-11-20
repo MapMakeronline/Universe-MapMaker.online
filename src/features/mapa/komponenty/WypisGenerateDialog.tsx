@@ -166,22 +166,25 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
   const [currentPlotIndex, setCurrentPlotIndex] = useState(0)
   const [plotSelections, setPlotSelections] = useState<Map<string, Set<string>>>(new Map())
 
-  // Auto-select LAST config when loaded (newest configuration)
+  // Auto-select FIRST config when loaded (auto-select if only one available)
   useEffect(() => {
     const configs = configurationsData?.data?.config_structure || configurationsData?.data?.configurations || []
     console.log('🗺️ Wypis Dialog: Auto-select effect', {
       hasConfigs: configs.length > 0,
       configsCount: configs.length,
       selectedConfigId,
-      lastConfigId: configs[configs.length - 1]?.id || configs[configs.length - 1]?.config_id,
+      firstConfigId: configs[0]?.id || configs[0]?.config_id,
       willAutoSelect: configs.length > 0 && !selectedConfigId,
     })
 
     if (configs.length > 0 && !selectedConfigId) {
-      // Select LAST config (newest) instead of first
-      const lastConfig = configs[configs.length - 1]
-      const configIdToSet = lastConfig.id || lastConfig.config_id
-      console.log('🗺️ Wypis Dialog: Auto-selecting LAST config (newest)', configIdToSet)
+      // Select FIRST config (if only one, user doesn't need to choose)
+      const firstConfig = configs[0]
+      const configIdToSet = firstConfig.id || firstConfig.config_id
+      console.log('✅ Wypis Dialog: Auto-selecting FIRST config', {
+        configId: configIdToSet,
+        configName: firstConfig.name || firstConfig.configuration_name,
+      })
       dispatch(setSelectedConfigId(configIdToSet))
     }
   }, [configurationsData, selectedConfigId, dispatch])
@@ -601,6 +604,8 @@ const WypisGenerateDialog: React.FC<WypisGenerateDialogProps> = ({
           pointerEvents: 'auto',
           borderRadius: isMobile ? '12px 12px 0 0' : '12px',
           maxHeight: isMobile ? '60vh' : '80vh',
+          // CRITICAL: Ensure dialog appears above snackbar notifications (z-index: 1200)
+          zIndex: 1400,
           // Position dialog
           position: 'fixed',
           ...(isMobile ? {

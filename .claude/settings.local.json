@@ -64,7 +64,13 @@
       "Bash(timeout 3 powershell:*)",
       "Bash(npx tsc --noEmit)",
       "Bash(npx tsc:*)",
-      "Bash(timeout 30 powershell:*)"
+      "Bash(timeout 30 powershell:*)",
+      "Bash(sed:*)",
+      "Bash(sort:*)",
+      "Bash(find:*)",
+      "Bash(gcloud builds:*)",
+      "Bash(netstat:*)",
+      "Bash(screenshot.bat http://localhost:3000/map?project=Miedzno)"
     ],
     "deny": [],
     "ask": []

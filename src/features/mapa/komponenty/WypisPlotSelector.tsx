@@ -8,6 +8,7 @@ import { selectGenerateModalOpen, selectSelectedConfigId } from '@/redux/slices/
 import { addPlot } from '@/redux/slices/wypisSlice';
 import { setIdentifyMode } from '@/redux/slices/drawSlice';
 import { useGetWypisConfigurationQuery, useGetPlotSpatialDevelopmentMutation } from '@/backend/wypis';
+import { useSearchPlotByIdsMutation } from '@/backend/plot';
 import { showError, showSuccess } from '@/redux/slices/notificationSlice';
 import proj4 from 'proj4';
 
@@ -18,23 +19,28 @@ import proj4 from 'proj4';
  * 1. User clicks "Wypis i Wyrys" FAB → Generate modal opens
  * 2. User selects wypis configuration from dropdown
  * 3. User clicks on map → Component captures click coordinates (WGS84)
- * 4. Transform coordinates: WGS84 (lng/lat) → EPSG:3857 (meters) for backend
- * 5. Query backend: POST /api/projects/wypis/precinct_and_number → {precinct, number}
- * 6. Transform to backend format: {key_column_name, key_column_value} using config column names
- * 7. Query backend: POST /api/projects/wypis/plotspatialdevelopment → planning zones with % coverage
- * 8. Add plot with destinations to Redux
- * 9. WypisGenerateDialog displays selected plots with checkboxes for planning zones
- * 10. User selects which zones/documents to include (all selected by default)
- * 11. User clicks "Generuj" → POST /api/projects/wypis/create (generate PDF)
+ * 4. Transform coordinates: WGS84 (lng/lat) → EPSG:3857 (meters) for WMS GetFeatureInfo
+ * 5. Query WMS GetFeatureInfo → {precinct, number, ogc_fid}
+ * 6. Highlight plot geometry: POST /api/layer/features/selected → GeoJSON + bbox (EPSG:3857)
+ * 7. Transform bbox: EPSG:3857 → WGS84 and zoom to plot with fitBounds()
+ * 8. Add highlight layers to map (gold fill + outline)
+ * 9. Query backend: POST /api/projects/wypis/plotspatialdevelopment → planning zones with % coverage
+ * 10. Add plot with destinations to Redux
+ * 11. WypisGenerateDialog displays selected plots with checkboxes for planning zones
+ * 12. User selects which zones/documents to include (all selected by default)
+ * 13. User clicks "Generuj" → POST /api/projects/wypis/create (generate PDF)
  *
  * Features:
  * - Active only when generate modal is open AND config is selected
  * - Visual feedback on click (cursor change, toast notifications)
+ * - Plot highlighting (gold fill + outline) with automatic zoom
+ * - Highlight cleanup when modal closes
  * - Automatic deduplication (same plot can't be added twice)
  * - Shows planning zone coverage percentage (e.g., "SN (100.0%)")
- * - Coordinate transformation: WGS84 → EPSG:3857 (backend uses PostGIS ST_Contains with SRID 3857)
+ * - Coordinate transformation: WGS84 ↔ EPSG:3857 (backend uses PostGIS ST_Contains with SRID 3857)
  * - Backend format transformation: {precinct, number} → {key_column_name, key_column_value}
  * - Error handling for invalid plots or API failures
+ * - Non-blocking highlight (failure won't stop plot selection)
  */
 const WypisPlotSelector = () => {
   const { current: mapRef } = useMap();
@@ -48,6 +54,7 @@ const WypisPlotSelector = () => {
 
   // RTK Query mutations
   const [getPlotSpatialDevelopment] = useGetPlotSpatialDevelopmentMutation();
+  const [searchPlotByIds] = useSearchPlotByIdsMutation();
 
   // Get wypis configuration to identify parcel layer
   const { data: configResponse, isLoading: isLoadingConfig, error: configError } = useGetWypisConfigurationQuery(
@@ -56,13 +63,30 @@ const WypisPlotSelector = () => {
   );
 
   // Disable Identify tool when modal is open, re-enable when closed
+  // Also cleanup plot highlight when modal closes
   useEffect(() => {
     if (generateModalOpen) {
       dispatch(setIdentifyMode(false));
     } else {
       dispatch(setIdentifyMode(true));
+
+      // Cleanup plot highlight when modal closes
+      if (mapRef) {
+        const map = mapRef.getMap();
+        if (map) {
+          const highlightSourceId = 'wypis-plot-highlight';
+          const highlightFillLayerId = 'wypis-plot-highlight-fill';
+          const highlightLineLayerId = 'wypis-plot-highlight-line';
+
+          if (map.getLayer(highlightFillLayerId)) map.removeLayer(highlightFillLayerId);
+          if (map.getLayer(highlightLineLayerId)) map.removeLayer(highlightLineLayerId);
+          if (map.getSource(highlightSourceId)) map.removeSource(highlightSourceId);
+
+          console.log('🧹 Wypis: Cleaned up plot highlight');
+        }
+      }
     }
-  }, [generateModalOpen, dispatch]);
+  }, [generateModalOpen, dispatch, mapRef]);
 
   useEffect(() => {
     if (!mapRef || !generateModalOpen) {
@@ -148,10 +172,102 @@ const WypisPlotSelector = () => {
         const feature = wmsData.features[0];
         const precinct = feature.properties[precinctColumn];
         const number = feature.properties[plotNumberColumn];
+        const featureId = feature.properties?.ogc_fid || feature.properties?.id || feature.properties?.fid || feature.id;
 
         if (!precinct || !number) {
           dispatch(showError('Nie udało się odczytać numeru działki'));
           return;
+        }
+
+        console.log('🎯 Wypis: Found plot', { precinct, number, featureId });
+
+        // 4. Fetch plot geometry and highlight on map
+        // Use POST /api/layer/features/selected to get GeoJSON geometry + bbox
+        try {
+          const plotsLayerId = config?.plotsLayer; // Layer ID (not WMS name)
+
+          if (!plotsLayerId || !featureId) {
+            console.warn('⚠️ Skipping highlight - missing plotsLayerId or featureId');
+          } else {
+            const geometryResult = await searchPlotByIds({
+              project: projectName,
+              layer_id: plotsLayerId,
+              label: [featureId], // Array of feature IDs
+            }).unwrap();
+
+            if (geometryResult.data?.features?.length > 0 && geometryResult.data.bbox) {
+              const geoJsonData = {
+                type: 'FeatureCollection',
+                features: geometryResult.data.features,
+              };
+
+              const highlightSourceId = 'wypis-plot-highlight';
+              const highlightFillLayerId = 'wypis-plot-highlight-fill';
+              const highlightLineLayerId = 'wypis-plot-highlight-line';
+
+              // Wait for map to be fully loaded before adding layers
+              const addHighlight = () => {
+                // Remove existing highlight
+                if (map.getLayer(highlightFillLayerId)) map.removeLayer(highlightFillLayerId);
+                if (map.getLayer(highlightLineLayerId)) map.removeLayer(highlightLineLayerId);
+                if (map.getSource(highlightSourceId)) map.removeSource(highlightSourceId);
+
+                // Add highlight source
+                map.addSource(highlightSourceId, {
+                  type: 'geojson',
+                  data: geoJsonData as any,
+                });
+
+                // Add highlight layers (fill + outline) - GREEN color like Mapbox example
+                map.addLayer({
+                  id: highlightFillLayerId,
+                  type: 'fill',
+                  source: highlightSourceId,
+                  layout: {},
+                  paint: {
+                    'fill-color': '#00FF00', // Bright green color
+                    'fill-opacity': 0.5, // More visible
+                  },
+                });
+
+                map.addLayer({
+                  id: highlightLineLayerId,
+                  type: 'line',
+                  source: highlightSourceId,
+                  layout: {},
+                  paint: {
+                    'line-color': '#00FF00', // Bright green outline
+                    'line-width': 4, // Thicker for visibility
+                  },
+                });
+
+                console.log('✅ Wypis: Plot highlight layers added');
+              };
+
+              // Check if map is already loaded
+              if (map.isStyleLoaded()) {
+                addHighlight();
+              } else {
+                // Wait for map to load
+                map.once('idle', addHighlight);
+              }
+
+              // Zoom to bbox (EPSG:3857 → WGS84)
+              const [minX, minY, maxX, maxY] = geometryResult.data.bbox;
+              const [minLng, minLat] = proj4('EPSG:3857', 'EPSG:4326', [minX, minY]);
+              const [maxLng, maxLat] = proj4('EPSG:3857', 'EPSG:4326', [maxX, maxY]);
+
+              map.fitBounds(
+                [[minLng, minLat], [maxLng, maxLat]],
+                { padding: 100, duration: 1000 }
+              );
+
+              console.log('✅ Wypis: Plot highlighted and zoomed', { bbox: geometryResult.data.bbox });
+            }
+          }
+        } catch (highlightError) {
+          console.warn('⚠️ Failed to highlight plot (non-critical):', highlightError);
+          // Don't show error to user - highlighting is optional visual feedback
         }
 
         // 5. Query spatial development endpoint to get planning zones with coverage %
