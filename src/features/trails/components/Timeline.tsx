@@ -15,7 +15,7 @@
  * FAZA 3.4: useTrailAnimation hook ✅
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Drawer,
   Box,
@@ -26,6 +26,7 @@ import {
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import PauseIcon from '@mui/icons-material/Pause';
 import ReplayIcon from '@mui/icons-material/Replay';
+import CenterFocusStrongIcon from '@mui/icons-material/CenterFocusStrong';
 import { MapRef } from 'react-map-gl';
 import type { TrailFeature } from '../types';
 import { useTrailProgress } from '../hooks/useTrailProgress';
@@ -60,6 +61,7 @@ export function Timeline({ open, onClose, trail, mapRef }: TimelineProps) {
   // Local state
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0); // 0-1 (0% - 100%)
+  const [followCamera, setFollowCamera] = useState(true); // Camera follow state
 
   // FAZA 3.3: Real-time trail calculations using turf.js
   const {
@@ -79,6 +81,7 @@ export function Timeline({ open, onClose, trail, mapRef }: TimelineProps) {
     mapRef,
     currentPoint,
     currentBearing,
+    followCamera,
   });
 
   // Handlers
@@ -90,7 +93,13 @@ export function Timeline({ open, onClose, trail, mapRef }: TimelineProps) {
   const handleReload = () => {
     setIsPlaying(false);
     setProgress(0);
+    setFollowCamera(true); // Reset camera follow on reload
     console.log('🔄 Timeline: Reloaded to start');
+  };
+
+  const handleCenterCamera = () => {
+    setFollowCamera(true);
+    console.log('🎯 Timeline: Camera follow enabled');
   };
 
   const handleSeek = (event: Event, value: number | number[]) => {
@@ -99,6 +108,28 @@ export function Timeline({ open, onClose, trail, mapRef }: TimelineProps) {
     setIsPlaying(false); // Pause when seeking
     console.log(`⏭️ Timeline: Seeked to ${Math.round(newProgress * 100)}%`);
   };
+
+  // Effect: Detect user map interactions and disable camera follow
+  useEffect(() => {
+    const map = mapRef.current?.getMap();
+    if (!map) return;
+
+    const handleUserInteraction = () => {
+      if (followCamera) {
+        setFollowCamera(false);
+        console.log('👆 User interaction detected, camera follow disabled');
+      }
+    };
+
+    // Listen to map drag and zoom events
+    map.on('dragstart', handleUserInteraction);
+    map.on('zoomstart', handleUserInteraction);
+
+    return () => {
+      map.off('dragstart', handleUserInteraction);
+      map.off('zoomstart', handleUserInteraction);
+    };
+  }, [mapRef, followCamera]);
 
   return (
     <Drawer
@@ -169,6 +200,22 @@ export function Timeline({ open, onClose, trail, mapRef }: TimelineProps) {
           }}
         >
           <ReplayIcon />
+        </IconButton>
+
+        {/* Center Camera Button */}
+        <IconButton
+          onClick={handleCenterCamera}
+          sx={{
+            bgcolor: followCamera ? 'success.main' : 'grey.300',
+            color: followCamera ? 'white' : 'text.primary',
+            width: 48,
+            height: 48,
+            '&:hover': {
+              bgcolor: followCamera ? 'success.dark' : 'grey.400',
+            },
+          }}
+        >
+          <CenterFocusStrongIcon />
         </IconButton>
 
         {/* Progress Slider */}

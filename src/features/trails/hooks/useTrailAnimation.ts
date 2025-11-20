@@ -26,6 +26,7 @@ interface UseTrailAnimationProps {
   mapRef: React.RefObject<MapRef>;
   currentPoint: [number, number] | null;
   currentBearing: number;
+  followCamera: boolean; // NEW: Control if camera should follow trail
 }
 
 const ANIMATION_DURATION = 120000; // 2 minutes in milliseconds (120,000ms)
@@ -62,6 +63,7 @@ export function useTrailAnimation({
   mapRef,
   currentPoint,
   currentBearing,
+  followCamera,
 }: UseTrailAnimationProps): void {
   const animationFrameRef = useRef<number | null>(null);
   const lastTimestampRef = useRef<number | null>(null);
@@ -70,6 +72,12 @@ export function useTrailAnimation({
   useEffect(() => {
     const map = mapRef.current?.getMap();
     if (!map || !currentPoint) return;
+
+    // Only move camera if followCamera is true
+    if (!followCamera) {
+      console.log('📌 Camera follow disabled, skipping update');
+      return;
+    }
 
     // Move camera to current point (regardless of play state)
     try {
@@ -89,7 +97,7 @@ export function useTrailAnimation({
     } catch (error) {
       console.error('❌ Camera update error:', error);
     }
-  }, [progress, currentPoint, currentBearing, mapRef]);
+  }, [progress, currentPoint, currentBearing, mapRef, followCamera]);
 
   // Effect 2: Animation loop (only when playing)
   useEffect(() => {
@@ -136,23 +144,27 @@ export function useTrailAnimation({
       const newProgress = Math.min(progress + progressIncrement, 1.0);
       setProgress(newProgress);
 
-      // Move camera to current point
-      try {
-        map.easeTo({
-          center: currentPoint,
-          bearing: currentBearing,
-          pitch: 60, // Tilted view for better trail visibility
-          duration: 100, // Short duration for smooth following (100ms)
-          essential: false, // Allow user interactions (zoom/pan during animation)
-        });
+      // Move camera to current point (only if followCamera is true)
+      if (followCamera) {
+        try {
+          map.easeTo({
+            center: currentPoint,
+            bearing: currentBearing,
+            pitch: 60, // Tilted view for better trail visibility
+            duration: 100, // Short duration for smooth following (100ms)
+            essential: false, // Allow user interactions (zoom/pan during animation)
+          });
 
-        console.log('🎥 Camera moved:', {
-          progress: `${(newProgress * 100).toFixed(1)}%`,
-          center: `[${currentPoint[0].toFixed(4)}, ${currentPoint[1].toFixed(4)}]`,
-          bearing: `${currentBearing.toFixed(1)}°`,
-        });
-      } catch (error) {
-        console.error('❌ Camera movement error:', error);
+          console.log('🎥 Camera moved:', {
+            progress: `${(newProgress * 100).toFixed(1)}%`,
+            center: `[${currentPoint[0].toFixed(4)}, ${currentPoint[1].toFixed(4)}]`,
+            bearing: `${currentBearing.toFixed(1)}°`,
+          });
+        } catch (error) {
+          console.error('❌ Camera movement error:', error);
+        }
+      } else {
+        console.log('📌 Camera follow disabled, animation continues without camera update');
       }
 
       // Check if animation reached end
@@ -190,6 +202,7 @@ export function useTrailAnimation({
     mapRef,
     currentPoint,
     currentBearing,
+    followCamera,
   ]);
 }
 
