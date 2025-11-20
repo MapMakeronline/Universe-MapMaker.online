@@ -9,6 +9,7 @@
  * - Camera follows trail using map.easeTo()
  * - Play/Pause control
  * - Auto-stop at 100%
+ * - Instant camera update on progress change (seek)
  *
  * Uses Mapbox GL JS map.easeTo() for camera movement
  */
@@ -64,6 +65,32 @@ export function useTrailAnimation({
   const animationFrameRef = useRef<number | null>(null);
   const lastTimestampRef = useRef<number | null>(null);
 
+  // Effect 1: Update camera position when progress changes (seek/manual change)
+  useEffect(() => {
+    const map = mapRef.current?.getMap();
+    if (!map || !currentPoint) return;
+
+    // Move camera to current point (regardless of play state)
+    try {
+      map.easeTo({
+        center: currentPoint,
+        bearing: currentBearing,
+        pitch: 60,
+        duration: 500, // Longer duration for manual seek (smoother transition)
+        essential: true,
+      });
+
+      console.log('🎯 Camera updated (seek):', {
+        progress: `${(progress * 100).toFixed(1)}%`,
+        center: `[${currentPoint[0].toFixed(4)}, ${currentPoint[1].toFixed(4)}]`,
+        bearing: `${currentBearing.toFixed(1)}°`,
+      });
+    } catch (error) {
+      console.error('❌ Camera update error:', error);
+    }
+  }, [progress, currentPoint, currentBearing, mapRef]);
+
+  // Effect 2: Animation loop (only when playing)
   useEffect(() => {
     // Only animate when playing
     if (!isPlaying) {
