@@ -22,6 +22,7 @@ Moduł do importowania, wyświetlania i animowania tras turystycznych na mapie.
 - [x] localStorage persistence
 - [x] Funkcja usuwania trasy
 - [x] Eleganckie powiadomienia Material-UI - `TrailNotification.tsx`
+- [x] **Automatyczne wyświetlanie trasy po imporcie (bez F5!)** - `TrailLayer.tsx` reactive map readiness
 
 ### ⏳ FAZA 3: Timeline & Animacja (TODO)
 - [ ] Timeline.tsx (pasek postępu)
@@ -58,7 +59,7 @@ src/features/trails/
 ├── utils/
 │   ├── geojsonParser.ts         # ✅ Parse GeoJSON (walidacja + konwersja)
 │   ├── kmlParser.ts             # ✅ Parse KML (DOMParser + toGeoJSON)
-│   └── trailCalculations.ts    # ✅ Długość, czas, dystans (turf.js)
+│   └── trailCalculations.ts     # ✅ Długość, czas, dystans (turf.js)
 ├── types/
 │   └── index.ts                 # ✅ Typy TypeScript (Trail, TrailFeature, etc.)
 ├── index.ts                     # ✅ Barrel export
@@ -131,22 +132,16 @@ FAB "Trasy turystyczne" znajduje się w prawym panelu mapy (po FAB "Wyszukiwanie
    - Tytuł: "Trasa została załadowana!"
    - Info: Nazwa trasy, długość (km), czas (min), ostrzeżenia
    - Przycisk: "Zamknij"
+   - **Trasa wyświetla się automatycznie na mapie (bez odświeżania!)**
 
-2. **Powiadomienie odświeżenia strony:**
-   - To samo ciemnoszare tło
-   - Ikona: Refresh (🔄)
-   - Tytuł: "Odśwież stronę"
-   - Info: "Naciśnij F5, aby zobaczyć trasę na mapie"
-   - Przycisk: "OK"
-
-3. **Dialog potwierdzenia usunięcia:**
+2. **Dialog potwierdzenia usunięcia:**
    - Ciemnoszare tło (#4A5568)
    - Ikona: Delete (🗑️)
    - Tytuł: "Potwierdź usunięcie trasy"
    - Pytanie o potwierdzenie z nazwą trasy
    - Dwa przyciski: "Anuluj" / "Usuń" (czerwony)
 
-4. **Powiadomienie po usunięciu:**
+3. **Powiadomienie po usunięciu:**
    - Ciemnoszare tło (#4A5568)
    - Ikona: Delete (🗑️)
    - Tytuł: "Trasa została usunięta!"
@@ -315,6 +310,21 @@ Moduł bazuje na projekcie tras turystycznych Wałbrzycha:
 - Elegancki design: zaokrąglone rogi, ikony, odpowiednie kolory
 - Zastąpiono wszystkie alert() i confirm() w TrailsModal.tsx
 
+### 5. Trasa wymaga odświeżenia (F5) po imporcie
+**Problem:** Po imporcie pliku KML/GeoJSON trasa nie wyświetlała się na mapie - wymagane było ręczne odświeżenie strony (F5)
+**Root Cause:**
+- Modal zamykał się natychmiast po `dispatch(setActiveTrail())`
+- TrailLayer montował się przed pełnym zainicjalizowaniem mapy
+- useEffect w TrailLayer.tsx (linia 69-72) kończył się early return gdy `mapRef.current?.getMap()` zwracało null
+- Po F5: Redux ładował state z localStorage, mapa była już gotowa → warstwa dodawała się poprawnie
+**Rozwiązanie:**
+- Dodano reaktywny state `mapReady` z interwałem sprawdzającym (co 100ms)
+- Effect #1: Czeka na inicjalizację mapy (`map.isStyleLoaded()` lub `map.loaded()`)
+- Effect #2: Dodaje warstwę trasy tylko gdy `mapReady === true`
+- Dependency array zawiera `mapReady` → re-trigger gdy mapa staje się dostępna
+- Usunięto powiadomienie "Odśwież stronę" (nie jest już potrzebne)
+**Rezultat:** Trasa wyświetla się automatycznie po imporcie, bez potrzeby odświeżania strony
+
 ---
 
 ## 🚀 Następne kroki (FAZA 3)
@@ -334,12 +344,13 @@ Moduł bazuje na projekcie tras turystycznych Wałbrzycha:
 ---
 
 **Data utworzenia:** 2025-01-18
-**Data aktualizacji:** 2025-11-19
+**Data aktualizacji:** 2025-11-20
 **Branch:** `ola/fab-trasa`
-**Status:** FAZA 1 ✅ | FAZA 2 ✅ (z funkcją usuwania + eleganckie powiadomienia)
+**Status:** FAZA 1 ✅ | FAZA 2 ✅ (z funkcją usuwania + eleganckie powiadomienia + automatyczne wyświetlanie)
 **Commits:**
 - `7b0c9fe` (FAZA 1 - podstawowa struktura)
 - `69223b3` (FAZA 2 - import plików)
 - `c2cce3d` (usuwanie tras)
 - `3a8fb4c` (fix serialization)
-- Najnowszy: Eleganckie powiadomienia Material-UI (TrailNotification.tsx)
+- `2198a27` (eleganckie powiadomienia Material-UI)
+- Najnowszy: Automatyczne wyświetlanie trasy po imporcie (TrailLayer.tsx reactive map readiness)

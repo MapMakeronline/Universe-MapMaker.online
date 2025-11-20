@@ -44,7 +44,6 @@ const TrailsModal: React.FC<TrailsModalProps> = ({
 
   // Notification states
   const [showSuccessNotification, setShowSuccessNotification] = useState(false);
-  const [showRefreshNotification, setShowRefreshNotification] = useState(false);
   const [showDeleteNotification, setShowDeleteNotification] = useState(false);
   const [showConfirmDeleteDialog, setShowConfirmDeleteDialog] = useState(false);
   const [notificationData, setNotificationData] = useState<{
@@ -168,15 +167,6 @@ const TrailsModal: React.FC<TrailsModalProps> = ({
   // Handle success notification close
   const handleSuccessNotificationClose = () => {
     setShowSuccessNotification(false);
-    // Show refresh notification after success notification closes
-    setTimeout(() => {
-      setShowRefreshNotification(true);
-    }, 300); // Small delay for smooth transition
-  };
-
-  // Handle refresh notification close
-  const handleRefreshNotificationClose = () => {
-    setShowRefreshNotification(false);
     setNotificationData(null); // Clean up data
   };
 
@@ -442,17 +432,6 @@ const TrailsModal: React.FC<TrailsModalProps> = ({
           duration={notificationData.duration}
           warnings={notificationData.warnings}
           showRefreshMessage={false}
-          showDeleteMessage={false}
-        />
-
-        <TrailNotification
-          open={showRefreshNotification}
-          onClose={handleRefreshNotificationClose}
-          trailName={notificationData.trailName}
-          distance={notificationData.distance}
-          duration={notificationData.duration}
-          warnings={[]}
-          showRefreshMessage={true}
           showDeleteMessage={false}
         />
 

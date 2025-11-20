@@ -12,7 +12,7 @@
  * Uses Mapbox GL JS (runs in browser)
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { MapRef } from 'react-map-gl';
 import type { TrailFeature } from '../types';
 import { calculateBounds } from '../utils/trailCalculations';
@@ -61,13 +61,55 @@ export function TrailLayer({
   const currentTrailIdRef = useRef<string | null>(null);
   const trailId = `${trail.properties.name}-${trail.geometry.coordinates.length}`;
   const cleanupNeededRef = useRef(false); // Track if cleanup is needed on unmount
+  const [mapReady, setMapReady] = useState(false); // Track when map becomes available
 
+  // Effect 1: Wait for map to be ready
   useEffect(() => {
+    let checkInterval: NodeJS.Timeout | null = null;
+
+    const checkMapReady = () => {
+      const map = mapRef.current?.getMap();
+
+      if (map && (map.isStyleLoaded?.() || map.loaded())) {
+        console.log('✅ TrailLayer: Map is ready!');
+        setMapReady(true);
+        if (checkInterval) {
+          clearInterval(checkInterval);
+          checkInterval = null;
+        }
+      } else {
+        console.log('⏳ TrailLayer: Waiting for map to initialize...');
+      }
+    };
+
+    // Check immediately
+    checkMapReady();
+
+    // If not ready, check every 100ms until ready
+    if (!mapReady) {
+      checkInterval = setInterval(checkMapReady, 100);
+    }
+
+    return () => {
+      if (checkInterval) {
+        clearInterval(checkInterval);
+      }
+    };
+  }, []); // Empty deps - runs once on mount
+
+  // Effect 2: Add trail layer when map is ready
+  useEffect(() => {
+    // Wait for map to be ready
+    if (!mapReady) {
+      console.log('⏳ TrailLayer: Map not ready yet, waiting...');
+      return;
+    }
+
     const map = mapRef.current?.getMap();
 
-    // Guard: Map must exist
+    // Guard: Map must exist (defensive check)
     if (!map) {
-      console.warn('TrailLayer: Map not ready');
+      console.warn('⚠️ TrailLayer: Map ready flag is true but mapRef is null (race condition?)');
       return;
     }
 
@@ -183,7 +225,7 @@ export function TrailLayer({
         console.warn('⚠️ TrailLayer: error during cleanup, ignoring:', error);
       }
     };
-  }, [trail, mapRef, color, width, fitBounds, sourceId, layerId, trailId]); // Re-run when trail or props change
+  }, [mapReady, trail, color, width, fitBounds, sourceId, layerId, trailId]); // Re-run when map becomes ready or trail changes
 
   // Separate cleanup effect for component unmount (when activeTrail becomes null)
   useEffect(() => {
