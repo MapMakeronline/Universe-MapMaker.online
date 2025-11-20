@@ -516,31 +516,35 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
           >
             {isSearching ? 'Wyszukiwanie...' : 'Wyszukaj'}
           </Button>
-          {/* Settings button - always visible */}
-          <IconButton
-            onClick={() => {
-              console.log('⚙️ Settings button clicked');
-              setConfigModalOpen(true);
-            }}
-            sx={{
-              bgcolor: theme.palette.grey[200],
-              '&:hover': { bgcolor: theme.palette.grey[300] },
-            }}
-          >
-            <SettingsIcon />
-          </IconButton>
+          {/* Settings button - only for authenticated users */}
+          {isAuthenticated && (
+            <IconButton
+              onClick={() => {
+                console.log('⚙️ Settings button clicked');
+                setConfigModalOpen(true);
+              }}
+              sx={{
+                bgcolor: theme.palette.grey[200],
+                '&:hover': { bgcolor: theme.palette.grey[300] },
+              }}
+            >
+              <SettingsIcon />
+            </IconButton>
+          )}
         </Box>
       </Box>
 
-      {/* Configuration Modal */}
-      <SearchConfigurator
-        open={configModalOpen}
-        onClose={() => setConfigModalOpen(false)}
-        projectName={projectName || ''}
-        vectorLayers={vectorLayers}
-        currentConfig={plotConfig}
-        onSaveSuccess={handleConfigSave}
-      />
+      {/* Configuration Modal - only for authenticated users */}
+      {isAuthenticated && (
+        <SearchConfigurator
+          open={configModalOpen}
+          onClose={() => setConfigModalOpen(false)}
+          projectName={projectName || ''}
+          vectorLayers={vectorLayers}
+          currentConfig={plotConfig}
+          onSaveSuccess={handleConfigSave}
+        />
+      )}
     </Box>
   );
 };
