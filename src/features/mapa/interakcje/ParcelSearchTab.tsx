@@ -42,6 +42,7 @@ import { useLazyGetPlotLayerAttributesQuery, useLazyGetPlotConfigQuery, useSearc
 import type { PlotConfig } from '@/backend/plot';
 import { useAppSelector } from '@/redux/hooks';
 import proj4 from 'proj4';
+import SearchConfigurator from '@/features/search/components/SearchConfigurator';
 
 interface ParcelSearchTabProps {
   projectName: string | null;
@@ -364,6 +365,39 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
     }
   };
 
+  // Handle config save
+  const handleConfigSave = (config: PlotConfig) => {
+    setPlotConfig(config);
+    setConfigModalOpen(false);
+
+    // Reset search state
+    setSelectedPrecinct('');
+    setSelectedPlotNumber('');
+  };
+
+  // Flatten layer tree to get all layers (including nested in groups)
+  const flattenLayers = (layerNodes: any[]): any[] => {
+    const result: any[] = [];
+    for (const node of layerNodes) {
+      if (node.type === 'group' && node.children) {
+        // Recursively flatten group children
+        result.push(...flattenLayers(node.children));
+      } else if (node.type !== 'group') {
+        // Add non-group layers
+        result.push(node);
+      }
+    }
+    return result;
+  };
+
+  // Get list of vector layers (only vector layers can have parcels)
+  const allLayers = flattenLayers(layers);
+  const vectorLayers = allLayers.filter((layer) =>
+    layer.type === 'vector' ||
+    layer.geometry ||
+    layer.geometryType ||
+    (layer.type !== 'raster' && layer.type !== 'group' && layer.type !== 'wms')
+  );
 
   return (
     <Box>
@@ -471,7 +505,7 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
           )}
         />
 
-        {/* Search Button */}
+        {/* Search Button with Settings Icon */}
         <Box sx={{ display: 'flex', gap: 1 }}>
           <Button
             fullWidth
@@ -482,8 +516,31 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
           >
             {isSearching ? 'Wyszukiwanie...' : 'Wyszukaj'}
           </Button>
+          {/* Settings button - always visible */}
+          <IconButton
+            onClick={() => {
+              console.log('⚙️ Settings button clicked');
+              setConfigModalOpen(true);
+            }}
+            sx={{
+              bgcolor: theme.palette.grey[200],
+              '&:hover': { bgcolor: theme.palette.grey[300] },
+            }}
+          >
+            <SettingsIcon />
+          </IconButton>
         </Box>
       </Box>
+
+      {/* Configuration Modal */}
+      <SearchConfigurator
+        open={configModalOpen}
+        onClose={() => setConfigModalOpen(false)}
+        projectName={projectName || ''}
+        vectorLayers={vectorLayers}
+        currentConfig={plotConfig}
+        onSaveSuccess={handleConfigSave}
+      />
     </Box>
   );
 };

@@ -54,6 +54,11 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
   // Check if user is authenticated (to show/hide settings button)
   const { isAuthenticated } = useAppSelector((state) => state.auth);
 
+  // DEBUG: Log authentication status
+  useEffect(() => {
+    console.log('🔐 ParcelSearchTab - isAuthenticated:', isAuthenticated);
+  }, [isAuthenticated]);
+
   // Configuration state
   const [plotConfig, setPlotConfig] = useState<PlotConfig | null>(null);
 
@@ -627,17 +632,19 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
           >
             {isSearching ? 'Wyszukiwanie...' : 'Wyszukaj'}
           </Button>
-          {isAuthenticated && (
-            <IconButton
-              onClick={() => setConfigModalOpen(true)}
-              sx={{
-                bgcolor: theme.palette.grey[200],
-                '&:hover': { bgcolor: theme.palette.grey[300] },
-              }}
-            >
-              <SettingsIcon />
-            </IconButton>
-          )}
+          {/* DEBUG: Always show settings button for now */}
+          <IconButton
+            onClick={() => {
+              console.log('⚙️ Settings button clicked, isAuthenticated:', isAuthenticated);
+              setConfigModalOpen(true);
+            }}
+            sx={{
+              bgcolor: theme.palette.grey[200],
+              '&:hover': { bgcolor: theme.palette.grey[300] },
+            }}
+          >
+            <SettingsIcon />
+          </IconButton>
         </Box>
       </Box>
 
@@ -651,16 +658,14 @@ const ParcelSearchTab: React.FC<ParcelSearchTabProps> = ({ projectName, mapRef, 
       </Box>
 
       {/* Configuration Modal */}
-      {isAuthenticated && (
-        <SearchConfigurator
-          open={configModalOpen}
-          onClose={() => setConfigModalOpen(false)}
-          projectName={projectName || ''}
-          vectorLayers={vectorLayers}
-          currentConfig={plotConfig}
-          onSaveSuccess={handleConfigSave}
-        />
-      )}
+      <SearchConfigurator
+        open={configModalOpen}
+        onClose={() => setConfigModalOpen(false)}
+        projectName={projectName || ''}
+        vectorLayers={vectorLayers}
+        currentConfig={plotConfig}
+        onSaveSuccess={handleConfigSave}
+      />
     </Box>
   );
 };
