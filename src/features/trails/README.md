@@ -24,11 +24,11 @@ Moduł do importowania, wyświetlania i animowania tras turystycznych na mapie.
 - [x] Eleganckie powiadomienia Material-UI - `TrailNotification.tsx`
 - [x] **Automatyczne wyświetlanie trasy po imporcie (bez F5!)** - `TrailLayer.tsx` reactive map readiness
 
-### ⏳ FAZA 3: Timeline & Animacja (TODO)
-- [ ] Timeline.tsx (pasek postępu)
-- [ ] useTrailAnimation.ts (animacja kamery)
-- [ ] Play/Pause/Speed kontrola
-- [ ] Smooth camera movement
+### ✅ FAZA 3: Timeline & Animacja (GOTOWE)
+- [x] **FAZA 3.1:** TimelineButton.tsx (FAB Play w prawym dolnym rogu)
+- [x] **FAZA 3.2:** Timeline.tsx (pasek postępu z kontrolami)
+- [x] **FAZA 3.3:** useTrailProgress.ts (obliczenia turf.js - pozycja, bearing, dystans)
+- [x] **FAZA 3.4:** useTrailAnimation.ts (animacja kamery RAF + map.easeTo)
 
 ### ⏳ FAZA 4: Sidebar & Info (TODO)
 - [ ] Sidebar.tsx (panel boczny)

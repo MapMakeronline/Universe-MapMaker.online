@@ -10,9 +10,9 @@
  * - Progress slider (0-100%)
  * - Distance display (current / total km)
  *
- * FAZA 3.2: UI and local state only
- * FAZA 3.3: Will add useTrailProgress hook
- * FAZA 3.4: Will add useTrailAnimation hook
+ * FAZA 3.2: UI and local state ✅
+ * FAZA 3.3: useTrailProgress hook ✅
+ * FAZA 3.4: useTrailAnimation hook ✅
  */
 
 import React, { useState } from 'react';
@@ -28,6 +28,8 @@ import PauseIcon from '@mui/icons-material/Pause';
 import ReplayIcon from '@mui/icons-material/Replay';
 import { MapRef } from 'react-map-gl';
 import type { TrailFeature } from '../types';
+import { useTrailProgress } from '../hooks/useTrailProgress';
+import { useTrailAnimation } from '../hooks/useTrailAnimation';
 
 interface TimelineProps {
   open: boolean;
@@ -59,11 +61,25 @@ export function Timeline({ open, onClose, trail, mapRef }: TimelineProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0); // 0-1 (0% - 100%)
 
-  // Placeholder values (FAZA 3.3 will calculate real values)
-  const totalDistance = trail.properties.distance
-    ? trail.properties.distance / 1000 // meters to km
-    : 10.0; // fallback
-  const currentDistance = progress * totalDistance;
+  // FAZA 3.3: Real-time trail calculations using turf.js
+  const {
+    totalDistance,
+    currentDistance,
+    currentPoint,
+    currentBearing,
+    remainingDistance,
+  } = useTrailProgress(trail, progress);
+
+  // FAZA 3.4: Camera animation (RAF loop + map.easeTo)
+  useTrailAnimation({
+    isPlaying,
+    progress,
+    setProgress,
+    setIsPlaying,
+    mapRef,
+    currentPoint,
+    currentBearing,
+  });
 
   // Handlers
   const handlePlayPause = () => {
@@ -184,7 +200,7 @@ export function Timeline({ open, onClose, trail, mapRef }: TimelineProps) {
         {/* Distance Display */}
         <Box sx={{ minWidth: 100, textAlign: 'right' }}>
           <Typography variant="body2" fontWeight="bold" sx={{ fontSize: '0.875rem' }}>
-            {currentDistance.toFixed(1)} / {totalDistance.toFixed(1)} km
+            {(currentDistance / 1000).toFixed(1)} / {(totalDistance / 1000).toFixed(1)} km
           </Typography>
           <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
             {Math.round(progress * 100)}%
