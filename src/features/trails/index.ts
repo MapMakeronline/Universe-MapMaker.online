@@ -11,6 +11,8 @@
 
 // Components
 export { default as TrailsModal } from './components/TrailsModal';
+export { default as TimelineButton } from './components/TimelineButton';
+export { default as Timeline } from './components/Timeline';
 
 // Types
 export * from './types';

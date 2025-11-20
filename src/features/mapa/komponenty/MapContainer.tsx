@@ -18,6 +18,7 @@ import ZoomToSelectedControl from './ZoomToSelectedControl';
 import WypisPlotSelector from './WypisPlotSelector';
 import WypisPlotHighlighter from './WypisPlotHighlighter';
 import { TrailLayer } from '@/features/trails/components/TrailLayer';
+import { TimelineButton, Timeline } from '@/features/trails';
 import { selectActiveTrail } from '@/redux/slices/trailsSlice';
 
 // Import CSS dla Mapbox GL
@@ -33,6 +34,7 @@ const MapContainer: React.FC<MapContainerProps> = ({ children, projectName, onMa
   const dispatch = useAppDispatch();
   const mapRef = useRef<MapRef>(null);
   const [tokenError, setTokenError] = useState<string>('');
+  const [timelineOpen, setTimelineOpen] = useState(false); // FAZA 3: Timeline control panel
 
   const { viewState, mapStyle, isFullscreen, isMapLoaded } = useAppSelector((state) => state.map);
   const activeTrail = useAppSelector(selectActiveTrail);
@@ -302,6 +304,24 @@ const MapContainer: React.FC<MapContainerProps> = ({ children, projectName, onMa
       {/* ===== RIGHT FAB TOOLBAR - Unified Material Icons FABs ===== */}
       {/* All tools in one vertical column with consistent styling */}
       <RightFABToolbar mapRef={mapRef} projectName={projectName} />
+
+      {/* ===== TIMELINE BUTTON - Trail Animation (FAZA 3) ===== */}
+      {/* Shows only when activeTrail exists */}
+      <TimelineButton
+        visible={!!activeTrail}
+        onClick={() => setTimelineOpen(!timelineOpen)} // Toggle open/close
+      />
+
+      {/* ===== TIMELINE PANEL - Trail Animation Control (FAZA 3.2) ===== */}
+      {/* Drawer slides from bottom with Play/Pause/Reload controls */}
+      {activeTrail && activeTrail.feature && (
+        <Timeline
+          open={timelineOpen}
+          onClose={() => setTimelineOpen(false)}
+          trail={activeTrail.feature}
+          mapRef={mapRef}
+        />
+      )}
     </Box>
   );
 };
