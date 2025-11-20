@@ -10,6 +10,7 @@
  * - Play/Pause control
  * - Auto-stop at 100%
  * - Instant camera update on progress change (seek)
+ * - User can zoom/pan during animation (essential: false)
  *
  * Uses Mapbox GL JS map.easeTo() for camera movement
  */
@@ -77,7 +78,7 @@ export function useTrailAnimation({
         bearing: currentBearing,
         pitch: 60,
         duration: 500, // Longer duration for manual seek (smoother transition)
-        essential: true,
+        essential: false, // Allow user interactions (zoom/pan)
       });
 
       console.log('🎯 Camera updated (seek):', {
@@ -142,7 +143,7 @@ export function useTrailAnimation({
           bearing: currentBearing,
           pitch: 60, // Tilted view for better trail visibility
           duration: 100, // Short duration for smooth following (100ms)
-          essential: true, // Animation continues even if user interacts
+          essential: false, // Allow user interactions (zoom/pan during animation)
         });
 
         console.log('🎥 Camera moved:', {
