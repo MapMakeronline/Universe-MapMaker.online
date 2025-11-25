@@ -17,6 +17,7 @@
 
 import { useEffect, useRef } from 'react';
 import type { MapRef } from 'react-map-gl';
+import * as turf from '@turf/turf';
 
 interface UseTrailAnimationProps {
   isPlaying: boolean;
@@ -30,6 +31,19 @@ interface UseTrailAnimationProps {
 }
 
 const ANIMATION_DURATION = 120000; // 2 minutes in milliseconds (120,000ms)
+const CAMERA_OFFSET_METERS = 50; // Camera will be 50m ahead of the marker
+
+/**
+ * Calculate camera center point with offset ahead of marker
+ * This makes the marker appear closer to camera (in front of view)
+ */
+function getCameraCenter(markerPoint: [number, number], bearing: number): [number, number] {
+  // Calculate point X meters AHEAD of the marker (same direction as bearing)
+  // This shifts camera forward, bringing marker closer to camera perspective
+  const point = turf.point(markerPoint);
+  const cameraPoint = turf.destination(point, CAMERA_OFFSET_METERS / 1000, bearing, 'kilometers');
+  return cameraPoint.geometry.coordinates as [number, number];
+}
 
 /**
  * useTrailAnimation Hook
@@ -81,8 +95,11 @@ export function useTrailAnimation({
 
     // Move camera to current point (regardless of play state)
     try {
+      // Calculate camera position with offset (behind marker)
+      const cameraCenter = getCameraCenter(currentPoint, currentBearing);
+
       map.easeTo({
-        center: currentPoint,
+        center: cameraCenter,
         bearing: currentBearing,
         pitch: 60,
         duration: 500, // Longer duration for manual seek (smoother transition)
@@ -91,7 +108,8 @@ export function useTrailAnimation({
 
       console.log('🎯 Camera updated (seek):', {
         progress: `${(progress * 100).toFixed(1)}%`,
-        center: `[${currentPoint[0].toFixed(4)}, ${currentPoint[1].toFixed(4)}]`,
+        markerPos: `[${currentPoint[0].toFixed(4)}, ${currentPoint[1].toFixed(4)}]`,
+        cameraPos: `[${cameraCenter[0].toFixed(4)}, ${cameraCenter[1].toFixed(4)}]`,
         bearing: `${currentBearing.toFixed(1)}°`,
       });
     } catch (error) {
@@ -147,17 +165,21 @@ export function useTrailAnimation({
       // Move camera to current point (only if followCamera is true)
       if (followCamera) {
         try {
+          // Calculate camera position with offset (behind marker)
+          const cameraCenter = getCameraCenter(currentPoint, currentBearing);
+
           map.easeTo({
-            center: currentPoint,
+            center: cameraCenter,
             bearing: currentBearing,
-            pitch: 60, // Tilted view for better trail visibility
+            pitch: 60,
             duration: 100, // Short duration for smooth following (100ms)
             essential: false, // Allow user interactions (zoom/pan during animation)
           });
 
           console.log('🎥 Camera moved:', {
             progress: `${(newProgress * 100).toFixed(1)}%`,
-            center: `[${currentPoint[0].toFixed(4)}, ${currentPoint[1].toFixed(4)}]`,
+            markerPos: `[${currentPoint[0].toFixed(4)}, ${currentPoint[1].toFixed(4)}]`,
+            cameraPos: `[${cameraCenter[0].toFixed(4)}, ${cameraCenter[1].toFixed(4)}]`,
             bearing: `${currentBearing.toFixed(1)}°`,
           });
         } catch (error) {

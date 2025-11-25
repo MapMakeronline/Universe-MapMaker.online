@@ -1,55 +1,104 @@
 /**
- * TrailMarker - Animated position marker on trail
+ * TrailMarker - Marker creation component
+ *
+ * REFACTORED (2025-11-20): Simplified component
  *
  * Features:
  * - Arrow icon pointing in trail direction
- * - Rotates according to bearing (currentBearing)
- * - Updates position in real-time during animation
- * - Google Maps style navigation arrow
+ * - Creates Mapbox marker element
+ * - Marker animation handled by useTrailAnimationWithMarker hook
+ * - Accepts markerRef from parent (shared with animation hook)
  *
  * Uses Mapbox GL JS Marker API
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import type { MapRef } from 'react-map-gl';
 
 interface TrailMarkerProps {
   mapRef: React.RefObject<MapRef>;
-  currentPoint: [number, number] | null;
-  currentBearing: number;
+  markerRef: React.RefObject<mapboxgl.Marker | null>; // Shared ref from parent
   visible: boolean; // Show/hide marker based on animation state
 }
 
 /**
  * TrailMarker Component
  *
- * Renders a direction arrow marker at current trail position
+ * Creates a direction arrow marker element
+ * Animation logic handled by useTrailAnimationWithMarker hook
  *
  * @param mapRef - Reference to Mapbox map
- * @param currentPoint - Current position [lng, lat]
- * @param currentBearing - Current direction (0-360 degrees)
+ * @param markerRef - Reference to Mapbox marker (shared with animation hook)
  * @param visible - Whether marker should be visible
  *
  * @example
+ * const markerRef = useRef<mapboxgl.Marker | null>(null);
+ *
  * <TrailMarker
  *   mapRef={mapRef}
- *   currentPoint={currentPoint}
- *   currentBearing={currentBearing}
+ *   markerRef={markerRef}
  *   visible={isPlaying}
  * />
  */
 export function TrailMarker({
   mapRef,
-  currentPoint,
-  currentBearing,
+  markerRef,
   visible,
 }: TrailMarkerProps) {
-  const markerRef = useRef<mapboxgl.Marker | null>(null);
+  const [mapReady, setMapReady] = useState(false); // Track when map is ready
 
+  // Effect 1: Wait for map to be ready (similar to TrailLayer)
   useEffect(() => {
+    let checkInterval: NodeJS.Timeout | null = null;
+
+    const checkMapReady = () => {
+      const map = mapRef.current?.getMap();
+
+      if (map && (map.isStyleLoaded?.() || map.loaded())) {
+        console.log('✅ TrailMarker: Map is ready!');
+        setMapReady(true);
+        if (checkInterval) {
+          clearInterval(checkInterval);
+          checkInterval = null;
+        }
+      } else {
+        console.log('⏳ TrailMarker: Waiting for map to initialize...');
+      }
+    };
+
+    // Check immediately
+    checkMapReady();
+
+    // If not ready, check every 100ms until ready
+    if (!mapReady) {
+      checkInterval = setInterval(checkMapReady, 100);
+    }
+
+    return () => {
+      if (checkInterval) {
+        clearInterval(checkInterval);
+      }
+    };
+  }, []); // Empty deps - runs once on mount
+
+  // Effect 2: Create marker when map is ready
+  useEffect(() => {
+    if (!mapReady) {
+      console.log('⏳ TrailMarker: Map not ready yet, waiting...');
+      return;
+    }
+
+    console.log('🔷 TrailMarker: Attempting to create marker', {
+      hasMapRef: !!mapRef.current,
+      hasMap: !!mapRef.current?.getMap(),
+    });
+
     const map = mapRef.current?.getMap();
-    if (!map) return;
+    if (!map) {
+      console.log('📍 TrailMarker: Map not ready');
+      return;
+    }
 
     // Create marker element (arrow SVG)
     const el = document.createElement('div');
@@ -76,47 +125,25 @@ export function TrailMarker({
     });
 
     markerRef.current = marker;
-
-    // Add marker to map (initially hidden)
-    if (currentPoint && visible) {
-      marker.setLngLat(currentPoint).addTo(map);
-      console.log('📍 TrailMarker: Created and added to map');
-    }
+    console.log('✅ TrailMarker: Created marker element successfully');
 
     // Cleanup on unmount
     return () => {
       if (markerRef.current) {
         markerRef.current.remove();
         markerRef.current = null;
-        console.log('📍 TrailMarker: Removed from map');
       }
+      console.log('🧹 TrailMarker: Cleaned up on unmount');
     };
-  }, [mapRef]); // Only run once on mount
+  }, [mapReady, markerRef]); // Re-run when map becomes ready
 
-  // Effect 2: Update marker position and rotation
+  // Effect 3: Hide marker when not visible
   useEffect(() => {
-    const marker = markerRef.current;
-    if (!marker) return;
-
-    if (currentPoint && visible) {
-      // Update position
-      marker.setLngLat(currentPoint);
-
-      // Update rotation (bearing)
-      marker.setRotation(currentBearing);
-
-      // Ensure marker is visible
-      marker.addTo(mapRef.current!.getMap()!);
-
-      console.log('📍 TrailMarker: Updated', {
-        position: `[${currentPoint[0].toFixed(4)}, ${currentPoint[1].toFixed(4)}]`,
-        bearing: `${currentBearing.toFixed(1)}°`,
-      });
-    } else {
-      // Hide marker when not visible
-      marker.remove();
+    if (!visible && markerRef.current) {
+      console.log('🔷 TrailMarker: Hiding marker (visible=false)');
+      markerRef.current.remove();
     }
-  }, [currentPoint, currentBearing, visible, mapRef]);
+  }, [visible, markerRef]);
 
   // This component renders nothing (marker is added directly to map)
   return null;
