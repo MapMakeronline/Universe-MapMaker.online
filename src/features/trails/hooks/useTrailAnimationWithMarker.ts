@@ -33,7 +33,7 @@
  * Uses Mapbox GL JS map.jumpTo() for camera, marker.setLngLat() for marker
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import type { MapRef } from 'react-map-gl';
 import type mapboxgl from 'mapbox-gl';
 
@@ -128,6 +128,7 @@ function updateAnimationFrame(
   state.progress.current = newProgress; // Update ref immediately
 
   // 2️⃣ Update marker (60 FPS - smooth LERP interpolation)
+  // ✅ Marker ALWAYS follows trail (independent of camera follow state)
   const marker = state.marker.current;
   const targetPos = state.targetPoint.current; // ✅ Use actual trail position as target
   const targetBear = state.targetBearing.current; // ✅ Use actual trail bearing as target
@@ -181,6 +182,8 @@ function updateAnimationFrame(
           bearing: newCamBearing,
           pitch: NAVIGATION_PITCH,
           zoom: NAVIGATION_ZOOM,
+          // Google Maps style: marker in lower 1/3 of screen, more road visible ahead
+          padding: { top: 700, bottom: 100, left: 0, right: 0 },
         });
       } catch (error) {
         console.error('❌ Camera update error:', error);
@@ -188,10 +191,8 @@ function updateAnimationFrame(
     } else if (!camPoint) {
       console.warn('⚠️ Camera update skipped: camPoint is null');
     }
-  } else {
-    // Log when camera follow is disabled
-    console.warn('⚠️ Camera update SKIPPED - followCamera = false');
   }
+  // Note: Camera follow disabled - skip LERP update (no log to avoid spam)
 
   // 4️⃣ Check if animation reached end
   if (newProgress >= 1.0) {
@@ -254,6 +255,8 @@ function initializeAnimationState(
       bearing: currentBearing,
       pitch: NAVIGATION_PITCH,
       zoom: NAVIGATION_ZOOM,
+      // Google Maps style: marker in lower 1/3 of screen, more road visible ahead
+      padding: { top: 700, bottom: 100, left: 0, right: 0 },
     });
     console.log('✅ Camera physically moved to start position', {
       cameraPos: `[${initialCameraPos[0].toFixed(4)}, ${initialCameraPos[1].toFixed(4)}]`,
@@ -312,7 +315,11 @@ export function useTrailAnimationWithMarker({
   currentBearing,
   followCamera,
   visible,
-}: UseTrailAnimationWithMarkerProps): void {
+}: UseTrailAnimationWithMarkerProps): {
+  syncCameraPosition: (position: [number, number], bearing: number) => void;
+  syncMarkerPosition: (position: [number, number], bearing: number) => void;
+  getCurrentMarkerPosition: () => { position: [number, number] | null; bearing: number };
+} {
   const animationFrameRef = useRef<number | null>(null);
   const lastTimestampRef = useRef<number | null>(null);
 
@@ -371,76 +378,77 @@ export function useTrailAnimationWithMarker({
 
   // Effect 2: Unified RAF loop (camera + marker in sync) - MINIMAL DEPS
   useEffect(() => {
-    // Only animate when playing
+    // Cancel animation if paused (but keep cleanup function registered)
     if (!isPlaying) {
-      // Cancel animation frame if paused
       if (animationFrameRef.current !== null) {
         cancelAnimationFrame(animationFrameRef.current);
         animationFrameRef.current = null;
         lastTimestampRef.current = null;
       }
-      return;
+      // ✅ DON'T return early - allow cleanup function registration to prevent memory leak
     }
 
-    // Guard: Check if map is available
-    const map = mapRef.current?.getMap();
-    if (!map) {
-      return;
-    }
+    // Only start RAF loop when playing and all guards pass
+    if (isPlaying) {
+      const map = mapRef.current?.getMap();
+      if (!map) {
+        console.warn('⚠️ RAF loop: Map not ready');
+        // Don't return - allow cleanup registration
+      } else if (!markerRef.current || !currentMarkerPosRef.current || !visible) {
+        console.warn('⚠️ RAF loop: Marker not ready or not visible');
+        // Don't return - allow cleanup registration
+      } else {
+        // SOLUTION B: Camera jump moved to Timeline.tsx handlePlayPause()
+        // Timeline component now handles "when to jump" (UI interaction)
+        // Hook only handles "how to animate" (RAF loop logic)
 
-    // Guard: Check if marker and current position exist
-    if (!markerRef.current || !currentMarkerPosRef.current || !visible) {
-      return;
-    }
+        // Prepare animation state for extracted function
+        const animationState = {
+          lastTimestamp: lastTimestampRef,
+          progress: progressRef,
+          markerPos: currentMarkerPosRef,
+          markerBearing: currentMarkerBearingRef,
+          cameraPos: currentCameraPosRef,
+          cameraBearing: currentCameraBearingRef,
+          targetPoint: currentPointRef,
+          targetBearing: currentBearingRef,
+          followCamera: followCameraRef,
+          marker: markerRef,
+        };
 
-    // SOLUTION B: Camera jump moved to Timeline.tsx handlePlayPause()
-    // Timeline component now handles "when to jump" (UI interaction)
-    // Hook only handles "how to animate" (RAF loop logic)
+        const animationCallbacks = {
+          setProgress,
+          setIsPlaying,
+        };
 
-    // Prepare animation state for extracted function
-    const animationState = {
-      lastTimestamp: lastTimestampRef,
-      progress: progressRef,
-      markerPos: currentMarkerPosRef,
-      markerBearing: currentMarkerBearingRef,
-      cameraPos: currentCameraPosRef,
-      cameraBearing: currentCameraBearingRef,
-      targetPoint: currentPointRef,
-      targetBearing: currentBearingRef,
-      followCamera: followCameraRef,
-      marker: markerRef,
-    };
+        // Unified animation loop (using extracted helper function)
+        const animate = (timestamp: number) => {
+          const shouldContinue = updateAnimationFrame(
+            timestamp,
+            animationState,
+            animationCallbacks,
+            map,
+            visible
+          );
 
-    const animationCallbacks = {
-      setProgress,
-      setIsPlaying,
-    };
+          if (!shouldContinue) {
+            // Animation ended, cleanup
+            animationFrameRef.current = null;
+            lastTimestampRef.current = null;
+            return;
+          }
 
-    // Unified animation loop (using extracted helper function)
-    const animate = (timestamp: number) => {
-      const shouldContinue = updateAnimationFrame(
-        timestamp,
-        animationState,
-        animationCallbacks,
-        map,
-        visible
-      );
+          // Continue animation loop
+          animationFrameRef.current = requestAnimationFrame(animate);
+        };
 
-      if (!shouldContinue) {
-        // Animation ended, cleanup
-        animationFrameRef.current = null;
-        lastTimestampRef.current = null;
-        return;
+        // Start animation
+        animationFrameRef.current = requestAnimationFrame(animate);
       }
+    }
 
-      // Continue animation loop
-      animationFrameRef.current = requestAnimationFrame(animate);
-    };
-
-    // Start animation
-    animationFrameRef.current = requestAnimationFrame(animate);
-
-    // Cleanup function
+    // ✅ CRITICAL FIX: Cleanup function ALWAYS registered (even when isPlaying=false)
+    // This prevents memory leak when component unmounts while paused
     return () => {
       if (animationFrameRef.current !== null) {
         cancelAnimationFrame(animationFrameRef.current);
@@ -460,6 +468,46 @@ export function useTrailAnimationWithMarker({
   // Effect 3: Manual seek - instant camera update (ONLY when user seeks slider)
   // Removed to prevent conflict with RAF loop - seek now handled by updating refs only
   // RAF loop will smoothly move camera to new position without restart
+
+  // Expose function to sync camera position refs after external jumpTo
+  // Used by Timeline.tsx handlePlayPause() to update refs after instant camera jump
+  // ✅ Bug #16 fix: useCallback prevents infinite Timeline effect loop
+  const syncCameraPosition = useCallback(
+    (position: [number, number], bearing: number) => {
+      currentCameraPosRef.current = position;
+      currentCameraBearingRef.current = bearing;
+      console.log('🔄 Camera position synced to refs', {
+        position: `[${position[0].toFixed(4)}, ${position[1].toFixed(4)}]`,
+        bearing,
+      });
+    },
+    [] // Empty deps - only refs used (stable), function never needs to change
+  );
+
+  // Expose function to sync marker position refs (for manual RAF loop start)
+  // Used by Timeline.tsx handlePlayPause() to initialize marker refs before starting animation
+  const syncMarkerPosition = useCallback(
+    (position: [number, number], bearing: number) => {
+      currentMarkerPosRef.current = position;
+      currentMarkerBearingRef.current = bearing;
+      console.log('🔄 Marker position synced to refs', {
+        position: `[${position[0].toFixed(4)}, ${position[1].toFixed(4)}]`,
+        bearing,
+      });
+    },
+    [] // Empty deps - only refs used (stable), function never needs to change
+  );
+
+  // Expose function to get current marker position
+  // Used by Timeline.tsx handleCenterCamera() to jump to actual marker position (not trail position)
+  const getCurrentMarkerPosition = (): { position: [number, number] | null; bearing: number } => {
+    return {
+      position: currentMarkerPosRef.current,
+      bearing: currentMarkerBearingRef.current,
+    };
+  };
+
+  return { syncCameraPosition, syncMarkerPosition, getCurrentMarkerPosition };
 }
 
 export default useTrailAnimationWithMarker;

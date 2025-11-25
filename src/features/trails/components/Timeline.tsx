@@ -80,7 +80,7 @@ export function Timeline({ open, onClose, trail, mapRef }: TimelineProps) {
   } = useTrailProgress(trail, progress);
 
   // REFACTORED (2025-11-20): Unified animation hook (camera + marker in sync)
-  useTrailAnimationWithMarker({
+  const { syncCameraPosition, syncMarkerPosition } = useTrailAnimationWithMarker({
     isPlaying,
     progress,
     setProgress,
@@ -99,7 +99,7 @@ export function Timeline({ open, onClose, trail, mapRef }: TimelineProps) {
       // Enable camera follow
       setFollowCamera(true);
 
-      // SOLUTION B: Instant jump to marker on Play
+      // SOLUTION B: Instant jump to trail position (ALWAYS works, no dependency on marker init)
       const map = mapRef.current?.getMap();
       if (map && currentPoint) {
         const cameraPos = getCameraCenterBehindMarker(currentPoint, currentBearing);
@@ -109,13 +109,22 @@ export function Timeline({ open, onClose, trail, mapRef }: TimelineProps) {
           bearing: currentBearing,
           pitch: NAVIGATION_PITCH,
           zoom: NAVIGATION_ZOOM,
+          // Google Maps style: marker in lower 1/3 of screen, more road visible ahead
+          padding: { top: 700, bottom: 100, left: 0, right: 0 },
         });
 
-        console.log('🎯 Play: Camera jumped to marker', {
-          markerPos: `[${currentPoint[0].toFixed(4)}, ${currentPoint[1].toFixed(4)}]`,
+        // CRITICAL: Sync both marker AND camera position refs so RAF loop can start
+        syncMarkerPosition(currentPoint, currentBearing); // ✅ Initialize marker refs (required for RAF loop start)
+        syncCameraPosition(cameraPos, currentBearing);    // ✅ Initialize camera refs (smooth follow)
+
+        console.log('🎯 Play: Camera jumped to trail position', {
+          trailPos: `[${currentPoint[0].toFixed(4)}, ${currentPoint[1].toFixed(4)}]`,
           cameraPos: `[${cameraPos[0].toFixed(4)}, ${cameraPos[1].toFixed(4)}]`,
           bearing: currentBearing,
+          progress: Math.round(progress * 100) + '%',
         });
+      } else {
+        console.error('❌ Play: currentPoint is NULL, cannot center camera');
       }
     }
     setIsPlaying(!isPlaying);
@@ -130,9 +139,45 @@ export function Timeline({ open, onClose, trail, mapRef }: TimelineProps) {
   };
 
   const handleCenterCamera = () => {
-    // Hook will automatically center camera via jumpTo() + LERP
+    // CRITICAL: Always enable camera follow first
     setFollowCamera(true);
-    console.log('🎯 Timeline: Camera follow enabled, hook will recenter');
+
+    const map = mapRef.current?.getMap();
+    if (!map) {
+      console.error('❌ Center Camera: mapRef.current is NULL');
+      return;
+    }
+
+    // Always use trail position (calculated from current progress)
+    // This is CONSISTENT and ALWAYS available (no dependency on marker init)
+    if (!currentPoint) {
+      console.error('❌ Center Camera: currentPoint is NULL');
+      return;
+    }
+
+    // Calculate camera position 80m behind trail position
+    const cameraPos = getCameraCenterBehindMarker(currentPoint, currentBearing);
+
+    // Instant jump to trail position (works in all situations: playing, paused, scrolled)
+    map.jumpTo({
+      center: cameraPos,
+      bearing: currentBearing,
+      pitch: NAVIGATION_PITCH,
+      zoom: NAVIGATION_ZOOM,
+      // Google Maps style: marker in lower 1/3 of screen, more road visible ahead
+      padding: { top: 700, bottom: 100, left: 0, right: 0 },
+    });
+
+    // CRITICAL: Sync camera position refs so RAF loop knows where camera is
+    syncCameraPosition(cameraPos, currentBearing);
+
+    console.log('🎯 Center Camera: Jumped to trail position', {
+      trailPos: `[${currentPoint[0].toFixed(4)}, ${currentPoint[1].toFixed(4)}]`,
+      cameraPos: `[${cameraPos[0].toFixed(4)}, ${cameraPos[1].toFixed(4)}]`,
+      bearing: currentBearing,
+      progress: Math.round(progress * 100) + '%',
+      isPlaying,
+    });
   };
 
   const handleSeek = (event: Event, value: number | number[]) => {
@@ -144,17 +189,23 @@ export function Timeline({ open, onClose, trail, mapRef }: TimelineProps) {
 
   // Effect: Auto-enable camera follow when Timeline opens
   useEffect(() => {
-    if (open && currentPoint) {
+    if (open) {
       // Hook will automatically center camera via jumpTo() + LERP
       setFollowCamera(true);
       console.log('🎬 Timeline: Opened, camera follow enabled, hook will center');
     }
-  }, [open, currentPoint]); // Removed currentBearing (not needed for state change)
+  }, [open]); // ✅ FIXED: Only trigger on Timeline open, not on currentPoint changes (which happen 60 times/sec during animation)
 
   // Effect: Detect user map interactions and disable camera follow
   useEffect(() => {
     const map = mapRef.current?.getMap();
-    if (!map) return;
+
+    // Early return WITH cleanup function registration to prevent listener leak
+    if (!map) {
+      return () => {
+        // Empty cleanup - ensures effect cleanup is always registered
+      };
+    }
 
     const handleUserInteraction = () => {
       // Use setState with callback to always get current state
@@ -178,6 +229,20 @@ export function Timeline({ open, onClose, trail, mapRef }: TimelineProps) {
       map.off('wheel', handleUserInteraction);
     };
   }, [mapRef]); // ✅ FIXED: Removed followCamera dependency
+
+  // Effect: Sync camera position refs after seek (Bug #13 fix)
+  useEffect(() => {
+    // When user seeks while NOT playing, sync camera refs to new position
+    // This prevents stale refs causing camera jump on next Play
+    if (!isPlaying && progress > 0 && currentPoint) {
+      const cameraPos = getCameraCenterBehindMarker(currentPoint, currentBearing);
+      syncCameraPosition(cameraPos, currentBearing);
+      console.log('🔄 Timeline: Synced camera refs after seek', {
+        progress: `${Math.round(progress * 100)}%`,
+        cameraPos: `[${cameraPos[0].toFixed(4)}, ${cameraPos[1].toFixed(4)}]`,
+      });
+    }
+  }, [progress, isPlaying, currentPoint, currentBearing, syncCameraPosition]);
 
   return (
     <>

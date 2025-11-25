@@ -137,13 +137,8 @@ export function TrailMarker({
     };
   }, [mapReady, markerRef]); // Re-run when map becomes ready
 
-  // Effect 3: Hide marker when not visible
-  useEffect(() => {
-    if (!visible && markerRef.current) {
-      console.log('🔷 TrailMarker: Hiding marker (visible=false)');
-      markerRef.current.remove();
-    }
-  }, [visible, markerRef]);
+  // Note: Marker visibility is handled by useTrailAnimationWithMarker Effect 1
+  // (removes marker when visible=false). No need to duplicate that logic here.
 
   // This component renders nothing (marker is added directly to map)
   return null;

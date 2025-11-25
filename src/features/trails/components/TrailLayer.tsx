@@ -227,28 +227,6 @@ export function TrailLayer({
     };
   }, [mapReady, trail, color, width, fitBounds, sourceId, layerId, trailId]); // Re-run when map becomes ready or trail changes
 
-  // Separate cleanup effect for component unmount (when activeTrail becomes null)
-  useEffect(() => {
-    const map = mapRef.current?.getMap();
-
-    // Cleanup on component unmount
-    return () => {
-      if (!map) return;
-
-      console.log('🗑️ Trail layer: Component unmounting, removing layer');
-      try {
-        if (map.getLayer(layerId)) {
-          map.removeLayer(layerId);
-        }
-        if (map.getSource(sourceId)) {
-          map.removeSource(sourceId);
-        }
-      } catch (error) {
-        console.warn('⚠️ TrailLayer: error during unmount cleanup, ignoring:', error);
-      }
-    };
-  }, []); // Empty deps = runs only on mount/unmount
-
   // This component renders nothing (it only adds layers to map)
   return null;
 }

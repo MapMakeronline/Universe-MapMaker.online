@@ -83,8 +83,13 @@ export function lerpPoint(
  * // newBearing ≈ 352.4° (smooth turn through 0°, not 180°)
  */
 export function lerpBearing(current: number, target: number, speed: number): number {
+  // ✅ BUGFIX: Normalize inputs to 0-360 range first (handles edge cases like bearing < -360° or > 720°)
+  // Turf.bearing returns -180 to 180, but we want to be safe for future changes
+  const normCurrent = ((current % 360) + 360) % 360;
+  const normTarget = ((target % 360) + 360) % 360;
+
   // Calculate shortest angular distance (handles 360° wrap)
-  let delta = target - current;
+  let delta = normTarget - normCurrent;
 
   // If delta > 180°, turn the other way (shorter path)
   if (delta > 180) {
@@ -96,6 +101,6 @@ export function lerpBearing(current: number, target: number, speed: number): num
     delta += 360; // Example: 10° → 350° becomes +20° (turn right, not -340° left)
   }
 
-  // Apply LERP with normalized delta, then normalize result to 0-360
-  return (current + delta * speed + 360) % 360;
+  // Apply LERP with normalized delta, result is guaranteed 0-360 after normalization
+  return ((normCurrent + delta * speed) % 360 + 360) % 360;
 }

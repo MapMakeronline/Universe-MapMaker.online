@@ -29,6 +29,10 @@ interface TrailProgressData {
  *
  * Calculates real-time trail position and bearing
  *
+ * ✅ PERFORMANCE FIX: Split heavy calculations (trail stats) from light calculations (current position)
+ * - Trail stats (turf.length): Cached per trail, recalculated only when trail changes
+ * - Current position (turf.along, bearing): Calculated on every progress change (60 FPS during animation)
+ *
  * @param trail - TrailFeature (LineString GeoJSON)
  * @param progress - Progress along trail (0-1, where 0 = start, 1 = end)
  *
@@ -43,33 +47,49 @@ export function useTrailProgress(
   trail: TrailFeature,
   progress: number // 0-1
 ): TrailProgressData {
-  return useMemo(() => {
+  // ✅ PERFORMANCE: Cache heavy trail calculations (only recalculate when trail changes)
+  // This prevents 60x/sec recalculation of turf.length during animation
+  const trailStats = useMemo(() => {
     try {
-      // 1. Calculate total distance (meters)
       const totalDistance = turf.length(trail, { units: 'meters' });
 
-      // Guard: Handle empty or invalid trail
       if (totalDistance === 0) {
         console.warn('⚠️ useTrailProgress: Trail has zero length');
-        return {
-          totalDistance: 0,
-          currentDistance: 0,
-          currentPoint: null,
-          currentBearing: 0,
-          remainingDistance: 0,
-        };
       }
 
-      // 2. Calculate current distance from start (meters)
+      return { totalDistance };
+    } catch (error) {
+      console.error('❌ useTrailProgress: Trail stats calculation error:', error);
+      return { totalDistance: 0 };
+    }
+  }, [trail]); // ✅ Only recalculate when trail changes (not on progress change)
+
+  // ✅ PERFORMANCE: Light calculations (depend on progress, executed 60x/sec during animation)
+  return useMemo(() => {
+    const { totalDistance } = trailStats;
+
+    // Guard: Handle empty or invalid trail
+    if (totalDistance === 0) {
+      return {
+        totalDistance: 0,
+        currentDistance: 0,
+        currentPoint: null,
+        currentBearing: 0,
+        remainingDistance: 0,
+      };
+    }
+
+    try {
+      // Calculate current distance from start (meters)
       const currentDistance = Math.min(progress * totalDistance, totalDistance);
 
-      // 3. Get current point on trail using turf.along
+      // Get current point on trail using turf.along
       const currentPointFeature = turf.along(trail, currentDistance / 1000, {
         units: 'kilometers',
       });
       const currentPoint = currentPointFeature.geometry.coordinates as [number, number];
 
-      // 4. Calculate bearing (direction for camera)
+      // Calculate bearing (direction for camera)
       // Look ahead 10m (or to end of trail if closer) for smooth bearing
       const lookAheadDistance = Math.min(currentDistance + 10, totalDistance);
       const nextPointFeature = turf.along(trail, lookAheadDistance / 1000, {
@@ -84,16 +104,19 @@ export function useTrailProgress(
       // Convert bearing to 0-360 range (turf.bearing returns -180 to 180)
       const currentBearing = bearing < 0 ? bearing + 360 : bearing;
 
-      // 5. Calculate remaining distance (meters)
+      // Calculate remaining distance (meters)
       const remainingDistance = totalDistance - currentDistance;
 
-      console.log('📍 useTrailProgress:', {
-        progress: `${(progress * 100).toFixed(1)}%`,
-        currentDistance: `${(currentDistance / 1000).toFixed(2)} km`,
-        totalDistance: `${(totalDistance / 1000).toFixed(2)} km`,
-        bearing: `${currentBearing.toFixed(1)}°`,
-        currentPoint: `[${currentPoint[0].toFixed(4)}, ${currentPoint[1].toFixed(4)}]`,
-      });
+      // ✅ PERFORMANCE: Reduced console spam (only log every 5% progress change)
+      const progressPercent = Math.round(progress * 100);
+      if (progressPercent % 5 === 0 && progress > 0) {
+        console.log('📍 useTrailProgress:', {
+          progress: `${progressPercent}%`,
+          currentDistance: `${(currentDistance / 1000).toFixed(2)} km`,
+          totalDistance: `${(totalDistance / 1000).toFixed(2)} km`,
+          bearing: `${currentBearing.toFixed(1)}°`,
+        });
+      }
 
       return {
         totalDistance,
@@ -103,17 +126,17 @@ export function useTrailProgress(
         remainingDistance,
       };
     } catch (error) {
-      console.error('❌ useTrailProgress error:', error);
+      console.error('❌ useTrailProgress: Position calculation error:', error);
       // Return safe defaults on error
       return {
-        totalDistance: 0,
+        totalDistance,
         currentDistance: 0,
         currentPoint: null,
         currentBearing: 0,
-        remainingDistance: 0,
+        remainingDistance: totalDistance,
       };
     }
-  }, [trail, progress]); // Recalculate when trail or progress changes
+  }, [trailStats, trail, progress]); // ✅ Depends on progress (light calculations) and trailStats (cached)
 }
 
 export default useTrailProgress;
