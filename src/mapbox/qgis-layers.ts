@@ -17,10 +17,12 @@ import { mapLogger } from '@/tools/logger';
 
 /**
  * QGIS Server base URL
+ *
+ * Direct URL to QGIS Server - CORS issues have been fixed on nginx.
+ * The duplicate 'Access-Control-Allow-Origin' header issue was resolved
+ * by using proxy_hide_header in nginx configuration.
  */
-const QGIS_SERVER_URL = process.env.NEXT_PUBLIC_API_URL
-  ? `${process.env.NEXT_PUBLIC_API_URL}/ows`
-  : 'https://api.universemapmaker.online/ows';
+const QGIS_SERVER_URL = 'https://api.universemapmaker.online/ows';
 
 /**
  * Options for adding WMS layer
